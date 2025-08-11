@@ -61,6 +61,7 @@ export interface LineageContextType {
   platformView: LineagePlatformView;
   expandAllColumns: boolean;
   isPlatformLineage: boolean;
+  entityFqn: string;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -98,5 +99,6 @@ export interface LineageContextType {
   ) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
+  updateEntityFqn: (entityFqn: string) => void;
   dqHighlightedEdges?: Set<string>;
 }
