@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <if condition='p("LOG_FORMAT").equalsIgnoreCase("json")'>
+    <if condition='isDefined("LOG_FORMAT") && p("LOG_FORMAT").equalsIgnoreCase("json")'>
         <then>
             <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
                 <encoder class="ch.qos.logback.contrib.json.classic.JsonLayout">
