@@ -136,7 +136,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [selectedPersona, customizePageClassBase.defaultLayout]);
+  }, [selectedPersona]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
