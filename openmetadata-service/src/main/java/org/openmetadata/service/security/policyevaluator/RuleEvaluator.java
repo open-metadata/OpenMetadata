@@ -92,6 +92,21 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "noDomain",
+      input = "none",
+      description = "Returns true if the entity being accessed has no domain assigned",
+      examples = {"noDomain()", "!noDomain()"})
+  public boolean noDomain() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (resourceContext == null || subjectContext == null) {
+      return false;
+    }
+    return subjectContext.noDomain(resourceContext.getDomains());
+  }
+
+  @Function(
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
