@@ -48,7 +48,7 @@
       "hostPort": "http://localhost:8585/api",
       "authProvider": "openmetadata",
       "securityConfig": {
-        "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-jwt-token-here"
+        "jwtToken": "YOUR_JWT_TOKEN_HERE"
       },
       "apiVersion": "v1",
       "retry": {
