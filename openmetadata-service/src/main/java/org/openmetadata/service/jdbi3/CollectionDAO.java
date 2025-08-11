@@ -3069,6 +3069,26 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(json, '$.customUnitOfMeasurement')) AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE JSON_EXTRACT(json, '$.customUnitOfMeasurement') IS NOT NULL "
+                + "AND JSON_EXTRACT(json, '$.customUnitOfMeasurement') != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT json->>'customUnitOfMeasurement' AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE json->>'customUnitOfMeasurement' IS NOT NULL "
+                + "AND json->>'customUnitOfMeasurement' != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnit",
+        connectionType = POSTGRES)
+    List<String> getDistinctCustomUnitsOfMeasurement();
   }
 
   interface MlModelDAO extends EntityDAO<MlModel> {

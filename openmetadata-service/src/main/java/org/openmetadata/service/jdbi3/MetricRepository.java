@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
@@ -58,6 +60,37 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public void prepare(Metric metric, boolean update) {
     validateRelatedTerms(metric, metric.getRelatedMetrics());
+    validateCustomUnitOfMeasurement(metric);
+  }
+
+  private void validateCustomUnitOfMeasurement(Metric metric) {
+    MetricUnitOfMeasurement unitOfMeasurement = metric.getUnitOfMeasurement();
+    String customUnit = metric.getCustomUnitOfMeasurement();
+
+    if (unitOfMeasurement == MetricUnitOfMeasurement.OTHER) {
+      if (CommonUtil.nullOrEmpty(customUnit)) {
+        throw new IllegalArgumentException(
+            "customUnitOfMeasurement is required when unitOfMeasurement is OTHER");
+      }
+
+      // Validate custom unit format
+      if (customUnit.length() > 50) {
+        throw new IllegalArgumentException(
+            "customUnitOfMeasurement cannot be longer than 50 characters");
+      }
+
+      // Allow alphanumeric, spaces, common symbols
+      if (!customUnit.matches("^[a-zA-Z0-9\\s\\-_/%()\\[\\]€$£¥]+$")) {
+        throw new IllegalArgumentException(
+            "customUnitOfMeasurement contains invalid characters. Only letters, numbers, spaces, and common symbols are allowed");
+      }
+
+      // Trim and normalize
+      metric.setCustomUnitOfMeasurement(customUnit.trim());
+    } else {
+      // Clear custom unit if not OTHER to maintain consistency
+      metric.setCustomUnitOfMeasurement(null);
+    }
   }
 
   @Override
@@ -133,6 +166,10 @@ public class MetricRepository extends EntityRepository<Metric> {
       recordChange("metricType", original.getMetricType(), updated.getMetricType());
       recordChange(
           "unitOfMeasurement", original.getUnitOfMeasurement(), updated.getUnitOfMeasurement());
+      recordChange(
+          "customUnitOfMeasurement",
+          original.getCustomUnitOfMeasurement(),
+          updated.getCustomUnitOfMeasurement());
       if (updated.getMetricExpression() != null) {
         recordChange(
             "metricExpression", original.getMetricExpression(), updated.getMetricExpression());
@@ -154,6 +191,11 @@ public class MetricRepository extends EntityRepository<Metric> {
           updatedRelatedMetrics,
           true);
     }
+  }
+
+  public List<String> getDistinctCustomUnitsOfMeasurement() {
+    // Execute efficient database query to get distinct custom units
+    return daoCollection.metricDAO().getDistinctCustomUnitsOfMeasurement();
   }
 
   private Map<UUID, List<EntityReference>> batchFetchRelatedMetrics(List<Metric> metrics) {

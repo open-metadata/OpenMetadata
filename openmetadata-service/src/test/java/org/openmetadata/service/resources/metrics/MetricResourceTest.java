@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.metrics;
 
+import static jakarta.ws.rs.core.Response.Status;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -215,6 +216,183 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   }
 
   @SuppressWarnings("unchecked")
+  @Test
+  void test_createMetricWithCustomUnit() throws IOException {
+    // Test creating metric with custom unit
+    CreateMetric createMetric =
+        createRequest("test_custom_unit_metric")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("EURO");
+
+    Metric metric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+
+    Assertions.assertEquals(MetricUnitOfMeasurement.OTHER, metric.getUnitOfMeasurement());
+    Assertions.assertEquals("EURO", metric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_createMetricWithCustomUnitValidation() throws IOException {
+    // Test missing custom unit when OTHER is selected
+    CreateMetric createMetricMissingCustomUnit =
+        createRequest("test_missing_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER);
+
+    assertResponse(
+        () -> createEntity(createMetricMissingCustomUnit, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "customUnitOfMeasurement is required when unitOfMeasurement is OTHER");
+  }
+
+  @Test
+  void test_createMetricWithCustomUnitTooLong() throws IOException {
+    String longUnit = "A".repeat(51); // 51 characters - exceeds limit
+    CreateMetric createMetric =
+        createRequest("test_long_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement(longUnit);
+
+    assertResponse(
+        () -> createEntity(createMetric, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "customUnitOfMeasurement cannot be longer than 50 characters");
+  }
+
+  @Test
+  void test_createMetricWithCustomUnitInvalidCharacters() throws IOException {
+    CreateMetric createMetric =
+        createRequest("test_invalid_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("INVALID@#$UNIT");
+
+    assertResponse(
+        () -> createEntity(createMetric, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "customUnitOfMeasurement contains invalid characters. Only letters, numbers, spaces, and common symbols are allowed");
+  }
+
+  @Test
+  void test_createMetricWithValidCustomUnits() throws IOException {
+    // Test various valid custom units
+    String[] validUnits = {
+      "EURO",
+      "Minutes",
+      "GB/sec",
+      "API_Calls",
+      "Users (Active)",
+      "Queries/Hour",
+      "CPU %",
+      "Memory [MB]",
+      "€",
+      "$",
+      "£",
+      "¥"
+    };
+
+    for (int i = 0; i < validUnits.length; i++) {
+      CreateMetric createMetric =
+          createRequest("test_valid_custom_unit_" + i)
+              .withMetricType(MetricType.COUNT)
+              .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+              .withCustomUnitOfMeasurement(validUnits[i]);
+
+      Metric metric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+      Assertions.assertEquals(validUnits[i], metric.getCustomUnitOfMeasurement());
+    }
+  }
+
+  @Test
+  void test_updateMetricCustomUnit() throws IOException {
+    // Create metric with standard unit
+    CreateMetric createMetric =
+        createRequest("test_update_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT);
+
+    Metric originalMetric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertNull(originalMetric.getCustomUnitOfMeasurement());
+
+    // Update to custom unit
+    CreateMetric updateRequest =
+        createRequest("test_update_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("EURO");
+
+    Metric updatedMetric = updateEntity(updateRequest, Status.OK, ADMIN_AUTH_HEADERS);
+
+    Assertions.assertEquals(MetricUnitOfMeasurement.OTHER, updatedMetric.getUnitOfMeasurement());
+    Assertions.assertEquals("EURO", updatedMetric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_customUnitClearedWhenNotOther() throws IOException {
+    // Create metric with OTHER and custom unit
+    CreateMetric createMetric =
+        createRequest("test_clear_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("EURO");
+
+    Metric originalMetric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals("EURO", originalMetric.getCustomUnitOfMeasurement());
+
+    // Update to standard unit - custom unit should be cleared
+    CreateMetric updateRequest =
+        createRequest("test_clear_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS)
+            .withCustomUnitOfMeasurement("EURO"); // This should be ignored/cleared
+
+    Metric updatedMetric = updateEntity(updateRequest, Status.OK, ADMIN_AUTH_HEADERS);
+
+    Assertions.assertEquals(MetricUnitOfMeasurement.DOLLARS, updatedMetric.getUnitOfMeasurement());
+    Assertions.assertNull(updatedMetric.getCustomUnitOfMeasurement());
+  }
+
+  @Test
+  void test_getCustomUnitsAPI() throws IOException {
+    // Create metrics with different custom units
+    String[] customUnits = {"EURO", "Minutes", "GB/sec", "EURO"}; // Note: EURO repeated
+
+    for (int i = 0; i < customUnits.length; i++) {
+      CreateMetric createMetric =
+          createRequest("test_custom_units_api_" + i)
+              .withMetricType(MetricType.COUNT)
+              .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+              .withCustomUnitOfMeasurement(customUnits[i]);
+      createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    }
+
+    // Get distinct custom units
+    List<String> customUnitsList =
+        TestUtils.get(getCollection().path("customUnits"), List.class, ADMIN_AUTH_HEADERS);
+
+    Assertions.assertNotNull(customUnitsList);
+    assertTrue(customUnitsList.contains("EURO"));
+    assertTrue(customUnitsList.contains("Minutes"));
+    assertTrue(customUnitsList.contains("GB/sec"));
+
+    // Should be distinct - EURO should appear only once
+    long euroCount = customUnitsList.stream().filter("EURO"::equals).count();
+    Assertions.assertEquals(1, euroCount);
+  }
+
+  @Test
+  void test_customUnitTrimming() throws IOException {
+    CreateMetric createMetric =
+        createRequest("test_trim_custom_unit")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("  EURO  "); // Spaces around
+
+    Metric metric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals("EURO", metric.getCustomUnitOfMeasurement()); // Should be trimmed
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected != null && actual != null) {
@@ -232,6 +410,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
             expected, MetricGranularity.valueOf(actual.toString()));
         case "unitOfMeasurement" -> Assertions.assertEquals(
             expected, MetricUnitOfMeasurement.valueOf(actual.toString()));
+        case "customUnitOfMeasurement" -> Assertions.assertEquals(expected, actual);
         case "metricType" -> Assertions.assertEquals(
             expected, MetricType.valueOf(actual.toString()));
         default -> assertCommonFieldChange(fieldName, expected, actual);
