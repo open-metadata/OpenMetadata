@@ -1290,6 +1290,8 @@ export const updateDisplayNameForEntityChildren = async (
     displayName.oldDisplayName
   );
 
+  await page.locator('#displayName').clear();
+
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
   const updateRequest = page.waitForResponse((req) =>
