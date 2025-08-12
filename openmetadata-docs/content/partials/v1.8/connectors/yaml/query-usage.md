@@ -53,7 +53,7 @@ Note that the location is a directory that will be cleaned at the end of the ing
 
 {% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.8/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -100,7 +100,7 @@ bulkSink:
     filename: /tmp/athena_usage
 ```
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.8/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 {% /codePreview %}
