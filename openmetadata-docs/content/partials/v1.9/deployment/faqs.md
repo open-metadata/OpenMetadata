@@ -24,7 +24,7 @@ Upgrade the helm charts with the above changes using the following command `helm
 
 ## PostgreSQL Issue permission denied to create extension "pgcrypto"
 
-{% partial file="/v1.7/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+{% partial file="/v1.9/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
 ## How to extend and use custom docker images with OpenMetadata Helm Charts ?
 

@@ -11,7 +11,7 @@ You can adjust this behavior directly from the UI:
 3. **Update the `partitionQueryDuration`** under **Partition Config** to a wider window (e.g., 30 days) as needed.
 
 {% image
-  src="/images/v1.7/connectors/bigquery/partitioned-tables.gif"
+  src="/images/v1.9/connectors/bigquery/partitioned-tables.gif"
 /%}
 
 This change allows OpenMetadata to access a broader data range during profiling and sample data collection, resolving the issue for partitioned tables.
