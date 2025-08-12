@@ -79,6 +79,7 @@ export enum EntityType {
   WORKFLOW_DEFINITION = 'workflowDefinition',
   SERVICE = 'service',
   DATA_CONTRACT = 'dataContract',
+  INGESTION_RUNNER = 'ingestionRunner',
 }
 
 export enum EntityLineageDirection {

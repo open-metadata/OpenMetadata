@@ -162,3 +162,15 @@ To set up a webhook you can simply use the endpoint URL where you want your aler
 - **Batch Size**: Size of the batch that will be sent to the endpoint.
 - **Connection Timeout**: Timeout for the connection.
 - **Secret Key**: Secret key can be used to secure the webhook connection.
+
+## Advanced Configuration
+
+For these destinations type (Webhook, Slack, Microsoft Teams, Google Chat), OpenMetadata provides **Advanced Configuration** options that allow you to customize the request details sent to the destination endpoint.
+
+1. **Headers** : Add custom HTTP headers to be included in the webhook request.
+
+2. **Query Params** : Define additional query parameters to append to the webhook URL.
+
+3. **HTTP Method** : Choose the HTTP method to be used when sending data:
+    1. **POST** (default)
+    2. **PUT** 

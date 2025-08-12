@@ -13,9 +13,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 - **`host`** *(string)*: DBT cloud Access URL.
 - **`discoveryAPI`** *(string)*: DBT cloud Metadata API URL.
 - **`accountId`** *(string)*: ID of your DBT cloud account.
-- **`jobIds`** *(array)*: List of IDs of your DBT cloud jobs seperated by comma `,`.
+- **`jobIds`** *(array)*: List of IDs of your DBT cloud jobs separated by comma `,`.
   - **Items** *(string)*
-- **`projectIds`** *(array)*: List of IDs of your DBT cloud projects seperated by comma `,`.
+- **`projectIds`** *(array)*: List of IDs of your DBT cloud projects separated by comma `,`.
   - **Items** *(string)*
 - **`numberOfRuns`** *(integer)*: Number of runs to fetch from DBT cloud. Default: `100`.
 - **`token`** *(string)*: Generated Token to connect to DBTCloud.
