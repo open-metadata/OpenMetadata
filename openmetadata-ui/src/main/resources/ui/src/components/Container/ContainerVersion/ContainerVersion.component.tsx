@@ -35,6 +35,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -88,7 +89,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(currentVersionData.dataModel?.columns);
+    const colList = cloneDeep(
+      pruneEmptyChildren(currentVersionData.dataModel?.columns ?? [])
+    );
 
     return getColumnsDataWithVersionChanges<Column>(
       changeDescription,
