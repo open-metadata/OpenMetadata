@@ -17,7 +17,7 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useFqn } from '../../../hooks/useFqn';
-import { getLineageColumnsAndDataSourceFromCSV } from '../../../utils/EntityLineageUtils';
+import { getLineageTableConfig } from '../../../utils/EntityLineageUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import LineageTable from './LineageTable.component';
 
@@ -41,9 +41,7 @@ const mockUseEntityExportModalProvider =
     typeof useEntityExportModalProvider
   >;
 const mockGetLineageColumnsAndDataSourceFromCSV =
-  getLineageColumnsAndDataSourceFromCSV as jest.MockedFunction<
-    typeof getLineageColumnsAndDataSourceFromCSV
-  >;
+  getLineageTableConfig as jest.MockedFunction<typeof getLineageTableConfig>;
 const mockReadString = readString as jest.MockedFunction<typeof readString>;
 
 describe('LineageTable Component', () => {

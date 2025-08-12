@@ -13,7 +13,7 @@
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
@@ -1898,20 +1898,19 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
   const FROM_FIELDS = ['fromEntityFQN', 'fromServiceName', 'fromServiceType'];
   const TO_FIELDS = ['toEntityFQN', 'toServiceName', 'toServiceType'];
 
-  const renderCombined = (
-    fqn: string | undefined,
-    serviceType: string | undefined
-  ) => (
-    <Space size={4}>
+  const renderCombined = (fqn: string, serviceType: string) => (
+    <div className="d-flex items-center gap-2">
       <img
-        alt={fqn ?? ''}
+        alt={fqn}
         className="header-icon"
-        src={serviceUtilClassBase.getServiceLogo(serviceType ?? '')}
+        src={serviceUtilClassBase.getServiceLogo(serviceType)}
       />
-      <Typography.Text className="text-primary font-semibold">
+      <Typography.Text
+        className="text-primary font-semibold"
+        ellipsis={{ tooltip: true }}>
         {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
       </Typography.Text>
-    </Space>
+    </div>
   );
 
   const columns: ColumnsType<string> = [];
