@@ -49,6 +49,10 @@ export interface CreateClassificationRequest {
      */
     owners?:   EntityReference[];
     provider?: ProviderType;
+    /**
+     * User references of the reviewers for this tag.
+     */
+    reviewers?: EntityReference[];
 }
 
 /**

@@ -62,7 +62,7 @@ export interface CreateDataContract {
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
+    status?:    EntityStatus;
 }
 
 /**
@@ -627,10 +627,13 @@ export enum ProviderType {
 }
 
 /**
- * Status of the data contract.
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export enum ContractStatus {
-    Active = "Active",
+export enum EntityStatus {
+    Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
