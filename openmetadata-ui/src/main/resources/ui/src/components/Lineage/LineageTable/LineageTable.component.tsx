@@ -17,9 +17,10 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useFqn } from '../../../hooks/useFqn';
-import { getLineageColumnsAndDataSourceFromCSV } from '../../../utils/EntityLineageUtils';
+import { getLineageTableConfig } from '../../../utils/EntityLineageUtils';
 import Table from '../../common/Table/Table';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import './lineage-table.less';
 
 const LineageTable = () => {
   const { fqn } = useFqn();
@@ -37,7 +38,7 @@ const LineageTable = () => {
   });
 
   const onCSVReadComplete = useCallback((results: { data: string[][] }) => {
-    const { columns, dataSource } = getLineageColumnsAndDataSourceFromCSV(
+    const { columns, dataSource } = getLineageTableConfig(
       results.data as string[][]
     );
 

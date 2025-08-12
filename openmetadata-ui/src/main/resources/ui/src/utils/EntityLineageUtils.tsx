@@ -13,8 +13,8 @@
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
-import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Space, Typography } from 'antd';
+import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import {
@@ -28,6 +28,7 @@ import {
 } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -95,6 +96,8 @@ import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
+import entityUtilClassBase from '../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
@@ -1890,7 +1893,95 @@ export const getAllDownstreamEdges = (
   return [...directDownstreamEdges, ...nestedDownstreamEdges];
 };
 
-export const getLineageColumnsAndDataSourceFromCSV = (
+const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
+  // Field groups we want to combine
+  const FROM_FIELDS = ['fromEntityFQN', 'fromServiceName', 'fromServiceType'];
+  const TO_FIELDS = ['toEntityFQN', 'toServiceName', 'toServiceType'];
+
+  const renderCombined = (
+    fqn: string | undefined,
+    serviceType: string | undefined
+  ) => (
+    <Space size={4}>
+      <img
+        alt={fqn ?? ''}
+        className="header-icon"
+        src={serviceUtilClassBase.getServiceLogo(serviceType ?? '')}
+      />
+      <Typography.Text className="text-primary font-semibold">
+        {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
+      </Typography.Text>
+    </Space>
+  );
+
+  const columns: ColumnsType<string> = [];
+  columns.push(
+    ...([
+      {
+        title: t('label.from-entity'),
+        dataIndex: 'fromCombined',
+        key: 'fromCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => (
+          <Link
+            to={entityUtilClassBase.getEntityLink(
+              serviceUtilClassBase.getEntityTypeFromServiceType(
+                record.fromServiceType ?? ''
+              ),
+              record.fromEntityFQN || ''
+            )}>
+            {renderCombined(record.fromEntityFQN, record.fromServiceType)}
+          </Link>
+        ),
+      },
+      {
+        title: t('label.to-entity'),
+        dataIndex: 'toCombined',
+        key: 'toCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => (
+          <Link
+            to={entityUtilClassBase.getEntityLink(
+              serviceUtilClassBase.getEntityTypeFromServiceType(
+                record.toServiceType ?? ''
+              ),
+              record.toEntityFQN || ''
+            )}>
+            {renderCombined(record.toEntityFQN, record.toServiceType)}
+          </Link>
+        ),
+      },
+    ] as unknown as ColumnsType<string>[number][])
+  );
+
+  // Append remaining header-driven columns
+  headers.forEach((header) => {
+    if ([...FROM_FIELDS, ...TO_FIELDS].includes(header)) {
+      return;
+    }
+
+    columns.push({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[header],
+      dataIndex: header,
+      key: header,
+      width: 200,
+      ellipsis: { showTitle: false },
+      render: (text: string) => (
+        <Typography.Text
+          data-testid={`lineage-column-${header}-${text}`}
+          ellipsis={{ tooltip: true }}>
+          {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
+        </Typography.Text>
+      ),
+    });
+  });
+
+  return columns;
+};
+
+export const getLineageTableConfig = (
   csvData: string[][]
 ): {
   columns: ColumnsType<string>;
@@ -1905,24 +1996,6 @@ export const getLineageColumnsAndDataSourceFromCSV = (
 
   const [headers, ...rows] = csvData;
 
-  const columns: ColumnsType<string> = headers.map((header) => ({
-    title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[header],
-    dataIndex: header,
-    key: header,
-    width: 200,
-    ellipsis: {
-      showTitle: false,
-    },
-    render: (text: string) => (
-      <Typography.Text
-        data-testid={`lineage-column-${header}-${text}`}
-        ellipsis={{ tooltip: true }}>
-        {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
-      </Typography.Text>
-    ),
-  }));
-
-  // Create data source
   const dataSource = rows.map((row, index) => {
     const rowData: Record<string, string> = {};
     headers.forEach((header, headerIndex) => {
@@ -1933,8 +2006,7 @@ export const getLineageColumnsAndDataSourceFromCSV = (
     return rowData;
   });
 
-  return {
-    columns,
-    dataSource,
-  };
+  const columns = buildLineageTableColumns(headers);
+
+  return { columns, dataSource };
 };

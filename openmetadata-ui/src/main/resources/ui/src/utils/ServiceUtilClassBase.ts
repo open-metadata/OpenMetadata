@@ -330,6 +330,50 @@ class ServiceUtilClassBase {
     };
   }
 
+  public getEntityTypeFromServiceType(serviceType: string): EntityType {
+    const serviceTypes = this.getSupportedServiceFromList();
+
+    // Check which service category the serviceType belongs to
+    if (serviceTypes.databaseServices.includes(serviceType)) {
+      return EntityType.TABLE;
+    }
+
+    if (serviceTypes.messagingServices.includes(serviceType)) {
+      return EntityType.TOPIC;
+    }
+
+    if (serviceTypes.dashboardServices.includes(serviceType)) {
+      return EntityType.DASHBOARD;
+    }
+
+    if (serviceTypes.pipelineServices.includes(serviceType)) {
+      return EntityType.PIPELINE;
+    }
+
+    if (serviceTypes.mlmodelServices.includes(serviceType)) {
+      return EntityType.MLMODEL;
+    }
+
+    if (serviceTypes.storageServices.includes(serviceType)) {
+      return EntityType.CONTAINER;
+    }
+
+    if (serviceTypes.searchServices.includes(serviceType)) {
+      return EntityType.SEARCH_INDEX;
+    }
+
+    if (serviceTypes.apiServices.includes(serviceType)) {
+      return EntityType.API_ENDPOINT;
+    }
+
+    if (serviceTypes.securityServices.includes(serviceType)) {
+      return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    // Default fallback
+    return EntityType.TABLE;
+  }
+
   public getServiceLogo(type: string) {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
