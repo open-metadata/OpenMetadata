@@ -147,26 +147,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void setInheritedFields(DataProduct dataProduct, Fields fields) {
-    // If dataProduct does not have owners, experts, and reviewers, inherit them from the domains
+    // If dataProduct does not have owners and experts, inherit them from the domains
     List<EntityReference> domains =
         !nullOrEmpty(dataProduct.getDomains()) ? getDomains(dataProduct) : Collections.emptyList();
     if (!nullOrEmpty(domains)
-        && (fields.contains(FIELD_EXPERTS)
-            || fields.contains(FIELD_OWNERS)
-            || fields.contains(Entity.FIELD_REVIEWERS))
-        && (nullOrEmpty(dataProduct.getOwners())
-            || nullOrEmpty(dataProduct.getExperts())
-            || nullOrEmpty(dataProduct.getReviewers()))) {
+        && (fields.contains(FIELD_EXPERTS) || fields.contains(FIELD_OWNERS))
+        && (nullOrEmpty(dataProduct.getOwners()) || nullOrEmpty(dataProduct.getExperts()))) {
       List<EntityReference> owners = new ArrayList<>();
       List<EntityReference> experts = new ArrayList<>();
-      List<EntityReference> reviewers = new ArrayList<>();
 
       for (EntityReference domainRef : domains) {
-        Domain domain =
-            Entity.getEntity(DOMAIN, domainRef.getId(), "owners,experts,reviewers", ALL);
+        Domain domain = Entity.getEntity(DOMAIN, domainRef.getId(), "owners,experts", ALL);
         owners = mergedInheritedEntityRefs(owners, domain.getOwners());
         experts = mergedInheritedEntityRefs(experts, domain.getExperts());
-        reviewers = mergedInheritedEntityRefs(reviewers, domain.getReviewers());
       }
       // inherit only if applicable and empty
       if (fields.contains(FIELD_OWNERS) && nullOrEmpty(dataProduct.getOwners())) {
@@ -174,9 +167,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       }
       if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(dataProduct.getExperts())) {
         dataProduct.setExperts(experts);
-      }
-      if (fields.contains(Entity.FIELD_REVIEWERS) && nullOrEmpty(dataProduct.getReviewers())) {
-        dataProduct.setReviewers(reviewers);
       }
     }
   }
