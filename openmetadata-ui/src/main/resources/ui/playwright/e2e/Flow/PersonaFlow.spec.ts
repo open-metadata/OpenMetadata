@@ -22,6 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
@@ -41,6 +42,7 @@ const PERSONA_DETAILS = {
 const user = new UserClass();
 const persona = new PersonaClass();
 const persona1 = new PersonaClass();
+const persona2 = new PersonaClass();
 
 const test = base.extend<{
   adminPage: Page;
@@ -302,6 +304,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     const adminData = await adminResponse.json();
 
     await persona1.create(apiContext, [user.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user.responseData.id]);
     await afterAction();
   });
 
@@ -327,6 +330,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       // Delete the user that was created in beforeAll
       await user.delete(apiContext);
       await persona1.delete(apiContext);
+      await persona2.delete(apiContext);
 
       await afterAction();
     }
@@ -465,6 +469,37 @@ test.describe.serial('Default persona setting and removal flow', () => {
       await userPage.reload();
       await checkPersonaInProfile(userPage, persona1.responseData.displayName);
     });
+
+    await test.step(
+      'check if removing default persona will bring back org wide default persona',
+      async () => {
+        await setUserDefaultPersona(
+          userPage,
+          persona2.responseData.displayName
+        );
+
+        await userPage
+          .locator('[data-testid="edit-user-persona"]')
+          .nth(1)
+          .click();
+
+        await expect(
+          userPage.locator('[data-testid="persona-select-list"]')
+        ).toBeVisible();
+
+        await userPage.locator('[data-testid="persona-select-list"]').hover();
+
+        await userPage
+          .locator('[data-testid="persona-select-list"] .ant-select-clear')
+          .click();
+
+        await userPage.getByTestId('user-profile-persona-edit-save').click();
+
+        await expect(
+          userPage.getByTestId('default-persona-text')
+        ).toContainText(persona1.responseData.displayName);
+      }
+    );
 
     await test.step('Admin removes the default persona', async () => {
       await navigateToPersonaSettings(adminPage);
