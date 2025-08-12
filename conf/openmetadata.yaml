@@ -114,8 +114,6 @@ logging:
           timeZone: UTC
         - type: file
           logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-          layout:
-            type: json
           currentLogFilename: ./logs/openmetadata-operations.log
           archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
           archivedFileCount: 7
