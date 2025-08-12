@@ -1,0 +1,93 @@
+{
+  "source": {
+    "type": "mysql",
+    "serviceName": "mysql_production",
+    "serviceConnection": {
+      "config": {
+        "type": "Mysql",
+        "username": "openmetadata_user",
+        "authType": {
+          "password": "your_mysql_password"
+        },
+        "hostPort": "localhost:3306",
+        "connectionOptions": {
+          "charset": "utf8mb4",
+          "connect_timeout": 300,
+          "read_timeout": 3600
+        },
+        "connectionArguments": {
+          "ssl_disabled": "false",
+          "pool_size": "5",
+          "pool_timeout": "30",
+          "pool_recycle": "3600"
+        }
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "type": "Profiler",
+        "generateSampleData": true,
+        "profileSample": 100,
+        "profileSampleType": "PERCENTAGE",
+        "samplingMethodType": "SYSTEM",
+        "schemaFilterPattern": {
+          "includes": ["ecommerce", "analytics"],
+          "excludes": ["test_.*", "temp_.*"]
+        },
+        "tableFilterPattern": {
+          "includes": ["users", "orders", "products", "categories"],
+          "excludes": [".*_temp", ".*_backup", ".*_archive"]
+        },
+        "excludeColumns": ["password_hash", "ssn", "credit_card_number"],
+        "processPiiSensitive": false,
+        "confidence": 95,
+        "timeoutSeconds": 43200,
+        "computeMetrics": [
+          "nullCount",
+          "uniqueCount",
+          "distinctCount",
+          "mean",
+          "median",
+          "min",
+          "max",
+          "stddev",
+          "rowCount"
+        ]
+      }
+    }
+  },
+  "processor": {
+    "type": "orm-profiler",
+    "config": {
+      "tableConfig": [
+        {
+          "fullyQualifiedName": "mysql_production.ecommerce.large_orders_table",
+          "profileSample": 1,
+          "profileSampleType": "PERCENTAGE",
+          "samplingMethodType": "SYSTEM"
+        }
+      ]
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "loggerLevel": "INFO",
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "openmetadata",
+      "securityConfig": {
+        "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-jwt-token-here"
+      },
+      "apiVersion": "v1",
+      "retry": {
+        "enabled": true,
+        "maxRetries": 3,
+        "initialDelay": 5,
+        "maxDelay": 60
+      }
+    }
+  }
+}
