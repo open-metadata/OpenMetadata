@@ -86,6 +86,10 @@
   border: 1px solid @grey-300;
   overflow: hidden;
 
+  .ant-radio-button-wrapper {
+    color: @grey-600;
+  }
+
   .ant-radio-button-wrapper,
   .ant-radio-button-wrapper-checked {
     border: none;
@@ -104,11 +108,7 @@
   }
 
   .ant-radio-button-wrapper-checked {
-    svg {
-      path {
-        stroke: @primary-7;
-      }
-    }
+    color: @primary-7;
   }
 
   .ant-radio-button-wrapper:not(:first-child)::before {
