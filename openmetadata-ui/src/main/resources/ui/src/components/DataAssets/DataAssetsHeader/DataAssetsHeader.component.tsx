@@ -554,7 +554,7 @@ export const DataAssetsHeader = ({
               isCustomizedView ? { ...link, url: '', noLink: true } : link
             )}
           />
-          <Row gutter={[20, 0]}>
+          <Row className="relative" gutter={[20, 0]}>
             <Col className="w-min-0" flex="1">
               <EntityHeaderTitle
                 badge={alertBadge}
@@ -669,13 +669,16 @@ export const DataAssetsHeader = ({
           </Row>
         </Col>
 
-        <Col className="relative" span={24}>
-          <Button
-            className="data-asset-property-toggle-button"
-            type="link"
-            onClick={handlePropertyToggle}>
-            {t(`label.${isPropertyVisible ? 'hide' : 'view'}-property-plural`)}
-          </Button>
+        <Button
+          className={classNames('data-asset-property-toggle-button', {
+            'hide-enabled': !isPropertyVisible,
+          })}
+          type="link"
+          onClick={handlePropertyToggle}>
+          {t(`label.${isPropertyVisible ? 'hide' : 'view'}-property-plural`)}
+        </Button>
+
+        <Col span={24}>
           {isPropertyVisible && (
             <div
               className={classNames('data-asset-header-metadata ', {

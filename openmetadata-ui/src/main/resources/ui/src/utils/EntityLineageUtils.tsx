@@ -1912,6 +1912,10 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
   );
 
   const getEntityType = (serviceType: string, fqn: string) => {
+    if (!serviceType || !fqn) {
+      return EntityType.TABLE; // Default fallback
+    }
+
     let entityType =
       serviceUtilClassBase.getEntityTypeFromServiceType(serviceType);
 
