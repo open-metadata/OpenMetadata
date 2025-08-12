@@ -28,7 +28,6 @@ import { Tab } from '../generated/system/ui/uiCustomization';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getTableDetailPageBaseTabs,
@@ -106,7 +105,6 @@ class TableClassBase {
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
-      displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
       editable: tab === EntityTabs.SCHEMA,
     }));
