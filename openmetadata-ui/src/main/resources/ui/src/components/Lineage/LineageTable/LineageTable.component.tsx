@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { readString } from 'react-papaparse';
 import { ExportTypes } from '../../../constants/Export.constants';
@@ -18,6 +19,7 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useFqn } from '../../../hooks/useFqn';
 import { getLineageTableConfig } from '../../../utils/EntityLineageUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import './lineage-table.less';
@@ -79,6 +81,10 @@ const LineageTable = () => {
       clearCSVExportData();
     };
   }, []);
+
+  if (isEmpty(tableConfig.columns)) {
+    return <ErrorPlaceHolder />;
+  }
 
   return (
     <Table
