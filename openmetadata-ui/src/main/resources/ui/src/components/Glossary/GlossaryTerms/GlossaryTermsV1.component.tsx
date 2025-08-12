@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +38,7 @@ import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
@@ -180,9 +180,15 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+
     const items = [
       {
-        label: <div data-testid="overview">{t('label.overview')}</div>,
+        label: (
+          <div data-testid="overview">
+            {tabLabelMap[EntityTabs.OVERVIEW] ?? t('label.overview')}
+          </div>
+        ),
         key: EntityTabs.OVERVIEW,
         children: <GenericTab type={PageType.GlossaryTerm} />,
       },
@@ -191,7 +197,8 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {t('label.glossary-term-plural')}
+                  {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
+                    t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
                       childGlossaryTerms.length,
@@ -212,7 +219,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {t('label.asset-plural')}
+                  {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
                   <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
@@ -238,7 +245,10 @@ const GlossaryTermsV1 = ({
                   count={feedCount.totalCount}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                  name={t('label.activity-feed-and-task-plural')}
+                  name={
+                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
+                    t('label.activity-feed-and-task-plural')
+                  }
                 />
               ),
               key: EntityTabs.ACTIVITY_FEED,
@@ -258,7 +268,10 @@ const GlossaryTermsV1 = ({
               label: (
                 <TabsLabel
                   id={EntityTabs.CUSTOM_PROPERTIES}
-                  name={t('label.custom-property-plural')}
+                  name={
+                    tabLabelMap[EntityTabs.CUSTOM_PROPERTIES] ??
+                    t('label.custom-property-plural')
+                  }
                 />
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
