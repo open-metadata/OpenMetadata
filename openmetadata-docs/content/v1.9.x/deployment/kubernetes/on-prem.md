@@ -49,7 +49,7 @@ openmetadata:
           secretRef: elasticsearch-secrets
           secretKey: openmetadata-elasticsearch-password
     database:
-      host: <DATABSE_SQL_ENDPOINT>
+      host: <DATABASE_SQL_ENDPOINT>
       port: 3306
       driverClass: com.mysql.cj.jdbc.Driver
       dbScheme: mysql

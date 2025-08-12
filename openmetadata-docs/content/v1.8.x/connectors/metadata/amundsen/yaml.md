@@ -25,7 +25,7 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 ## Requirements
 
 Before this, you must create the service you want to get metadata for.  
-You can learn how to do it by folowing the initial part of the Connector documentation for the service.
+You can learn how to do it by following the initial part of the Connector documentation for the service.
 You can find the connectors list [here](/connectors).
 
 ### Python Requirements
