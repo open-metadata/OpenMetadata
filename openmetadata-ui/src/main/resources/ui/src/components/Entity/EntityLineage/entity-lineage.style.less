@@ -263,9 +263,9 @@
 
   .lineage-card {
     .ant-card-body {
-      // Added extra 16px to have some empty space at the bottom of the card
+      // removed extra 14px to have some empty space at the bottom of the card
       height: calc(
-        100vh - @om-navbar-height - @lineage-card-header-height - 16px
+        100vh - @om-navbar-height - @lineage-card-header-height - 14px
       );
     }
     overflow-y: scroll;
@@ -281,9 +281,10 @@
   }
 
   .lineage-container {
+    // remove extra 16px to match the height of the card
     height: calc(
       100vh - @om-navbar-height - @lineage-breadcrumb-panel -
-        @lineage-card-header-height
+        @lineage-card-header-height - 16px
     );
   }
 }
