@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection as MysqlConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
+    PostgresConnection as PostgresConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -70,16 +70,16 @@ def _(_: BackendConnection) -> Engine:
 def _(airflow_connection: MysqlConnectionConfig) -> Engine:
     from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
-    return MySQLConnection(airflow_connection).get_client()
+    return MySQLConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
-def _(airflow_connection: PostgresConnection) -> Engine:
+def _(airflow_connection: PostgresConnectionConfig) -> Engine:
     from metadata.ingestion.source.database.postgres.connection import (
-        get_connection as get_postgres_connection,
+        PostgresConnection,
     )
 
-    return get_postgres_connection(airflow_connection)
+    return PostgresConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
@@ -131,7 +131,9 @@ def test_connection(
 
     def test_pipeline_details_access(session):
         try:
-            result = session.query(SerializedDagModel).first()
+            # Query only the dag_id column to avoid version compatibility issues
+            # The data_compressed column doesn't exist in Airflow 2.2.5
+            result = session.query(SerializedDagModel.dag_id).first()
             return result
         except Exception as e:
             raise AirflowPipelineDetailsAccessError(
