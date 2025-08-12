@@ -2655,4 +2655,5 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SERVICE]: t('label.service'),
   [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
 };

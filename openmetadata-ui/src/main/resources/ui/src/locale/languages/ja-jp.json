@@ -794,6 +794,7 @@
     "ingestion-pipeline": "インジェストパイプライン",
     "ingestion-pipeline-name": "インジェストパイプライン名",
     "ingestion-plural": "インジェスト",
+    "ingestion-runner": "インジェスト実行者",
     "ingestion-workflow-lowercase": "インジェストワークフロー",
     "inherited": "継承済み",
     "inherited-entity": "継承された{{entity}}",

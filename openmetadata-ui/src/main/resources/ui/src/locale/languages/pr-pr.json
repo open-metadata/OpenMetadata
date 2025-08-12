@@ -794,6 +794,7 @@
     "ingestion-pipeline": "خط لوله ورود",
     "ingestion-pipeline-name": "نام خط لوله ورود",
     "ingestion-plural": "ورودها",
+    "ingestion-runner": "اجراکننده ورود",
     "ingestion-workflow-lowercase": "جریان کاری ورود",
     "inherited": "inherited",
     "inherited-entity": "{{entity}} ارث برده",
