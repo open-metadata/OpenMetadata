@@ -45,13 +45,6 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  protected void setDefaultStatus(Workflow entity, boolean update) {
-    // Workflow uses its own WorkflowStatus enum, so we leave it as is
-    // The default is handled by workflow-specific logic
-    // This override prevents EntityRepository from setting EntityStatus.APPROVED
-  }
-
-  @Override
   public void storeEntity(Workflow entity, boolean update) {
     OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();

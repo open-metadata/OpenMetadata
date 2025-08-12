@@ -99,7 +99,8 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "status": {
-      "$ref": "#/definitions/contractStatus",
+      "description": "Status of the data contract.",
+      "$ref": "../../type/entityStatus.json",
       "default": "Draft"
     },
     "entity": {

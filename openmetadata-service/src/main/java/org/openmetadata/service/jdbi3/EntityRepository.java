@@ -144,13 +144,11 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -569,28 +567,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Set default status for entities that support status field.
-   * Override this method in repositories with different status enums (e.g., DataContract, Workflow)
-   * or for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   * All entities use EntityStatus.APPROVED as the default.
+   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
    */
   protected void setDefaultStatus(T entity, boolean update) {
     if (!supportsStatus) {
       return;
     }
-    try {
-      // For WorkflowDefinition and DataContract, do not set default status, They are taken care in
-      // the respective repositories as they have different enum structure
-      if (entity instanceof WorkflowDefinition || entity instanceof DataContract) {
-        return;
-      }
-      if (!update || entity.getStatus() == null) {
-        entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
-      }
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to set default status for entity {}: {}",
-          entity.getClass().getSimpleName(),
-          e.getMessage());
+    // Skip if status is already set (for both create and update operations)
+    if (entity.getStatus() != null) {
+      return;
     }
+    // Set default status to APPROVED
+    entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
   }
 
   /**

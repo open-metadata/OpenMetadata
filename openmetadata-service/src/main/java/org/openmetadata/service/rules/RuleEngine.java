@@ -14,7 +14,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.ContractStatus;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -126,7 +126,7 @@ public class RuleEngine {
     if (enforceContract) {
       DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
       if (entityContract != null
-          && entityContract.getStatus() == ContractStatus.Active
+          && entityContract.getStatus() == EntityStatus.APPROVED
           && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }
