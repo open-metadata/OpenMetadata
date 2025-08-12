@@ -1,7 +1,7 @@
 ---
 title: Spark Engine UI Configuration | OpenMetadata Spark Profiling
 description: Configure Spark Engine through the OpenMetadata UI for distributed data profiling.
-slug: /how-to-guides/data-quality-observability/profiler/spark-engine/ui-configuration
+slug: /how-to-guides/data-quality-observability/profiler/spark-engine/configuration/ui-configuration
 collate: true
 ---
 
@@ -16,7 +16,7 @@ UI configuration for Spark Engine is currently being implemented and will be ava
   color="violet-70"
   bold="External Configuration"
   icon="MdAnalytics"
-  href="/how-to-guides/data-quality-observability/profiler/spark-engine/external-configuration" %}
+  href="/how-to-guides/data-quality-observability/profiler/spark-engine/configuration/external-configuration" %}
   Configure Spark Engine using YAML files for external workflows.
  {% /inlineCallout %}
 {% /inlineCalloutContainer %} 

@@ -1,7 +1,7 @@
 ---
 title: Spark Engine External Configuration | OpenMetadata Spark Profiling
 description: Configure Spark Engine using YAML files for external workflows and distributed data profiling.
-slug: /how-to-guides/data-quality-observability/profiler/spark-engine/external-configuration
+slug: /how-to-guides/data-quality-observability/profiler/spark-engine/configuration/external-configuration
 collate: true
 ---
 
@@ -140,7 +140,7 @@ The pipeline will now use Spark Engine instead of the Native engine for processi
   color="violet-70"
   bold="UI Configuration"
   icon="MdAnalytics"
-  href="/how-to-guides/data-quality-observability/profiler/spark-engine/ui-configuration" %}
+  href="/how-to-guides/data-quality-observability/profiler/spark-engine/configuration/ui-configuration" %}
   Configure Spark Engine through the OpenMetadata UI.
  {% /inlineCallout %}
 {% /inlineCalloutContainer %} 
