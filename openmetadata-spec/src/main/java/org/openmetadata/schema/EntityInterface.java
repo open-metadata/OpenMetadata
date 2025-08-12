@@ -156,8 +156,9 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setStatus(EntityStatus status) {}
-  ;
+  default void setStatus(EntityStatus status) {
+    /* no-op implementation to be overridden */
+  }
 
   default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */

@@ -158,6 +158,7 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -579,7 +580,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     // Set default status to APPROVED
-    entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
+    entity.setStatus(EntityStatus.APPROVED);
   }
 
   /**
