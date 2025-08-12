@@ -300,14 +300,19 @@ export enum ChartType {
     Area = "Area",
     Bar = "Bar",
     BoxPlot = "BoxPlot",
+    Gauge = "Gauge",
+    Graph = "Graph",
+    Heatmap = "Heatmap",
     Histogram = "Histogram",
     Line = "Line",
+    Map = "Map",
     Other = "Other",
     Pie = "Pie",
     SANKey = "SanKey",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",
+    Timeline = "Timeline",
 }
 
 /**
@@ -423,6 +428,7 @@ export interface AccessDetails {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",

@@ -1,5 +1,5 @@
 ---
-title: Fivetran Connector | `brandName` Data Integration
+title: Fivetran Connector | OpenMetadata Data Integration
 description: Connect Fivetran pipelines to OpenMetadata for automated data lineage tracking, metadata discovery, and comprehensive pipeline monitoring and governance.
 slug: /connectors/pipeline/fivetran
 ---

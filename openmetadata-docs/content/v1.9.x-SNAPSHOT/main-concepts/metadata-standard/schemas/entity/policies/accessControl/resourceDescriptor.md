@@ -1,6 +1,6 @@
 ---
 title: Resource Descriptor | OpenMetadata Resource Descriptor
-description: Learn how `brandName`'sResourceDescriptor schema defines access control policies for data assets. Complete API reference with examples and implementation guide.
+description: Learn how OpenMetadata'sResourceDescriptor schema defines access control policies for data assets. Complete API reference with examples and implementation guide.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcedescriptor
 ---
 

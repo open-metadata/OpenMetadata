@@ -1,5 +1,5 @@
 ---
-title: APIs | `brandName` Metadata Standard APIs
+title: APIs | OpenMetadata Metadata Standard APIs
 slug: /main-concepts/metadata-standard/apis
 ---
 
