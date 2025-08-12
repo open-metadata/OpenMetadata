@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import Icon, { RightOutlined } from '@ant-design/icons';
+import { RightOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Radio, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TableViewIcon } from '../../../assets/svg/ic-column.svg';
-import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-diagram.svg';
+import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-platform-lineage.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
@@ -31,16 +31,14 @@ import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ExtendedLineageControlProps } from './EntityLineage.interface';
+import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC<ExtendedLineageControlProps> = ({
+const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,
   activeViewTab,
   handleActiveViewTabChange,
-  style,
-  className,
-}: ExtendedLineageControlProps) => {
+}: LineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
@@ -184,9 +182,8 @@ const CustomControls: FC<ExtendedLineageControlProps> = ({
         options={[
           {
             label: (
-              <Icon
+              <TableViewIcon
                 className="align-middle"
-                component={TableViewIcon}
                 data-testid="lineage-table-view-icon"
                 style={DATA_ASSET_ICON_DIMENSION}
               />
@@ -195,9 +192,8 @@ const CustomControls: FC<ExtendedLineageControlProps> = ({
           },
           {
             label: (
-              <Icon
+              <DiagramViewIcon
                 className="align-middle"
-                component={DiagramViewIcon}
                 data-testid="lineage-diagram-view-icon"
                 style={DATA_ASSET_ICON_DIMENSION}
               />

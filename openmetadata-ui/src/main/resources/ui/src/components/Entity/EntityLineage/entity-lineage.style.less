@@ -15,6 +15,7 @@
 
 @lineage-breadcrumb-panel: 50px;
 @lineage-toolbar-height: 12px;
+@lineage-card-header-height: 74px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -248,7 +249,7 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
-  height: calc(100vh - @om-navbar-height);
+  height: calc(100vh - @om-navbar-height - @lineage-card-header-height);
 
   &.sidebar-collapsed {
     left: calc(72px + @padding-md);
@@ -261,7 +262,12 @@
   }
 
   .lineage-card {
-    height: calc(100vh - @om-navbar-height);
+    .ant-card-body {
+      // Added extra 16px to have some empty space at the bottom of the card
+      height: calc(
+        100vh - @om-navbar-height - @lineage-card-header-height - 16px
+      );
+    }
     overflow-y: scroll;
   }
 
@@ -275,7 +281,10 @@
   }
 
   .lineage-container {
-    height: calc(100vh - @om-navbar-height - @lineage-breadcrumb-panel);
+    height: calc(
+      100vh - @om-navbar-height - @lineage-breadcrumb-panel -
+        @lineage-card-header-height
+    );
   }
 }
 
