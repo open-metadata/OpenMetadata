@@ -9,7 +9,7 @@ collate: true
 
 {% youtube videoId="EWYDfhCgW8k" start="0:00" end="2:16" width="800px" height="450px" /%}
 
-The **Reverse Metadata Application** ensures real-time synchronization of metadata changes. Once installed and configured, any updates made to selected assets in Collate—such as descriptions, tags, or owners—are automatically in real-time propagated back to the source systems. There’s no need to trigger the application manually. This live sync ensures Collate remains the single source of truth while all connected systems stay up to date and compliant with governance policies.
+The **Reverse Metadata Application** enables both real-time and batch synchronization of metadata changes. Once installed and configured, any updates made to selected assets in Collate such as descriptions, tags, or owners—are automatically propagated back to the source systems in real-time. Additionally, you can trigger batch processing manually to sync metadata across multiple services and channels simultaneously. This flexible sync approach ensures Collate remains the single source of truth while all connected systems stay up to date and compliant with governance policies.
 
 ## Supported Databases and Features
 
@@ -30,7 +30,7 @@ The **Reverse Metadata Application** ensures real-time synchronization of metada
 
 ## Overview
 
-With this application, you can automatically sync metadata changes such as:
+With this application, you can sync metadata changes both automatically in real-time and through manual batch processing such as:
 
 ### Descriptions
 
@@ -72,11 +72,11 @@ Tag metadata (like `PII`, `sensitive`, `finance-related`, etc.) applied in **Col
 
 ## Key Features
 
-- **Automated Metadata Propagation:** 
-  Sync metadata updates (tags, owners, descriptions) from Collate to source systems without manual intervention.
+- **Dual Sync Modes:** 
+  Real-time automatic synchronization is the default behavior enabled simply by installing the application. Additionally, you can trigger manual batch processing on-demand to sync metadata updates (tags, owners, descriptions) from Collate to source systems.
 
 - **Configurable Channels:**  
-  Create multiple sync channels to define exactly which asset or metadata types to sync. Once configured, changes sync live — no manual action needed.
+  Create multiple sync channels to define exactly which asset or metadata types to sync. Changes can sync automatically in real-time or be processed in batches on-demand.
 
 - **Custom SQL Templates:**  
   Use SQL templates to customize update behavior per connector.
@@ -223,7 +223,7 @@ The **Sink Service** parameter allows you to redirect metadata changes from one 
 
 {% /note %}
 
-## Run Now to Clean Workflows
+## Manual Execution and Workflow Management
 
 {% image
 src="/images/v1.9/applications/reverse/reverse-metadata-application1.png"
@@ -231,16 +231,36 @@ alt="Scheduling"
 caption="Scheduling"
 /%}
 
-Users can monitor the running state of workflows, and in case of a failure, use the options below to clean them up:
+Users can monitor the running state of workflows and manage reverse metadata processing using the following options:
 
-- **Run Now:**- This lets you manually initiate a cleanup operation for failed workflows. This option will only be used to clean workflows. They will not trigger reverse metadata. It is an automatic synchronization.
-- **Scheduled Run:**- This automatically re-runs cleanup operations based on a defined schedule (e.g., daily or weekly).
+- **Run Now:** Manually executes two primary functions:
+  - **Workflow Cleanup:** Initiates cleanup operations for failed workflows
+  - **Batch Reverse Metadata Processing:** Triggers comprehensive metadata synchronization across all configured channels and database services, syncing metadata (owners, tags, and descriptions) from Collate to source databases
+- **Scheduled Run:** Automatically executes the same functions as "Run Now" (workflow cleanup and batch reverse metadata processing) based on a defined schedule (e.g., daily or weekly)
+
+Both options perform identical operations—the only difference is the execution method: manual trigger vs scheduled automation.
+
+## Batch Reverse Metadata Processing
+
+When you click **Run Now**, the system initiates a comprehensive batch processing workflow that operates as follows:
+
+### Processing Logic
+
+When multiple services are configured and match a channel's filter criteria, separate workflows will be triggered for each service. This ensures that each service is processed independently, so if one service fails, others continue unaffected.
+
+### Monitoring and Tracking
+
+You can track the status and progress of each individual workflow in the **Recent Runs** screen, which provides:
+- Real-time status updates for each workflow
+- Execution logs for troubleshooting
 
 {% note %}
 
-The Run Now option currently does not trigger any reverse metadata workflows. It is intended for manual cleanup of failed operations only.
+**Important Considerations for Batch Processing:**
 
-Support for batch reverse metadata execution via Run Now is planned for future releases. This note is added to help set clear expectations for users.
+- **Multiple Channel Matches:** If an entity (service, database, schema, table, or column) matches the filter criteria of multiple channels, the batch reverse metadata process will be triggered multiple times for that entity - once for each matching channel.
+- **Workflow Isolation:** Individual service failures don't impact other workflows running in parallel
+- **Granular Control:** Each service-channel combination is processed independently for better fault tolerance
 
 {% /note %}
 
