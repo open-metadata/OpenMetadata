@@ -771,7 +771,9 @@ This comprehensive guide provides AI agents with the deep contextual understandi
 
 ### Mandatory Todo Management Strategy
 
-**CRITICAL REQUIREMENT**: AI agents MUST use the TodoWrite tool for ALL non-trivial tasks (3+ steps or multi-component changes). This ensures comprehensive task tracking, progress visibility, and systematic validation.
+### Recommended Todo Management Strategy
+
+**STRONG RECOMMENDATION**: AI agents should use the TodoWrite tool for all non-trivial tasks (3+ steps or multi-component changes). This ensures comprehensive task tracking, progress visibility, and systematic validation.
 
 ### Todo Creation Intelligence
 
