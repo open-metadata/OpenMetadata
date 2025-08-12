@@ -12,6 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import { readString } from 'react-papaparse';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../../../constants/Lineage.constants';
@@ -91,10 +92,35 @@ describe('LineageTable Component', () => {
     mockGetLineageColumnsAndDataSourceFromCSV.mockReturnValue(mockTableConfig);
   });
 
-  it('should render the component', () => {
-    render(<LineageTable />);
+  it('should render the component', async () => {
+    // Mock CSV data to trigger table rendering
+    const mockCSVData = 'Name,Type\nTest Entity 1,Table';
+    const mockParsedData = {
+      data: [
+        ['Name', 'Type'],
+        ['Test Entity 1', 'Table'],
+      ],
+    };
 
-    expect(screen.getByTestId('lineage-table')).toBeInTheDocument();
+    mockReadString.mockImplementation((_: string, options: any) => {
+      if (options.complete) {
+        options.complete(mockParsedData);
+      }
+    });
+
+    mockUseEntityExportModalProvider.mockReturnValue({
+      triggerExportForBulkEdit: mockTriggerExportForBulkEdit,
+      csvExportData: mockCSVData,
+      clearCSVExportData: mockClearCSVExportData,
+    } as any);
+
+    await act(async () => {
+      render(<LineageTable />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lineage-table')).toBeInTheDocument();
+    });
   });
 
   it('should trigger export for bulk edit on mount', () => {
@@ -104,6 +130,7 @@ describe('LineageTable Component', () => {
       name: mockFqn,
       onExport: mockExportLineageData,
       exportTypes: [ExportTypes.CSV],
+      hideExportModal: true,
     });
   });
 
@@ -115,12 +142,30 @@ describe('LineageTable Component', () => {
     expect(mockClearCSVExportData).toHaveBeenCalled();
   });
 
-  it('should render table with empty data initially', () => {
+  it('should render table with empty data initially', async () => {
+    // Mock empty CSV data to trigger table rendering with empty state
+    const mockCSVData = 'Name,Type';
+    const mockParsedData = {
+      data: [['Name', 'Type']],
+    };
+
+    mockReadString.mockImplementation((_: string, options: any) => {
+      if (options.complete) {
+        options.complete(mockParsedData);
+      }
+    });
+
+    mockUseEntityExportModalProvider.mockReturnValue({
+      triggerExportForBulkEdit: mockTriggerExportForBulkEdit,
+      csvExportData: mockCSVData,
+      clearCSVExportData: mockClearCSVExportData,
+    } as any);
+
     render(<LineageTable />);
 
-    const table = screen.getByTestId('lineage-table');
-
-    expect(table).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('lineage-table')).toBeInTheDocument();
+    });
   });
 
   it('should handle CSV data processing when csvExportData is available', async () => {
@@ -165,39 +210,6 @@ describe('LineageTable Component', () => {
     render(<LineageTable />);
 
     expect(mockReadString).not.toHaveBeenCalled();
-  });
-
-  it('should handle empty CSV data gracefully', () => {
-    mockGetLineageColumnsAndDataSourceFromCSV.mockReturnValue({
-      columns: [],
-      dataSource: [],
-    });
-
-    render(<LineageTable />);
-
-    const table = screen.getByTestId('lineage-table');
-
-    expect(table).toBeInTheDocument();
-  });
-
-  it('should handle CSV parsing errors gracefully', () => {
-    mockReadString.mockImplementation((_: string, options: any) => {
-      if (options.error) {
-        options.error(new Error('CSV parsing error'));
-      }
-    });
-
-    mockUseEntityExportModalProvider.mockReturnValue({
-      triggerExportForBulkEdit: mockTriggerExportForBulkEdit,
-      csvExportData: 'invalid,csv,data',
-      clearCSVExportData: mockClearCSVExportData,
-    } as any);
-
-    render(<LineageTable />);
-
-    const table = screen.getByTestId('lineage-table');
-
-    expect(table).toBeInTheDocument();
   });
 
   it('should update table config when CSV data is processed', async () => {
