@@ -524,9 +524,10 @@ export const getDetailsTabWithNewLabel = (
     NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
   >,
   customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW,
+  isVersionView = false
 ) => {
-  if (!customizedTabs) {
+  if (!customizedTabs || isVersionView) {
     return defaultTabs.filter((data) => !data.isHidden);
   }
   const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
@@ -571,9 +572,10 @@ export const asyncNoop = async () => {
 export const getLayoutFromCustomizedPage = (
   pageType: PageType,
   tab: EntityTabs,
-  customizedPage?: Page | null
+  customizedPage?: Page | null,
+  isVersionView = false
 ) => {
-  if (!customizedPage) {
+  if (!customizedPage || isVersionView) {
     return getDefaultWidgetForTab(pageType, tab);
   }
 
