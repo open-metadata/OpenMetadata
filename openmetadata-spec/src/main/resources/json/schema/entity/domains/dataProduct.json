@@ -58,8 +58,7 @@
     },
     "reviewers": {
       "description": "User references of the reviewers for this Data Product.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": []
+      "$ref": "../../type/entityReferenceList.json"
     },
     "domains": {
       "description": "Domains or sub-domains to which this Data Product belongs to.",

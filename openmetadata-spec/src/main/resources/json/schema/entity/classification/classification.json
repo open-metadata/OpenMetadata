@@ -87,8 +87,7 @@
     },
     "reviewers": {
       "description": "User references of the reviewers for this tag.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": []
+      "$ref": "../../type/entityReferenceList.json"
     },
     "status": {
       "description": "Status of the tag.",
