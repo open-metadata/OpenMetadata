@@ -276,7 +276,7 @@ class RESTTest(TestCase):
         ):
             collections = list(self.rest_source.get_api_collections())
         MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)
-        MOCK_COLLECTIONS_COPY[2].description = None
+        MOCK_COLLECTIONS_COPY[2].description = Markdown(root="Operations about user")
         assert collections == MOCK_COLLECTIONS_COPY
 
     def test_generate_collection_url(self):
