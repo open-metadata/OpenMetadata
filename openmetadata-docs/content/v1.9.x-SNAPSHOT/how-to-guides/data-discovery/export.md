@@ -1,6 +1,6 @@
 ---
-title: Bulk Export Data Assets via CSV in `brandName`
-description: Learn to bulk export database services, databases, schemas, and tables in `brandName` as CSV files using the UI or API.
+title: Bulk Export Data Assets via CSV in OpenMetadata
+description: Learn to bulk export database services, databases, schemas, and tables in OpenMetadata as CSV files using the UI or API.
 slug: /how-to-guides/data-discovery/export
 ---
 
