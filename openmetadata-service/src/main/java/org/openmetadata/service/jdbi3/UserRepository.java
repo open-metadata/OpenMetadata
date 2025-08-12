@@ -1028,7 +1028,7 @@ public class UserRepository extends EntityRepository<User> {
           updated.getLastLoginTime(),
           false,
           objectMatch,
-          true);
+          false);
 
       // Updates
       updateRoles(original, updated);
