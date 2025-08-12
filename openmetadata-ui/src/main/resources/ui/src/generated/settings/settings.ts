@@ -957,6 +957,113 @@ export enum ClientType {
 }
 
 /**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * Name of the semantics rule.
+     */
+    name:      string;
+    provider?: ProviderType;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+/**
+ * Used to set up the Workflow Executor Settings.
+ */
+export interface ExecutorConfiguration {
+    /**
+     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
+     */
+    corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
+     */
+    jobLockTimeInMillis?: number;
+    /**
+     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
+     */
+    maxPoolSize?: number;
+    /**
+     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
+     */
+    queueSize?: number;
+    /**
+     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
+     * more.
+     */
+    tasksDuePerAcquisition?: number;
+}
+
+export interface GlobalSettings {
+    /**
+     * List of global aggregations to include in the search query.
+     */
+    aggregations?: Aggregation[];
+    /**
+     * Flag to enable or disable RBAC Search Configuration globally.
+     */
+    enableAccessControl?: boolean;
+    /**
+     * Optional list of numeric field-based boosts applied globally.
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
+     * Which fields to highlight by default.
+     */
+    highlightFields?:   string[];
+    maxAggregateSize?:  number;
+    maxAnalyzedOffset?: number;
+    maxResultHits?:     number;
+    /**
+     * List of field=value term-boost rules that apply only to this asset.
+     */
+    termBoosts?: TermBoost[];
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface HistoryCleanUpConfiguration {
+    /**
+     * Cleans the Workflow Task that were finished, after given number of days.
+     */
+    cleanAfterNumberOfDays?: number;
+}
+
+/**
  * LDAP Configuration in case the Provider is LDAP
  *
  * LDAP Configuration
@@ -1679,6 +1786,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     */
+    embeddingProvider?: string;
+    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -1696,6 +1807,14 @@ export interface Bedrock {
      * AWS access key for Bedrock service authentication
      */
     accessKey?: string;
+    /**
+     * Dimension of the embedding vector
+     */
+    embeddingDimension?: number;
+    /**
+     * Bedrock embedding model identifier to use for vector search
+     */
+    embeddingModelId?: string;
     /**
      * Bedrock model identifier to use for query transformation
      */

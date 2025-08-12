@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
@@ -73,7 +74,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPageWithCustomSearchBox(page);
+    await EntityDataClass.table1.visitEntityPage(page);
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -141,7 +142,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await EntityDataClass.topic1.visitEntityPage(page);
     await assignTier(
       page,
-      EntityDataClass.tierTag1.data.displayName,
+      COMMON_TIER_TAG[0].name,
       EntityDataClass.topic1.endpoint
     );
 
@@ -149,7 +150,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await EntityDataClass.topic2.visitEntityPage(page);
     await assignTier(
       page,
-      EntityDataClass.tierTag2.data.displayName,
+      COMMON_TIER_TAG[1].name,
       EntityDataClass.topic2.endpoint
     );
 
@@ -161,8 +162,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
       'tier.tagFQN': [
-        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
-        EntityDataClass.tierTag2.responseData.fullyQualifiedName,
+        COMMON_TIER_TAG[0].fullyQualifiedName,
+        COMMON_TIER_TAG[1].fullyQualifiedName,
       ],
       'service.displayName.keyword': [
         EntityDataClass.table1.service.name,

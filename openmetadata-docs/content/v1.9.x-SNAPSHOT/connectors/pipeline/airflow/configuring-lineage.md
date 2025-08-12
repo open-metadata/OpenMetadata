@@ -1,5 +1,6 @@
 ---
-title: Configuring DAG Lineage
+title: Configuring DAG Lineage in Airflow | OpenMetadata Integration
+description: Learn how to configure DAG lineage in Airflow using inlets and outlets. Supports tables, dashboards, pipelines, and more with or without ingestion packages.
 slug: /connectors/pipeline/airflow/configuring-lineage
 ---
 
@@ -179,6 +180,17 @@ The `entity` key needs to be informed as follows for each of the entity types:
 - SearchIndex: `searchIndex`
 - MlModel: `mlmodel`
 
+{% note %}
+
+When configuring Airflow lineage without the `openmetadata-ingestion package`, **only table entities** are supported using the simplified format:
+
+```python
+inlets = [{"tables": ["service.db.schema.table"]}]
+```
+- Dashboards, topics, and other non-table entities are not supported in this format.
+- To use those, you must use the full `OMEntity` format, which requires the `openmetadata-ingestion package`.
+
+{% /note %}
 
 ## Configuring Lineage between Tables
 

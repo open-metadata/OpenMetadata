@@ -51,8 +51,8 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  ConfigType,
   CreateIngestionPipeline,
+  FluffyType as ConfigType,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
@@ -963,7 +963,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <div className="floating-error-alert">
           <AlertBar
             defafultExpand
-            className="h-full custom-alert-description"
+            className="test-case-form-alert custom-alert-description"
             message={errorMessage}
             type="error"
           />
@@ -1177,7 +1177,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             <Col span={24}>
               <AlertBar
                 defafultExpand
-                className="h-full custom-alert-description"
+                className="test-case-form-alert custom-alert-description"
                 message={
                   <Transi18next
                     i18nKey="message.entity-pipeline-information"

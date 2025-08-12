@@ -90,4 +90,6 @@ export enum GlobalSettingOptions {
   TAGS = 'tags',
   DOMAINS = 'domains',
   SSO = 'sso',
+  CHARTS = 'charts',
+  SECURITY = 'security',
 }

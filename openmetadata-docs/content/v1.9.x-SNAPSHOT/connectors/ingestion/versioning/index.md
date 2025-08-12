@@ -1,6 +1,6 @@
 ---
 title: Metadata Versioning | OpenMetadata Data History Management
-description: Learn how OpenMetadata's connector versioning system manages data ingestion workflows. Discover version control best practices and compatibility guidelines.
+description: Learn how OpenMetadata'sconnector versioning system manages data ingestion workflows. Discover version control best practices and compatibility guidelines.
 slug: /connectors/ingestion/versioning
 ---
 

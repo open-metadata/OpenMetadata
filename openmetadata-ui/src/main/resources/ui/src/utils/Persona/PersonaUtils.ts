@@ -13,6 +13,7 @@
 import { camelCase, map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as ChartIcon } from '../../assets/svg/chart-colored.svg';
 import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets-colored-new.svg';
@@ -37,6 +38,7 @@ import i18n from '../i18next/LocalUtil';
 
 const ENTITY_ICONS: Record<string, SvgComponent> = {
   [PageType.Table]: TableIcon,
+  [PageType.Chart]: ChartIcon,
   [PageType.Container]: StorageIcon,
   [PageType.Dashboard]: DashboardIcon,
   [PageType.DashboardDataModel]: DashboardDataModelIcon,

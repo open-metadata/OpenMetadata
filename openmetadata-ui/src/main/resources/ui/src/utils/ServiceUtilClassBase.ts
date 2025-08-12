@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, toLower } from 'lodash';
+import {
+  ObjectFieldTemplatePropertyType,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
+import { cloneDeep, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
@@ -31,6 +37,7 @@ import {
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
+  COMMON_UI_SCHEMA,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -52,6 +59,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GRAFANA,
   GREENPLUM,
   HIVE,
   IBMDB2,
@@ -119,6 +127,7 @@ import {
   MlModelServiceTypeSmallCaseType,
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
+  SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
@@ -132,9 +141,11 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
+import profilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -143,6 +154,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getSecurityConfig } from './SecurityServiceUtils';
 import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
@@ -164,6 +176,8 @@ class ServiceUtilClassBase {
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
+    SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -210,6 +224,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     ApiServiceTypeSmallCaseType
   >(APIServiceType);
+
+  SecurityServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    SecurityServiceTypeSmallCaseType
+  >(SecurityServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -304,6 +323,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
+      ).sort(customServiceComparator),
+      securityServices: this.filterUnsupportedServiceType(
+        Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -589,6 +611,9 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;
 
+      case this.DashboardServiceTypeSmallCase.Grafana:
+        return GRAFANA;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -605,6 +630,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_STORAGE_DEFAULT;
         } else if (serviceTypes.searchServices.includes(type)) {
           logo = CUSTOM_SEARCH_DEFAULT;
+        } else if (serviceTypes.securityServices.includes(type)) {
+          logo = DEFAULT_SERVICE;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -636,6 +663,7 @@ class ServiceUtilClassBase {
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
     const api = this.ApiServiceTypeSmallCase;
+    const security = this.SecurityServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -671,6 +699,11 @@ class ServiceUtilClassBase {
         serviceType as typeof api[keyof typeof api]
       ):
         return ExplorePageTabs.API_ENDPOINT;
+
+      case Object.values(security).includes(
+        serviceType as typeof security[keyof typeof security]
+      ):
+        return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
 
       default:
         return ExplorePageTabs.TABLES;
@@ -713,9 +746,15 @@ class ServiceUtilClassBase {
     return getAPIConfig(type);
   }
 
+  public getSecurityServiceConfig(type: SecurityServiceType) {
+    return getSecurityConfig(type);
+  }
+
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
       PlatformInsightsWidget,
+      TotalDataAssetsWidget,
     };
 
     return widgets;
@@ -778,6 +817,17 @@ class ServiceUtilClassBase {
         value.toLowerCase(),
       ])
     ) as unknown as U;
+  }
+
+  public getProfilerConfig() {
+    const uiSchema = { ...COMMON_UI_SCHEMA };
+
+    const config = cloneDeep({ schema: profilerPipeline, uiSchema }) as {
+      schema: RJSFSchema;
+      uiSchema: UiSchema;
+    };
+
+    return config;
   }
 }
 

@@ -128,6 +128,7 @@ import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -328,6 +329,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchServiceDAO searchServiceDAO();
+
+  @CreateSqlObject
+  SecurityServiceDAO securityServiceDAO();
 
   @CreateSqlObject
   ApiServiceDAO apiServiceDAO();
@@ -735,6 +739,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface SecurityServiceDAO extends EntityDAO<SecurityService> {
+    @Override
+    default String getTableName() {
+      return "security_service_entity";
+    }
+
+    @Override
+    default Class<SecurityService> getEntityClass() {
+      return SecurityService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
   interface ApiServiceDAO extends EntityDAO<ApiService> {
     @Override
     default String getTableName() {
@@ -913,6 +934,15 @@ public interface CollectionDAO {
                 value = "extension",
                 parts = {":extensionPrefix", ".%"})
             String extensionPrefix);
+
+    @SqlQuery(
+        "SELECT id, extension, json "
+            + "FROM entity_extension "
+            + "WHERE id IN (<ids>) AND extension = :extension "
+            + "ORDER BY id, extension")
+    @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
+    List<ExtensionRecordWithId> getExtensionBatch(
+        @BindList("ids") List<String> ids, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT id, extension, json, jsonschema "
@@ -2972,7 +3002,13 @@ public interface CollectionDAO {
       return App.class;
     }
 
-    @SqlQuery("SELECT id, name from installed_apps")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) as displayName from installed_apps",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, name, json ->> 'displayName' as displayName from installed_apps",
+        connectionType = POSTGRES)
     @RegisterRowMapper(AppEntityReferenceMapper.class)
     List<EntityReference> listAppsRef();
 
@@ -2980,9 +3016,12 @@ public interface CollectionDAO {
       @Override
       public EntityReference map(ResultSet rs, StatementContext ctx) throws SQLException {
         String fqn = rs.getString("name");
+        String displayName = rs.getString("displayName");
+
         return new EntityReference()
             .withId(UUID.fromString(rs.getString("id")))
             .withName(fqn)
+            .withDisplayName(displayName)
             .withFullyQualifiedName(fqn)
             .withType(APPLICATION);
       }
@@ -5289,6 +5328,28 @@ public interface CollectionDAO {
     void updateLastActivityTimeBulk(
         @Define("caseStatements") String caseStatements,
         @BindList("nameHashes") List<String> nameHashes);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT CAST(JSON_EXTRACT(json, '$.lastActivityTime') AS UNSIGNED) as lastActivity "
+                + "FROM user_entity "
+                + "WHERE JSON_EXTRACT(json, '$.isBot') = false "
+                + "AND JSON_EXTRACT(json, '$.lastActivityTime') IS NOT NULL "
+                + "AND deleted = false "
+                + "ORDER BY CAST(JSON_EXTRACT(json, '$.lastActivityTime') AS UNSIGNED) DESC "
+                + "LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT CAST(json->>'lastActivityTime' AS BIGINT) as lastActivity "
+                + "FROM user_entity "
+                + "WHERE (json->>'isBot')::boolean = false "
+                + "AND json->>'lastActivityTime' IS NOT NULL "
+                + "AND deleted = false "
+                + "ORDER BY CAST(json->>'lastActivityTime' AS BIGINT) DESC "
+                + "LIMIT 1",
+        connectionType = POSTGRES)
+    Long getMaxLastActivityTime();
   }
 
   interface ChangeEventDAO {
@@ -5356,7 +5417,7 @@ public interface CollectionDAO {
                 + "    SELECT json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
-                + "ORDER BY timestamp ASC "
+                + "ORDER BY timestamp DESC "
                 + "LIMIT :limit OFFSET :paginationOffset",
         connectionType = POSTGRES)
     @RegisterRowMapper(EventResponseMapper.class)

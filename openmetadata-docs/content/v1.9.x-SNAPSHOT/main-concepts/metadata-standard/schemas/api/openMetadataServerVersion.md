@@ -1,5 +1,5 @@
 ---
-title: openMetadataServerVersion | Official Documentation
+title: OpenMetadataServerVersion | Official Documentation
 description: Connect Openmetadataserverversion to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/openmetadataserverversion
 ---

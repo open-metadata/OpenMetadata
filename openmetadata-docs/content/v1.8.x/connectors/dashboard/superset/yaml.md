@@ -1,6 +1,6 @@
 ---
 title: Run the Superset Connector Externally
-description: Configure OpenMetadata's Apache Superset connector with YAML. Step-by-step setup guide for dashboard metadata integration and automated discovery.
+description: Configure OpenMetadata'sApache Superset connector with YAML. Step-by-step setup guide for dashboard metadata integration and automated discovery.
 slug: /connectors/dashboard/superset/yaml
 ---
 

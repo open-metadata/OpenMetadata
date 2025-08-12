@@ -388,6 +388,9 @@ test.describe('Persona customization', () => {
           .getByTestId('remove-widget-button')
           .click();
 
+        await adminPage.getByTestId('tab-Custom Properties').click();
+        await adminPage.getByText('Hide').click();
+
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
         await adminPage
@@ -413,7 +416,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -508,7 +511,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',

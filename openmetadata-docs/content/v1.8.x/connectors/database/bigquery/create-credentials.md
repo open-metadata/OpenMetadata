@@ -1,6 +1,6 @@
 ---
 title: BigQuery Connector | Set Up Credentials in OpenMetadata
-description: Learn how to create and configure BigQuery credentials for OpenMetadata database connector. Step-by-step guide with authentication setup and best practices.
+description: Learn how to create and configure BigQuery credentials for OpenMetadata Database Connector. Step-by-step guide with authentication setup and best practices.
 slug: /connectors/database/bigquery/create-credentials
 ---
 

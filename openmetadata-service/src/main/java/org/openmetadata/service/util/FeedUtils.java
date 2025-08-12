@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.feed.EntityInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -144,6 +145,9 @@ public final class FeedUtils {
         .withUpdatedAt(System.currentTimeMillis())
         .withGeneratedBy(Thread.GeneratedBy.SYSTEM)
         .withEntityUrlLink(decorator.buildEntityUrl(entityType, entityInterface))
-        .withDomains(entityInterface.getDomains());
+        .withDomains(
+            entityInterface.getDomains() == null
+                ? null
+                : entityInterface.getDomains().stream().map(EntityReference::getId).toList());
   }
 }

@@ -20,7 +20,8 @@ import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/sv
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
 import {
@@ -75,7 +76,7 @@ const DomainsWidget = ({
       const res = await searchData(
         '',
         INITIAL_PAGING_VALUE,
-        PAGE_SIZE_LARGE,
+        PAGE_SIZE_MEDIUM,
         '',
         sortField,
         sortOrder,
@@ -120,6 +121,10 @@ const DomainsWidget = ({
     setSelectedSortBy(key);
   }, []);
 
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.DOMAIN);
+  }, [navigate]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
@@ -137,7 +142,7 @@ const DomainsWidget = ({
     () => (
       <div className="entity-list-body">
         <div className="domains-widget-grid">
-          {domains.map((domain) => (
+          {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
             <Button
               className={classNames('domain-card', {
                 'domain-card-full': isFullSize,
@@ -197,7 +202,7 @@ const DomainsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && domains.length > 10,
+    () => Boolean(!loading) && domains.length > PAGE_SIZE_BASE,
     [domains, loading]
   );
 
@@ -205,38 +210,51 @@ const DomainsWidget = ({
     () => (
       <WidgetFooter
         moreButtonLink="/domain"
-        moreButtonText={t('label.view-more-count', {
-          countValue: domains.length > 10 ? domains.length - 10 : undefined,
-        })}
+        moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
     ),
-    [t, domains.length, loading]
+    [t, showWidgetFooterMoreButton]
+  );
+
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={
+          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+        }
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DOMAIN_SORT_BY_OPTIONS}
+        title={t('label.domain-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={2}
+        onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      handleSortByClick,
+      handleTitleClick,
+    ]
   );
 
   return (
-    <WidgetWrapper dataLength={10} loading={loading}>
+    <WidgetWrapper
+      dataTestId="KnowledgePanel.Domains"
+      header={widgetHeader}
+      loading={loading}>
       <div className="domains-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={
-            <DomainIcon
-              className="domains-widget-globe"
-              height={22}
-              width={22}
-            />
-          }
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.DOMAIN}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DOMAIN_SORT_BY_OPTIONS}
-          title={t('label.domain-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={2}
-          onSortChange={handleSortByClick}
-        />
         <div className="widget-content flex-1">
           {error ? (
             <ErrorPlaceHolder

@@ -1,6 +1,6 @@
 ---
 title: Superset Connection | OpenMetadata Superset
-description: Superset dashboard connection schema for integration with OpenMetadata ingestion pipelines.
+description: Superset dashboard connection schema for integration with OpenMetadata Ingestion pipelines.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/supersetconnection
 ---
 

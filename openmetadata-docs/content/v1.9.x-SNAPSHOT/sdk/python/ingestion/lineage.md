@@ -1,6 +1,6 @@
 ---
 title: Python SDK for Lineage
-description: Learn to implement data lineage tracking with OpenMetadata's Python SDK. Complete guide with code examples, API usage, and best practices for data flow ...
+description: Learn to implement data lineage tracking with OpenMetadata'sPython SDK. Complete guide with code examples, API usage, and best practices for data flow ...
 slug: /sdk/python/ingestion/lineage
 ---
 

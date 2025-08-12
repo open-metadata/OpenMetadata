@@ -1,5 +1,6 @@
 ---
-title: Auth0 SSO
+title: Auth0 SSO Integration | Secure Collate Login with Auth0
+description: Step-by-step guide to set up Auth0 SSO for Collate. Learn to create an Auth0 application, retrieve client credentials, and secure production environments.
 slug: /security/auth0
 collate: true
 ---
