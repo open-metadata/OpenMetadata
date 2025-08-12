@@ -225,7 +225,14 @@ def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
             meta_fields = node.get("meta", {})
 
         openmetadata = meta_fields.get("openmetadata", {})
+
         custom_properties = openmetadata.get("customProperties", {})
+
+        if not isinstance(custom_properties, dict):
+            logger.warning(
+                f"customProperties is not a dictionary: {type(custom_properties)}"
+            )
+            return {}
 
         if custom_properties:
             logger.debug(f"Found customProperties for node: {custom_properties}")
@@ -262,34 +269,38 @@ def validate_custom_property_match(custom_property_type: str, value: Any) -> boo
     """
     Validates value type compatibility with custom property type
     """
-    if custom_property_type == "entityReference":
-        return isinstance(value, str)
-
-    elif custom_property_type == "entityReferenceList":
-        if isinstance(value, list):
-            return all(isinstance(item, str) for item in value)
-        return False
-
-    expected_type = get_expected_type_for_value(value)
-
-    type_mapping = {
-        "string": ["string", "markdown", "email"],
-        "integer": ["integer", "number"],
-        "number": ["number", "integer"],
-        "boolean": ["boolean"],
-        "array": ["array"],
-        "object": ["object"],
-        "enum": ["string"],
-        "date": ["string"],
-        "dateTime": ["string"],
-        "time": ["string"],
-        "duration": ["string"],
-        "email": ["string"],
-        "sql": ["string"],
-        "markdown": ["string"],
+    # Type validation mapping
+    type_validators = {
+        # String types
+        "string": lambda v: isinstance(v, str),
+        "markdown": lambda v: isinstance(v, str),
+        "email": lambda v: isinstance(v, str),
+        "sql": lambda v: isinstance(v, str),
+        "enum": lambda v: isinstance(v, str),
+        "date": lambda v: isinstance(v, str),
+        "dateTime": lambda v: isinstance(v, str),
+        "time": lambda v: isinstance(v, str),
+        "duration": lambda v: isinstance(v, str),
+        # Numeric types
+        "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
+        "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
+        # Other types
+        "boolean": lambda v: isinstance(v, bool),
+        "array": lambda v: isinstance(v, list),
+        "object": lambda v: isinstance(v, dict),
+        # Entity references
+        "entityReference": lambda v: isinstance(v, str),
+        "entityReferenceList": lambda v: isinstance(v, list)
+        and all(isinstance(item, str) for item in v),
     }
 
-    return custom_property_type in type_mapping.get(expected_type, [expected_type])
+    validator = type_validators.get(custom_property_type)
+    if validator:
+        return validator(value)
+
+    # Fallback for unknown types
+    logger.warning(f"Unknown custom property type: {custom_property_type}")
+    return False
 
 
 def find_entity_by_name(metadata: OpenMetadata, entity_name: str) -> Optional[Any]:

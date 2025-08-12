@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -34,11 +35,18 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    convert_entity_reference,
+    convert_entity_reference_list,
+    extract_meta_fields_from_node,
+    find_domain_by_name,
+    format_domain_reference,
     generate_entity_link,
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_raw_query,
+    get_expected_type_for_value,
+    validate_custom_property_match,
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
@@ -1104,3 +1112,660 @@ class DbtUnitTest(TestCase):
         ]
 
         assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    # Test Domain functionality
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.format_domain_reference")
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    def test_get_dbt_domain_success(self, mock_find_domain, mock_format_domain):
+        """
+        Test successful domain extraction from meta.openmetadata.domain
+        """
+        test_uuid = str(uuid.uuid4())
+
+        mock_domain = MagicMock()
+        mock_find_domain.return_value = mock_domain
+
+        mock_format_domain.return_value = {
+            "id": test_uuid,
+            "type": "domain",
+            "name": "Finance",
+            "fullyQualifiedName": "Finance",
+        }
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {"openmetadata": {"domain": "Finance"}}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(str(result.id.root), test_uuid)
+        self.assertEqual(result.type, "domain")
+        self.assertEqual(result.name, "Finance")
+        mock_find_domain.assert_called_once_with(
+            self.dbt_source_obj.metadata, "Finance"
+        )
+        mock_format_domain.assert_called_once_with(mock_domain)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_domain_by_name")
+    def test_get_dbt_domain_not_found(self, mock_find_domain):
+        """
+        Test when domain is specified but not found in OpenMetadata
+        """
+        mock_find_domain.return_value = None
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {"openmetadata": {"domain": "NonExistentDomain"}}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    def test_get_dbt_domain_no_meta(self):
+        """
+        Test when manifest node has no meta field
+        """
+        manifest_node = MagicMock()
+        manifest_node.meta = None
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    def test_get_dbt_domain_no_openmetadata_section(self):
+        """
+        Test when meta exists but no openmetadata section
+        """
+        manifest_node = MagicMock()
+        manifest_node.meta = {"some_field": "value"}
+
+        result = self.dbt_source_obj.get_dbt_domain(manifest_node=manifest_node)
+
+        self.assertIsNone(result)
+
+    # Test CustomProperties extraction
+
+    def test_extract_meta_fields_with_custom_properties(self):
+        """
+        Test extraction of customProperties from manifest node
+        """
+        node = MagicMock()
+        node.meta = {
+            "openmetadata": {
+                "customProperties": {
+                    "dataRetentionDays": 90,
+                    "dataClassification": "Confidential",
+                    "businessOwner": "john.doe@company.com",
+                }
+            }
+        }
+
+        result = extract_meta_fields_from_node(node)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result["dataRetentionDays"], 90)
+        self.assertEqual(result["dataClassification"], "Confidential")
+        self.assertEqual(result["businessOwner"], "john.doe@company.com")
+
+    def test_extract_meta_fields_no_custom_properties(self):
+        """
+        Test when no customProperties exist
+        """
+        node = MagicMock()
+        node.meta = {"openmetadata": {"owner": "some_owner"}}
+
+        result = extract_meta_fields_from_node(node)
+
+        self.assertEqual(result, {})
+
+    def test_extract_meta_fields_empty_meta(self):
+        """
+        Test extraction with empty or missing meta
+        """
+        node_no_meta = MagicMock(spec=[])
+        result = extract_meta_fields_from_node(node_no_meta)
+        self.assertEqual(result, {})
+
+        node_none_meta = MagicMock()
+        node_none_meta.meta = None
+        result = extract_meta_fields_from_node(node_none_meta)
+        self.assertEqual(result, {})
+
+    # Test CustomProperties validation
+
+    def test_validate_custom_property_string_types(self):
+        """
+        Test validation of string-based custom property types
+        """
+        self.assertTrue(validate_custom_property_match("string", "test value"))
+        self.assertTrue(validate_custom_property_match("markdown", "# Header"))
+        self.assertTrue(validate_custom_property_match("email", "test@example.com"))
+        self.assertTrue(validate_custom_property_match("sql", "SELECT * FROM table"))
+
+        self.assertFalse(validate_custom_property_match("string", 123))
+        self.assertFalse(validate_custom_property_match("string", True))
+        self.assertFalse(validate_custom_property_match("string", ["list"]))
+
+    def test_validate_custom_property_numeric_types(self):
+        """
+        Test validation of numeric custom property types
+        """
+        self.assertTrue(validate_custom_property_match("integer", 42))
+        self.assertTrue(validate_custom_property_match("number", 3.14))
+        self.assertTrue(validate_custom_property_match("number", 42))
+
+        self.assertFalse(validate_custom_property_match("integer", "42"))
+        self.assertFalse(validate_custom_property_match("integer", 3.14))
+        self.assertFalse(validate_custom_property_match("number", "3.14"))
+
+    def test_validate_custom_property_boolean_type(self):
+        """
+        Test validation of boolean custom property type
+        """
+        self.assertTrue(validate_custom_property_match("boolean", True))
+        self.assertTrue(validate_custom_property_match("boolean", False))
+
+        self.assertFalse(validate_custom_property_match("boolean", "true"))
+        self.assertFalse(validate_custom_property_match("boolean", 1))
+
+    def test_validate_custom_property_complex_types(self):
+        """
+        Test validation of array and object types
+        """
+        self.assertTrue(validate_custom_property_match("array", [1, 2, 3]))
+        self.assertTrue(validate_custom_property_match("array", ["a", "b"]))
+        self.assertTrue(validate_custom_property_match("object", {"key": "value"}))
+
+        self.assertFalse(validate_custom_property_match("array", "not_array"))
+        self.assertFalse(validate_custom_property_match("object", "not_object"))
+
+    def test_validate_custom_property_entity_references(self):
+        """
+        Test validation of entityReference types
+        """
+        self.assertTrue(
+            validate_custom_property_match("entityReference", "user@example.com")
+        )
+        self.assertTrue(validate_custom_property_match("entityReference", "TeamName"))
+
+        self.assertFalse(validate_custom_property_match("entityReference", 123))
+        self.assertFalse(validate_custom_property_match("entityReference", ["list"]))
+
+        self.assertTrue(
+            validate_custom_property_match("entityReferenceList", ["user1", "user2"])
+        )
+        self.assertFalse(
+            validate_custom_property_match("entityReferenceList", "single_value")
+        )
+        self.assertFalse(
+            validate_custom_property_match("entityReferenceList", [1, 2, 3])
+        )
+
+    # Test entity reference conversion
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_name")
+    def test_convert_entity_reference_user(self, mock_find_entity):
+        """
+        Test conversion of user entity reference
+        """
+        mock_user = MagicMock()
+        mock_user.id.root = "user-123"
+        mock_user.type = "user"
+        mock_user.name = "john.doe"
+        mock_user.fullyQualifiedName.root = "john.doe"
+        mock_user.description = "Test user"
+        mock_user.displayName = "John Doe"
+        mock_find_entity.return_value = mock_user
+
+        result = convert_entity_reference(self.dbt_source_obj.metadata, "john.doe")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "user-123")
+        self.assertEqual(result["type"], "user")
+        self.assertEqual(result["name"], "john.doe")
+        self.assertEqual(result["fullyQualifiedName"], "john.doe")
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_name")
+    def test_convert_entity_reference_not_found(self, mock_find_entity):
+        """
+        Test when entity reference cannot be found
+        """
+        mock_find_entity.return_value = None
+
+        result = convert_entity_reference(self.dbt_source_obj.metadata, "unknown.user")
+
+        self.assertIsNone(result)
+
+    def test_convert_entity_reference_invalid_input(self):
+        """
+        Test entity reference with invalid input
+        """
+        result = convert_entity_reference(self.dbt_source_obj.metadata, 123)
+        self.assertIsNone(result)
+
+        result = convert_entity_reference(self.dbt_source_obj.metadata, None)
+        self.assertIsNone(result)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.convert_entity_reference")
+    def test_convert_entity_reference_list(self, mock_convert):
+        """
+        Test conversion of entity reference list
+        """
+        mock_convert.side_effect = [
+            {"id": "user1", "type": "user", "name": "user1"},
+            {"id": "user2", "type": "user", "name": "user2"},
+            None,
+        ]
+
+        result = convert_entity_reference_list(
+            self.dbt_source_obj.metadata, ["user1", "user2", "unknown_user"]
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["name"], "user1")
+        self.assertEqual(result[1]["name"], "user2")
+
+    def test_convert_entity_reference_list_invalid(self):
+        """
+        Test entity reference list with invalid input
+        """
+        result = convert_entity_reference_list(
+            self.dbt_source_obj.metadata, "not_a_list"
+        )
+        self.assertIsNone(result)
+
+        result = convert_entity_reference_list(self.dbt_source_obj.metadata, [])
+        self.assertIsNone(result)
+
+    # Test type detection
+
+    def test_get_expected_type_for_value(self):
+        """
+        Test type detection for different values
+        """
+        self.assertEqual(get_expected_type_for_value(True), "boolean")
+        self.assertEqual(get_expected_type_for_value(42), "integer")
+        self.assertEqual(get_expected_type_for_value(3.14), "number")
+        self.assertEqual(get_expected_type_for_value("text"), "string")
+        self.assertEqual(get_expected_type_for_value([1, 2, 3]), "array")
+        self.assertEqual(get_expected_type_for_value({"key": "value"}), "object")
+
+    # Test domain utilities
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_find_domain_by_name(self, mock_get_by_name):
+        """
+        Test domain lookup by name
+        """
+        mock_domain = MagicMock()
+        mock_domain.id = "domain-456"
+        mock_domain.name = "Marketing"
+        mock_get_by_name.return_value = mock_domain
+
+        result = find_domain_by_name(self.dbt_source_obj.metadata, "Marketing")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "Marketing")
+        mock_get_by_name.assert_called_once_with(entity=Domain, fqn="Marketing")
+
+    def test_format_domain_reference(self):
+        """
+        Test formatting of domain reference
+        """
+        mock_domain = MagicMock()
+        mock_domain.id.root = "domain-789"
+        mock_domain.name = "Sales"
+        mock_domain.fullyQualifiedName.root = "Sales"
+
+        result = format_domain_reference(mock_domain)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "domain-789")
+        self.assertEqual(result["type"], "domain")
+        self.assertEqual(result["name"], "Sales")
+        self.assertEqual(result["fullyQualifiedName"], "Sales")
+
+    def test_format_domain_reference_with_exception(self):
+        """
+        Test domain reference formatting with malformed domain
+        """
+
+        # Test with None
+        result = format_domain_reference(None)
+        self.assertIsNone(result)
+
+        # Test with an object that will cause AttributeError
+        class BadDomain:
+            def __getattr__(self, name):
+                raise AttributeError(f"No attribute {name}")
+
+        bad_domain = BadDomain()
+        result = format_domain_reference(bad_domain)
+        self.assertIsNone(result)
+
+        # Test with empty object
+        empty_obj = object()
+        result = format_domain_reference(empty_obj)
+        self.assertIsNone(result)
+
+    # Test loading custom properties definitions
+
+    def test_load_custom_properties_definitions(self):
+        """
+        Test loading of custom properties definitions
+        """
+        self.dbt_source_obj.metadata.client.get = MagicMock(
+            return_value={
+                "customProperties": [
+                    {
+                        "name": "dataRetentionDays",
+                        "propertyType": {"name": "integer"},
+                        "description": "Data retention period",
+                    },
+                    {
+                        "name": "businessOwner",
+                        "propertyType": {"name": "entityReference"},
+                        "description": "Business owner",
+                    },
+                ]
+            }
+        )
+
+        self.dbt_source_obj.custom_properties_cache = {}
+        self.dbt_source_obj._load_custom_properties_definitions()
+
+        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 2)
+        self.assertIn("dataRetentionDays", self.dbt_source_obj.custom_properties_cache)
+        self.assertIn("businessOwner", self.dbt_source_obj.custom_properties_cache)
+
+    def test_load_custom_properties_definitions_error(self):
+        """
+        Test loading custom properties with API error
+        """
+        self.dbt_source_obj.metadata.client.get = MagicMock(
+            side_effect=Exception("API Error")
+        )
+
+        self.dbt_source_obj.custom_properties_cache = {}
+        self.dbt_source_obj._load_custom_properties_definitions()
+
+        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 0)
+
+    # Test processing model meta fields
+
+    @patch(
+        "metadata.ingestion.source.database.dbt.metadata.extract_meta_fields_from_node"
+    )
+    def test_process_model_meta_fields(self, mock_extract):
+        """
+        Test processing of model meta fields for custom properties
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.database.schema.table"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {
+            "openmetadata": {"customProperties": {"dataRetentionDays": 90}}
+        }
+
+        mock_extract.return_value = {"dataRetentionDays": 90}
+
+        with patch.object(
+            self.dbt_source_obj, "_update_table_custom_properties"
+        ) as mock_update:
+            self.dbt_source_obj._process_model_meta_fields(
+                data_model_link, manifest_node
+            )
+
+            mock_extract.assert_called_once_with(manifest_node)
+            mock_update.assert_called_once_with(mock_table, {"dataRetentionDays": 90})
+
+    def test_process_model_meta_fields_no_table(self):
+        """
+        Test processing when table entity is None
+        """
+        data_model_link = MagicMock()
+        data_model_link.table_entity = None
+
+        manifest_node = MagicMock()
+
+        self.dbt_source_obj._process_model_meta_fields(data_model_link, manifest_node)
+
+    # Test updating table custom properties
+
+    def test_update_table_custom_properties_valid(self):
+        """
+        Test updating table with valid custom properties
+        """
+        self.dbt_source_obj.custom_properties_cache = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            }
+        }
+
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "test.table"
+
+        custom_properties = {"dataRetentionDays": 90}
+
+        with patch.object(
+            self.dbt_source_obj, "_apply_custom_properties_to_table"
+        ) as mock_apply:
+            self.dbt_source_obj._update_table_custom_properties(
+                mock_table, custom_properties
+            )
+
+            mock_apply.assert_called_once_with(mock_table, {"dataRetentionDays": 90})
+
+    def test_update_table_custom_properties_unknown_field(self):
+        """
+        Test updating table with unknown custom property
+        """
+        self.dbt_source_obj.custom_properties_cache = {}
+
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "test.table"
+
+        custom_properties = {"unknownField": "value"}
+
+        with patch.object(
+            self.dbt_source_obj, "_apply_custom_properties_to_table"
+        ) as mock_apply:
+            self.dbt_source_obj._update_table_custom_properties(
+                mock_table, custom_properties
+            )
+
+            mock_apply.assert_not_called()
+
+    def test_update_table_custom_properties_type_mismatch(self):
+        """
+        Test updating table with type mismatch
+        """
+        self.dbt_source_obj.custom_properties_cache = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            }
+        }
+
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "test.table"
+
+        custom_properties = {"dataRetentionDays": "not_a_number"}
+
+        with patch.object(
+            self.dbt_source_obj, "_apply_custom_properties_to_table"
+        ) as mock_apply:
+            self.dbt_source_obj._update_table_custom_properties(
+                mock_table, custom_properties
+            )
+
+            mock_apply.assert_not_called()
+
+    # Test applying custom properties to table
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_apply_custom_properties_to_table(self, mock_get, mock_patch):
+        """
+        Test applying custom properties to table entity
+        """
+        existing_table = MagicMock()
+        existing_table.fullyQualifiedName.root = "test.table"
+        existing_table.extension = None
+        mock_get.return_value = existing_table
+
+        mock_patch.return_value = True
+
+        custom_properties = {"newProp": "newValue"}
+
+        self.dbt_source_obj._apply_custom_properties_to_table(
+            existing_table, custom_properties
+        )
+
+        mock_patch.assert_called_once()
+        call_args = mock_patch.call_args
+        self.assertEqual(call_args[1]["entity"], Table)
+        patched_table = call_args[1]["destination"]
+        self.assertEqual(patched_table.extension.root, {"newProp": "newValue"})
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_apply_custom_properties_merge_existing(self, mock_get, mock_patch):
+        """
+        Test merging new custom properties with existing ones
+        """
+        existing_table = MagicMock()
+        existing_table.fullyQualifiedName.root = "test.table"
+        existing_table.extension = MagicMock()
+        existing_table.extension.root = {"existingProp": "existingValue"}
+        mock_get.return_value = existing_table
+
+        mock_patch.return_value = True
+
+        custom_properties = {"newProp": "newValue"}
+
+        self.dbt_source_obj._apply_custom_properties_to_table(
+            existing_table, custom_properties
+        )
+
+        mock_patch.assert_called_once()
+        call_args = mock_patch.call_args
+        patched_table = call_args[1]["destination"]
+        self.assertEqual(
+            patched_table.extension.root,
+            {"existingProp": "existingValue", "newProp": "newValue"},
+        )
+
+    # Test process_dbt_domain
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch")
+    def test_process_dbt_domain(self, mock_patch):
+        """
+        Test processing DBT domain
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        domain_ref = EntityReference(
+            id=str(uuid.uuid4()),
+            type="domain",
+            name="Finance",
+            fullyQualifiedName="Finance",
+        )
+
+        self.dbt_source_obj.context.get().table_domains = {
+            "service.db.schema.table1": domain_ref
+        }
+
+        self.dbt_source_obj.process_dbt_domain(data_model_link)
+
+        mock_patch.assert_called_once()
+        call_args = mock_patch.call_args
+        self.assertEqual(call_args[1]["entity"], Table)
+        self.assertEqual(call_args[1]["destination"].domain, domain_ref)
+
+    def test_process_dbt_domain_no_domain(self):
+        """
+        Test processing when no domain is set
+        """
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        self.dbt_source_obj.context.get().table_domains = {}
+
+        with patch(
+            "metadata.ingestion.ometa.ometa_api.OpenMetadata.patch"
+        ) as mock_patch:
+            self.dbt_source_obj.process_dbt_domain(data_model_link)
+            mock_patch.assert_not_called()
+
+    # Integration test
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.format_domain_reference")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    def test_integration_domain_and_custom_properties(
+        self, mock_find_domain, mock_get_by_name, mock_patch, mock_format_domain
+    ):
+        """
+        Integration test for processing DBT model with domain and customProperties
+        """
+        test_uuid = str(uuid.uuid4())
+
+        mock_domain = MagicMock()
+        mock_find_domain.return_value = mock_domain
+
+        mock_format_domain.return_value = {
+            "id": test_uuid,
+            "type": "domain",
+            "name": "Finance",
+            "fullyQualifiedName": "Finance",
+        }
+
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.test_table"
+        mock_table.extension = None
+        mock_get_by_name.return_value = mock_table
+
+        self.dbt_source_obj.custom_properties_cache = {
+            "dataRetentionDays": {
+                "name": "dataRetentionDays",
+                "propertyType": {"name": "integer"},
+            }
+        }
+
+        manifest_node = MagicMock()
+        manifest_node.meta = {
+            "openmetadata": {
+                "domain": "Finance",
+                "customProperties": {"dataRetentionDays": 90},
+            }
+        }
+
+        domain_ref = self.dbt_source_obj.get_dbt_domain(manifest_node)
+        self.assertIsNotNone(domain_ref)
+        self.assertEqual(domain_ref.name, "Finance")
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        self.dbt_source_obj._process_model_meta_fields(data_model_link, manifest_node)
+
+        self.assertTrue(mock_patch.called)
+        mock_find_domain.assert_called_once_with(
+            self.dbt_source_obj.metadata, "Finance"
+        )
+        mock_format_domain.assert_called_once_with(mock_domain)

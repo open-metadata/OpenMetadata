@@ -177,16 +177,15 @@ class DbtSource(DbtServiceSource):
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
         try:
-            if not manifest_node.meta:
+            if (
+                not manifest_node
+                or not hasattr(manifest_node, "meta")
+                or not manifest_node.meta
+            ):
                 return None
 
             dbt_meta_info = DbtMeta(**manifest_node.meta)
-            if (
-                dbt_meta_info.openmetadata
-                and hasattr(dbt_meta_info.openmetadata, "domain")
-                and dbt_meta_info.openmetadata.domain
-            ):
-
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 domain_name = dbt_meta_info.openmetadata.domain
                 domain_entity = find_domain_by_name(self.metadata, domain_name)
 
@@ -371,10 +370,14 @@ class DbtSource(DbtServiceSource):
         try:
             if not data_model_link.table_entity:
                 return
+
             table_fqn = data_model_link.table_entity.fullyQualifiedName.root
             custom_properties = extract_meta_fields_from_node(manifest_node)
+
             if not custom_properties:
+                logger.debug(f"No customProperties to process for table {table_fqn}")
                 return
+
             logger.info(
                 f"Processing {len(custom_properties)} customProperties for table {table_fqn}"
             )
