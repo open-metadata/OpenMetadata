@@ -179,6 +179,10 @@ for (const EntityClass of entities) {
       await test.step('Verify Lineage Table', async () => {
         await page.getByTestId('lineage-table-view-icon').click();
 
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
         await expect(page.getByTestId('lineage-table')).toBeVisible();
 
         await expect(page.locator('.ant-table-row')).toHaveCount(9);
