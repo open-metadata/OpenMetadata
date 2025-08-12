@@ -53,8 +53,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -246,13 +246,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
-    private Status getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       if (!processRecord) {
         return null;
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus) ? Status.DRAFT : Status.fromValue(termStatus);
+        return nullOrEmpty(termStatus) ? EntityStatus.DRAFT : EntityStatus.fromValue(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
@@ -447,7 +447,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.IN_REVIEW)) {
+          if (term.getStatus().equals(EntityStatus.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

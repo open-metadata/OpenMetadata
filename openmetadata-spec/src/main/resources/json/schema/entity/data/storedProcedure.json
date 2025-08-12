@@ -208,6 +208,11 @@
       "description": "Processed lineage for the stored procedure",
       "type": "boolean",
       "default": false
+    },
+    "status": {
+      "description": "Status of the StoredProcedure.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": [

@@ -46,6 +46,11 @@
             "description": "Total duration of the query",
             "type": "number",
             "default": 0
+        },
+        "status": {
+            "description": "Status of the QueryCostRecord.",
+            "$ref": "../../type/entityStatus.json",
+            "default": "Approved"
         }
     },
     "required": [

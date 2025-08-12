@@ -215,6 +215,11 @@
       "description": "Latest usage information for this file.",
       "$ref": "../../type/usageDetails.json",
       "default": null
+    },
+    "status": {
+      "description": "Status of the File.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

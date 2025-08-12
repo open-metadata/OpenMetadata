@@ -76,6 +76,11 @@
     "domains" : {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "status": {
+      "description": "Status of the Report.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

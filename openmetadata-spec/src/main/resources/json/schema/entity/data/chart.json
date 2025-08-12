@@ -197,6 +197,11 @@
       "description": "All the dashboards containing this chart.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
+    },
+    "status": {
+      "description": "Status of the Chart.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

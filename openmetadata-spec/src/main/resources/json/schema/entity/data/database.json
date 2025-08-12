@@ -170,6 +170,11 @@
           "default": true
         }
       }
+    },
+    "status": {
+      "description": "Status of the Database.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

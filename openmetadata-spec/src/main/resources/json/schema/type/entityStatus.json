@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityStatus",
+  "description": "Status of an entity. It is used for governance and is applied to all the entities in the catalog.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.type.EntityStatus",
+  "enum": [
+    "Draft",
+    "In Review",
+    "Approved",
+    "Deprecated",
+    "Rejected"
+  ]
+}

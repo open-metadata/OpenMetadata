@@ -8,6 +8,7 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -160,8 +161,8 @@ public class MigrationUtil {
                   jsonRow = pgObject.getValue();
                 }
                 GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
-                if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
-                  term.setStatus(GlossaryTerm.Status.APPROVED);
+                if (term.getStatus() == EntityStatus.DRAFT) {
+                  term.setStatus(EntityStatus.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);
                 }
                 EntityReference glossaryRef =

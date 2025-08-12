@@ -46,7 +46,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -54,6 +53,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -180,7 +180,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
 
     // Verify the term is approved (no reviewers = auto-approved)
-    assertEquals(Status.APPROVED, term.getStatus());
+    assertEquals(EntityStatus.APPROVED, term.getStatus());
 
     String termFqn = glossary.getFullyQualifiedName() + "." + TEST_TERM_NAME;
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
@@ -253,7 +253,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // Verify the term has reviewers and is in draft status
     assertNotNull(term.getReviewers());
     assertFalse(term.getReviewers().isEmpty());
-    assertEquals(Status.DRAFT, term.getStatus());
+    assertEquals(EntityStatus.DRAFT, term.getStatus());
 
     String termFqn = glossary.getFullyQualifiedName() + "." + "ReviewerTerm";
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
@@ -278,12 +278,12 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             () -> {
               GlossaryTerm refreshed =
                   glossaryTermTest.getEntity(finalTerm.getId(), null, ADMIN_AUTH_HEADERS);
-              return refreshed.getStatus() == Status.IN_REVIEW;
+              return refreshed.getStatus() == EntityStatus.IN_REVIEW;
             });
 
     // Approve the term as reviewerUser
     String json = JsonUtils.pojoToJson(term);
-    term.setStatus(Status.APPROVED);
+    term.setStatus(EntityStatus.APPROVED);
 
     Map<String, String> reviewerHeaders =
         authHeaders(reviewerUser.getName() + "@open-metadata.org");

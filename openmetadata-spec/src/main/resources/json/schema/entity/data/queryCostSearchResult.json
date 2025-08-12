@@ -97,6 +97,11 @@
         "overallStats": {
             "$ref": "#/definitions/overallStats",
             "description": "Overall statistics across all queries"
+        },
+        "status": {
+            "description": "Status of the QueryCostSearchResult.",
+            "$ref": "../../type/entityStatus.json",
+            "default": "Approved"
         }
     },
     "required": ["queryGroups", "overallStats"]

@@ -107,6 +107,16 @@
     "owners": {
       "description": "Owners of this glossary term.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": []
+    },
+    "status": {
+      "description": "Status of the tag.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": [

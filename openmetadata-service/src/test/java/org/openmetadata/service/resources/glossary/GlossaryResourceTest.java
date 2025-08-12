@@ -88,6 +88,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -818,7 +819,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
     assertEquals(1, term3.getTags().size());
     assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
-    assertEquals(GlossaryTerm.Status.APPROVED, term3.getStatus());
+    assertEquals(EntityStatus.APPROVED, term3.getStatus());
     // Fix: Safely extract the custom property from the extension map
     Object extension = term3.getExtension();
     String customPropValue = null;

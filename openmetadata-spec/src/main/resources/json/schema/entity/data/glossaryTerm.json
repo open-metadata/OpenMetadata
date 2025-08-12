@@ -128,7 +128,8 @@
     },
     "status": {
       "description": "Status of the glossary term.",
-      "$ref": "#/definitions/status"
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",

@@ -157,6 +157,11 @@
       "description": "Latest usage information for this worksheet.",
       "$ref": "../../type/usageDetails.json",
       "default": null
+    },
+    "status": {
+      "description": "Status of the Worksheet.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "spreadsheet", "service"],

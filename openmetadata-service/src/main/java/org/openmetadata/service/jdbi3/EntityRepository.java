@@ -42,6 +42,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_STATUS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
@@ -282,6 +283,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
+  @Getter protected final boolean supportsStatus;
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -404,6 +406,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
+    this.supportsStatus = allowedFields.contains(FIELD_STATUS);
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -560,6 +563,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
+  }
+
+  /**
+   * Set default status for entities that support status field.
+   * Override this method in repositories with different status enums (e.g., DataContract, Workflow)
+   * or for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   */
+  protected void setDefaultStatus(T entity, boolean update) {
+    // Default implementation - override in repositories that need custom status logic
+    if (!supportsStatus) {
+      return;
+    }
+
+    // Try to get and set status using reflection to check the type
+    try {
+      if (!update || entity.getStatus() == null) {
+        // Check if the status type is EntityStatus
+        if (entity.getStatus() instanceof org.openmetadata.schema.type.EntityStatus) {
+          entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
+        }
+        // For other status types (ContractStatus, WorkflowStatus, etc.),
+        // let the specific repository override handle it
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to set default status for entity {}: {}",
+          entity.getClass().getSimpleName(),
+          e.getMessage());
+    }
   }
 
   /**
@@ -1121,6 +1153,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
+    setDefaultStatus(entity, update);
     // Domain is already validated
   }
 

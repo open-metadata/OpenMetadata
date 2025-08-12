@@ -68,6 +68,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default Object getStatus() {
+    return null;
+  }
+
   default ProviderType getProvider() {
     return null;
   }
@@ -151,6 +155,9 @@ public interface EntityInterface {
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }
+
+  default void setStatus(EntityStatus status) {}
+  ;
 
   default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */

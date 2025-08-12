@@ -49,6 +49,11 @@
       },
       "default": null
     },
+    "reviewers": {
+      "description": "User references of the reviewers for this DataProduct.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": []
+    },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
       "$ref": "../../type/entityReferenceList.json",

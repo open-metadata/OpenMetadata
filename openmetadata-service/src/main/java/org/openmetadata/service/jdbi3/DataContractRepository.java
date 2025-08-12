@@ -154,6 +154,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     createOrUpdateDataContractTestSuite(dataContract, update);
   }
 
+  @Override
+  protected void setDefaultStatus(DataContract entity, boolean update) {
+    // DataContract uses its own ContractStatus enum, so we leave it as is
+    // The default is already set in the JSON schema as "Draft"
+    // This override prevents EntityRepository from setting EntityStatus.APPROVED
+  }
+
   // Ensure we have a pipeline after creation if needed
   @Override
   protected void postCreate(DataContract dataContract) {

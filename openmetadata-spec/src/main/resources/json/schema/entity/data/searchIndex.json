@@ -278,6 +278,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "status": {
+      "description": "Status of the SearchIndex.",
+      "$ref": "../../type/entityStatus.json",
+      "default": "Approved"
     }
   },
   "required": [
