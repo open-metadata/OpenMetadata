@@ -179,6 +179,14 @@ jest.mock('../../../rest/lineageAPI', () => ({
   getDataQualityLineage: jest.fn(),
 }));
 
+const mockLocation = {
+  pathname: '/table',
+};
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ ...mockLocation }));
+});
+
 describe('ExtraInfoLink component', () => {
   const mockProps = {
     label: 'myLabel',
