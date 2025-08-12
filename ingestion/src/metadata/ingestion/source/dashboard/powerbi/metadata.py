@@ -436,21 +436,21 @@ class PowerbiSource(DashboardServiceSource):
         measures = []
         for measure in table.measures or []:
             try:
-                measure_type = (
-                    DataType.MEASURE_HIDDEN
-                    if measure.isHidden
-                    else DataType.MEASURE_VISIBLE
-                )
+                measure_type = DataType.MEASURE_VISIBLE
+                if measure.isHidden:
+                    measure_type = DataType.MEASURE_HIDDEN
+                expression_text = f"Expression : {measure.expression}"
                 description_text = (
-                    f"{measure.description}\n\nExpression : {measure.expression}"
+                    f"Description : {measure.description}"
                     if measure.description
-                    else f"Expression : {measure.expression}"
+                    else ""
                 )
+                description_field_text = f"{expression_text}\n\n{description_text}"
                 parsed_measure = PowerBiMeasureModel(
                     dataType=measure_type,
                     dataTypeDisplay=measure_type,
                     name=measure.name,
-                    description=description_text,
+                    description=description_field_text,
                 )
                 measures.append(Column(**parsed_measure.model_dump()))
             except Exception as err:
