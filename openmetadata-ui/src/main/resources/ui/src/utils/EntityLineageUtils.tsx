@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import Icon, { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+
 import {
   get,
   isEmpty,
@@ -1898,22 +1900,35 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
   const FROM_FIELDS = ['fromEntityFQN', 'fromServiceName', 'fromServiceType'];
   const TO_FIELDS = ['toEntityFQN', 'toServiceName', 'toServiceType'];
 
-  const renderCombined = (fqn: string, serviceType: string) => (
-    <div className="d-flex items-center gap-2">
-      <img
-        alt={fqn}
-        className="header-icon"
-        src={serviceUtilClassBase.getServiceLogo(serviceType)}
-      />
-      <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
-        {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
-      </Typography.Text>
-    </div>
-  );
+  const renderCombined = (fqn: string, serviceType: string) => {
+    const isMetricEntity = serviceType === EntityType.METRIC;
+
+    return (
+      <div className="d-flex items-center gap-2">
+        {isMetricEntity ? (
+          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+        ) : (
+          <img
+            alt={fqn}
+            className="header-icon"
+            src={serviceUtilClassBase.getServiceLogo(serviceType)}
+          />
+        )}
+
+        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+          {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
+        </Typography.Text>
+      </div>
+    );
+  };
 
   const getEntityType = (serviceType: string, fqn: string) => {
     if (!serviceType || !fqn) {
       return EntityType.TABLE; // Default fallback
+    }
+
+    if (serviceType === EntityType.METRIC) {
+      return serviceType;
     }
 
     let entityType =
@@ -1938,15 +1953,21 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
         key: 'fromCombined',
         width: 300,
         ellipsis: { showTitle: false },
-        render: (_: string, record: Record<string, string>) => (
-          <Link
-            to={entityUtilClassBase.getEntityLink(
-              getEntityType(record.fromServiceType, record.fromEntityFQN),
-              record.fromEntityFQN
-            )}>
-            {renderCombined(record.fromEntityFQN, record.fromServiceType)}
-          </Link>
-        ),
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.fromServiceType)
+            ? EntityType.METRIC
+            : record.fromServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.fromEntityFQN),
+                record.fromEntityFQN
+              )}>
+              {renderCombined(record.fromEntityFQN, serviceType)}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.to-entity'),
@@ -1954,15 +1975,21 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
         key: 'toCombined',
         width: 300,
         ellipsis: { showTitle: false },
-        render: (_: string, record: Record<string, string>) => (
-          <Link
-            to={entityUtilClassBase.getEntityLink(
-              getEntityType(record.toServiceType, record.toEntityFQN),
-              record.toEntityFQN
-            )}>
-            {renderCombined(record.toEntityFQN, record.toServiceType)}
-          </Link>
-        ),
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.toServiceType)
+            ? EntityType.METRIC
+            : record.toServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.toEntityFQN),
+                record.toEntityFQN
+              )}>
+              {renderCombined(record.toEntityFQN, serviceType)}
+            </Link>
+          );
+        },
       },
     ] as unknown as ColumnsType<string>[number][])
   );
