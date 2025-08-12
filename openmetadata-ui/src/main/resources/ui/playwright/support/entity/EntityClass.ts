@@ -144,8 +144,6 @@ export class EntityClass {
     await assignDataProduct(page, domain1, dataProduct1);
     await assignDataProduct(page, domain1, dataProduct2, 'Edit');
     await removeDataProduct(page, dataProduct1);
-    // Manual delay to ensure data product is removed
-    await page.waitForTimeout(1000);
     await removeDataProduct(page, dataProduct2);
     await removeDomain(page, domain1);
 
