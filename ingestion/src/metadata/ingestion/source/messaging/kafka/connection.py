@@ -16,8 +16,9 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from confluent_kafka import DeserializingConsumer
 from confluent_kafka.admin import AdminClient, KafkaException
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -71,6 +72,7 @@ def get_connection(
     """
     consumer_config = deepcopy(connection.consumerConfig) or {}
     schema_registry_config = deepcopy(connection.schemaRegistryConfig) or {}
+
     if connection.saslUsername or connection.saslPassword or connection.saslMechanism:
         if connection.saslUsername:
             consumer_config["sasl.username"] = connection.saslUsername
@@ -98,19 +100,26 @@ def get_connection(
 
     schema_registry_client = None
     consumer_client = None
+
     if connection.schemaRegistryURL:
         schema_registry_config["url"] = str(connection.schemaRegistryURL)
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
+
         consumer_config["bootstrap.servers"] = connection.bootstrapServers
         if "group.id" not in consumer_config:
             consumer_config["group.id"] = "openmetadata-consumer"
         if "auto.offset.reset" not in consumer_config:
             consumer_config["auto.offset.reset"] = "largest"
         consumer_config["enable.auto.commit"] = False
-        logger.debug(f"Using Kafka consumer config: {consumer_config}")
-        consumer_client = AvroConsumer(
-            consumer_config, schema_registry=schema_registry_client
+
+        avro_deserializer = AvroDeserializer(
+            schema_registry_client=schema_registry_client
         )
+        consumer_config["value.deserializer"] = avro_deserializer
+
+        logger.debug(f"Using Kafka consumer config: {consumer_config}")
+
+        consumer_client = DeserializingConsumer(consumer_config)
 
     return KafkaClient(
         admin_client=admin_client,
