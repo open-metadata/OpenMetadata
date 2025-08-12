@@ -65,7 +65,7 @@ pipeline.
 For example, suppose we create a MySQL service with the name `mysql-test`. In that case, the connection password will be 
 stored in the secrets manager using the secret id `/openmetadata/database/mysql-test/password`. When we retrieve the 
 connection parameters from the service, the password field will have the value 
-`secrets:/openmetadata/database/mysql-test/password`.
+`secret:/openmetadata/database/mysql-test/password`.
 
 We can also use secrets already stored in our secrets vault using the same convention `secret:{secret_id}`.
 
