@@ -285,7 +285,7 @@ python -m pytest -m "not integration"
 
 ## Advanced AI Development Intelligence Framework
 
-OpenMetadata implements a sophisticated **6-phase AI development framework** designed to ensure enterprise-grade quality, security, and maintainability. This framework must be **STRICTLY FOLLOWED** in sequential order for all code changes, with each phase building comprehensive understanding for intelligent development decisions.
+OpenMetadata implements a sophisticated **6-phase AI development framework** designed to ensure enterprise-grade quality, security, and maintainability. This framework serves as a structured guideline, and phases may be revisited or adapted iteratively based on project needs, with each phase building comprehensive understanding for intelligent development decisions.
 
 ### AI Development Methodology
 
