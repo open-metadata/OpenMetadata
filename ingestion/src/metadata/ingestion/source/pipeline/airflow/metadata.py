@@ -371,7 +371,7 @@ class AirflowSource(PipelineServiceSource):
         offset = 0  # Start
 
         while True:
-            paginated_query = session_query.limit(limit).offset(offset)
+            paginated_query = session_query.order_by(SerializedDagModel.dag_id.asc()).limit(limit).offset(offset)
             results = paginated_query.all()
             if not results:
                 break
