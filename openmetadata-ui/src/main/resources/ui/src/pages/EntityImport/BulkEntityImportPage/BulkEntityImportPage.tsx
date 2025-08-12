@@ -552,6 +552,10 @@ const BulkEntityImportPage = () => {
                     </Card>
                   ) : (
                     <UploadFile
+                      disabled={Boolean(
+                        activeAsyncImportJob?.jobId &&
+                          isEmpty(activeAsyncImportJob.error)
+                      )}
                       fileType=".csv"
                       onCSVUploaded={handleLoadData}
                     />
