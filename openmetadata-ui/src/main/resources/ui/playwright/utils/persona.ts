@@ -57,7 +57,6 @@ export const checkPersonaInProfile = async (
   page: Page,
   expectedPersonaName?: string
 ) => {
-  // Wait for page to load completely
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -66,19 +65,19 @@ export const checkPersonaInProfile = async (
 
   await profileDropdown.click();
 
-  const personaSelector = page.locator('[data-testid="persona-label"]');
+  await page.getByTestId('user-name').click();
+  await page.waitForLoadState('networkidle');
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
-    await expect(personaSelector).toBeVisible();
-    await expect(personaSelector).toContainText(expectedPersonaName);
+    await expect(page.locator('.default-persona-text')).toBeVisible();
+    await expect(page.locator('.default-persona-text')).toContainText(
+      expectedPersonaName
+    );
   } else {
     // Expect no persona to be visible
-    await expect(personaSelector).not.toBeVisible();
+    await expect(page.getByText('No default persona')).toBeVisible();
   }
-
-  // Close dropdown
-  await page.keyboard.press('Escape');
 };
 
 /**

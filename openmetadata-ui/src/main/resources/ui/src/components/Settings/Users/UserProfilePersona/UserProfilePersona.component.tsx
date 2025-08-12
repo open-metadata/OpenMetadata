@@ -53,13 +53,9 @@ const UserProfilePersonas = ({
     () => (isAdminUser || isLoggedInUser) && !userData.deleted,
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
-  const defaultPersona = useMemo(
-    () =>
-      userData.personas?.find(
-        (persona) => persona.id === userData.defaultPersona?.id
-      ),
-    [userData]
-  );
+
+  const defaultPersona = useMemo(() => userData.defaultPersona, [userData]);
+
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
       await updateUserDetails({ defaultPersona }, 'defaultPersona');
@@ -104,12 +100,7 @@ const UserProfilePersonas = ({
         </div>
       </>
     ),
-    [
-      defaultPersona,
-      userData.personas,
-      hasEditPermission,
-      handleDefaultPersonaUpdate,
-    ]
+    [defaultPersona, userData, hasEditPermission, handleDefaultPersonaUpdate]
   );
 
   return (
