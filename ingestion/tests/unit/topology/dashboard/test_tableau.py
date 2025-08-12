@@ -60,7 +60,11 @@ mock_tableau_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}, "includeOwners": True}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -780,16 +784,22 @@ class TableauUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.tableau.source_config.includeOwners = True
-        
+
         # Create a mock dashboard with owner information
         mock_dashboard_with_owner = MOCK_DASHBOARD
-        
+
         # Mock the metadata.get_reference_by_email method
-        with patch.object(self.tableau.metadata, 'get_reference_by_email') as mock_get_ref:
+        with patch.object(
+            self.tableau.metadata, "get_reference_by_email"
+        ) as mock_get_ref:
             mock_get_ref.return_value = EntityReferenceList(
-                root=[EntityReference(id=uuid.uuid4(), name="Dashboard Owner", type="user")]
+                root=[
+                    EntityReference(
+                        id=uuid.uuid4(), name="Dashboard Owner", type="user"
+                    )
+                ]
             )
-            
+
             # Test that owner information is included when includeOwners is True
             # This would typically be tested in the yield_dashboard method
             # For now, we'll test the configuration is properly set
@@ -801,7 +811,7 @@ class TableauUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.tableau.source_config.includeOwners = False
-        
+
         # Test that owner information is not processed when includeOwners is False
         self.assertFalse(self.tableau.source_config.includeOwners)
 
@@ -821,7 +831,7 @@ class TableauUnitTest(TestCase):
         # Test with includeOwners = True
         self.tableau.source_config.includeOwners = True
         self.assertTrue(self.tableau.source_config.includeOwners)
-        
+
         # Test with includeOwners = False
         self.tableau.source_config.includeOwners = False
         self.assertFalse(self.tableau.source_config.includeOwners)

@@ -102,7 +102,11 @@ mock_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}, "includeOwners": True}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -325,7 +329,7 @@ class MetabaseUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.metabase.source_config.includeOwners = True
-        
+
         # Test that owner information is processed when includeOwners is True
         self.assertTrue(self.metabase.source_config.includeOwners)
 
@@ -335,7 +339,7 @@ class MetabaseUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.metabase.source_config.includeOwners = False
-        
+
         # Test that owner information is not processed when includeOwners is False
         self.assertFalse(self.metabase.source_config.includeOwners)
 
@@ -355,7 +359,7 @@ class MetabaseUnitTest(TestCase):
         # Test with includeOwners = True
         self.metabase.source_config.includeOwners = True
         self.assertTrue(self.metabase.source_config.includeOwners)
-        
+
         # Test with includeOwners = False
         self.metabase.source_config.includeOwners = False
         self.assertFalse(self.metabase.source_config.includeOwners)

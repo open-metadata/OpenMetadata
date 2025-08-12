@@ -42,7 +42,9 @@ mock_micro_config = {
                 "password": "password",
             }
         },
-        "sourceConfig": {"config": {"type": "DashboardMetadata", "includeOwners": True}},
+        "sourceConfig": {
+            "config": {"type": "DashboardMetadata", "includeOwners": True}
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -132,7 +134,7 @@ class MicroStrategyUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.microstrategy.source_config.includeOwners = True
-        
+
         # Test that owner information is processed when includeOwners is True
         self.assertTrue(self.microstrategy.source_config.includeOwners)
 
@@ -142,7 +144,7 @@ class MicroStrategyUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.microstrategy.source_config.includeOwners = False
-        
+
         # Test that owner information is not processed when includeOwners is False
         self.assertFalse(self.microstrategy.source_config.includeOwners)
 
@@ -162,7 +164,7 @@ class MicroStrategyUnitTest(TestCase):
         # Test with includeOwners = True
         self.microstrategy.source_config.includeOwners = True
         self.assertTrue(self.microstrategy.source_config.includeOwners)
-        
+
         # Test with includeOwners = False
         self.microstrategy.source_config.includeOwners = False
         self.assertFalse(self.microstrategy.source_config.includeOwners)
@@ -173,7 +175,7 @@ class MicroStrategyUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.microstrategy.source_config.includeOwners = True
-        
+
         # Test that we can access owner information from the mock dashboard
         dashboard = MOCK_DASHBORD_LIST[0]
         self.assertIsNotNone(dashboard.owner)

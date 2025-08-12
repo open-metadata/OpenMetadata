@@ -603,26 +603,30 @@ class LookerUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.looker.source_config.includeOwners = True
-        
+
         # Mock a user with email
         mock_user = User(email="test@example.com")
-        
+
         # Mock the client.user method to return our mock user
-        with patch.object(self.looker.client, 'user', return_value=mock_user):
+        with patch.object(self.looker.client, "user", return_value=mock_user):
             # Mock the metadata.get_reference_by_email method
-            with patch.object(self.looker.metadata, 'get_reference_by_email') as mock_get_ref:
+            with patch.object(
+                self.looker.metadata, "get_reference_by_email"
+            ) as mock_get_ref:
                 mock_get_ref.return_value = EntityReferenceList(
-                    root=[EntityReference(id=uuid.uuid4(), name="Test User", type="user")]
+                    root=[
+                        EntityReference(id=uuid.uuid4(), name="Test User", type="user")
+                    ]
                 )
-                
+
                 # Test get_owner_ref with includeOwners = True
                 result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
-                
+
                 # Should return owner reference
                 self.assertIsNotNone(result)
                 self.assertEqual(len(result.root), 1)
                 self.assertEqual(result.root[0].name, "Test User")
-                
+
                 # Should have called get_reference_by_email
                 mock_get_ref.assert_called_once_with("test@example.com")
 
@@ -632,10 +636,10 @@ class LookerUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.looker.source_config.includeOwners = False
-        
+
         # Test get_owner_ref with includeOwners = False
         result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
-        
+
         # Should return None when includeOwners is False
         self.assertIsNone(result)
 
@@ -645,7 +649,7 @@ class LookerUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.looker.source_config.includeOwners = True
-        
+
         # Create a dashboard with no user_id
         dashboard_no_user = LookerDashboard(
             id="no_user_dashboard",
@@ -654,10 +658,10 @@ class LookerUnitTest(TestCase):
             description="Dashboard without user",
             user_id=None,  # No user_id
         )
-        
+
         # Test get_owner_ref with no user_id
         result = self.looker.get_owner_ref(dashboard_no_user)
-        
+
         # Should return None when there's no user_id
         self.assertIsNone(result)
 
@@ -667,11 +671,13 @@ class LookerUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.looker.source_config.includeOwners = True
-        
+
         # Mock the client.user method to raise an exception
-        with patch.object(self.looker.client, 'user', side_effect=Exception("API Error")):
+        with patch.object(
+            self.looker.client, "user", side_effect=Exception("API Error")
+        ):
             # Test get_owner_ref with exception
             result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
-            
+
             # Should return None when exception occurs
             self.assertIsNone(result)

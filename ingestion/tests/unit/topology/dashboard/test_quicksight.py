@@ -78,7 +78,11 @@ mock_quicksight_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}, "includeOwners": True}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -208,7 +212,7 @@ class QuickSightUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.quicksight.source_config.includeOwners = True
-        
+
         # Test that owner information is processed when includeOwners is True
         self.assertTrue(self.quicksight.source_config.includeOwners)
 
@@ -219,7 +223,7 @@ class QuickSightUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.quicksight.source_config.includeOwners = False
-        
+
         # Test that owner information is not processed when includeOwners is False
         self.assertFalse(self.quicksight.source_config.includeOwners)
 
@@ -241,7 +245,7 @@ class QuickSightUnitTest(TestCase):
         # Test with includeOwners = True
         self.quicksight.source_config.includeOwners = True
         self.assertTrue(self.quicksight.source_config.includeOwners)
-        
+
         # Test with includeOwners = False
         self.quicksight.source_config.includeOwners = False
         self.assertFalse(self.quicksight.source_config.includeOwners)

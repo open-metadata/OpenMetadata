@@ -234,7 +234,7 @@ class QlikSenseUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = True
         self.qliksense.source_config.includeOwners = True
-        
+
         # Test that owner information is processed when includeOwners is True
         self.assertTrue(self.qliksense.source_config.includeOwners)
 
@@ -245,7 +245,7 @@ class QlikSenseUnitTest(TestCase):
         """
         # Mock the source config to have includeOwners = False
         self.qliksense.source_config.includeOwners = False
-        
+
         # Test that owner information is not processed when includeOwners is False
         self.assertFalse(self.qliksense.source_config.includeOwners)
 
@@ -267,7 +267,7 @@ class QlikSenseUnitTest(TestCase):
         # Test with includeOwners = True
         self.qliksense.source_config.includeOwners = True
         self.assertTrue(self.qliksense.source_config.includeOwners)
-        
+
         # Test with includeOwners = False
         self.qliksense.source_config.includeOwners = False
         self.assertFalse(self.qliksense.source_config.includeOwners)
