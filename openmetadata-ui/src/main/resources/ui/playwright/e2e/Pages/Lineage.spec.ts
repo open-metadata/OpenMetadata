@@ -100,7 +100,17 @@ for (const EntityClass of entities) {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
+
+        await expect(
+          page.getByTestId('data-asset-header-metadata')
+        ).toBeVisible();
+
         await visitLineageTab(page);
+
+        await expect(
+          page.getByTestId('data-asset-header-metadata')
+        ).not.toBeVisible();
+
         await verifyColumnLayerInactive(page);
         // enable fullscreen
         await page.getByTestId('full-screen').click();
@@ -166,9 +176,18 @@ for (const EntityClass of entities) {
         await verifyExportLineagePNG(page);
       });
 
+      await test.step('Verify Lineage Table', async () => {
+        await page.getByTestId('lineage-table-view-icon').click();
+
+        await expect(page.getByTestId('lineage-table')).toBeVisible();
+
+        await expect(page.locator('.ant-table-row')).toHaveCount(9);
+      });
+
       await test.step(
         'Remove lineage between nodes for the entity',
         async () => {
+          await page.getByTestId('lineage-diagram-view-icon').click();
           await editLineage(page);
           await performZoomOut(page);
 

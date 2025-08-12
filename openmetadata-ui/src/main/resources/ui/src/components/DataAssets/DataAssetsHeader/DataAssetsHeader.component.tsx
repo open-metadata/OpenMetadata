@@ -681,9 +681,10 @@ export const DataAssetsHeader = ({
         <Col span={24}>
           {isPropertyVisible && (
             <div
-              className={classNames('data-asset-header-metadata ', {
+              className={classNames('data-asset-header-metadata', {
                 'data-asset-header-less-items': showCompressedExtraInfoItems,
-              })}>
+              })}
+              data-testid="data-asset-header-metadata">
               {showDomain && (
                 <>
                   <DomainLabel

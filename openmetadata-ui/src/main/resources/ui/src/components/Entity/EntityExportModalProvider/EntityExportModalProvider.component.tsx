@@ -68,8 +68,8 @@ export const EntityExportModalProvider = ({
     Form.useWatch<ExportTypes>(['exportType'], form) ?? ExportTypes.CSV;
 
   const isBulkEdit = useMemo(
-    () => isBulkEditRoute(location.pathname) || true,
-    [location]
+    () => isBulkEditRoute(location.pathname) || exportData?.hideExportModal,
+    [location, exportData?.hideExportModal]
   );
 
   const exportTypesOptions = useMemo(

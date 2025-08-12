@@ -62,6 +62,7 @@ const LineageTable = () => {
       name: fqn,
       onExport: exportLineageData,
       exportTypes: [ExportTypes.CSV],
+      hideExportModal: true,
     });
   }, []);
 
