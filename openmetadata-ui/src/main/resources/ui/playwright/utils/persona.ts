@@ -95,7 +95,10 @@ export const setPersonaAsDefault = async (page: Page) => {
 /**
  * Remove persona default through the admin UI
  */
-export const removePersonaDefault = async (page: Page, personaName: string) => {
+export const removePersonaDefault = async (
+  page: Page,
+  personaName?: string
+) => {
   await page.getByTestId(`persona-details-card-${personaName}`).click();
 
   await page.getByTestId('manage-button').click();

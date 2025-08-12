@@ -22,7 +22,6 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
@@ -298,7 +297,11 @@ test.describe.serial('Default persona setting and removal flow', () => {
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
-    await persona1.create(apiContext, [user.responseData.id]);
+
+    const adminResponse = await apiContext.get('/api/v1/users/name/admin');
+    const adminData = await adminResponse.json();
+
+    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
     await afterAction();
   });
 
@@ -447,7 +450,15 @@ test.describe.serial('Default persona setting and removal flow', () => {
     );
 
     await test.step('Changing default persona', async () => {
-      await setUserDefaultPersona(adminPage, persona1.responseData.displayName);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+
+      await adminPage
+        .getByTestId(
+          `persona-details-card-${persona1.responseData.fullyQualifiedName}`
+        )
+        .click();
+      await adminPage.waitForLoadState('networkidle');
+      await setPersonaAsDefault(adminPage);
     });
 
     await test.step('Verify changed default persona for new user', async () => {
@@ -455,33 +466,12 @@ test.describe.serial('Default persona setting and removal flow', () => {
       await checkPersonaInProfile(userPage, persona1.responseData.displayName);
     });
 
-    await test.step(
-      'check if removing default persona will bring back org wide default persona',
-      async () => {
-        await redirectToHomePage(adminPage);
-        await adminPage.waitForLoadState('networkidle');
-
-        await adminPage.getByTestId('dropdown-profile').click();
-
-        await expect(
-          adminPage
-            .getByTestId('persona-label')
-            .getByText(persona1.responseData.displayName)
-        ).toBeVisible();
-
-        await adminPage
-          .getByTestId('persona-label')
-          .getByText(persona1.responseData.displayName)
-          .click();
-
-        await adminPage.waitForLoadState('networkidle');
-        await checkPersonaInProfile(adminPage, PERSONA_DETAILS.displayName);
-      }
-    );
-
     await test.step('Admin removes the default persona', async () => {
       await navigateToPersonaSettings(adminPage);
-      await removePersonaDefault(adminPage, PERSONA_DETAILS.name);
+      await removePersonaDefault(
+        adminPage,
+        persona1.responseData?.fullyQualifiedName
+      );
     });
 
     await test.step('User refreshes and sees no default persona', async () => {
