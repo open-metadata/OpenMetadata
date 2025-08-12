@@ -106,9 +106,36 @@
   }
 }
 
-.custom-control-search-box {
-  width: 220px;
-  height: 32px;
+.lineage-card {
+  .ant-select.custom-control-search-box {
+    width: 320px;
+    height: 40px;
+
+    .ant-select-selector {
+      border-radius: 10px;
+      border: 1px solid @border-color-6;
+      background: @grey-50;
+      height: 40px;
+
+      .ant-select-selection-search-input {
+        height: 40px;
+        &::placeholder {
+          color: @grey-21;
+          font-weight: 300;
+        }
+      }
+
+      .ant-select-selection-placeholder,
+      .ant-select-selection-item {
+        padding: 4px 12px 4px 0;
+      }
+    }
+
+    .ant-input-affix-wrapper:focus,
+    .ant-input-affix-wrapper-focused {
+      box-shadow: none;
+    }
+  }
 }
 
 .ant-select.custom-control-search-box-edit-mode {
