@@ -292,6 +292,7 @@ const Suggestions = ({
         searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
+        includeDeleted: false,
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
