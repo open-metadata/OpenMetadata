@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RcFile } from 'antd/lib/upload';
+@import (reference) '../../styles/variables.less';
 
-declare type BeforeUploadValueType = void | boolean | string | Blob | File;
+.file-dragger-wrapper {
+  padding: @padding-lg;
+  background: @white;
+  .ant-typography {
+    font-weight: 500;
+    font-size: 16px;
 
-export interface UploadFileProps {
-  disabled?: boolean;
-  fileType: string;
-  beforeUpload?: (
-    file: RcFile,
-    FileList: RcFile[]
-  ) => BeforeUploadValueType | Promise<BeforeUploadValueType>;
-  onCSVUploaded: (event: ProgressEvent<FileReader>) => void;
+    .browse-text {
+      color: @primary-color;
+    }
+  }
+  .ant-upload-disabled {
+    .ant-typography {
+      color: @grey-300;
+
+      .browse-text {
+        color: @grey-300;
+      }
+    }
+  }
 }
