@@ -2409,7 +2409,16 @@ Every todo completion requires validation evidence. No exceptions. AI agents mus
 
 ### Phase-Based Validation Protocol
 
-AI agents MUST apply appropriate validation based on the development phase:
+**Best Practice**: AI agents should follow comprehensive validation protocols before marking any todo as complete.
+
+### Core Validation Mindset
+
+**🚨 VALIDATION FIRST PRINCIPLE**: 
+Every todo completion should include validation evidence. AI agents are expected to demonstrate that validation was performed and passed before marking todos complete.
+
+### Phase-Based Validation Protocol
+
+AI agents should apply appropriate validation based on the development phase:
 
 **Phase 1: Discovery & Analysis**
 - ✅ Research findings documented with credible sources
