@@ -28,6 +28,11 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.api.rest.parser import (
+    OpenAPIParseError,
+    parse_openapi_schema,
+    validate_openapi_schema,
+)
 from metadata.utils.constants import THREE_MIN
 
 
@@ -75,16 +80,17 @@ def test_connection(
 
     def custom_schema_exec():
         try:
-            if client.json() is not None and client.json().get("openapi") is not None:
+            schema = parse_openapi_schema(client)
+            if validate_openapi_schema(schema):
                 return []
 
             raise InvalidOpenAPISchemaError(
-                "Provided schema is not valid OpenAPI JSON schema"
+                "Provided schema is not valid OpenAPI specification"
             )
-        except:
-            raise InvalidOpenAPISchemaError(
-                "Provided schema is not valid OpenAPI JSON schema"
-            )
+        except OpenAPIParseError as e:
+            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
+        except Exception as e:
+            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 
