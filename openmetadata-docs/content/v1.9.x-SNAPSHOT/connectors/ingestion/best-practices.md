@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Best Practices
-description: Discover `brandName` data ingestion best practices to optimize your metadata collection, improve performance, and ensure reliable data connectivity.
+description: Discover OpenMetadata data ingestion best practices to optimize your metadata collection, improve performance, and ensure reliable data connectivity.
 slug: /connectors/ingestion/best-practices
 ---
 

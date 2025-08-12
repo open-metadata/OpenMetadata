@@ -1,6 +1,6 @@
 ---
 title: Impala Connector | OpenMetadata SQL-on-Hadoop Integration
-description: Connect Apache Impala to `brandName` seamlessly. Complete setup guide, configuration steps, and troubleshooting for database metadata integration.
+description: Connect Apache Impala to OpenMetadata seamlessly. Complete setup guide, configuration steps, and troubleshooting for database metadata integration.
 slug: /connectors/database/impala
 ---
 
