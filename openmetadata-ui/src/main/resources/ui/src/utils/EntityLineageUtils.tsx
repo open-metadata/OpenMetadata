@@ -1911,6 +1911,20 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
     </div>
   );
 
+  const getEntityType = (serviceType: string, fqn: string) => {
+    let entityType =
+      serviceUtilClassBase.getEntityTypeFromServiceType(serviceType);
+
+    if (entityType === EntityType.DASHBOARD) {
+      const fqnSplit = Fqn.split(fqn);
+
+      entityType =
+        fqnSplit.length === 3 ? EntityType.DASHBOARD_DATA_MODEL : entityType;
+    }
+
+    return entityType;
+  };
+
   const columns: ColumnsType<string> = [];
   columns.push(
     ...([
@@ -1923,10 +1937,8 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
         render: (_: string, record: Record<string, string>) => (
           <Link
             to={entityUtilClassBase.getEntityLink(
-              serviceUtilClassBase.getEntityTypeFromServiceType(
-                record.fromServiceType ?? ''
-              ),
-              record.fromEntityFQN || ''
+              getEntityType(record.fromServiceType, record.fromEntityFQN),
+              record.fromEntityFQN
             )}>
             {renderCombined(record.fromEntityFQN, record.fromServiceType)}
           </Link>
@@ -1941,10 +1953,8 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
         render: (_: string, record: Record<string, string>) => (
           <Link
             to={entityUtilClassBase.getEntityLink(
-              serviceUtilClassBase.getEntityTypeFromServiceType(
-                record.toServiceType ?? ''
-              ),
-              record.toEntityFQN || ''
+              getEntityType(record.toServiceType, record.toEntityFQN),
+              record.toEntityFQN
             )}>
             {renderCombined(record.toEntityFQN, record.toServiceType)}
           </Link>
