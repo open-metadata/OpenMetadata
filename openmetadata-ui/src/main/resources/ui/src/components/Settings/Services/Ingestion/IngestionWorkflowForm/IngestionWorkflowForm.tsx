@@ -31,11 +31,9 @@ import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
-import {
-  getSchemaByWorkflowType,
-  transformProfilerProcessingEngine,
-} from '../../../../../utils/IngestionWorkflowUtils';
+import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
@@ -125,17 +123,27 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           },
         };
       }
-      if (pipeLineType === PipelineType.Profiler) {
-        formData = transformProfilerProcessingEngine(formData);
-      }
       onChange?.(formData);
     }
   };
 
-  const customFields: RegistryFieldsType = {
-    BooleanField: BooleanFieldTemplate,
-    ArrayField: WorkflowArrayFieldTemplate,
-  };
+  const customFields = useMemo(() => {
+    const fields: RegistryFieldsType = {
+      BooleanField: BooleanFieldTemplate,
+      ArrayField: WorkflowArrayFieldTemplate,
+    };
+
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+
+    if (
+      !isUndefined(SparkAgentField) &&
+      pipeLineType === PipelineType.Profiler
+    ) {
+      fields['/schemas/rootProcessingEngine'] = SparkAgentField;
+    }
+
+    return fields;
+  }, [pipeLineType]);
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -161,9 +169,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
               ?.dbtConfigType as DbtConfigType,
           },
         };
-      }
-      if (pipeLineType === PipelineType.Profiler) {
-        formData = transformProfilerProcessingEngine(formData);
       }
 
       onSubmit(formData);

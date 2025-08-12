@@ -284,7 +284,7 @@ const ProfilerConfigurationPage = () => {
                         ))}
 
                         <Col span={24}>
-                          <div className="matric-collapse-footer">
+                          <div className="matrix-collapse-footer">
                             <Button
                               className="text-primary p-0"
                               data-testid="add-fields"

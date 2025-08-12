@@ -794,6 +794,7 @@
     "ingestion-pipeline": "수집 파이프라인",
     "ingestion-pipeline-name": "수집 파이프라인 이름",
     "ingestion-plural": "수집들",
+    "ingestion-runner": "수집 실행기",
     "ingestion-workflow-lowercase": "수집 워크플로우",
     "inherited": "inherited",
     "inherited-entity": "상속된 {{entity}}",
