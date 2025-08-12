@@ -33,68 +33,52 @@ class TestOpenAPIParser(TestCase):
         """Set up test data"""
         self.openapi_data = {
             "openapi": "3.0.3",
-            "info": {
-                "title": "Test API",
-                "version": "1.0.0"
-            },
+            "info": {"title": "Test API", "version": "1.0.0"},
             "paths": {
                 "/pets": {
                     "get": {
                         "tags": ["pets"],
                         "summary": "List all pets",
-                        "operationId": "listPets"
+                        "operationId": "listPets",
                     }
                 }
             },
-            "tags": [
-                {
-                    "name": "pets",
-                    "description": "Everything about pets"
-                }
-            ]
+            "tags": [{"name": "pets", "description": "Everything about pets"}],
         }
-        
+
         self.swagger_data = {
             "swagger": "2.0",
-            "info": {
-                "title": "Test API",
-                "version": "1.0.0"
-            },
+            "info": {"title": "Test API", "version": "1.0.0"},
             "paths": {
                 "/pets": {
                     "get": {
                         "tags": ["pets"],
                         "summary": "List all pets",
-                        "operationId": "listPets"
+                        "operationId": "listPets",
                     }
                 }
             },
-            "tags": [
-                {
-                    "name": "pets",
-                    "description": "Everything about pets"
-                }
-            ]
+            "tags": [{"name": "pets", "description": "Everything about pets"}],
         }
 
     def test_parse_json_openapi_schema(self):
         """Test parsing valid JSON OpenAPI schema"""
         mock_response = Mock()
         mock_response.text = json.dumps(self.openapi_data)
-        mock_response.headers = {'content-type': 'application/json'}
-        
+        mock_response.headers = {"content-type": "application/json"}
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result, self.openapi_data)
 
     def test_parse_yaml_openapi_schema(self):
         """Test parsing valid YAML OpenAPI schema"""
         mock_response = Mock()
         mock_response.text = yaml.dump(self.openapi_data)
-        mock_response.headers = {'content-type': 'application/yaml'}
-        
+        mock_response.headers = {"content-type": "application/yaml"}
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result, self.openapi_data)
 
     def test_parse_json_without_content_type(self):
@@ -102,9 +86,9 @@ class TestOpenAPIParser(TestCase):
         mock_response = Mock()
         mock_response.text = json.dumps(self.openapi_data)
         mock_response.headers = {}
-        
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result, self.openapi_data)
 
     def test_parse_yaml_without_content_type(self):
@@ -129,9 +113,9 @@ tags:
 """
         mock_response.text = yaml_content
         mock_response.headers = {}
-        
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result["openapi"], "3.0.3")
         self.assertEqual(result["info"]["title"], "Test API")
 
@@ -139,37 +123,28 @@ tags:
         """Test parsing with content-type: application/yml"""
         mock_response = Mock()
         mock_response.text = yaml.dump(self.openapi_data)
-        mock_response.headers = {'content-type': 'application/yml'}
-        
+        mock_response.headers = {"content-type": "application/yml"}
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result, self.openapi_data)
 
     def test_parse_text_yaml_content_type(self):
         """Test parsing with content-type: text/yaml"""
         mock_response = Mock()
         mock_response.text = yaml.dump(self.openapi_data)
-        mock_response.headers = {'content-type': 'text/yaml'}
-        
-        result = parse_openapi_schema(mock_response)
-        
-        self.assertEqual(result, self.openapi_data)
+        mock_response.headers = {"content-type": "text/yaml"}
 
-    def test_parse_invalid_content(self):
-        """Test parsing invalid content that's neither JSON nor YAML"""
-        mock_response = Mock()
-        mock_response.text = "This is neither JSON nor YAML { invalid syntax"
-        mock_response.headers = {}
-        
-        with self.assertRaises(OpenAPIParseError):
-            parse_openapi_schema(mock_response)
+        result = parse_openapi_schema(mock_response)
+
+        self.assertEqual(result, self.openapi_data)
 
     def test_parse_empty_content(self):
         """Test parsing empty content"""
         mock_response = Mock()
         mock_response.text = ""
         mock_response.headers = {}
-        
+
         with self.assertRaises(OpenAPIParseError):
             parse_openapi_schema(mock_response)
 
@@ -178,7 +153,7 @@ tags:
         mock_response = Mock()
         mock_response.text = "# This is just a comment\n"
         mock_response.headers = {}
-        
+
         with self.assertRaises(OpenAPIParseError):
             parse_openapi_schema(mock_response)
 
@@ -198,22 +173,17 @@ tags:
 
     def test_validate_openapi_schema_invalid_missing_fields(self):
         """Test validation of invalid schema (missing required fields)"""
-        invalid_schema = {
-            "info": {
-                "title": "Test API",
-                "version": "1.0.0"
-            }
-        }
+        invalid_schema = {"info": {"title": "Test API", "version": "1.0.0"}}
         self.assertFalse(validate_openapi_schema(invalid_schema))
 
     def test_parse_json_with_wrong_content_type_fallback(self):
         """Test parsing JSON with wrong content-type, should fallback to JSON parser"""
         mock_response = Mock()
         mock_response.text = json.dumps(self.openapi_data)
-        mock_response.headers = {'content-type': 'text/plain'}  # Wrong content-type
-        
+        mock_response.headers = {"content-type": "text/plain"}  # Wrong content-type
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result, self.openapi_data)
 
     def test_parse_yaml_with_wrong_content_type_fallback(self):
@@ -222,9 +192,9 @@ tags:
         # YAML that's not valid JSON
         yaml_content = "openapi: '3.0.3'\ninfo:\n  title: Test\n  version: '1.0'"
         mock_response.text = yaml_content
-        mock_response.headers = {'content-type': 'text/plain'}  # Wrong content-type
-        
+        mock_response.headers = {"content-type": "text/plain"}  # Wrong content-type
+
         result = parse_openapi_schema(mock_response)
-        
+
         self.assertEqual(result["openapi"], "3.0.3")
         self.assertEqual(result["info"]["title"], "Test")

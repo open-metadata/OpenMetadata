@@ -83,18 +83,14 @@ def test_connection(
             schema = parse_openapi_schema(client)
             if validate_openapi_schema(schema):
                 return []
-            
+
             raise InvalidOpenAPISchemaError(
                 "Provided schema is not valid OpenAPI specification"
             )
         except OpenAPIParseError as e:
-            raise InvalidOpenAPISchemaError(
-                f"Failed to parse OpenAPI schema: {e}"
-            )
+            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
         except Exception as e:
-            raise InvalidOpenAPISchemaError(
-                f"Error validating OpenAPI schema: {e}"
-            )
+            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 

@@ -13,7 +13,7 @@
 OpenAPI schema parser for both JSON and YAML formats
 """
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import yaml
 from requests.models import Response
@@ -33,33 +33,33 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
     """
     Parse OpenAPI schema from HTTP response.
     Supports both JSON and YAML formats.
-    
+
     Args:
         response: HTTP response containing OpenAPI schema
-        
+
     Returns:
         Parsed OpenAPI schema as dictionary
-        
+
     Raises:
         OpenAPIParseError: If content cannot be parsed as either JSON or YAML
     """
     content = response.text
-    content_type = response.headers.get('content-type', '').lower()
-    
+    content_type = response.headers.get("content-type", "").lower()
+
     # Try to determine format from content-type header
-    if 'json' in content_type:
+    if "json" in content_type:
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse as JSON despite content-type: {e}")
-    elif 'yaml' in content_type or 'yml' in content_type:
+    elif "yaml" in content_type or "yml" in content_type:
         try:
             return yaml.safe_load(content)
         except yaml.YAMLError as e:
             logger.warning(f"Failed to parse as YAML despite content-type: {e}")
-    
+
     # If content-type is not definitive or parsing failed, try both formats
-    
+
     # First try JSON (backward compatibility)
     try:
         parsed = json.loads(content)
@@ -67,7 +67,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
         return parsed
     except json.JSONDecodeError:
         logger.debug("Content is not valid JSON, trying YAML")
-    
+
     # Then try YAML
     try:
         parsed = yaml.safe_load(content)
@@ -77,7 +77,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
         return parsed
     except yaml.YAMLError as e:
         logger.error(f"Failed to parse as YAML: {e}")
-    
+
     # If both formats fail, raise an error
     raise OpenAPIParseError(
         "Failed to parse OpenAPI schema as either JSON or YAML. "
@@ -88,16 +88,16 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
 def validate_openapi_schema(schema: Dict[str, Any]) -> bool:
     """
     Validate that the parsed schema is a valid OpenAPI specification.
-    
+
     Args:
         schema: Parsed schema dictionary
-        
+
     Returns:
         True if schema appears to be valid OpenAPI, False otherwise
     """
     # Check for required OpenAPI fields
     if not isinstance(schema, dict):
         return False
-    
+
     # OpenAPI 3.x uses "openapi" field, OpenAPI 2.x uses "swagger" field
     return schema.get("openapi") is not None or schema.get("swagger") is not None
