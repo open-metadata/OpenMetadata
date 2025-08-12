@@ -225,9 +225,13 @@ export const updateDomain = async (
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
+  await expect(page.getByTestId('header-domain-container')).toContainText('+1');
+
+  await page.getByTestId('header-domain-container').getByText('+1').hover();
+
+  await expect(
+    page.getByRole('menuitem', { name: domain.displayName })
+  ).toBeVisible();
 };
 
 export const removeDomain = async (
@@ -279,7 +283,12 @@ export const assignDataProduct = async (
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
   await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
 
   await expect(
     page
@@ -303,6 +312,8 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await page
     .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
     .getByTestId('remove-tags')
@@ -311,7 +322,12 @@ export const removeDataProduct = async (
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
   await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
 
   await expect(
     page
