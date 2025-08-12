@@ -89,7 +89,9 @@ const UserProfilePersonas = ({
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
           {defaultPersona?.fullyQualifiedName || defaultPersona?.name ? (
-            <Typography.Text className="default-persona-text  cursor-pointer">
+            <Typography.Text
+              className="default-persona-text  cursor-pointer"
+              data-testid="default-persona-text">
               {getEntityName(defaultPersona)}
             </Typography.Text>
           ) : (

@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { redirectToHomePage } from './common';
+import { redirectToHomePage, visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const updatePersonaDisplayName = async ({
@@ -57,21 +57,12 @@ export const checkPersonaInProfile = async (
   page: Page,
   expectedPersonaName?: string
 ) => {
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-
-  const profileDropdown = page.locator('[data-testid="dropdown-profile"]');
-
-  await profileDropdown.click();
-
-  await page.getByTestId('user-name').click();
-  await page.waitForLoadState('networkidle');
+  await visitOwnProfilePage(page);
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
-    await expect(page.locator('.default-persona-text')).toBeVisible();
-    await expect(page.locator('.default-persona-text')).toContainText(
+    await expect(page.getByTestId('default-persona-text')).toBeVisible();
+    await expect(page.getByTestId('default-persona-text')).toContainText(
       expectedPersonaName
     );
   } else {

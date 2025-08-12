@@ -22,6 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
@@ -40,6 +41,7 @@ const PERSONA_DETAILS = {
 
 const user = new UserClass();
 const persona = new PersonaClass();
+const persona1 = new PersonaClass();
 
 const test = base.extend<{
   adminPage: Page;
@@ -296,6 +298,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
+    await persona1.create(apiContext, [user.responseData.id]);
     await afterAction();
   });
 
@@ -320,6 +323,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
       // Delete the user that was created in beforeAll
       await user.delete(apiContext);
+      await persona1.delete(apiContext);
 
       await afterAction();
     }
@@ -439,6 +443,39 @@ test.describe.serial('Default persona setting and removal flow', () => {
       async () => {
         await userPage.reload();
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+      }
+    );
+
+    await test.step('Changing default persona', async () => {
+      await setUserDefaultPersona(adminPage, persona1.responseData.displayName);
+    });
+
+    await test.step('Verify changed default persona for new user', async () => {
+      await userPage.reload();
+      await checkPersonaInProfile(userPage, persona1.responseData.displayName);
+    });
+
+    await test.step(
+      'check if removing default persona will bring back org wide default persona',
+      async () => {
+        await redirectToHomePage(adminPage);
+        await adminPage.waitForLoadState('networkidle');
+
+        await adminPage.getByTestId('dropdown-profile').click();
+
+        await expect(
+          adminPage
+            .getByTestId('persona-label')
+            .getByText(persona1.responseData.displayName)
+        ).toBeVisible();
+
+        await adminPage
+          .getByTestId('persona-label')
+          .getByText(persona1.responseData.displayName)
+          .click();
+
+        await adminPage.waitForLoadState('networkidle');
+        await checkPersonaInProfile(adminPage, PERSONA_DETAILS.displayName);
       }
     );
 
