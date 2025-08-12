@@ -26,7 +26,7 @@ import {
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import SSOConfigurationFormRJSF from '../SSOConfigurationFormRJSF';
+import SSOConfigurationFormRJSF from '../SSOConfigurationForm';
 
 // Mock dependencies
 jest.mock('../../../utils/ToastUtils');

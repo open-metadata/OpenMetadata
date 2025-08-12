@@ -16,9 +16,26 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Divider, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import {
+  AuthenticationConfiguration,
+  AuthorizerConfiguration,
+  COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
+  COMMON_AUTH_FIELDS_TO_REMOVE,
+  DEFAULT_AUTHORIZER_CLASS_NAME,
+  DEFAULT_CONTAINER_REQUEST_FILTER,
+  getSSOUISchema,
+  PROVIDERS_WITHOUT_BOT_PRINCIPALS,
+  PROVIDER_FIELD_MAPPINGS,
+  VALIDATION_STATUS,
+} from '../../constants/SSO.constant';
+import { AuthProvider, ClientType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
+import authorizerConfigSchema from '../../jsons/configuration/authorizerConfiguration.json';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -36,28 +53,9 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
-import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
-import './SSOConfigurationFormRJSF.less';
-
-// Import only the main authentication configuration schema
-import { AxiosError } from 'axios';
-import { useNavigate } from 'react-router-dom';
-import {
-  AuthenticationConfiguration,
-  AuthorizerConfiguration,
-  COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
-  COMMON_AUTH_FIELDS_TO_REMOVE,
-  DEFAULT_AUTHORIZER_CLASS_NAME,
-  DEFAULT_CONTAINER_REQUEST_FILTER,
-  getSSOUISchema,
-  PROVIDERS_WITHOUT_BOT_PRINCIPALS,
-  PROVIDER_FIELD_MAPPINGS,
-  VALIDATION_STATUS,
-} from '../../constants/SSO.constant';
-import { AuthProvider, ClientType } from '../../generated/settings/settings';
-import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
-import authorizerConfigSchema from '../../jsons/configuration/authorizerConfiguration.json';
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import './SSOConfigurationForm.less';
+import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 
 const widgets = {
   SelectWidget: SelectWidget,

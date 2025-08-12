@@ -19,7 +19,7 @@ import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import './SettingsSso.less';
-import SSOConfigurationFormRJSF from './SSOConfigurationFormRJSF';
+import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
