@@ -131,9 +131,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         generate a JSON Patch and apply it.
 
         This method provides fine-grained control over entity updates and can
-        override fields that create_or_update() cannot due to server-side restrictions.
-        For glossary terms and other entities with protected metadata, use
-        override_metadata=True to force updates.
+        override fields that create_or_update() cannot due to server-side restrictions
+        across various entity types. Use override_metadata=True to force updates of
+        protected metadata fields.
 
         Args
             entity (T): Entity Type
@@ -143,7 +143,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             restrict_update_fields: List of field names which will only support add operation
             array_entity_fields: List of array fields to sort for consistent patching
             override_metadata: Whether to override existing metadata fields. Set to True
-                to force updates of protected fields like descriptions in glossary terms.
+                to force updates of protected fields across various entity types.
             skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
         Returns
@@ -197,15 +197,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Given an Entity type and ID, JSON PATCH the description.
 
         This method is useful when you need to update descriptions that cannot be
-        overridden through create_or_update() due to server-side business rules.
-        For glossary terms, use force=True to override existing descriptions.
+        overridden through create_or_update() due to server-side business rules
+        across various entity types. Use force=True to override existing descriptions.
 
         Args
             entity (T): Entity Type
             source: source entity object
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data. Set to True for glossary terms to override descriptions.
+                the existing data. Set to True to override existing descriptions across entity types.
             skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
