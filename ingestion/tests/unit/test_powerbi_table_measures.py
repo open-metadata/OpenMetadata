@@ -23,7 +23,9 @@ test_cases = {
                 name="test_measure",
                 dataType=DataType.MEASURE_VISIBLE,
                 dataTypeDisplay=DataType.MEASURE_VISIBLE,
-                description=Markdown("Test Description\n\nExpression : SUM(Sales)"),
+                description=Markdown(
+                    "Expression : SUM(Sales)\n\nDescription : Test Description"
+                ),
             )
         ],
     },
@@ -41,7 +43,9 @@ test_cases = {
                 name="hidden_measure",
                 dataType=DataType.MEASURE_HIDDEN,
                 dataTypeDisplay=DataType.MEASURE_HIDDEN,
-                description=Markdown("Hidden\n\nExpression : AVG(Profit)"),
+                description=Markdown(
+                    "Expression : AVG(Profit)\n\nDescription : Hidden"
+                ),
             )
         ],
     },
@@ -59,7 +63,7 @@ test_cases = {
                 dataType=DataType.MEASURE_VISIBLE,
                 dataTypeDisplay=DataType.MEASURE_VISIBLE,
                 description=Markdown(
-                    "Expression : SUM(Table[Column]) - SUM(OtherTable[OtherColumn])"
+                    "Expression : SUM(Table[Column]) - SUM(OtherTable[OtherColumn])\n\n"
                 ),
             )
         ],
