@@ -794,6 +794,7 @@
     "ingestion-pipeline": "Ingestion Pipeline",
     "ingestion-pipeline-name": "שם תהליך הטעינה",
     "ingestion-plural": "תהליכי טעינה",
+    "ingestion-runner": "מריץ טעינה",
     "ingestion-workflow-lowercase": "זרימת תהליך הטעינה",
     "inherited": "inherited",
     "inherited-entity": "Inherited {{entity}}",

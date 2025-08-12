@@ -1151,7 +1151,7 @@ class DbtSource(DbtServiceSource):
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_name=source_elements[0],
+                    service_names=source_elements[0],
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,

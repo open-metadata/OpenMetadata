@@ -1,6 +1,6 @@
 ---
-title: Kafka Connector | `brandName` Messaging Integration
-description: Connect Kafka to `brandName` effortlessly with our comprehensive connector guide. Set up messaging metadata ingestion, configuration, and monitoring in minutes.
+title: Kafka Connector | OpenMetadata Messaging Integration
+description: Connect Kafka to OpenMetadata effortlessly with our comprehensive connector guide. Set up messaging metadata ingestion, configuration, and monitoring in minutes.
 slug: /connectors/messaging/kafka
 ---
 
