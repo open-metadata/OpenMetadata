@@ -31,7 +31,7 @@ const LineageTable = () => {
     useEntityExportModalProvider();
   const [tableConfig, setTableConfig] = useState<{
     isLoading: boolean;
-    columns: ColumnsType<any>;
+    columns: ColumnsType<string>;
     dataSource: Record<string, string>[];
   }>({
     isLoading: true,

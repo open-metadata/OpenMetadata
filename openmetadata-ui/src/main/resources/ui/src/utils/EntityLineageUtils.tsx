@@ -1905,9 +1905,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
         className="header-icon"
         src={serviceUtilClassBase.getServiceLogo(serviceType)}
       />
-      <Typography.Text
-        className="text-primary font-semibold"
-        ellipsis={{ tooltip: true }}>
+      <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
         {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
       </Typography.Text>
     </div>
