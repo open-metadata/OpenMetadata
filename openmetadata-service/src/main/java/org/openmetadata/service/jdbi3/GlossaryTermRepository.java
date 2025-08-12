@@ -210,22 +210,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
-    List<EntityReference> parentReviewers = null;
-    // Validate parent term
-    GlossaryTerm parentTerm =
-        entity.getParent() != null
-            ? Entity.getEntity(
-                entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
-            : null;
-    if (parentTerm != null) {
-      parentReviewers = parentTerm.getReviewers();
-      entity.setParent(parentTerm.getEntityReference());
-    }
-
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
-    parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
 
     validateHierarchy(entity);
 
@@ -240,13 +227,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected void setDefaultStatus(GlossaryTerm entity, boolean update) {
-    // GlossaryTerm uses its own Status enum (not EntityStatus)
-    // So we override to set the appropriate type
+    List<EntityReference> parentReviewers = null;
+    // Validate parent term
+    GlossaryTerm parentTerm =
+        entity.getParent() != null
+            ? Entity.getEntity(
+                entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
+            : null;
+    if (parentTerm != null) {
+      parentReviewers = parentTerm.getReviewers();
+      entity.setParent(parentTerm.getEntityReference());
+    }
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+    parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
     if (!update || entity.getStatus() == null) {
-      // For now, as requested, defaulting to APPROVED regardless of reviewers
-      entity.setStatus(EntityStatus.APPROVED);
-      // Note: Original logic was to set DRAFT if parent has reviewers, but keeping APPROVED as
-      // requested
+      // If parentTerm or glossary has reviewers set, the glossary term can only be created in
+      // `Draft` mode
+      entity.setStatus(!nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
     }
   }
 

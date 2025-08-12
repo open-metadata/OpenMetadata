@@ -144,11 +144,13 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -571,20 +573,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * or for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
    */
   protected void setDefaultStatus(T entity, boolean update) {
-    // Default implementation - override in repositories that need custom status logic
     if (!supportsStatus) {
       return;
     }
-
-    // Try to get and set status using reflection to check the type
     try {
+      // For WorkflowDefinition and DataContract, do not set default status, They are taken care in
+      // the respective repositories as they have different enum structure
+      if (entity instanceof WorkflowDefinition || entity instanceof DataContract) {
+        return;
+      }
       if (!update || entity.getStatus() == null) {
-        // Check if the status type is EntityStatus
-        if (entity.getStatus() instanceof org.openmetadata.schema.type.EntityStatus) {
-          entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
-        }
-        // For other status types (ContractStatus, WorkflowStatus, etc.),
-        // let the specific repository override handle it
+        entity.setStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
       }
     } catch (Exception e) {
       LOG.warn(
