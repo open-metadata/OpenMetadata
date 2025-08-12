@@ -22,8 +22,13 @@ As **OpenMetadata** processes events related to metadata changes and pipeline ex
 ## Configuration Options
 
 - **Configuration Key:** `changeEventRetentionPeriod`  
-  **Description:** Number of days to retain change event records  
-  **Default Value:** `7`  
+  **Description:** The number of days to retain change event records  
+  **Default Value:** `7`
+
+
+- **Configuration Key:** `activityThreadsRetentionPeriod`  
+  **Description:** The number of days to retain activity feed records  
+  **Default Value:** `60`
 
 {% note %}
 
