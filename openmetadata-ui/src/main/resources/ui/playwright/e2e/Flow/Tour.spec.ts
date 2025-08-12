@@ -14,6 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
@@ -132,6 +133,7 @@ test.describe('Tour should work properly', () => {
   test('Tour should work from help section', async ({ page }) => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');
@@ -145,6 +147,7 @@ test.describe('Tour should work properly', () => {
       .locator('.whats-new-alert-close')
       .click();
     await page.getByText('Take a product tour to get started!').click();
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');
@@ -154,6 +157,7 @@ test.describe('Tour should work properly', () => {
 
   test('Tour should work from URL directly', async ({ page }) => {
     await page.goto('/tour');
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');

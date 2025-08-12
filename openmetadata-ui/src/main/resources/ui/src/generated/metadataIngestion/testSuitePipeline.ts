@@ -87,6 +87,8 @@ export interface ServiceConnections {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -129,6 +131,8 @@ export interface ServiceConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Google BigQuery Connection Config
  *
@@ -311,6 +315,12 @@ export interface ServiceConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigClass {
     /**
@@ -381,6 +391,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -391,6 +403,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -434,6 +448,8 @@ export interface ConfigClass {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      *
      * BigQuery APIs URL.
      *
@@ -717,6 +733,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -731,6 +749,11 @@ export interface ConfigClass {
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
      *
      * API key to authenticate with the SAP ERP APIs.
      *
@@ -792,6 +815,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -801,6 +826,8 @@ export interface ConfigClass {
      */
     sslConfig?: SSLConfigObject;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
@@ -914,6 +941,10 @@ export interface ConfigClass {
      */
     orgId?: string;
     /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -929,6 +960,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -1738,6 +1771,28 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
 }
 
 /**
@@ -2519,6 +2574,8 @@ export interface ConfigSourceConnection {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -3061,6 +3118,8 @@ export enum InitialConsumerOffsets {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
  *
@@ -3825,6 +3884,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -3864,6 +3925,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -3883,6 +3950,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -3910,6 +3978,8 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3954,6 +4024,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",

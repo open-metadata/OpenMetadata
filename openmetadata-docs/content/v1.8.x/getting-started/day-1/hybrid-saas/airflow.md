@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from your Airflow
-description: Learn how to run OpenMetadata ingestion workflows using Python, Docker, or Virtualenv operators in Airflow for secure and flexible metadata ingestion.
+description: Learn how to run OpenMetadata Ingestion workflows using Python, Docker, or Virtualenv operators in Airflow for secure and flexible metadata ingestion.
 slug: /getting-started/day-1/hybrid-saas/airflow
 collate: true
 ---

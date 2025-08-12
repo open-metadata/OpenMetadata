@@ -1,5 +1,5 @@
 ---
-title: dbt Cloud Connector | `brandName` Pipeline Integration
+title: dbt Cloud Connector | OpenMetadata Pipeline Integration
 description: Connect dbt Cloud to OpenMetadata with our comprehensive pipeline connector guide. Setup instructions, configuration examples, and troubleshooting tips.
 slug: /connectors/pipeline/dbtcloud
 ---

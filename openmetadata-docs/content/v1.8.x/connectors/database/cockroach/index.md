@@ -1,5 +1,5 @@
 ---
-title: CockroachDB Connector | `brandName` Integration Guide
+title: CockroachDB Connector | OpenMetadata Integration Guide
 description: Set up CockroachDB connector in OpenMetadata to discover, catalog, and manage your database metadata. Complete integration guide with configuration steps.
 slug: /connectors/database/cockroach
 ---

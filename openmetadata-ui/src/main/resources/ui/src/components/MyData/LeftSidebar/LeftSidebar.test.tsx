@@ -14,6 +14,13 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import LeftSidebar from './LeftSidebar.component';
 
+jest.mock(
+  '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({ applications: [], plugins: [] }),
+  })
+);
+
 describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
     render(

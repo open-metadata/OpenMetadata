@@ -1,5 +1,5 @@
 ---
-title: Domo Dashboard | `brandName` Connector Setup Guide
+title: Domo Dashboard | OpenMetadata Connector Setup Guide
 description: Connect Domo dashboards to OpenMetadata with our comprehensive connector guide. Easy setup, configuration steps, and metadata extraction explained.
 slug: /connectors/dashboard/domo-dashboard
 ---

@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,6 +34,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -236,6 +238,67 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
 
     return appStatusList;
+  }
+
+  /**
+   * Get workflow instances for a specific entity link
+   * @param entityLink Entity link to filter workflow instances
+   * @param startTime Start timestamp for data range
+   * @param endTime End timestamp for data range
+   * @return List of workflow instances
+   */
+  private List<Map> getWorkflowInstances(String entityLink, long startTime, long endTime) {
+    List<Map> workflowInstances = new ArrayList<>();
+
+    try {
+      if (entityLink == null || entityLink.trim().isEmpty()) {
+        return workflowInstances;
+      }
+
+      // Get the workflow instance repository
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+
+      if (workflowInstanceRepository == null) {
+        LOG.warn("WorkflowInstanceRepository not available");
+        return workflowInstances;
+      }
+
+      // Create filter for workflow instances
+      ListFilter filter = new ListFilter(null);
+      filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash("AutoPilotWorkflow"));
+      filter.addQueryParam("entityLink", entityLink);
+
+      // Fetch workflow instances
+      ResultList<WorkflowInstance> instances =
+          workflowInstanceRepository.list(null, startTime, endTime, 100, filter, false);
+
+      if (instances != null && instances.getData() != null) {
+        for (WorkflowInstance instance : instances.getData()) {
+          Map<String, Object> instanceData = new HashMap<>();
+          instanceData.put("id", instance.getId().toString());
+          instanceData.put("workflowDefinitionId", instance.getWorkflowDefinitionId().toString());
+          instanceData.put("startedAt", instance.getStartedAt());
+          instanceData.put("endedAt", instance.getEndedAt());
+          instanceData.put("status", instance.getStatus().toString());
+          instanceData.put("timestamp", instance.getTimestamp());
+          instanceData.put("variables", instance.getVariables());
+          instanceData.put("entityLink", entityLink);
+          instanceData.put("type", "workflow");
+
+          workflowInstances.add(instanceData);
+        }
+      }
+
+      LOG.info(
+          "Found {} workflow instances for entity link: {}", workflowInstances.size(), entityLink);
+
+    } catch (Exception e) {
+      LOG.error("Error fetching workflow instances for entity link: {}", entityLink, e);
+    }
+
+    return workflowInstances;
   }
 
   /**
@@ -661,9 +724,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * Check if there's already an active streaming session for the same criteria
    * @param chartNames Chart names being requested
    * @param serviceName Service name (can be null)
+   * @param entityLink Entity link (can be null)
    * @return Active session if exists, null otherwise
    */
-  private StreamingSession findActiveSession(String chartNames, String serviceName) {
+  private StreamingSession findActiveSession(
+      String chartNames, String serviceName, String entityLink) {
     return activeSessions.values().stream()
         .filter(session -> session.getChartNames().equals(chartNames))
         .filter(
@@ -674,6 +739,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               }
               if (serviceName != null && session.getServiceName() != null) {
                 return serviceName.equals(session.getServiceName());
+              }
+              return false;
+            })
+        .filter(
+            session -> {
+              // Handle null entityLink comparison
+              if (entityLink == null && session.getEntityLink() == null) {
+                return true;
+              }
+              if (entityLink != null && session.getEntityLink() != null) {
+                return entityLink.equals(session.getEntityLink());
               }
               return false;
             })
@@ -695,6 +771,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       String chartNames,
       String serviceName,
       String filter,
+      String entityLink,
       UUID userId,
       Long startTime,
       Long endTime) {
@@ -707,7 +784,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
 
     // Check if there's already an active streaming session for the same criteria
-    StreamingSession existingSession = findActiveSession(chartNames, serviceName);
+    StreamingSession existingSession = findActiveSession(chartNames, serviceName, entityLink);
     if (existingSession != null) {
       // Add this user to the existing session
       existingSession.addUser(userId);
@@ -731,7 +808,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           existingSession.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(serviceName),
-          getCollateAppStatus(serviceName));
+          getCollateAppStatus(serviceName),
+          getWorkflowInstances(
+              existingSession.getEntityLink(),
+              existingSession.getDataStartTime(),
+              existingSession.getDataEndTime()));
 
       // Calculate remaining time for existing session
       long remainingTime = existingSession.getRemainingTime();
@@ -771,7 +852,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
     try {
       String sessionId =
-          startStreaming(chartNames, serviceName, filter, userId, startTime, endTime);
+          startStreaming(chartNames, serviceName, filter, entityLink, userId, startTime, endTime);
 
       Map<String, Object> response = new HashMap<>();
       response.put("sessionId", sessionId);
@@ -803,22 +884,24 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       String chartNames,
       String serviceName,
       String filter,
+      String entityLink,
       UUID userId,
       Long startTime,
       Long endTime) {
     String sessionId = UUID.randomUUID().toString();
 
     LOG.info(
-        "Starting chart data streaming session {} for user {} with charts: {} (time range: {} to {})",
+        "Starting chart data streaming session {} for user {} with charts: {} and entityLink: {} (time range: {} to {})",
         sessionId,
         userId,
         chartNames,
+        entityLink,
         startTime,
         endTime);
 
     StreamingSession session =
         new StreamingSession(
-            sessionId, chartNames, serviceName, filter, userId, startTime, endTime);
+            sessionId, chartNames, serviceName, filter, entityLink, userId, startTime, endTime);
     activeSessions.put(sessionId, session);
 
     // Send initial status message to all users in the session
@@ -830,7 +913,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         STREAM_DURATION_MS,
         UPDATE_INTERVAL_MS,
         getIngestionPipelineStatus(serviceName),
-        getCollateAppStatus(serviceName));
+        getCollateAppStatus(serviceName),
+        getWorkflowInstances(entityLink, startTime, endTime));
 
     // Schedule the streaming task
     ScheduledFuture<?> future =
@@ -862,7 +946,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         session.getFuture().cancel(true);
       }
 
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of());
+      sendMessageToAllUsers(
+          session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of(), List.of());
       activeSessions.remove(sessionId);
     }
   }
@@ -903,7 +988,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       if (session.getFuture() != null) {
         session.getFuture().cancel(true);
       }
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of());
+      sendMessageToAllUsers(
+          session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of(), List.of());
       activeSessions.remove(sessionId);
 
       response.put("status", "stopped");
@@ -919,7 +1005,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           session.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(session.getServiceName()),
-          getCollateAppStatus(session.getServiceName()));
+          getCollateAppStatus(session.getServiceName()),
+          getWorkflowInstances(
+              session.getEntityLink(), session.getDataStartTime(), session.getDataEndTime()));
 
       response.put("status", "user_removed");
       response.put("message", "User removed from streaming session");
@@ -960,6 +1048,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       // Fetch ingestion pipeline status for the service
       List<Map> ingestionPipelineStatus = getIngestionPipelineStatus(session.getServiceName());
 
+      // Fetch workflow instances for the entity link
+      List<Map> workflowInstances =
+          getWorkflowInstances(session.getEntityLink(), startTime, endTime);
+
       // Send the data to all users in the session
       sendMessageToAllUsers(
           session,
@@ -969,7 +1061,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           remainingTime,
           UPDATE_INTERVAL_MS,
           ingestionPipelineStatus,
-          getCollateAppStatus(session.getServiceName()));
+          getCollateAppStatus(session.getServiceName()),
+          workflowInstances);
 
     } catch (IOException e) {
       LOG.error("Error streaming chart data for session {}", session.getSessionId(), e);
@@ -981,7 +1074,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           0L,
           0L,
           List.of(),
-          getCollateAppStatus(session.getServiceName()));
+          getCollateAppStatus(session.getServiceName()),
+          List.of());
       stopStreaming(session.getSessionId());
     } catch (Exception e) {
       LOG.error("Unexpected error in streaming session {}", session.getSessionId(), e);
@@ -993,7 +1087,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           0L,
           0L,
           List.of(),
-          getCollateAppStatus(session.getServiceName()));
+          getCollateAppStatus(session.getServiceName()),
+          List.of());
       stopStreaming(session.getSessionId());
     }
   }
@@ -1011,7 +1106,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Long remainingTime,
       Long nextUpdate,
       List<Map> ingestionPipelineStatus,
-      List<Map> appStatus) {
+      List<Map> appStatus,
+      List<Map> workflowInstances) {
     ChartDataStreamMessage message =
         new ChartDataStreamMessage(
             sessionId,
@@ -1023,7 +1119,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             remainingTime,
             nextUpdate,
             ingestionPipelineStatus,
-            appStatus);
+            appStatus,
+            workflowInstances);
 
     String messageJson = JsonUtils.pojoToJson(message);
 
@@ -1043,7 +1140,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Long remainingTime,
       Long nextUpdate,
       List<Map> ingestionPipelineStatus,
-      List<Map> appStatus) {
+      List<Map> appStatus,
+      List<Map> workflowInstances) {
     for (UUID userId : session.getUserIds()) {
       sendMessageToUser(
           userId,
@@ -1055,7 +1153,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           remainingTime,
           nextUpdate,
           ingestionPipelineStatus,
-          appStatus);
+          appStatus,
+          workflowInstances);
     }
   }
 
@@ -1086,6 +1185,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     private final String chartNames;
     private final String serviceName;
     private final String filter;
+    private final String entityLink;
     private final Set<UUID> userIds; // Multiple users can share the same session
     private final long startTime; // Session start time
     private final long dataStartTime; // Data range start time
@@ -1097,6 +1197,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         String chartNames,
         String serviceName,
         String filter,
+        String entityLink,
         UUID userId,
         Long dataStartTime,
         Long dataEndTime) {
@@ -1104,6 +1205,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.chartNames = chartNames;
       this.serviceName = serviceName;
       this.filter = filter;
+      this.entityLink = entityLink;
       this.userIds = new ConcurrentHashMap().newKeySet(); // Thread-safe set
       this.userIds.add(userId);
       this.startTime = System.currentTimeMillis(); // Session start time
@@ -1140,6 +1242,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
     public String getFilter() {
       return filter;
+    }
+
+    public String getEntityLink() {
+      return entityLink;
     }
 
     public Set<UUID> getUserIds() {

@@ -23,7 +23,6 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { UserClass } from '../../support/user/UserClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
   clickOutside,
@@ -31,13 +30,17 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import {
+  saveAndTriggerDataContractValidation,
+  validateDataContractInsideBundleTestSuites,
+  waitForDataContractExecution,
+} from '../../utils/dataContracts';
 import { addOwner } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
-  const user = new UserClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -50,7 +53,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
-    await user.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -63,7 +65,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.delete(apiContext);
-    await user.delete(apiContext);
     await testClassification.delete(apiContext);
     await testTag.delete(apiContext);
     await testGlossary.delete(apiContext);
@@ -100,24 +101,10 @@ test.describe('Data Contracts', () => {
         DATA_CONTRACT_DETAILS.description
       );
 
-      await page.getByTestId('add-owner').click();
-      await page.getByRole('tab', { name: 'Users' }).click();
-      await page
-        .getByTestId('owner-select-users-search-bar')
-        .fill(user.responseData.displayName);
-      await page
-        .getByRole('listitem', {
-          name: user.responseData.displayName,
-          exact: true,
-        })
-        .click();
-      await page.getByTestId('selectable-list-update-btn').click();
+      await page.getByTestId('select-owners').click();
+      await page.locator('.rc-virtual-list-holder-inner li').first().click();
 
-      await expect(
-        page
-          .getByTestId('owner-link')
-          .getByTestId(user.responseData.displayName)
-      ).toBeVisible();
+      await expect(page.getByTestId('user-tag')).toBeVisible();
     });
 
     await test.step('Fill Contract Schema form', async () => {
@@ -141,11 +128,6 @@ test.describe('Data Contracts', () => {
       await page.fill(
         '#semantics_0_description',
         DATA_CONTRACT_SEMANTICS1.description
-      );
-
-      await expect(page.locator('#semantics_0_enabled')).toHaveAttribute(
-        'aria-checked',
-        'true'
       );
 
       const ruleLocator = page.locator('.group').nth(0);
@@ -237,90 +219,9 @@ test.describe('Data Contracts', () => {
       ).not.toBeVisible();
     });
 
-    await test.step('Fill Contract Quality form', async () => {
-      await page.getByRole('button', { name: 'Quality' }).click();
-
-      // Fill Contract Quality form
-
-      await page.getByTestId('add-test-button').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.fill(
-        '[data-testid="test-case-name"]',
-        NEW_TABLE_TEST_CASE.name
-      );
-
-      await page.click('#testCaseFormV1_testTypeId');
-      await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
-      await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
-      await page.fill(
-        '#testCaseFormV1_params_columnName',
-        NEW_TABLE_TEST_CASE.field
-      );
-
-      await page.click('[data-testid="tags-selector"] input');
-      await page.fill('[data-testid="tags-selector"] input', testTag.data.name);
-      await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
-        .click();
-
-      await clickOutside(page);
-
-      await page.click('[data-testid="glossary-terms-selector"] input');
-      await page.fill(
-        '[data-testid="glossary-terms-selector"] input',
-        testGlossaryTerm.data.name
-      );
-
-      await page
-        .getByTestId(`tag-${testGlossaryTerm.responseData.fullyQualifiedName}`)
-        .click();
-
-      await clickOutside(page);
-
-      const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases'
-      );
-      await page.click('[data-testid="create-btn"]');
-      await testCaseResponse;
-
-      await page.waitForTimeout(100);
-
-      await expect(
-        page
-          .locator('.ant-table-cell')
-          .filter({ hasText: NEW_TABLE_TEST_CASE.name })
-      ).toBeVisible();
-    });
-
-    await test.step('Save contract and validate', async () => {
-      const saveContractResponse = page.waitForResponse(
-        '/api/v1/dataContracts'
-      );
-      await page.getByTestId('save-contract-btn').click();
-      await saveContractResponse;
-
-      await toastNotification(page, 'Data contract saved successfully');
-
-      await expect(
-        page
-          .getByTestId('contract-card-title-container')
-          .filter({ hasText: 'Contract Status' })
-      ).not.toBeVisible();
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
-
-      await toastNotification(
-        page,
-        'Contract validation trigger successfully.'
-      );
-
-      await page.reload();
+    await test.step('Save contract and validate for semantics', async () => {
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
         page.getByTestId('contract-card-title-container').filter({
@@ -342,6 +243,10 @@ test.describe('Data Contracts', () => {
         dataTestId: 'data-assets-header',
       });
 
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+
       await page.getByTestId('contract-run-now-button').click();
       await runNowResponse;
 
@@ -357,38 +262,185 @@ test.describe('Data Contracts', () => {
       ).toContainText('Passed');
     });
 
-    await test.step('Edit contract and validate', async () => {
-      await page.getByTestId('contract-edit-button').click();
+    await test.step(
+      'Add table test case and validate for quality',
+      async () => {
+        await page.getByTestId('contract-edit-button').click();
 
-      await page.getByRole('tab', { name: 'Quality' }).click();
+        await page.getByRole('tab', { name: 'Quality' }).click();
 
-      await page
-        .locator('input[type="checkbox"][aria-label="Select all"]')
-        .check();
+        await page.getByTestId('add-test-button').click();
 
-      await expect(
-        page.getByRole('checkbox', { name: 'Select all' })
-      ).toBeChecked();
+        await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('save-contract-btn').click();
+        await page.fill(
+          '[data-testid="test-case-name"]',
+          NEW_TABLE_TEST_CASE.name
+        );
 
-      await toastNotification(page, 'Data contract saved successfully');
+        await page.locator('#testCaseFormV1_testTypeId').click();
 
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+        const dropdown = page.locator('.rc-virtual-list-holder-inner');
 
-      await toastNotification(
-        page,
-        'Contract validation trigger successfully.'
-      );
+        await expect(dropdown).toBeVisible();
 
-      await page.reload();
-    });
+        for (let i = 0; i < 20; i++) {
+          const optionVisible = await dropdown
+            .getByText(NEW_TABLE_TEST_CASE.label)
+            .isVisible();
+          if (optionVisible) {
+            break;
+          }
+          await dropdown.press('ArrowDown');
+        }
+
+        await dropdown.getByText(NEW_TABLE_TEST_CASE.label).click();
+
+        await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
+        await page.fill(
+          '#testCaseFormV1_params_columnCount',
+          NEW_TABLE_TEST_CASE.value
+        );
+
+        await page.click('[data-testid="tags-selector"] input');
+        await page.fill(
+          '[data-testid="tags-selector"] input',
+          testTag.data.name
+        );
+        await page
+          .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+          .click();
+
+        await clickOutside(page);
+
+        await page.click('[data-testid="glossary-terms-selector"] input');
+        await page.fill(
+          '[data-testid="glossary-terms-selector"] input',
+          testGlossaryTerm.data.name
+        );
+
+        await page
+          .getByTestId(
+            `tag-${testGlossaryTerm.responseData.fullyQualifiedName}`
+          )
+          .click();
+
+        await clickOutside(page);
+
+        await page.getByTestId('pipeline-name').fill('test-pipeline');
+
+        await page
+          .locator('.selection-title', { hasText: 'On Demand' })
+          .click();
+
+        await expect(page.locator('.expression-text')).toContainText(
+          'Pipeline will only be triggered manually.'
+        );
+
+        const testCaseResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases'
+        );
+        await page.click('[data-testid="create-btn"]');
+        await testCaseResponse;
+
+        await page.waitForTimeout(100);
+
+        await expect(
+          page
+            .locator('.ant-table-cell')
+            .filter({ hasText: NEW_TABLE_TEST_CASE.name })
+        ).toBeVisible();
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .check();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).toBeChecked();
+
+        // save and trigger contract validation
+        const response = await saveAndTriggerDataContractValidation(page);
+
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'latestResult' in response
+        ) {
+          const {
+            id: contractId,
+            latestResult: { resultId: latestResultId },
+          } = response;
+
+          if (contractId && latestResultId) {
+            await waitForDataContractExecution(
+              page,
+              contractId,
+              latestResultId
+            );
+          }
+        }
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Validate inside the Observability, bundle test suites, that data contract test suite is present',
+      async () => {
+        await validateDataContractInsideBundleTestSuites(page);
+
+        await expect(
+          page
+            .getByTestId('test-suite-table')
+            .locator('.ant-table-cell')
+            .filter({
+              hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
+            })
+        ).toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Edit quality expectations from the data contract and validate',
+      async () => {
+        await table.visitEntityPage(page);
+
+        await page.getByTestId('contract').click();
+
+        await page.getByTestId('contract-edit-button').click();
+
+        await page.getByRole('tab', { name: 'Quality' }).click();
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .uncheck();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).not.toBeChecked();
+
+        await saveAndTriggerDataContractValidation(page);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-Quality Status')
+        ).not.toBeVisible();
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+
+    // TODO: Add a step to validate the test suite is removed from observability -> bundle test suites
 
     await test.step('Verify YAML view', async () => {
+      await table.visitEntityPage(page);
+
+      await page.getByTestId('contract').click();
+
       await page.getByTestId('contract-view-switch-tab-yaml').click();
 
       await expect(page.getByTestId('code-mirror-container')).toBeVisible();
@@ -410,7 +462,7 @@ test.describe('Data Contracts', () => {
 
     await test.step('Delete contract', async () => {
       const deleteContractResponse = page.waitForResponse(
-        'api/v1/dataContracts/*?hardDelete=true'
+        'api/v1/dataContracts/*?hardDelete=true&recursive=true'
       );
 
       await page.getByTestId('delete-contract-button').click();
