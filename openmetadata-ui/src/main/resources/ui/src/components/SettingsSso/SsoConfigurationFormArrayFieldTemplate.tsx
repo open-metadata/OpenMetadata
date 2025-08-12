@@ -121,7 +121,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       <Col className="sso-select-container" span={24}>
         <Select
           className="m-t-xss w-full"
-          data-testid="sso-configuration-form-array-field-template"
+          data-testid={`sso-configuration-form-array-field-template-${props.name}`}
           disabled={props.disabled}
           id={id}
           mode={options ? 'multiple' : 'tags'}

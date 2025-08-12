@@ -462,7 +462,9 @@ const SSOConfigurationFormRJSF = () => {
   };
 
   return (
-    <Card className="sso-configuration-form-card flex-col">
+    <Card
+      className="sso-configuration-form-card flex-col"
+      data-testid="sso-configuration-form-card">
       <div className="flex justify-between">
         <div className="flex flex-col gap-2">
           <Typography.Text className="card-title m-t-0 m-b-2 text-md">
@@ -474,6 +476,7 @@ const SSOConfigurationFormRJSF = () => {
         </div>
         {!isEditMode ? (
           <Button
+            data-testid="edit-sso-configuration"
             icon={<EditOutlined />}
             type="primary"
             onClick={handleEditClick}>
@@ -482,13 +485,17 @@ const SSOConfigurationFormRJSF = () => {
         ) : (
           <Space>
             <Button
+              data-testid="save-sso-configuration"
               disabled={isLoading}
               loading={isLoading}
               type="primary"
               onClick={handleSave}>
               {t('label.save')}
             </Button>
-            <Button type="default" onClick={handleCancelEdit}>
+            <Button
+              data-testid="cancel-sso-configuration"
+              type="default"
+              onClick={handleCancelEdit}>
               {t('label.cancel')}
             </Button>
           </Space>

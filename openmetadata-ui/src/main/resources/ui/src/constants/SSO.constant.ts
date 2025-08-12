@@ -196,7 +196,10 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
 
 // Common field titles
 export const COMMON_FIELD_TITLES = {
-  provider: { 'ui:title': 'Provider' },
+  provider: {
+    'ui:title': 'Provider',
+    'ui:options': { 'data-testid': 'sso-provider-field' },
+  },
   providerName: { 'ui:title': 'Provider Name' },
   authority: { 'ui:title': 'Authority' },
   clientId: { 'ui:title': 'Client ID' },
