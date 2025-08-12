@@ -162,17 +162,19 @@ const Lineage = ({
       data-testid="lineage-details"
       title={
         isPlatformLineage ? null : (
-          <CustomControlsComponent
-            activeViewTab={activeViewTab}
-            handleActiveViewTabChange={handleActiveViewTabChange}
-            onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
-          />
+          <>
+            {isFullScreen && breadcrumbs.length > 0 && (
+              <TitleBreadcrumb className="p-b-lg" titleLinks={breadcrumbs} />
+            )}
+
+            <CustomControlsComponent
+              activeViewTab={activeViewTab}
+              handleActiveViewTabChange={handleActiveViewTabChange}
+              onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
+            />
+          </>
         )
       }>
-      {isFullScreen && breadcrumbs.length > 0 && (
-        <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
-      )}
-
       {activeViewTab === LINEAGE_TAB_VIEW.DIAGRAM_VIEW ? (
         <div
           className="h-full relative lineage-container"

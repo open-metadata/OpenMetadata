@@ -20,6 +20,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { useFqn } from '../../../hooks/useFqn';
 import { getLineageTableConfig } from '../../../utils/EntityLineageUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import Table from '../../common/Table/Table';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import './lineage-table.less';
@@ -82,6 +83,10 @@ const LineageTable = () => {
       clearCSVExportData();
     };
   }, []);
+
+  if (tableConfig.isLoading) {
+    return <Loader />;
+  }
 
   if (isEmpty(tableConfig.columns)) {
     return <ErrorPlaceHolder />;
