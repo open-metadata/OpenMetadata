@@ -575,6 +575,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     + " e.g. <#E::table::{entityFqn}::columns::{columnName}>",
                 entityLink.getFieldName()));
       }
+      
+      // Validate that the referenced column actually exists in the table
+      if (entityLink.getArrayFieldName() != null) {
+        Table table = Entity.getEntity(entityLink, "columns", ALL);
+        validateColumn(table, entityLink.getArrayFieldName());
+      }
     }
   }
 

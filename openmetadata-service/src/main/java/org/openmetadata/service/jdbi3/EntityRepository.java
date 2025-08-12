@@ -5026,7 +5026,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
     boolean validColumn =
-        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+        table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
     if (!validColumn && !columnName.equalsIgnoreCase("all")) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
