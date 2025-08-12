@@ -112,7 +112,7 @@ export interface GlossaryTerm {
     /**
      * Status of the glossary term.
      */
-    status?: Status;
+    status?: EntityStatus;
     style?:  Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
@@ -300,8 +300,11 @@ export interface TermReference {
 
 /**
  * Status of the glossary term.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export enum Status {
+export enum EntityStatus {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",

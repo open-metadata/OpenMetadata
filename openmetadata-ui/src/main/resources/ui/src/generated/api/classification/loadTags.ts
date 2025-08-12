@@ -163,7 +163,11 @@ export interface CreateTagRequest {
      */
     parent?:   string;
     provider?: ProviderType;
-    style?:    Style;
+    /**
+     * User references of the reviewers for this tag.
+     */
+    reviewers?: EntityReference[];
+    style?:     Style;
 }
 
 /**

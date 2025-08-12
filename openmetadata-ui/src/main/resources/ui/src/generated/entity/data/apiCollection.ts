@@ -96,6 +96,10 @@ export interface APICollection {
      */
     sourceHash?: string;
     /**
+     * Status of the API Collection.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this API Collection.
      */
     tags?: TagLabel[];
@@ -398,6 +402,20 @@ export interface AccessDetails {
 export enum APIServiceType {
     REST = "Rest",
     Webhook = "WEBHOOK",
+}
+
+/**
+ * Status of the API Collection.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

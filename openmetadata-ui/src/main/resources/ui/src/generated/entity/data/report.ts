@@ -66,6 +66,10 @@ export interface Report {
      */
     service: EntityReference;
     /**
+     * Status of the Report.
+     */
+    status?: EntityStatus;
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -210,6 +214,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the Report.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

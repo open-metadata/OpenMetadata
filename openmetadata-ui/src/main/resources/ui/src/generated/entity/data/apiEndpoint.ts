@@ -111,6 +111,10 @@ export interface APIEndpoint {
      */
     sourceHash?: string;
     /**
+     * Status of the APIEndpoint.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this API Collection.
      */
     tags?: TagLabel[];
@@ -526,6 +530,20 @@ export enum SchemaType {
 export enum APIServiceType {
     REST = "Rest",
     Webhook = "WEBHOOK",
+}
+
+/**
+ * Status of the APIEndpoint.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

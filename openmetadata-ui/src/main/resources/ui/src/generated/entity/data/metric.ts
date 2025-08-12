@@ -91,6 +91,10 @@ export interface Metric {
      */
     relatedMetrics?: EntityReference[];
     /**
+     * Status of the Metric.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this chart.
      */
     tags?: TagLabel[];
@@ -400,6 +404,20 @@ export enum MetricType {
     StandardDeviation = "STANDARD_DEVIATION",
     Sum = "SUM",
     Variance = "VARIANCE",
+}
+
+/**
+ * Status of the Metric.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

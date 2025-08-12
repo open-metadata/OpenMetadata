@@ -107,6 +107,10 @@ export interface SearchIndex {
      */
     sourceHash?: string;
     /**
+     * Status of the SearchIndex.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this searchIndex.
      */
     tags?: TagLabel[];
@@ -514,6 +518,20 @@ export enum SearchServiceType {
     CustomSearch = "CustomSearch",
     ElasticSearch = "ElasticSearch",
     OpenSearch = "OpenSearch",
+}
+
+/**
+ * Status of the SearchIndex.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

@@ -22,6 +22,10 @@ export interface QueryCostSearchResult {
      * List of query groups with their metrics
      */
     queryGroups: QueryGroup[];
+    /**
+     * Status of the QueryCostSearchResult.
+     */
+    status?: EntityStatus;
     [property: string]: any;
 }
 
@@ -95,4 +99,18 @@ export interface QueryDetails {
      */
     query?: { [key: string]: any };
     [property: string]: any;
+}
+
+/**
+ * Status of the QueryCostSearchResult.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }

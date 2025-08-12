@@ -83,6 +83,10 @@ export interface Glossary {
      */
     reviewers?: EntityReference[];
     /**
+     * Status of the Glossary.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this glossary.
      */
     tags?: TagLabel[];
@@ -244,6 +248,20 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * Status of the Glossary.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

@@ -109,6 +109,10 @@ export interface Dashboard {
      */
     sourceUrl?: string;
     /**
+     * Status of the Dashboard.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this dashboard.
      */
     tags?: TagLabel[];
@@ -440,6 +444,20 @@ export enum DashboardServiceType {
     Superset = "Superset",
     Tableau = "Tableau",
     ThoughtSpot = "ThoughtSpot",
+}
+
+/**
+ * Status of the Dashboard.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

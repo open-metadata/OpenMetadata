@@ -117,6 +117,10 @@ export interface Database {
      */
     sourceUrl?: string;
     /**
+     * Status of the Database.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this Database.
      */
     tags?: TagLabel[];
@@ -587,6 +591,20 @@ export enum DatabaseServiceType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
+}
+
+/**
+ * Status of the Database.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

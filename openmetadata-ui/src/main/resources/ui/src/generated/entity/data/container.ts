@@ -135,6 +135,10 @@ export interface Container {
      */
     sourceUrl?: string;
     /**
+     * Status of the Container.
+     */
+    status?: EntityStatus;
+    /**
      * Tags for this container.
      */
     tags?: TagLabel[];
@@ -844,6 +848,20 @@ export enum StorageServiceType {
     CustomStorage = "CustomStorage",
     Gcs = "GCS",
     S3 = "S3",
+}
+
+/**
+ * Status of the Container.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
