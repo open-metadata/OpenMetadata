@@ -250,12 +250,10 @@ export const PROVIDER_UI_SCHEMAS: Record<string, UISchemaObject> = {
   'aws-cognito': STANDARD_OAUTH_UI_SCHEMA,
 };
 
-// Bot principals visibility based on provider
 export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   google: { 'ui:widget': 'hidden', 'ui:hideError': true },
   auth0: { 'ui:widget': 'hidden', 'ui:hideError': true },
   basic: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  azure: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
@@ -312,12 +310,11 @@ export const SAML_SECURITY_FIELDS_TO_REMOVE = [
   'keyStorePassword',
 ];
 
-// Providers that should hide bot principals
+// Providers that should NOT include bot principals (only Azure and Okta should)
 export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
   'google',
   'auth0',
   'basic',
-  'azure',
   'aws-cognito',
 ];
 

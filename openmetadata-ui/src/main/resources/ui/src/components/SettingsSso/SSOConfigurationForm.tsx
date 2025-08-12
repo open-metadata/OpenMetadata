@@ -169,7 +169,7 @@ const SSOConfigurationFormRJSF = () => {
 
       // Ensure boolean fields are always included (only for relevant providers)
       if (authConfig.enableSelfSignup === undefined) {
-        authConfig.enableSelfSignup = true;
+        authConfig.enableSelfSignup = false;
       }
     }
 
@@ -182,7 +182,7 @@ const SSOConfigurationFormRJSF = () => {
           delete authorizerConfig[field as keyof AuthorizerConfiguration]
       );
 
-      // Remove bot principals for specific providers
+      // Remove bot principals for providers that don't support them (only Azure and Okta should have botPrincipals)
       if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
         delete authorizerConfig.botPrincipals;
       }
@@ -438,16 +438,19 @@ const SSOConfigurationFormRJSF = () => {
         showErrorToast(error as AxiosError);
       }
 
-      // Clear authentication state properly
       localStorage.removeItem('om-session');
-      setIsAuthenticated(false);
+
+      setIsLoading(false);
+      setIsEditMode(false);
 
       navigate('/signin');
-      setIsEditMode(false);
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : 'Configuration save failed';
-      showErrorToast(t('message.configuration-save-failed'), errorMessage);
+        error instanceof Error
+          ? error.message
+          : t('message.configuration-save-failed');
+      showErrorToast(errorMessage);
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
