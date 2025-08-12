@@ -802,6 +802,7 @@
     "ingestion-pipeline": "Процесс извлечения",
     "ingestion-pipeline-name": "Имя процесса извлечения",
     "ingestion-plural": "Извлечения",
+    "ingestion-runner": "Исполнитель извлечения",
     "ingestion-workflow-lowercase": "процесс извлечения",
     "inherited": "Унаследованный",
     "inherited-entity": "Унаследованный {{entity}}",

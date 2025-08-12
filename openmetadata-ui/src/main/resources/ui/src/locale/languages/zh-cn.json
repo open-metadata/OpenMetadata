@@ -802,6 +802,7 @@
     "ingestion-pipeline": "流水线",
     "ingestion-pipeline-name": "提取流水线名称",
     "ingestion-plural": "提取",
+    "ingestion-runner": "提取执行器",
     "ingestion-workflow-lowercase": "提取工作流",
     "inherited": "inherited",
     "inherited-entity": "继承自{{entity}}",

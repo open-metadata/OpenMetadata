@@ -21,7 +21,7 @@ Configure and schedule SSIS metadata workflow from the OpenMetadata UI:
     - [Connection Details](#connection-details)
 - [Troubleshooting](/connectors/pipeline/ssis/troubleshooting)
 
-{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/ssis/yaml"} /%}
+{% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/ssis/yaml"} /%}
 
 ## Requirements
 To extract SSIS metadata, we need the batabase connection details where the metadata is stored.
@@ -32,12 +32,12 @@ To extract SSIS metadata, we need the batabase connection details where the meta
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.7/connectors/metadata-ingestion-ui.md" 
+  file="/v1.8/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "SSIS", 
-    selectServicePath: "/images/v1.7/connectors/ssis/select-service.png",
-    addNewServicePath: "/images/v1.7/connectors/ssis/add-new-service.png",
-    serviceConnectionPath: "/images/v1.7/connectors/ssis/service-connection.png",
+    selectServicePath: "/images/v1.8/connectors/ssis/select-service.png",
+    addNewServicePath: "/images/v1.8/connectors/ssis/add-new-service.png",
+    serviceConnectionPath: "/images/v1.8/connectors/ssis/service-connection.png",
 } 
 /%}
 
@@ -123,10 +123,10 @@ Choose the method that best fits your environment to ensure the connector can ac
 
 {% /extraContent %}
 
-{% partial file="/v1.7/connectors/test-connection.md" /%}
+{% partial file="/v1.8/connectors/test-connection.md" /%}
 
-{% partial file="/v1.7/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.8/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.8/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}

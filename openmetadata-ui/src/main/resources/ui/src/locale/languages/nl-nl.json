@@ -802,6 +802,7 @@
     "ingestion-pipeline": "Ingestion Pipeline",
     "ingestion-pipeline-name": "Naam van het ingestieproces",
     "ingestion-plural": "Ingesties",
+    "ingestion-runner": "Ingestie Uitvoerder",
     "ingestion-workflow-lowercase": "ingestie werkstroom",
     "inherited": "inherited",
     "inherited-entity": "Inherited {{entity}}",

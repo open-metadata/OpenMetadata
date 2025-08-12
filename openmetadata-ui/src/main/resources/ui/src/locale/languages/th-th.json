@@ -802,6 +802,7 @@
     "ingestion-pipeline": "ท่อการนำเข้า",
     "ingestion-pipeline-name": "ชื่อท่อการนำเข้า",
     "ingestion-plural": "การนำเข้าหลายรายการ",
+    "ingestion-runner": "ตัวรันการนำเข้า",
     "ingestion-workflow-lowercase": "กระบวนการทำงานการนำเข้า",
     "inherited": "inherited",
     "inherited-entity": "เอนทิตีที่สืบทอด {{entity}}",

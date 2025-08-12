@@ -75,70 +75,71 @@ search_cache = LRUCache(LRU_CACHE_SIZE)
 
 def search_table_entities(
     metadata: OpenMetadata,
-    service_name: str,
+    service_names: Union[str, List[str]],
     database: Optional[str],
     database_schema: Optional[str],
     table: str,
 ) -> Optional[List[Table]]:
     """
     Method to get table entity from database, database_schema & table name.
-
-    It will try to search first in ES and doing an extra call to get Table entities
-    with the needed fields like columns for column lineage.
-
-    If the ES result is empty, it will try by running
-    a request against the API to find the Entity.
+    Now supports searching across multiple services (cross-database lineage).
 
     Args:
         metadata: OMeta client
-        service_name: service name
+        service_names: service name or list of service names (current + cross db)
         database: database name
         database_schema: schema name
         table: table name
 
     Returns:
-        A list of Table entities, otherwise, None
+        A list of Table entities from the first service where found, otherwise None
     """
-    search_tuple = (service_name, database, database_schema, table)
-    if search_tuple in search_cache:
-        return search_cache.get(search_tuple)
-    try:
-        table_entities: Optional[List[Table]] = []
-        # search on ES first
-        fqn_search_string = build_es_fqn_search_string(
-            database, database_schema, service_name, table
-        )
-        es_result_entities = metadata.es_search_from_fqn(
-            entity_type=Table,
-            fqn_search_string=fqn_search_string,
-        )
-        if es_result_entities:
-            table_entities = es_result_entities
-        else:
-            # build FQNs and search with the API in case ES response is empty
-            table_fqns = fqn.build(
-                metadata,
-                entity_type=Table,
-                service_name=service_name,
-                database_name=database,
-                schema_name=database_schema,
-                table_name=table,
-                fetch_multiple_entities=True,
-                skip_es_search=True,
+    if isinstance(service_names, str):
+        service_names = [service_names]
+    for service_name in service_names:
+        search_tuple = (service_name, database, database_schema, table)
+        if search_tuple in search_cache:
+            result = search_cache.get(search_tuple)
+            if result:
+                return result
+        try:
+            table_entities: Optional[List[Table]] = []
+            # search on ES first
+            fqn_search_string = build_es_fqn_search_string(
+                database, database_schema, service_name, table
             )
-            for table_fqn in table_fqns or []:
-                table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-                if table_entity:
-                    table_entities.append(table_entity)
-        # added the search tuple to the cache
-        search_cache.put(search_tuple, table_entities)
-        return table_entities
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.error(
-            f"Error searching for table entities for service [{service_name}]: {exc}"
-        )
-        return None
+            es_result_entities = metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+            )
+            if es_result_entities:
+                table_entities = es_result_entities
+            else:
+                # build FQNs and search with the API in case ES response is empty
+                table_fqns = fqn.build(
+                    metadata,
+                    entity_type=Table,
+                    service_name=service_name,
+                    database_name=database,
+                    schema_name=database_schema,
+                    table_name=table,
+                    fetch_multiple_entities=True,
+                    skip_es_search=True,
+                )
+                for table_fqn in table_fqns or []:
+                    table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
+                    if table_entity:
+                        table_entities.append(table_entity)
+            # added the search tuple to the cache
+            search_cache.put(search_tuple, table_entities)
+            if table_entities:
+                return table_entities
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error searching for table entities for service [{service_name}]: {exc}"
+            )
+    return None
 
 
 def get_table_fqn_from_query_name(
@@ -360,7 +361,7 @@ def get_source_table_names(
 
 def get_table_entities_from_query(
     metadata: OpenMetadata,
-    service_name: str,
+    service_names: Union[str, List[str]],
     database_name: str,
     database_schema: str,
     table_name: str,
@@ -371,8 +372,7 @@ def get_table_entities_from_query(
 
     If the sys data is incorrect, use the table name ingredients.
 
-    :param metadata: OpenMetadata client
-    :param service_name: Service being ingested.
+    :param service_names: Service(s) being ingested (current + cross db)
     :param database_name: Name of the database informed on db sys results
     :param database_schema: Name of the schema informed on db sys results
     :param table_name: Table name extracted from query. Can be `table`, `schema.table` or `db.schema.table`
@@ -386,7 +386,7 @@ def get_table_entities_from_query(
 
     table_entities = search_table_entities(
         metadata=metadata,
-        service_name=service_name,
+        service_names=service_names,
         database=database_query if database_query else database_name,
         database_schema=schema_query if schema_query else database_schema,
         table=table,
@@ -536,7 +536,7 @@ def _create_lineage_by_table_name(
     try:
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
-            service_name=service_name,
+            service_names=service_name,
             database_name=database_name,
             database_schema=schema_name,
             table_name=from_table,
@@ -545,7 +545,7 @@ def _create_lineage_by_table_name(
 
         to_table_entities = get_table_entities_from_query(
             metadata=metadata,
-            service_name=service_name,
+            service_names=service_name,
             database_name=database_name,
             database_schema=schema_name,
             table_name=to_table,
@@ -640,7 +640,7 @@ def populate_column_lineage_map(raw_column_lineage):
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
-    service_name: str,
+    service_names: Union[str, List[str]],
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
@@ -649,14 +649,23 @@ def get_lineage_by_query(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
     schema_fallback: bool = False,
+    service_name: Optional[str] = None,  # backward compatibility for python sdk
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
+
+    Now supports cross-database lineage by accepting a list of service names.
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
-
+    if service_name and isinstance(service_name, str):
+        service_names = [service_name]
+        logger.warning(
+            "Deprecated: service_name is deprecated, use service_names instead"
+        )
+    if isinstance(service_names, str):
+        service_names = [service_names]
     try:
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
         masked_query = lineage_parser.masked_query
@@ -673,7 +682,7 @@ def get_lineage_by_query(
                     source_table=source_table,
                     database_name=database_name,
                     schema_name=schema_name,
-                    service_name=service_name,
+                    service_name=service_names,
                     timeout_seconds=timeout_seconds,
                     column_lineage=column_lineage,
                 ):
@@ -681,7 +690,7 @@ def get_lineage_by_query(
                         metadata,
                         from_table=str(from_table_name),
                         to_table=str(intermediate_table),
-                        service_name=service_name,
+                        service_name=service_names,
                         database_name=database_name,
                         schema_name=schema_name,
                         masked_query=masked_query,
@@ -696,13 +705,14 @@ def get_lineage_by_query(
                     metadata,
                     from_table=str(intermediate_table),
                     to_table=str(target_table),
-                    service_name=service_name,
+                    service_name=service_names,
                     database_name=database_name,
                     schema_name=schema_name,
                     masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                     schema_fallback=schema_fallback,
+                    graph=graph,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -713,7 +723,7 @@ def get_lineage_by_query(
                         source_table=source_table,
                         database_name=database_name,
                         schema_name=schema_name,
-                        service_name=service_name,
+                        service_name=service_names,
                         timeout_seconds=timeout_seconds,
                         column_lineage=column_lineage,
                     ):
@@ -721,7 +731,7 @@ def get_lineage_by_query(
                             metadata,
                             from_table=str(from_table_name),
                             to_table=str(target_table),
-                            service_name=service_name,
+                            service_name=service_names,
                             database_name=database_name,
                             schema_name=schema_name,
                             masked_query=masked_query,
@@ -742,7 +752,7 @@ def get_lineage_by_query(
         yield Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Ingesting lineage failed for service [{service_name}]: {exc}",
+                error=f"Ingesting lineage failed for service(s) [{service_names}]: {exc}",
                 stackTrace=traceback.format_exc(),
             )
         )
@@ -753,7 +763,7 @@ def get_lineage_via_table_entity(
     table_entity: Table,
     database_name: str,
     schema_name: str,
-    service_name: str,
+    service_names: Union[str, List[str]],
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
@@ -765,6 +775,8 @@ def get_lineage_via_table_entity(
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
 
+    if isinstance(service_names, str):
+        service_names = [service_names]
     try:
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
         masked_query = lineage_parser.masked_query
@@ -780,7 +792,7 @@ def get_lineage_via_table_entity(
                 source_table=from_table_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                service_name=service_name,
+                service_name=service_names,
                 timeout_seconds=timeout_seconds,
                 column_lineage=column_lineage,
             ):
@@ -788,7 +800,7 @@ def get_lineage_via_table_entity(
                     metadata,
                     from_table=str(source_table),
                     to_table=f"{schema_name}.{to_table_name}",
-                    service_name=service_name,
+                    service_name=service_names,
                     database_name=database_name,
                     schema_name=schema_name,
                     masked_query=masked_query,
@@ -809,7 +821,7 @@ def get_lineage_via_table_entity(
         Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}",
+                error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}] with service(s) [{service_names}]: {exc}",
                 stackTrace=traceback.format_exc(),
             )
         )
