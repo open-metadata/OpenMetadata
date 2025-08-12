@@ -22,7 +22,6 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
@@ -473,31 +472,27 @@ test.describe.serial('Default persona setting and removal flow', () => {
     await test.step(
       'check if removing default persona will bring back org wide default persona',
       async () => {
-        await setUserDefaultPersona(
-          userPage,
-          persona2.responseData.displayName
-        );
-
+        // set persona2 as default persona
+        await userPage.locator('[data-testid="edit-user-persona"]').click();
+        await userPage.locator('[data-testid="persona-select-list"]').click();
+        await userPage.getByTitle(persona2.responseData.displayName).click();
         await userPage
-          .locator('[data-testid="edit-user-persona"]')
-          .nth(1)
+          .locator('[data-testid="user-profile-persona-edit-save"]')
           .click();
-
-        await expect(
-          userPage.locator('[data-testid="persona-select-list"]')
-        ).toBeVisible();
-
-        await userPage.locator('[data-testid="persona-select-list"]').hover();
-
-        await userPage
-          .locator('[data-testid="persona-select-list"] .ant-select-clear')
-          .click();
-
-        await userPage.getByTestId('user-profile-persona-edit-save').click();
 
         await expect(
           userPage.getByTestId('default-persona-text')
-        ).toContainText(persona1.responseData.displayName);
+        ).toContainText(persona2.responseData.displayName);
+
+        // remove persona2 from default persona
+        await userPage.locator('[data-testid="edit-user-persona"]').click();
+        await userPage.locator('[data-testid="persona-select-list"]').click();
+        await userPage
+          .locator('[data-testid="persona-select-list"] .anticon-close-circle')
+          .click();
+        await userPage
+          .locator('[data-testid="user-profile-persona-edit-save"]')
+          .click();
       }
     );
 
