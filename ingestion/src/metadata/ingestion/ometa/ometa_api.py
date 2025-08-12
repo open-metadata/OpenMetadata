@@ -341,8 +341,8 @@ class OpenMetadata(
         Run a PUT request via create request C.
 
         Note: This method uses PUT operations with server-side business rules that may prevent
-        certain field overwrites (e.g., descriptions for glossary terms). If you need to
-        override existing metadata fields, consider using patch methods instead:
+        certain field overwrites across various entity types for data integrity reasons. If you 
+        need to override existing metadata fields, consider using patch methods instead:
 
         - For descriptions: Use patch_description(force=True)
         - For general metadata: Use patch(override_metadata=True)

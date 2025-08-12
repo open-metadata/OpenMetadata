@@ -281,7 +281,7 @@ service_entity = metadata.create_or_update(data=create_service)
 
 {% note %}
 
-**Important:** The `create_or_update()` method uses PUT operations with server-side business rules that may prevent certain field overwrites for data integrity reasons. This applies to various entities where certain fields are protected (e.g., descriptions in glossary terms and other metadata fields).
+**Important:** The `create_or_update()` method uses PUT operations with server-side business rules that may prevent certain field overwrites for data integrity reasons. This applies to various entities where certain fields are protected for business or data integrity purposes.
 
 If you need to override existing metadata fields, consider using patch methods instead:
 - For descriptions: Use `patch_description(force=True)`

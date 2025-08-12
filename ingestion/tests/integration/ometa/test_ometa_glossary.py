@@ -525,12 +525,13 @@ class TestOMetaGlossary:
         assert len(patched_glossary_term_1.references) == 3
         assert patched_glossary_term_1.references[1].name == "GT1S2"
 
-    def test_glossary_term_description_update_methods(
+    def test_entity_description_update_methods(
         self, metadata, create_glossary, create_glossary_term
     ):
         """
-        Test different methods for updating glossary term descriptions.
-        Demonstrates when to use create_or_update vs patch methods.
+        Test different methods for updating entity descriptions across various types.
+        Demonstrates when to use create_or_update vs patch methods for protected fields.
+        This example uses glossary terms but the same principles apply to other entities.
         """
         glossary = create_glossary(
             CreateGlossaryRequest(
@@ -575,5 +576,6 @@ class TestOMetaGlossary:
         assert patched_term is not None
         assert patched_term.description.root == "Updated description via patch"
 
-        # Note: create_or_update with existing glossary term may not override
-        # the description due to server-side business rules. Use patch methods above instead.
+        # Note: create_or_update may not override existing protected fields
+        # across various entity types due to server-side business rules.
+        # Use patch methods above for reliable field updates.
