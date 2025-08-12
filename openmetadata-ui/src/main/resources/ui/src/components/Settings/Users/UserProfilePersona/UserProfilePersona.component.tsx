@@ -53,13 +53,9 @@ const UserProfilePersonas = ({
     () => (isAdminUser || isLoggedInUser) && !userData.deleted,
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
-  const defaultPersona = useMemo(
-    () =>
-      userData.personas?.find(
-        (persona) => persona.id === userData.defaultPersona?.id
-      ),
-    [userData]
-  );
+
+  const defaultPersona = useMemo(() => userData.defaultPersona, [userData]);
+
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
       await updateUserDetails({ defaultPersona }, 'defaultPersona');
@@ -93,7 +89,9 @@ const UserProfilePersonas = ({
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
           {defaultPersona?.fullyQualifiedName || defaultPersona?.name ? (
-            <Typography.Text className="default-persona-text  cursor-pointer">
+            <Typography.Text
+              className="default-persona-text  cursor-pointer"
+              data-testid="default-persona-text">
               {getEntityName(defaultPersona)}
             </Typography.Text>
           ) : (
@@ -104,12 +102,7 @@ const UserProfilePersonas = ({
         </div>
       </>
     ),
-    [
-      defaultPersona,
-      userData.personas,
-      hasEditPermission,
-      handleDefaultPersonaUpdate,
-    ]
+    [defaultPersona, userData, hasEditPermission, handleDefaultPersonaUpdate]
   );
 
   return (

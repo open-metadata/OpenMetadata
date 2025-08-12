@@ -40,6 +40,8 @@ const PERSONA_DETAILS = {
 
 const user = new UserClass();
 const persona = new PersonaClass();
+const persona1 = new PersonaClass();
+const persona2 = new PersonaClass();
 
 const test = base.extend<{
   adminPage: Page;
@@ -296,6 +298,12 @@ test.describe.serial('Default persona setting and removal flow', () => {
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
+
+    const adminResponse = await apiContext.get('/api/v1/users/name/admin');
+    const adminData = await adminResponse.json();
+
+    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user.responseData.id]);
     await afterAction();
   });
 
@@ -320,6 +328,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
       // Delete the user that was created in beforeAll
       await user.delete(apiContext);
+      await persona1.delete(apiContext);
+      await persona2.delete(apiContext);
 
       await afterAction();
     }
@@ -442,9 +452,29 @@ test.describe.serial('Default persona setting and removal flow', () => {
       }
     );
 
+    await test.step('Changing default persona', async () => {
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+
+      await adminPage
+        .getByTestId(
+          `persona-details-card-${persona1.responseData.fullyQualifiedName}`
+        )
+        .click();
+      await adminPage.waitForLoadState('networkidle');
+      await setPersonaAsDefault(adminPage);
+    });
+
+    await test.step('Verify changed default persona for new user', async () => {
+      await userPage.reload();
+      await checkPersonaInProfile(userPage, persona1.responseData.displayName);
+    });
+
     await test.step('Admin removes the default persona', async () => {
       await navigateToPersonaSettings(adminPage);
-      await removePersonaDefault(adminPage, PERSONA_DETAILS.name);
+      await removePersonaDefault(
+        adminPage,
+        persona1.responseData?.fullyQualifiedName
+      );
     });
 
     await test.step('User refreshes and sees no default persona', async () => {
