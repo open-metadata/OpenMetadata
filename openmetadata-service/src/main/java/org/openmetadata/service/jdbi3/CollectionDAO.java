@@ -5338,6 +5338,13 @@ public interface CollectionDAO {
                 + "LIMIT 1",
         connectionType = POSTGRES)
     Long getMaxLastActivityTime();
+
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT id) FROM user_entity "
+            + "WHERE isBot = false "
+            + "AND deleted = false "
+            + "AND lastActivityTime >= :since")
+    int countDailyActiveUsers(@Bind("since") long since);
   }
 
   interface ChangeEventDAO {
