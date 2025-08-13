@@ -14,7 +14,7 @@
  * Status of an entity. It is used for governance and is applied to all the entities in the
  * catalog.
  */
-export enum EntityStatus {
+export enum Status {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
