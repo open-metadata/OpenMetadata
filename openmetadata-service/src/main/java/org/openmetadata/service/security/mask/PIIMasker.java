@@ -141,16 +141,21 @@ public class PIIMasker {
   }
 
   public static List<ColumnProfile> getColumnProfile(
-      String fqn, List<ColumnProfile> columnProfiles) {
+      String fqn,
+      List<ColumnProfile> columnProfiles,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table =
         Entity.getEntityByName(
-            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags", Include.ALL);
+            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
     Column column =
         table.getColumns().stream()
             .filter(c -> c.getFullyQualifiedName().equals(fqn))
             .findFirst()
             .orElse(null);
-    if (column != null && hasPiiSensitiveTag(column)) {
+    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
+
+    if (column != null && hasPiiSensitiveTag(column) && !authorizePII) {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;

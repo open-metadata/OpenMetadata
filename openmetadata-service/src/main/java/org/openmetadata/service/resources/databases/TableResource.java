@@ -1047,8 +1047,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn); // get table fqn for the resource context (vs column fqn)
     ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-    return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
   }
 
   @GET

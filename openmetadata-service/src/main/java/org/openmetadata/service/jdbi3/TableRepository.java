@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -110,6 +111,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -693,7 +695,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<ColumnProfile> getColumnProfiles(
-      String fqn, Long startTs, Long endTs, boolean authorizePII) {
+      String fqn,
+      Long startTs,
+      Long endTs,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
@@ -709,11 +715,12 @@ public class TableRepository extends EntityRepository<Table> {
     ResultList<ColumnProfile> columnProfileResultList =
         new ResultList<>(
             columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
-    if (!authorizePII) {
-      // Mask the PII data
-      columnProfileResultList.setData(
-          PIIMasker.getColumnProfile(fqn, columnProfileResultList.getData()));
-    }
+
+    // Mask the PII data
+    columnProfileResultList.setData(
+        PIIMasker.getColumnProfile(
+            fqn, columnProfileResultList.getData(), authorizer, securityContext));
+
     return columnProfileResultList;
   }
 
