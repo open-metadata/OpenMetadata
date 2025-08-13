@@ -25,7 +25,7 @@ import { EntityClass } from './EntityClass';
 
 export class StoredProcedureClass extends EntityClass {
   service = {
-    name: `pw-database-service-${uuid()}`,
+    name: `pw.database%service-${uuid()}`,
     serviceType: 'Mysql',
     connection: {
       config: {
@@ -44,15 +44,15 @@ export class StoredProcedureClass extends EntityClass {
     },
   };
   database = {
-    name: `pw-database-${uuid()}`,
+    name: `pw.database%${uuid()}`,
     service: this.service.name,
   };
   schema = {
-    name: `pw-database-schema-${uuid()}`,
+    name: `pw.database%schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
   entity = {
-    name: `pw-stored-procedure-${uuid()}`,
+    name: `pw.stored-procedure%${uuid()}`,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
     storedProcedureCode: {
       code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',

@@ -24,7 +24,7 @@ import { EntityClass } from '../EntityClass';
 
 export class DatabaseServiceClass extends EntityClass {
   entity: ServiceEntity = {
-    name: `pw-database-service-${uuid()}`,
+    name: `pw.database%service-${uuid()}`,
     serviceType: 'Mysql',
     connection: {
       config: {
