@@ -5,8 +5,8 @@ SET json = jsonb_set(
     '{entityStatus}',
     json->'status'
 )
-WHERE json ? 'status'
-  AND NOT json ? 'entityStatus';
+WHERE json ?? 'status'
+  AND NOT json ?? 'entityStatus';
 
 -- Migrate DataContract entities: rename 'status' field to 'entityStatus' and change 'Active' to 'Approved'
 UPDATE data_contract_entity
@@ -18,5 +18,5 @@ SET json = jsonb_set(
         ELSE json->'status'
     END
 )
-WHERE json ? 'status'
-  AND NOT json ? 'entityStatus';
+WHERE json ?? 'status'
+  AND NOT json ?? 'entityStatus';
