@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.metrics;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -546,5 +547,26 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/customUnits")
+  @Operation(
+      operationId = "getCustomUnitsOfMeasurement",
+      summary = "Get list of custom units of measurement",
+      description =
+          "Get a list of all custom units of measurement that have been used in existing metrics. This helps UI provide autocomplete suggestions.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of custom units",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string"))))
+      })
+  public Response getCustomUnitsOfMeasurement(@Context SecurityContext securityContext) {
+    List<String> customUnits = repository.getDistinctCustomUnitsOfMeasurement();
+    return Response.ok(customUnits).build();
   }
 }
