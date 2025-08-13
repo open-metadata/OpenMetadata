@@ -60,16 +60,12 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
-    const { personas, defaultPersona } = user;
-
-    const doesDefaultPersonaExist = personas?.find(
-      (p) => p.id === defaultPersona?.id
-    );
+    const { defaultPersona } = user;
 
     // Update the current user
     set({
       currentUser: user,
-      selectedPersona: doesDefaultPersonaExist ? defaultPersona : undefined,
+      selectedPersona: defaultPersona,
     });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
@@ -103,7 +99,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     const { personas, defaultPersona } = user;
     const { selectedPersona } = get();
     // Update selected Persona to fetch the customized pages
-    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
+    if (defaultPersona) {
       set({ selectedPersona: defaultPersona });
     }
     // Update selected Persona if Persona is not in the list of personas

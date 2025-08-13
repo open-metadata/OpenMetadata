@@ -14,14 +14,18 @@ import { expect } from '@playwright/test';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { generateEntityChildren } from '../../utils/entity';
+import {
+  assignTagToChildren,
+  generateEntityChildren,
+  removeTagsFromChildren,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const dashboardEntity = new DashboardServiceClass();
 
-test.slow(true);
-
 test.describe('Dashboards', () => {
+  test.slow(true);
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -77,5 +81,41 @@ test.describe('Dashboards', () => {
     await expect(page.getByTestId('page-indicator')).toContainText(
       'Page 1 of 1'
     );
+  });
+});
+
+test.describe('Data Model', () => {
+  test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId: 'revenue_metrics_0031',
+      entityEndpoint: 'dashboard/datamodels',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator('[data-row-key="revenue_metrics_0031"]')
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId: 'revenue_metrics_0031',
+      entityEndpoint: 'dashboard/datamodels',
+    });
   });
 });

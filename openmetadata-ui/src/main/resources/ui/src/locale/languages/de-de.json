@@ -798,6 +798,7 @@
     "ingestion-pipeline": "Ingestion Pipeline",
     "ingestion-pipeline-name": "Name der Erfassungspipeline",
     "ingestion-plural": "Erfassungen",
+    "ingestion-runner": "Erfassungsläufer",
     "ingestion-workflow-lowercase": "erfassungsworkflow",
     "inherited": "inherited",
     "inherited-entity": "Inherited {{entity}}",

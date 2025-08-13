@@ -798,6 +798,7 @@
     "ingestion-pipeline": "Pipeline de inxestión",
     "ingestion-pipeline-name": "Nome do pipeline de inxestión",
     "ingestion-plural": "Inxestións",
+    "ingestion-runner": "Executador de Inxestión",
     "ingestion-workflow-lowercase": "fluxo de traballo de inxestión",
     "inherited": "inherited",
     "inherited-entity": "Herdado {{entity}}",

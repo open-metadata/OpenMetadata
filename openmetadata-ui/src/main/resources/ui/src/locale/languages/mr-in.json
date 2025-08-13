@@ -798,6 +798,7 @@
     "ingestion-pipeline": "अंतर्ग्रहण पाइपलाइन",
     "ingestion-pipeline-name": "अंतर्ग्रहण पाइपलाइन नाव",
     "ingestion-plural": "अंतर्ग्रहण",
+    "ingestion-runner": "अंतर्ग्रहण चालक",
     "ingestion-workflow-lowercase": "अंतर्ग्रहण कार्यप्रवाह",
     "inherited": "inherited",
     "inherited-entity": "वारसाहक्काने मिळालेले {{entity}}",

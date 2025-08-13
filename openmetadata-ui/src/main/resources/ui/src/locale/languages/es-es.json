@@ -798,6 +798,7 @@
     "ingestion-pipeline": "Ingestion Pipeline",
     "ingestion-pipeline-name": "Nombre del proceso de ingesta",
     "ingestion-plural": "Ingestas",
+    "ingestion-runner": "Ejecutor de Ingesta",
     "ingestion-workflow-lowercase": "flujo de trabajo de ingesta",
     "inherited": "inherited",
     "inherited-entity": "Inherited {{entity}}",
