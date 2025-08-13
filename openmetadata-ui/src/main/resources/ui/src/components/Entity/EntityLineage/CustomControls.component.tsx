@@ -12,12 +12,18 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space } from 'antd';
+import { Button, Dropdown, Radio, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
+import { ReactComponent as TableViewIcon } from '../../../assets/svg/ic-column.svg';
+import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-platform-lineage.svg';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
+import {
+  LINEAGE_DEFAULT_QUICK_FILTERS,
+  LINEAGE_TAB_VIEW,
+} from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
@@ -25,13 +31,14 @@ import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ControlProps } from './EntityLineage.interface';
+import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC<ControlProps> = ({
-  style,
-  className,
-}: ControlProps) => {
+const CustomControls: FC<LineageControlProps> = ({
+  onlyShowTabSwitch,
+  activeViewTab,
+  handleActiveViewTabChange,
+}: LineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
@@ -135,36 +142,69 @@ const CustomControls: FC<ControlProps> = ({
   }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
-    <Row
-      className={classNames('z-10 w-full', className)}
-      gutter={[8, 8]}
-      style={style}>
-      <Col flex="auto">
-        <LineageSearchSelect />
-        <Space className="m-l-xs" size={16}>
-          <Dropdown
-            menu={{
-              items: filterMenu,
-              selectedKeys: selectedFilter,
-            }}
-            trigger={['click']}>
-            <Button ghost className="expand-btn" type="primary">
-              {t('label.advanced')}
-              <RightOutlined />
-            </Button>
-          </Dropdown>
-          <ExploreQuickFilters
-            independent
-            aggregations={{}}
-            defaultQueryFilter={queryFilter}
-            fields={selectedQuickFilters}
-            index={SearchIndex.ALL}
-            showDeleted={false}
-            onFieldValueSelect={handleQuickFiltersValueSelect}
-          />
-        </Space>
-      </Col>
-    </Row>
+    <div
+      className={classNames(
+        'd-flex w-full',
+        onlyShowTabSwitch ? 'justify-end' : 'justify-between'
+      )}>
+      {!onlyShowTabSwitch && (
+        <div className="d-flex items-center gap-4">
+          <LineageSearchSelect />
+          <Space className="m-l-xs" size={16}>
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button ghost className="expand-btn" type="primary">
+                {t('label.advanced')}
+                <RightOutlined />
+              </Button>
+            </Dropdown>
+            <ExploreQuickFilters
+              independent
+              aggregations={{}}
+              defaultQueryFilter={queryFilter}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Space>
+        </div>
+      )}
+
+      <Radio.Group
+        className="new-radio-group"
+        data-testid="lineage-view-switch"
+        optionType="button"
+        options={[
+          {
+            label: (
+              <TableViewIcon
+                className="align-middle"
+                data-testid="lineage-table-view-icon"
+                style={DATA_ASSET_ICON_DIMENSION}
+              />
+            ),
+            value: LINEAGE_TAB_VIEW.TABLE_VIEW,
+          },
+          {
+            label: (
+              <DiagramViewIcon
+                className="align-middle"
+                data-testid="lineage-diagram-view-icon"
+                style={DATA_ASSET_ICON_DIMENSION}
+              />
+            ),
+            value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
+          },
+        ]}
+        value={activeViewTab}
+        onChange={handleActiveViewTabChange}
+      />
+    </div>
   );
 };
 

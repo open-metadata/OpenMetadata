@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import { LINEAGE_TAB_VIEW } from '../../../constants/Lineage.constants';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockOnEditLineageClick = jest.fn();
 const mockOnExportClick = jest.fn();
+const mockHandleActiveViewTabChange = jest.fn();
 
 jest.mock('./LineageSearchSelect/LineageSearchSelect', () =>
   jest.fn().mockReturnValue(<p>LineageSearchSelect</p>)
@@ -52,7 +54,13 @@ describe('CustomControls', () => {
   });
 
   it('calls onEditLinageClick on Edit Lineage button click', () => {
-    const { getByText } = render(<CustomControlsComponent />);
+    const { getByText } = render(
+      <CustomControlsComponent
+        activeViewTab={LINEAGE_TAB_VIEW.DIAGRAM_VIEW}
+        handleActiveViewTabChange={mockHandleActiveViewTabChange}
+        onlyShowTabSwitch={false}
+      />
+    );
 
     // check LineageSearchSelect is visible
     expect(getByText('LineageSearchSelect')).toBeInTheDocument();

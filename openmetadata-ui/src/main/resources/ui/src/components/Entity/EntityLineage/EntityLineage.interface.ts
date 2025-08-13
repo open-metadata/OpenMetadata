@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { RadioChangeEvent } from 'antd';
 import { LoadingState } from 'Models';
-import { HTMLAttributes, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
+import { LINEAGE_TAB_VIEW } from '../../../constants/Lineage.constants';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../../generated/entity/type';
 
@@ -59,7 +61,11 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export type ControlProps = HTMLAttributes<HTMLDivElement>;
+export interface LineageControlProps {
+  onlyShowTabSwitch?: boolean;
+  activeViewTab: LINEAGE_TAB_VIEW;
+  handleActiveViewTabChange: (e: RadioChangeEvent) => void;
+}
 
 export interface LineageConfig {
   upstreamDepth: number;
