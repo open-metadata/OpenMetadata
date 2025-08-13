@@ -240,10 +240,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
-    if (!update || entity.getStatus() == null) {
+    if (!update || entity.getEntityStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
-      entity.setStatus(!nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
+      entity.setEntityStatus(
+          !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
     }
   }
 
@@ -617,10 +618,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
-    if (original.getStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getStatus() == EntityStatus.APPROVED) {
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
-      } else if (updated.getStatus() == EntityStatus.REJECTED) {
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
@@ -630,7 +631,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Glossary Term goes back to DRAFT.
-    if (updated.getStatus() == EntityStatus.DRAFT) {
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
@@ -641,7 +642,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void preDelete(GlossaryTerm entity, String deletedBy) {
     // A glossary term in `Draft` state can only be deleted by the reviewers
-    if (EntityStatus.IN_REVIEW.equals(entity.getStatus())) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
   }
@@ -1146,17 +1147,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     private void updateStatus(
         GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
-      if (origTerm.getStatus() == updatedTerm.getStatus()) {
+      if (origTerm.getEntityStatus() == updatedTerm.getEntityStatus()) {
         return;
       }
       // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
       if (!consolidatingChanges
-          && origTerm.getStatus() == EntityStatus.IN_REVIEW
-          && (updatedTerm.getStatus() == EntityStatus.APPROVED
-              || updatedTerm.getStatus() == EntityStatus.REJECTED)) {
+          && origTerm.getEntityStatus() == EntityStatus.IN_REVIEW
+          && (updatedTerm.getEntityStatus() == EntityStatus.APPROVED
+              || updatedTerm.getEntityStatus() == EntityStatus.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());
       }
-      recordChange("status", origTerm.getStatus(), updatedTerm.getStatus());
+      recordChange("entityStatus", origTerm.getEntityStatus(), updatedTerm.getEntityStatus());
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -1347,7 +1348,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         Entity.getEntity(
             GLOSSARY_TERM,
             id,
-            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,status",
+            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus",
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
 

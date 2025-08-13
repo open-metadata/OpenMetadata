@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
@@ -733,6 +734,39 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     assertTrue(
         getTag2.getDomains().getFirst().getInherited(),
         "Tag2 domain should be marked as inherited");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a tag with APPROVED status by default
+    CreateTag createTag = createRequest(getEntityName(test));
+    Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    // Verify the tag is created with APPROVED status
+    assertEquals(
+        EntityStatus.APPROVED, tag.getEntityStatus(), "Tag should be created with APPROVED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(tag);
+    tag.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(tag, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    Tag updatedTag =
+        patchEntityAndCheck(tag, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedTag.getEntityStatus(),
+        "Tag should be updated to IN_REVIEW status");
+
+    // Get the tag again to confirm the status is persisted
+    Tag retrievedTag = getEntity(updatedTag.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedTag.getEntityStatus(),
+        "Retrieved tag should maintain IN_REVIEW status");
   }
 
   public Tag createTag(

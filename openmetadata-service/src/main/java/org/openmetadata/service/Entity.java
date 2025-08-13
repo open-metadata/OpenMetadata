@@ -136,7 +136,7 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
   public static final String FIELD_CERTIFICATION = "certification";
-  public static final String FIELD_STATUS = "status";
+  public static final String FIELD_ENTITY_STATUS = "entityStatus";
 
   public static final String FIELD_DISABLED = "disabled";
 

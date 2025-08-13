@@ -269,7 +269,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName() + "_validate", table)
-            .withStatus(EntityStatus.APPROVED)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()
@@ -328,7 +328,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName(), tableWithContract)
-            .withStatus(EntityStatus.APPROVED)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()

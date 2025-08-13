@@ -68,7 +68,7 @@ public interface EntityInterface {
     return null;
   }
 
-  default Object getStatus() {
+  default EntityStatus getEntityStatus() {
     return null;
   }
 
@@ -156,7 +156,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setStatus(EntityStatus status) {
+  default void setEntityStatus(EntityStatus approvalStatus) {
     /* no-op implementation to be overridden */
   }
 

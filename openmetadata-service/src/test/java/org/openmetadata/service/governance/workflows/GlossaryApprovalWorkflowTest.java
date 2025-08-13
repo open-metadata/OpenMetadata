@@ -180,7 +180,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
 
     // Verify the term is approved (no reviewers = auto-approved)
-    assertEquals(EntityStatus.APPROVED, term.getStatus());
+    assertEquals(EntityStatus.APPROVED, term.getEntityStatus());
 
     String termFqn = glossary.getFullyQualifiedName() + "." + TEST_TERM_NAME;
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
@@ -253,7 +253,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // Verify the term has reviewers and is in draft status
     assertNotNull(term.getReviewers());
     assertFalse(term.getReviewers().isEmpty());
-    assertEquals(EntityStatus.DRAFT, term.getStatus());
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
 
     String termFqn = glossary.getFullyQualifiedName() + "." + "ReviewerTerm";
     String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
@@ -278,12 +278,12 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             () -> {
               GlossaryTerm refreshed =
                   glossaryTermTest.getEntity(finalTerm.getId(), null, ADMIN_AUTH_HEADERS);
-              return refreshed.getStatus() == EntityStatus.IN_REVIEW;
+              return refreshed.getEntityStatus() == EntityStatus.IN_REVIEW;
             });
 
     // Approve the term as reviewerUser
     String json = JsonUtils.pojoToJson(term);
-    term.setStatus(EntityStatus.APPROVED);
+    term.setEntityStatus(EntityStatus.APPROVED);
 
     Map<String, String> reviewerHeaders =
         authHeaders(reviewerUser.getName() + "@open-metadata.org");

@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -238,5 +239,41 @@ public class ClassificationResourceTest
     // Now check termCount again
     withTermCount = getEntity(classification.getId(), "termCount", ADMIN_AUTH_HEADERS);
     assertEquals(3, withTermCount.getTermCount(), "Classification should have 3 tags");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a classification with APPROVED status by default
+    CreateClassification createClassification = createRequest(getEntityName(test));
+    Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    // Verify the classification is created with APPROVED status
+    assertEquals(
+        EntityStatus.APPROVED,
+        classification.getEntityStatus(),
+        "Classification should be created with APPROVED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(classification);
+    classification.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    Classification updatedClassification =
+        patchEntityAndCheck(classification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedClassification.getEntityStatus(),
+        "Classification should be updated to IN_REVIEW status");
+
+    // Get the classification again to confirm the status is persisted
+    Classification retrievedClassification =
+        getEntity(updatedClassification.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedClassification.getEntityStatus(),
+        "Retrieved classification should maintain IN_REVIEW status");
   }
 }

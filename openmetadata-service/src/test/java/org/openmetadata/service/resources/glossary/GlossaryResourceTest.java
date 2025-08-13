@@ -819,7 +819,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
     assertEquals(1, term3.getTags().size());
     assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
-    assertEquals(EntityStatus.APPROVED, term3.getStatus());
+    assertEquals(EntityStatus.APPROVED, term3.getEntityStatus());
     // Fix: Safely extract the custom property from the extension map
     Object extension = term3.getExtension();
     String customPropValue = null;

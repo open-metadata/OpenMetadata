@@ -647,7 +647,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
           .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-          .must(QueryBuilders.matchQuery("status", "Approved"));
+          .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
@@ -682,7 +682,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
         parentTermQueryBuilder
             .minimumShouldMatch(1)
-            .must(QueryBuilders.matchQuery("status", "Approved"));
+            .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
       } else {
         parentTermQueryBuilder.minimumShouldMatch(1);
       }

@@ -14,7 +14,7 @@ public class WorkflowMapper implements EntityMapper<Workflow, CreateWorkflow> {
         .withWorkflowType(create.getWorkflowType())
         .withDisplayName(create.getDisplayName())
         .withResponse(create.getResponse())
-        .withWorkflowStatus(create.getStatus())
+        .withStatus(create.getStatus())
         .withName(create.getName());
   }
 }

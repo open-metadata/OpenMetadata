@@ -34,7 +34,7 @@ public class DataContractMapper {
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription())
             .withEntity(entity)
-            .withStatus(create.getStatus())
+            .withEntityStatus(create.getEntityStatus())
             .withSchema(create.getSchema())
             .withSemantics(create.getSemantics())
             .withQualityExpectations(create.getQualityExpectations())

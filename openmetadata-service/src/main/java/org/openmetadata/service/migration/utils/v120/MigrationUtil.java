@@ -161,8 +161,8 @@ public class MigrationUtil {
                   jsonRow = pgObject.getValue();
                 }
                 GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
-                if (term.getStatus() == EntityStatus.DRAFT) {
-                  term.setStatus(EntityStatus.APPROVED);
+                if (term.getEntityStatus() == EntityStatus.DRAFT) {
+                  term.setEntityStatus(EntityStatus.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);
                 }
                 EntityReference glossaryRef =

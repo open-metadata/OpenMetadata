@@ -36,13 +36,13 @@ import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
-import static org.openmetadata.service.Entity.FIELD_STATUS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
@@ -407,7 +407,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
-    this.supportsStatus = allowedFields.contains(FIELD_STATUS);
+    this.supportsStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
+    if (supportsStatus) {
+      this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+      this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+    }
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -576,11 +580,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     // Skip if status is already set (for both create and update operations)
-    if (entity.getStatus() != null) {
+    if (entity.getEntityStatus() != null) {
       return;
     }
     // Set default status to APPROVED
-    entity.setStatus(EntityStatus.APPROVED);
+    entity.setEntityStatus(EntityStatus.APPROVED);
   }
 
   /**
@@ -3771,6 +3775,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -3796,6 +3801,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -3850,6 +3856,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateDisplayName() {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
+    }
+
+    private void updateEntityStatus() {
+      if (supportsStatus) {
+        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+      }
     }
 
     private void updateOwners() {

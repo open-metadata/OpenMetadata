@@ -126,7 +126,7 @@ public class RuleEngine {
     if (enforceContract) {
       DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
       if (entityContract != null
-          && entityContract.getStatus() == EntityStatus.APPROVED
+          && entityContract.getEntityStatus() == EntityStatus.APPROVED
           && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }

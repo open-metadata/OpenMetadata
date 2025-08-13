@@ -209,7 +209,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
-          .withStatus(getTermStatus(printer, csvRecord))
+          .withEntityStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
@@ -277,7 +277,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addTagLabels(recordList, entity.getTags());
       addReviewers(recordList, entity.getReviewers());
       addOwners(recordList, entity.getOwners());
-      addField(recordList, entity.getStatus().value());
+      addField(recordList, entity.getEntityStatus().value());
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
@@ -447,7 +447,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(EntityStatus.IN_REVIEW)) {
+          if (term.getEntityStatus().equals(EntityStatus.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }
