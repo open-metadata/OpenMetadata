@@ -13,7 +13,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
-  private static final String PATCH_FIELDS = "workflowStatus,response";
+  private static final String PATCH_FIELDS = "status,response";
 
   public WorkflowRepository() {
     super(
@@ -87,7 +87,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("workflowStatus", original.getWorkflowStatus(), updated.getWorkflowStatus());
+      recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("response", original.getResponse(), updated.getResponse(), true);
     }
   }
