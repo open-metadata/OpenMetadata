@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -23,6 +23,78 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// Helper functions for better test organization
+const waitForContractValidation = async (page: Page) => {
+  const runNowResponse = page.waitForResponse(
+    '/api/v1/dataContracts/*/validate'
+  );
+  await page.getByTestId('contract-run-now-button').click();
+  await runNowResponse;
+  await toastNotification(page, 'Contract validation trigger successfully.');
+
+  // Wait for validation to process before reload
+  await page.waitForLoadState('networkidle');
+  await page.reload();
+
+  // Wait for the validation results to appear
+  await page.waitForSelector('.rule-item', {
+    state: 'visible',
+    timeout: 10000,
+  });
+};
+
+const checkValidationStatus = async (
+  page: Page,
+  expectedStatus: 'pass' | 'fail'
+) => {
+  const semanticsCard = page
+    .locator('.ant-card.new-header-border-card')
+    .filter({
+      has: page.locator('.contract-card-title:has-text("Semantics")'),
+    })
+    .first();
+
+  await expect(semanticsCard).toBeVisible({ timeout: 5000 });
+
+  const ruleItem = semanticsCard.locator('.rule-item').first();
+
+  await expect(ruleItem).toBeVisible({ timeout: 5000 });
+
+  if (expectedStatus === 'pass') {
+    // Check for success icon (green check)
+    const successIcon = ruleItem.locator(
+      '.rule-icon svg path[stroke="#067647"]'
+    );
+    const hasSuccessIcon = (await successIcon.count()) > 0;
+
+    expect(hasSuccessIcon).toBe(true);
+  } else {
+    // Check for failure icon (red X) - stroke color is #B42318
+    const failureIcon = ruleItem.locator(
+      '.rule-icon svg path[stroke="#B42318"]'
+    );
+    const hasFailureIcon = (await failureIcon.count()) > 0;
+
+    expect(hasFailureIcon).toBe(true);
+  }
+
+  return ruleItem;
+};
+
+/**
+ * Test Suite: Data Contracts - NOT Operator Query Builder
+ *
+ * This test suite validates the NOT operator functionality in the JSON logic query builder
+ * for data contracts. It tests both pass and fail scenarios to ensure the NOT operator
+ * correctly negates conditions.
+ *
+ * Test Flow:
+ * 1. Creates a table with a Sensitive tag
+ * 2. Creates a data contract with "NOT tag == Sensitive" rule
+ * 3. Validates that the contract passes (table has tag, NOT operator inverts the result)
+ * 4. Adds an additional Sensitive tag to the table from Schema tab
+ * 5. Validates that the contract fails after additional tag is added
+ */
 test.describe('Data Contracts - NOT Operator Query Builder', () => {
   const table = new TableClass();
   const testClassification = new ClassificationClass();
@@ -179,22 +251,30 @@ test.describe('Data Contracts - NOT Operator Query Builder', () => {
         state: 'visible',
       });
 
-      // Look for the exact tag in the dropdown
+      // Wait a moment for the dropdown to render
+      await page.waitForTimeout(500);
+
+      // Look for the exact "Sensitive" text in the dropdown option content
       const sensitiveOption = page
-        .locator(
-          `.ant-select-dropdown:visible [title*="${testClassification.data.name}.Sensitive"]`
-        )
+        .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+        .filter({ hasText: /^Sensitive$/ }) // Exact match for "Sensitive"
         .first();
 
       if (await sensitiveOption.isVisible()) {
         await sensitiveOption.click();
       } else {
-        // Try clicking on any option that contains "Sensitive"
-        const anyOption = page
-          .locator('.ant-select-dropdown:visible [title*="Sensitive"]')
+        // Fallback: try to find the parent item and click it
+        const sensitiveItem = page
+          .locator('.ant-select-dropdown:visible .ant-select-item')
+          .filter({
+            has: page.locator(
+              '.ant-select-item-option-content:text-is("Sensitive")'
+            ),
+          })
           .first();
-        if (await anyOption.isVisible()) {
-          await anyOption.click();
+
+        if (await sensitiveItem.isVisible()) {
+          await sensitiveItem.click();
         } else {
           // As a last resort, press Enter to select whatever is highlighted
           await page.keyboard.press('Enter');
@@ -215,8 +295,11 @@ test.describe('Data Contracts - NOT Operator Query Builder', () => {
     });
 
     await test.step('Save contract', async () => {
-      // Wait a moment for the semantic to be properly saved
-      await page.waitForTimeout(1000);
+      // Wait for the semantic card to be saved and visible
+      await page.waitForSelector('[data-testid="contract-semantics-card-0"]', {
+        state: 'visible',
+        timeout: 5000,
+      });
 
       // The save button is in the header with correct data-testid
       const saveButton = page.getByTestId('save-contract-btn');
@@ -242,158 +325,123 @@ test.describe('Data Contracts - NOT Operator Query Builder', () => {
         timeout: 10000,
       });
 
-      // Trigger validation with Run Now
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      // Use helper function to trigger validation
+      await waitForContractValidation(page);
 
-      await toastNotification(
-        page,
-        'Contract validation trigger successfully.'
-      );
+      // Use helper function to check validation status
+      const ruleItem = await checkValidationStatus(page, 'pass');
 
-      // Wait for the validation to complete and reload
-      await page.waitForTimeout(2000);
-      await page.reload();
+      // Verify the rule name is visible within the Semantics card
+      const ruleName = ruleItem.locator('.rule-name');
 
-      // After reload, wait for contract status to appear
-      await page.waitForTimeout(3000);
-
-      // Check the contract validation status
-      // Look for status cards that show "Passed X checks" or "Failed X checks"
-      const statusCards = page.locator(
-        '[data-testid*="status"], [data-testid*="Semantics"]'
-      );
-
-      let validationPassed = false;
-      let checksFound = false;
-
-      // Look for text like "Passed 1 checks" or "Failed 1 checks"
-      const passedChecksLocator = page.locator(
-        '*:has-text("Passed") >> *:has-text("check")'
-      );
-      const failedChecksLocator = page.locator(
-        '*:has-text("Failed") >> *:has-text("check")'
-      );
-
-      if (
-        await passedChecksLocator
-          .first()
-          .isVisible({ timeout: 3000 })
-          .catch(() => false)
-      ) {
-        const passedText = await passedChecksLocator
-          .first()
-          .innerText()
-          .catch(() => '');
-        if (passedText.match(/Passed\s+\d+\s+check/i)) {
-          validationPassed = true;
-          checksFound = true;
-        }
-      }
-
-      if (
-        await failedChecksLocator
-          .first()
-          .isVisible({ timeout: 3000 })
-          .catch(() => false)
-      ) {
-        const failedText = await failedChecksLocator
-          .first()
-          .innerText()
-          .catch(() => '');
-        if (failedText.match(/Failed\s+\d+\s+check/i)) {
-          validationPassed = false;
-          checksFound = true;
-        }
-      }
-
-      // Verify we found validation status with checks
-      if (checksFound) {
-        // The NOT operator with Tags IS Sensitive should work as expected
-        // The actual validation result depends on the logic interpretation
-        expect(checksFound).toBe(true);
-
-        // Log whether it passed or failed for verification
-        if (validationPassed) {
-          // Validation passed with NOT operator
-          expect(passedChecksLocator.first()).toBeVisible();
-        } else {
-          // Validation failed with NOT operator
-          expect(failedChecksLocator.first()).toBeVisible();
-        }
-      }
+      await expect(ruleName).toBeVisible();
+      await expect(ruleName).toContainText('No Sensitive Data Rule');
     });
 
     await test.step(
-      'Verify contract saved and NOT operator visible',
+      'Add Sensitive tag to table and verify contract fails',
       async () => {
-        // The validation results should be visible on the overview tab
-        // Navigate to overview tab (it should already be there after saving)
-        const overviewTab = page.getByTestId('overview');
-        if (await overviewTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await overviewTab.click();
-        }
+        // Navigate to Schema tab to add tag to table
+        await page.getByTestId('schema').click();
 
-        // Find and remove the Sensitive tag
-        const tagContainer = page.locator(
-          '[data-testid="classification-tags-container"]'
+        // Wait for schema tab to load by waiting for the schema table
+        await page.waitForSelector('.ant-table-wrapper', {
+          state: 'visible',
+          timeout: 5000,
+        });
+
+        // The table-level tags are in the KnowledgePanel.Tags section
+        // Click the add tag button for table-level tags
+        await page
+          .getByTestId('KnowledgePanel.Tags')
+          .getByTestId('add-tag')
+          .click();
+
+        // Wait for tag selector to be visible
+        await page.waitForSelector('[data-testid="tag-selector"]', {
+          state: 'visible',
+          timeout: 5000,
+        });
+
+        // Search for and select Sensitive tag
+        const tagInput = page.locator('[data-testid="tag-selector"] input');
+        await tagInput.click();
+        await tagInput.fill('Sensitive');
+
+        // Wait for dropdown to appear and options to load
+        await page.waitForSelector('.ant-select-dropdown:visible', {
+          state: 'visible',
+        });
+
+        // Wait for tag options to be visible in the dropdown
+        await page.waitForSelector('.ant-select-item', {
+          state: 'visible',
+          timeout: 5000,
+        });
+
+        // Select the Sensitive tag using data-testid
+        const piiSensitiveOption = page.locator(
+          '[data-testid="tag-PII.Sensitive"]'
         );
-        const sensitiveTagElement = tagContainer.locator(
+        const classificationSensitiveOption = page.locator(
           `[data-testid="tag-${testClassification.data.name}.Sensitive"]`
         );
 
-        if (await sensitiveTagElement.isVisible()) {
-          await sensitiveTagElement.hover();
-          const removeButton = sensitiveTagElement.locator(
-            '[data-testid="edit-button"]'
-          );
-          await removeButton.click();
-
-          // In the tag editor modal
-          const tagSelector = page.locator('[data-testid="tag-selector"]');
-          await tagSelector.click();
-
-          // Deselect the Sensitive tag
-          const selectedTag = page
-            .locator(`[title="${testClassification.data.name}.Sensitive"]`)
-            .locator('.ant-select-selection-item-remove');
-          await selectedTag.click();
-
-          // Save changes
-          await page.getByTestId('saveAssociatedTag').click();
-          await toastNotification(
-            page,
-            'Classification tags updated successfully'
-          );
+        if (await piiSensitiveOption.isVisible({ timeout: 2000 })) {
+          await piiSensitiveOption.click();
+        } else if (
+          await classificationSensitiveOption.isVisible({ timeout: 2000 })
+        ) {
+          await classificationSensitiveOption.click();
+        } else {
+          // As fallback, just press Enter to select the first match
+          await page.keyboard.press('Enter');
         }
 
-        // Go back to contract tab
-        await page.click('[data-testid="contract"]');
+        // Click Update button to save the tag
+        const updateButton = page.locator('[data-testid="saveAssociatedTag"]');
+        await updateButton
+          .waitFor({ state: 'visible', timeout: 3000 })
+          .catch(() => {
+            // Button might not appear if tag auto-saves
+          });
 
-        // Run validation again
-        const runNowResponse2 = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse2;
+        if (await updateButton.isVisible()) {
+          await updateButton.click();
+          // Wait for the dropdown to close after saving
+          await page
+            .waitForSelector('.ant-select-dropdown', {
+              state: 'hidden',
+              timeout: 5000,
+            })
+            .catch(() => {
+              // Dropdown might already be closed
+            });
+        } else {
+          // If no Update button, just press Escape
+          await page.keyboard.press('Escape');
+        }
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        // Navigate back to Contract tab
+        await page.getByTestId('contract').click();
 
-        // Wait and reload
-        await page.waitForTimeout(2000);
-        await page.reload();
+        // Wait for contract tab to load by waiting for Run Now button
+        await page.waitForSelector('[data-testid="contract-run-now-button"]', {
+          state: 'visible',
+          timeout: 5000,
+        });
 
-        // Check contract status - should PASS now
-        // The NOT condition passes when the tag is NOT present
-        await expect(
-          page.getByTestId('contract-status-card-item-Semantics-status')
-        ).toContainText('Passed');
+        // Use helper function to trigger validation
+        await waitForContractValidation(page);
+
+        // Use helper function to check that validation fails
+        const ruleItemFail = await checkValidationStatus(page, 'fail');
+
+        // Verify the rule name is still visible
+        const ruleNameFail = ruleItemFail.locator('.rule-name');
+
+        await expect(ruleNameFail).toBeVisible();
+        await expect(ruleNameFail).toContainText('No Sensitive Data Rule');
       }
     );
   });
