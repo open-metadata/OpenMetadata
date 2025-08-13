@@ -866,7 +866,7 @@ class PowerbiSource(DashboardServiceSource):
 
         try:
             table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
-            table_name = table.name or table_info.get("table")
+            table_name = table_info.get("table") or table.name
             schema_name = table_info.get("schema")
             database_name = table_info.get("database")
             if (
