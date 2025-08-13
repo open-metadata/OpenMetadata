@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import CuratedAssetsWidget from './CuratedAssetsWidget';
@@ -26,6 +27,7 @@ jest.mock('../../../../rest/searchAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
   Link: jest.fn().mockImplementation(({ children, to }) => (
     <a data-testid="entity-link" href={to}>
       {children}
@@ -75,6 +77,10 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
 jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
   getServiceTypeLogo: jest.fn().mockReturnValue('test-logo.png'),
 }));
+
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(({ children, icon, type, className }) => (
@@ -132,6 +138,10 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
         </div>
       );
     })
+);
+
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
 const mockHandleRemoveWidget = jest.fn();
@@ -366,7 +376,7 @@ describe('CuratedAssetsWidget', () => {
       expect(searchQuery).toHaveBeenCalledWith({
         query: '',
         pageNumber: 1,
-        pageSize: 20,
+        pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: 'table',
         sortField: 'updatedAt',
         sortOrder: 'desc',

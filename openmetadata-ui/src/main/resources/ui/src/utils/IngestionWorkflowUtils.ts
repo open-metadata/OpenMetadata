@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { RJSFSchema } from '@rjsf/utils';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -33,6 +33,7 @@ import pipelineMetadataPipeline from '../jsons/ingestionSchemas/pipelineServiceM
 import searchMetadataPipeline from '../jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
 import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
 import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
+import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 
 export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
@@ -69,7 +70,7 @@ export const getSchemaByWorkflowType = (
   workflowType: WorkflowType,
   serviceCategory: ServiceCategory
 ) => {
-  const customProperties = {
+  const customProperties: RJSFSchema = {
     displayName: {
       description: 'Display Name of the workflow',
       type: 'string',
@@ -85,6 +86,28 @@ export const getSchemaByWorkflowType = (
       default: false,
     },
   };
+
+  if (
+    workflowType === WorkflowType.Profiler &&
+    !isUndefined(ProfilerConfigurationClassBase.getSparkAgentField())
+  ) {
+    customProperties.rootProcessingEngine = {
+      type: 'object',
+      $id: '/schemas/rootProcessingEngine',
+      title: 'Processing Engine',
+      description: 'Select the processing engine for the profiler workflow',
+      properties: {
+        type: {
+          type: 'string',
+          default: 'ingestionRunner',
+        },
+        id: {
+          type: 'string',
+        },
+      },
+      required: ['type', 'id'],
+    };
+  }
   let schema = {};
 
   switch (workflowType) {

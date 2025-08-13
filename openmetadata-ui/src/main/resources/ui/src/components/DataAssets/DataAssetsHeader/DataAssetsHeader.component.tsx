@@ -15,7 +15,7 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,7 +32,10 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+  SERVICE_TYPES,
+} from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
@@ -43,6 +46,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
+import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -56,6 +60,7 @@ import {
   getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
+import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -97,6 +102,7 @@ export const DataAssetsHeader = ({
   showDomain = true,
   afterDeleteAction,
   dataAsset,
+  dataContract,
   onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
@@ -359,6 +365,7 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -418,6 +425,46 @@ export const DataAssetsHeader = ({
     selectedUserSuggestions,
   ]);
 
+  const dataContractLatestResultButton = useMemo(() => {
+    if (
+      dataContract?.latestResult?.status &&
+      [
+        ContractExecutionStatus.Aborted,
+        ContractExecutionStatus.Failed,
+        ContractExecutionStatus.Running,
+      ].includes(dataContract?.latestResult?.status)
+    ) {
+      const icon = getDataContractStatusIcon(
+        dataContract?.latestResult?.status
+      );
+
+      return (
+        <Button
+          className={classNames(
+            `data-contract-latest-result-button
+                     ${toLower(dataContract?.latestResult?.status)}`
+          )}
+          data-testid="data-contract-latest-result-btn"
+          icon={icon ? <Icon component={icon} /> : null}
+          onClick={() => {
+            navigate(
+              getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.CONTRACT
+              )
+            );
+          }}>
+          {t(`label.entity-${toLower(dataContract?.latestResult?.status)}`, {
+            entity: t('label.contract'),
+          })}
+        </Button>
+      );
+    }
+
+    return null;
+  }, [dataContract]);
+
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
       setIsAutoPilotTriggering(true);
@@ -442,7 +489,10 @@ export const DataAssetsHeader = ({
   }, [serviceCategory, afterTriggerAction]);
 
   const triggerAutoPilotApplicationButton = useMemo(() => {
-    if (!SERVICE_TYPES.includes(entityType)) {
+    if (
+      !SERVICE_TYPES.includes(entityType) ||
+      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType)
+    ) {
       return null;
     }
 
@@ -511,6 +561,8 @@ export const DataAssetsHeader = ({
                   data-testid="asset-header-btn-group"
                   size="small">
                   {triggerAutoPilotApplicationButton}
+                  {dataContractLatestResultButton}
+
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}
@@ -601,9 +653,10 @@ export const DataAssetsHeader = ({
 
         <Col span={24}>
           <div
-            className={classNames('data-asset-header-metadata ', {
+            className={classNames('data-asset-header-metadata', {
               'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}>
+            })}
+            data-testid="data-asset-header-metadata">
             {showDomain && (
               <>
                 <DomainLabel

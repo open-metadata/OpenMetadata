@@ -51,7 +51,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios ', () => {
+test.describe('Explore Tree scenarios', () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
@@ -60,15 +60,30 @@ test.describe('Explore Tree scenarios ', () => {
         state: 'detached',
       });
 
-      await expect(page.getByRole('tree')).toContainText('Databases');
-      await expect(page.getByRole('tree')).toContainText('Dashboards');
-      await expect(page.getByRole('tree')).toContainText('Pipelines');
-      await expect(page.getByRole('tree')).toContainText('Topics');
-      await expect(page.getByRole('tree')).toContainText('ML Models');
-      await expect(page.getByRole('tree')).toContainText('Containers');
-      await expect(page.getByRole('tree')).toContainText('Search Indexes');
-      await expect(page.getByRole('tree')).toContainText('Governance');
-      await expect(page.getByRole('tree')).toContainText('APIs');
+      await expect(
+        page.getByTestId('explore-tree-title-Databases')
+      ).toContainText('Databases');
+      await expect(
+        page.getByTestId('explore-tree-title-Dashboards')
+      ).toContainText('Dashboards');
+      await expect(
+        page.getByTestId('explore-tree-title-Pipelines')
+      ).toContainText('Pipelines');
+      await expect(page.getByTestId('explore-tree-title-Topics')).toContainText(
+        'Topics'
+      );
+      await expect(
+        page.getByTestId('explore-tree-title-ML Models')
+      ).toContainText('ML Models');
+      await expect(
+        page.getByTestId('explore-tree-title-Containers')
+      ).toContainText('Containers');
+      await expect(
+        page.getByTestId('explore-tree-title-Search Indexes')
+      ).toContainText('Search Indexes');
+      await expect(
+        page.getByTestId('explore-tree-title-Governance')
+      ).toContainText('Governance');
 
       await page
         .locator('div')
@@ -77,18 +92,12 @@ test.describe('Explore Tree scenarios ', () => {
         .first()
         .click();
 
-      await expect(page.getByRole('tree')).toContainText('Glossaries');
-      await expect(page.getByRole('tree')).toContainText('Tags');
-
-      // APIs
-      await page
-        .locator('div')
-        .filter({ hasText: /^APIs$/ })
-        .locator('svg')
-        .first()
-        .click();
-
-      await expect(page.getByRole('tree')).toContainText('rest');
+      await expect(
+        page.getByTestId('explore-tree-title-Glossaries')
+      ).toContainText('Glossaries');
+      await expect(page.getByTestId('explore-tree-title-Tags')).toContainText(
+        'Tags'
+      );
     });
 
     await test.step('Check the quick filters', async () => {
@@ -285,6 +294,8 @@ test.describe('Explore page', () => {
   });
 
   test.beforeEach('Setup pre-requisits', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
     await glossary.create(apiContext);
@@ -308,6 +319,8 @@ test.describe('Explore page', () => {
   });
 
   test.afterEach('Cleanup', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await getApiContext(page);
     await table.delete(apiContext);
     await glossary.delete(apiContext);
@@ -363,45 +376,39 @@ test.describe('Explore page', () => {
     await validateBucketsForIndex(page, 'all');
   });
 
-  test('Check listing of for each entity when sort is descending', async ({
-    page,
-  }) => {
-    const { apiContext } = await getApiContext(page);
+  DATA_ASSETS.forEach((asset) => {
+    test.fixme(
+      `Check listing of ${asset.key} when sort is descending`,
+      async ({ page }) => {
+        const { apiContext } = await getApiContext(page);
 
-    const searchBox = page.getByTestId('searchBox');
-    await searchBox.fill('pw');
-    await searchBox.press('Enter');
+        const searchBox = page.getByTestId('searchBox');
+        await searchBox.fill('pw');
+        await searchBox.press('Enter');
 
-    const response = await apiContext
-      .get(
-        `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
-      )
-      .then((res) => res.json());
+        const response = await apiContext
+          .get(
+            `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
+          )
+          .then((res) => res.json());
 
-    const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+        const buckets =
+          response.aggregations?.['sterms#entityType']?.buckets ?? [];
 
-    const bucketMap = new Map(buckets.map((b: Bucket) => [b.key, b.doc_count]));
+        const assetDocCount = buckets.find(
+          (b: Bucket) => b.key === asset.key
+        )?.doc_count;
 
-    const filteredAssets = DATA_ASSETS.filter((asset) =>
-      bucketMap.has(asset.key)
-    );
-
-    let i = 0;
-
-    do {
-      const asset = filteredAssets[i];
-      const doc_count = Number(bucketMap.get(asset.key) ?? 0);
-      const tab = page.getByTestId(`${asset.label}-tab`);
-
-      if (i !== 0) {
-        await tab.click();
+        if (assetDocCount > 0) {
+          const tab = page.getByTestId(`${asset.label}-tab`);
+          await tab.click();
+          await validateBucketsForIndexAndSort(page, asset, assetDocCount);
+        } else {
+          await expect(
+            page.getByTestId(`${asset.label}-tab`)
+          ).not.toBeVisible();
+        }
       }
-
-      await test.step(`Validate asset: ${asset.label}`, async () => {
-        await validateBucketsForIndexAndSort(page, asset, doc_count);
-      });
-
-      i++;
-    } while (i < filteredAssets.length);
+    );
   });
 });

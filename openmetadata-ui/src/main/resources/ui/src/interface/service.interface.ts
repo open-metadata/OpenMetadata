@@ -45,9 +45,14 @@ import {
   SearchService,
 } from '../generated/entity/services/searchService';
 import {
+  SecurityConnection,
+  SecurityService,
+} from '../generated/entity/services/securityService';
+import {
   StorageConnection,
   StorageService,
 } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
 
 export interface IngestionSchedule {
@@ -90,7 +95,8 @@ export type DomainSupportedServiceTypes =
   | DashboardService
   | PipelineService
   | MlmodelService
-  | StorageService;
+  | StorageService
+  | SecurityService;
 
 export type ServicesType =
   | DatabaseService
@@ -101,7 +107,8 @@ export type ServicesType =
   | MetadataService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | SecurityService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -116,13 +123,15 @@ export type ConfigData =
   | MlModelConnection
   | MetadataConnection
   | StorageConnection
-  | SearchConnection;
+  | SearchConnection
+  | SecurityConnection;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;
   enableDebugLog?: boolean;
   displayName?: string;
   raiseOnError?: boolean;
+  rootProcessingEngine?: EntityReference;
 };
 
 export interface IngestionWorkflowFormProps {

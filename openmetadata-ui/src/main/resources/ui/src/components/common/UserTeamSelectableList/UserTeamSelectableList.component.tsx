@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space, Tabs, Typography } from 'antd';
+import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,6 +65,7 @@ export const UserTeamSelectableList = ({
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
+  overlayClassName,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -352,7 +354,10 @@ export const UserTeamSelectableList = ({
         </FocusTrapWithContainer>
       }
       open={popupVisible}
-      overlayClassName="user-team-select-popover card-shadow"
+      overlayClassName={classNames(
+        'user-team-select-popover card-shadow',
+        overlayClassName
+      )}
       placement="bottomRight"
       showArrow={false}
       trigger="click"

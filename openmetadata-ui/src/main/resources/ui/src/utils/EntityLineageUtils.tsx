@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import Icon, { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
+import { Typography } from 'antd';
+import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+
 import {
   get,
   isEmpty,
@@ -26,6 +30,7 @@ import {
 } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import { MouseEvent as ReactMouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -63,8 +68,10 @@ import {
   NodeData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
   LINEAGE_EXPORT_HEADERS,
+  LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_TRANSITION_DURATION,
@@ -91,6 +98,8 @@ import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
+import entityUtilClassBase from '../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
@@ -1133,8 +1142,14 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      stack.push(...childNodes);
-      outgoers.push(...childNodes);
+      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
+      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
+      const finalChildNodeRemovingRootNode = childNodes.filter(
+        (item) => !item.data.isRootNode
+      );
+
+      stack.push(...finalChildNodeRemovingRootNode);
+      outgoers.push(...finalChildNodeRemovingRootNode);
       connectedEdges.push(...childEdges);
     }
   }
@@ -1878,4 +1893,158 @@ export const getAllDownstreamEdges = (
 
   // Combine direct and nested downstream edges
   return [...directDownstreamEdges, ...nestedDownstreamEdges];
+};
+
+const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
+  // Field groups we want to combine
+  const FROM_FIELDS = ['fromEntityFQN', 'fromServiceName', 'fromServiceType'];
+  const TO_FIELDS = ['toEntityFQN', 'toServiceName', 'toServiceType'];
+
+  const renderCombined = (fqn: string, serviceType: string) => {
+    const isMetricEntity = serviceType === EntityType.METRIC;
+
+    return (
+      <div className="d-flex items-center gap-2">
+        {isMetricEntity ? (
+          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+        ) : (
+          <img
+            alt={fqn}
+            className="header-icon"
+            src={serviceUtilClassBase.getServiceLogo(serviceType)}
+          />
+        )}
+
+        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+          {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
+        </Typography.Text>
+      </div>
+    );
+  };
+
+  const getEntityType = (serviceType: string, fqn: string) => {
+    if (!serviceType || !fqn) {
+      return EntityType.TABLE; // Default fallback
+    }
+
+    if (serviceType === EntityType.METRIC) {
+      return serviceType;
+    }
+
+    let entityType =
+      serviceUtilClassBase.getEntityTypeFromServiceType(serviceType);
+
+    if (entityType === EntityType.DASHBOARD) {
+      const fqnSplit = Fqn.split(fqn);
+
+      entityType =
+        fqnSplit.length === 3 ? EntityType.DASHBOARD_DATA_MODEL : entityType;
+    }
+
+    return entityType;
+  };
+
+  const columns: ColumnsType<string> = [];
+  columns.push(
+    ...([
+      {
+        title: t('label.from-entity'),
+        dataIndex: 'fromCombined',
+        key: 'fromCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.fromServiceType)
+            ? EntityType.METRIC
+            : record.fromServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.fromEntityFQN),
+                record.fromEntityFQN
+              )}>
+              {renderCombined(record.fromEntityFQN, serviceType)}
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.to-entity'),
+        dataIndex: 'toCombined',
+        key: 'toCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.toServiceType)
+            ? EntityType.METRIC
+            : record.toServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.toEntityFQN),
+                record.toEntityFQN
+              )}>
+              {renderCombined(record.toEntityFQN, serviceType)}
+            </Link>
+          );
+        },
+      },
+    ] as unknown as ColumnsType<string>[number][])
+  );
+
+  // Append remaining header-driven columns
+  headers.forEach((header) => {
+    if ([...FROM_FIELDS, ...TO_FIELDS].includes(header)) {
+      return;
+    }
+
+    columns.push({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[header],
+      dataIndex: header,
+      key: header,
+      width: 200,
+      ellipsis: { showTitle: false },
+      render: (text: string) => (
+        <Typography.Text
+          data-testid={`lineage-column-${header}-${text}`}
+          ellipsis={{ tooltip: true }}>
+          {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
+        </Typography.Text>
+      ),
+    });
+  });
+
+  return columns;
+};
+
+export const getLineageTableConfig = (
+  csvData: string[][]
+): {
+  columns: ColumnsType<string>;
+  dataSource: Record<string, string>[];
+} => {
+  if (!csvData || csvData.length < 2) {
+    return {
+      columns: [],
+      dataSource: [],
+    };
+  }
+
+  const [headers, ...rows] = csvData;
+
+  const dataSource = rows.map((row, index) => {
+    const rowData: Record<string, string> = {};
+    headers.forEach((header, headerIndex) => {
+      rowData[header] = row[headerIndex] || '';
+    });
+    rowData.key = index.toString();
+
+    return rowData;
+  });
+
+  const columns = buildLineageTableColumns(headers);
+
+  return { columns, dataSource };
 };

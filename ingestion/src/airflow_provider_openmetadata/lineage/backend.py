@@ -71,15 +71,13 @@ class OpenMetadataLineageBackend(LineageBackend):
             xlet_list: List[XLets] = get_xlets_from_dag(dag)
             # Only pass client config arguments that are set
             additional_client_config_arguments = {
-                {
-                    key: value
-                    for key, value in {
-                        "timeout": config.timeout,
-                        "retry": config.retry,
-                        "retry_wait": config.retry_wait,
-                    }.items()
-                    if value
-                }
+                key: value
+                for key, value in {
+                    "timeout": config.timeout,
+                    "retry": config.retry,
+                    "retry_wait": config.retry_wait,
+                }.items()
+                if value
             }
 
             if additional_client_config_arguments:

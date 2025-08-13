@@ -799,6 +799,7 @@ export interface AccessDetails {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",

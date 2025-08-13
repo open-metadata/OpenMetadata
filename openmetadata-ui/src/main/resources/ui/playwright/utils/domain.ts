@@ -136,11 +136,24 @@ export const selectSubDomain = async (
   });
 
   if (!isSelected) {
+    const subDomainRes = page.waitForResponse(
+      '/api/v1/search/query?q=*&from=0&size=0&index=domain_search_index&deleted=false&track_total_hits=true'
+    );
     await menuItem.click();
+    await subDomainRes;
     await page.waitForLoadState('networkidle');
   }
 
+  const subDomainRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&from=0&size=50&index=domain_search_index&deleted=false&track_total_hits=true'
+  );
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await subDomainRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await page.getByTestId(subDomain.name).click();
   await page.waitForLoadState('networkidle');
 };
@@ -373,7 +386,7 @@ export const addAssetsToDomain = async (
     return (
       response
         .url()
-        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+        .includes('/api/v1/search/query?q=&index=all&from=0&size=15') &&
       queryFilter !== null &&
       queryFilter !== ''
     );

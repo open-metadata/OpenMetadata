@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,7 +82,7 @@ const GlossaryTermsV1 = ({
   isTabExpanded,
   toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useRequiredParams<{
+  const { tab: activeTab, version } = useRequiredParams<{
     tab: EntityTabs;
     version: string;
   }>();
@@ -108,10 +107,6 @@ const GlossaryTermsV1 = ({
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);
-
-  const activeTab = useMemo(() => {
-    return tab ?? EntityTabs.OVERVIEW;
-  }, [tab]);
 
   const activeTabHandler = (tab: string) => {
     navigate(
@@ -162,8 +157,8 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
-  }, [assetTabRef, tab]);
+    activeTab !== EntityTabs.ASSETS && activeTabHandler(EntityTabs.ASSETS);
+  }, [assetTabRef, activeTab]);
 
   const onExtensionUpdate = useCallback(
     async (updatedTable: GlossaryTerm) => {
@@ -208,12 +203,12 @@ const GlossaryTermsV1 = ({
                     {getCountBadge(
                       childGlossaryTerms.length,
                       '',
-                      activeTab === EntityTabs.TERMS
+                      activeTab === EntityTabs.GLOSSARY_TERMS
                     )}
                   </span>
                 </div>
               ),
-              key: EntityTabs.TERMS,
+              key: EntityTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -299,7 +294,8 @@ const GlossaryTermsV1 = ({
     return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
-      EntityTabs.OVERVIEW
+      EntityTabs.OVERVIEW,
+      isVersionView
     );
   }, [
     customizedPage?.tabs,
