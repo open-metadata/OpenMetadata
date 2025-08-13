@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import java.lang.reflect.Field;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 
 class UserActivityTrackerTest {
@@ -231,5 +233,30 @@ class UserActivityTrackerTest {
       tracker.forceFlushSync();
       verify(mockUserRepository, times(1)).updateUsersLastActivityTimeBatch(anyMap());
     }
+  }
+
+  @Test
+  void testCountDailyActiveUsers() {
+    CollectionDAO.UserDAO mockUserDAO = mock(CollectionDAO.UserDAO.class);
+    when(mockUserRepository.getDao()).thenReturn(mockUserDAO);
+
+    long now = System.currentTimeMillis();
+    long twentyFourHoursAgo = now - (24 * 60 * 60 * 1000);
+    long oneYearAgo = now - (365L * 24 * 60 * 60 * 1000);
+
+    when(mockUserDAO.countDailyActiveUsers(twentyFourHoursAgo)).thenReturn(0);
+    int count = mockUserDAO.countDailyActiveUsers(twentyFourHoursAgo);
+    assertEquals(0, count, "Should return 0 when no users are active");
+
+    when(mockUserDAO.countDailyActiveUsers(twentyFourHoursAgo)).thenReturn(5);
+    count = mockUserDAO.countDailyActiveUsers(twentyFourHoursAgo);
+    assertEquals(5, count, "Should return count of active users");
+
+    when(mockUserDAO.countDailyActiveUsers(oneYearAgo)).thenReturn(12);
+    count = mockUserDAO.countDailyActiveUsers(oneYearAgo);
+    assertEquals(12, count, "Should return all users when querying from far past");
+
+    verify(mockUserDAO, times(2)).countDailyActiveUsers(twentyFourHoursAgo);
+    verify(mockUserDAO, times(1)).countDailyActiveUsers(oneYearAgo);
   }
 }
