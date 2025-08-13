@@ -300,7 +300,7 @@
     },
     "entityStatus": {
       "description": "Status of the MlModel.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

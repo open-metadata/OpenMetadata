@@ -120,7 +120,7 @@
     },
     "entityStatus": {
       "description": "Status of the API Collection.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

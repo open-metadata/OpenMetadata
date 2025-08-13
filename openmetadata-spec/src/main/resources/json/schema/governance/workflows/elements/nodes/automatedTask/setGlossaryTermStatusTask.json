@@ -39,7 +39,7 @@
         "glossaryTermStatus": {
           "title": "Glossary Term Status",
           "description": "Choose which Status to apply to the Glossary Term",
-          "$ref": "../../../../../type/entityStatus.json"
+          "$ref": "../../../../../type/status.json"
         }
       },
       "required": ["glossaryTermStatus"],

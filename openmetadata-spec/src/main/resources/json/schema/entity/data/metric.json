@@ -205,7 +205,7 @@
     },
     "entityStatus": {
       "description": "Status of the Metric.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

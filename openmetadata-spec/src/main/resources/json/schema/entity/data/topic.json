@@ -189,7 +189,7 @@
     },
     "entityStatus": {
       "description": "Status of the Topic.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

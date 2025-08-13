@@ -182,7 +182,7 @@
     },
     "entityStatus": {
       "description": "Status of the APIEndpoint.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

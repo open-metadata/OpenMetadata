@@ -22,7 +22,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "entityStatus": {
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Draft"
     },
     "entity": {

@@ -124,7 +124,7 @@
     },
     "entityStatus": {
       "description": "Approval status of the glossary term.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     },
     "deleted": {

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/entityStatus.json",
+  "$id": "https://open-metadata.org/schema/type/status.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EntityStatus",
   "description": "Status of an entity. It is used for governance and is applied to all the entities in the catalog.",

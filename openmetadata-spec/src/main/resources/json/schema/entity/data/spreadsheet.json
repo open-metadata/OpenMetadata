@@ -188,7 +188,7 @@
     },
     "entityStatus": {
       "description": "Status of the Spreadsheet.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

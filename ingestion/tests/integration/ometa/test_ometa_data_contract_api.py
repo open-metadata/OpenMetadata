@@ -29,9 +29,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.dataContract import (
-    ContractStatus,
     DataContract,
 )
+from metadata.generated.schema.type.entityStatus import EntityStatus
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -261,12 +261,12 @@ class OMetaDataContractTest(TestCase):
             name=self.create_data_contract.name,
             description=self.create_data_contract.description,
             entity=self.create_data_contract.entity,
-            status=ContractStatus.Active,
+            entityStatus=EntityStatus.Approved,
             schema=self.create_data_contract.schema_,
         )
 
         updated_contract: DataContract = self.metadata.create_or_update(
             data=updated_request
         )
-        self.assertEqual(updated_contract.status, ContractStatus.Active)
+        self.assertEqual(updated_contract.entityStatus, EntityStatus.Approved)
         self.assertEqual(updated_contract.id, created_contract.id)

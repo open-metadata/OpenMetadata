@@ -91,7 +91,7 @@
     },
     "entityStatus": {
       "description": "Status of the tag.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

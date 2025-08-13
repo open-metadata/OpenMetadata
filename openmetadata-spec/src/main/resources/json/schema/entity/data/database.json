@@ -173,7 +173,7 @@
     },
     "entityStatus": {
       "description": "Status of the Database.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

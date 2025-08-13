@@ -169,7 +169,7 @@
     },
     "entityStatus": {
       "description": "Status of the DatabaseSchema.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

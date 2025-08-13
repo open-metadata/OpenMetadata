@@ -1213,7 +1213,7 @@
     },
     "entityStatus": {
       "description": "Status of the Table.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

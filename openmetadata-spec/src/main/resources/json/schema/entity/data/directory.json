@@ -180,7 +180,7 @@
     },
     "entityStatus": {
       "description": "Status of the Directory.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

@@ -115,7 +115,7 @@
     },
     "entityStatus": {
       "description": "Status of the Glossary.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },

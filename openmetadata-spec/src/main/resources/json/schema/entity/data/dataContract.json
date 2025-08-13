@@ -100,7 +100,7 @@
     },
     "entityStatus": {
       "description": "Approval status of the data contract.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Draft"
     },
     "entity": {

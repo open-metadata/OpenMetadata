@@ -160,7 +160,7 @@
     },
     "entityStatus": {
       "description": "Status of the Worksheet.",
-      "$ref": "../../type/entityStatus.json",
+      "$ref": "../../type/status.json",
       "default": "Approved"
     }
   },
