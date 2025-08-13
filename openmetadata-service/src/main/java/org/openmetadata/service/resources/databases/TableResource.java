@@ -954,12 +954,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(
             JsonUtils.pojoToJson(
-                repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
+                repository.getLatestTableProfile(
+                    fqn, includeColumnProfile, authorizer, securityContext)))
         .build();
   }
 
@@ -1381,7 +1381,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumns(id, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumns(
+            id, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1440,7 +1441,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumnsByFQN(fqn, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumnsByFQN(
+            fqn, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1624,7 +1626,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
-        repository.searchTableColumnsById(id, query, limitParam, offsetParam, fieldsParam, include);
+        repository.searchTableColumnsById(
+            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1685,7 +1688,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include);
+            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());

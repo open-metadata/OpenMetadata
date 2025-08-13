@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -758,8 +759,26 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table getLatestTableProfile(
+      String fqn,
+      boolean includeColumnProfile,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    return getLatestTableProfileInternal(
+        fqn,
+        includeColumnProfile,
+        t -> PIIMasker.getTableProfile(fqn, t.getColumns(), authorizer, securityContext));
+  }
+
+  public Table getLatestTableProfile(
       String fqn, boolean authorizePII, boolean includeColumnProfile) {
+    return getLatestTableProfileInternal(
+        fqn, includeColumnProfile, t -> PIIMasker.getTableProfile(t.getColumns(), authorizePII));
+  }
+
+  private Table getLatestTableProfileInternal(
+      String fqn, boolean includeColumnProfile, Function<Table, List<Column>> maskFn) {
     Table table = findByName(fqn, ALL);
+
     TableProfile tableProfile =
         JsonUtils.readValue(
             daoCollection
@@ -767,16 +786,16 @@ public class TableRepository extends EntityRepository<Table> {
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
+
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
     }
 
-    // Set the column tags. Will be used to hide the data
-    if (!authorizePII) {
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
-      table.setColumns(PIIMasker.getTableProfile(table.getColumns()));
-    }
+    // Always populate field tags; the masking strategy decides what to do with them
+    populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
 
+    // Apply caller-provided masking strategy
+    table.setColumns(maskFn.apply(table));
     return table;
   }
 
@@ -1793,19 +1812,36 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<Column> getTableColumns(
-      UUID tableId, int limit, int offset, String fieldsParam, Include include) {
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = find(tableId, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+    return getTableColumnsInternal(table, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   public ResultList<Column> getTableColumnsByFQN(
-      String fqn, int limit, int offset, String fieldsParam, Include include) {
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+    return getTableColumnsInternal(table, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   private org.openmetadata.service.util.ResultList<Column> getTableColumnsInternal(
-      Table table, int limit, int offset, String fieldsParam) {
+      Table table,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     // For paginated column access, we need to load the table with columns
     // but we'll optimize the field loading to only process what we need
     Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), NON_DELETED, false);
@@ -1836,7 +1872,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
-      paginatedColumns = PIIMasker.getTableProfile(paginatedColumns);
+      paginatedColumns =
+          PIIMasker.getTableProfile(
+              table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
     }
 
     // Calculate pagination metadata
@@ -1981,19 +2019,41 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<Column> searchTableColumnsById(
-      UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
-    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+    return searchTableColumnsInternal(
+        table, query, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
-      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
-    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+    return searchTableColumnsInternal(
+        table, query, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
-      Table table, String query, int limit, int offset, String fieldsParam) {
+      Table table,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(List.of(), null, null, 0);
@@ -2042,7 +2102,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(matchingColumns);
       populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
-      matchingColumns = PIIMasker.getTableProfile(matchingColumns);
+      matchingColumns =
+          PIIMasker.getTableProfile(
+              table.getFullyQualifiedName(), matchingColumns, authorizer, securityContext);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
