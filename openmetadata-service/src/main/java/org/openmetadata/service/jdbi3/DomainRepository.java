@@ -23,8 +23,11 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -442,7 +445,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getAssetsFromDomainAndSubDomains(Domain domain) {
-    var allDomainIds = new java.util.HashSet<UUID>();
+    var allDomainIds = new HashSet<UUID>();
     collectSubDomainHierarchy(domain.getId(), allDomainIds);
 
     // Get all assets for this domain and all its sub-domains
@@ -455,7 +458,7 @@ public class DomainRepository extends EntityRepository<Domain> {
                 Include.ALL);
 
     // Collect unique assets
-    var uniqueAssets = new java.util.LinkedHashSet<EntityReference>();
+    var uniqueAssets = new LinkedHashSet<EntityReference>();
     records.forEach(
         record -> {
           var assetRef =
@@ -467,7 +470,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     return new ArrayList<>(uniqueAssets);
   }
 
-  private void collectSubDomainHierarchy(UUID domainId, java.util.Set<UUID> allDomainIds) {
+  private void collectSubDomainHierarchy(UUID domainId, Set<UUID> allDomainIds) {
     if (allDomainIds.contains(domainId)) {
       return; // Avoid infinite loops
     }
@@ -494,7 +497,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     // For each domain, collect assets from the domain and all its sub-domains
     domains.forEach(
         domain -> {
-          var allDomainIds = new java.util.HashSet<UUID>();
+          var allDomainIds = new HashSet<UUID>();
           collectSubDomainHierarchy(domain.getId(), allDomainIds);
 
           // Get all assets for this domain hierarchy
@@ -507,7 +510,7 @@ public class DomainRepository extends EntityRepository<Domain> {
                       Include.ALL);
 
           // Collect unique assets
-          var uniqueAssets = new java.util.LinkedHashSet<EntityReference>();
+          var uniqueAssets = new LinkedHashSet<EntityReference>();
           records.forEach(
               record -> {
                 var assetRef =
