@@ -1,0 +1,142 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/fonts.less');
+
+.curated-assets-list-item:last-child {
+  border-bottom: none;
+}
+
+.curated-assets-list-item {
+  padding: @size-sm @size-lg;
+
+  &:hover {
+    background-color: @grey-1;
+  }
+
+  .entity-button-icon {
+    height: @size-mlg;
+    width: @size-mlg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: @size-mlg;
+      width: @size-mlg;
+    }
+  }
+}
+
+.curated-assets-list-item-link {
+  text-decoration: none;
+  max-width: 280px;
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.curated-assets-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .ant-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .entity-list-body {
+    flex: 1;
+    padding: 0;
+    margin-top: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .widget-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  .curated-assets-list-item-content {
+    min-width: 0;
+  }
+
+  .entity-list-item-title {
+    font-size: @font-size-base;
+    font-weight: @font-medium;
+    text-align: left;
+  }
+
+  .entity-list-item-description {
+    font-size: @size-sm;
+    font-weight: @font-regular;
+    text-align: left;
+    margin-bottom: 0;
+
+    .markdown-parser {
+      .om-block-editor {
+        p {
+          font-size: @size-sm;
+          font-weight: @font-regular;
+          text-align: left;
+          margin-bottom: 0;
+          text-decoration: none;
+          color: @grey-900;
+        }
+        ul li::before {
+          background-color: @grey-4;
+        }
+      }
+    }
+  }
+
+  .ant-dropdown-menu-item {
+    padding: @size-mlg @size-lg;
+    height: @size-2xl;
+
+    &:hover {
+      color: @blue-34;
+      background-color: @blue-33;
+      font-weight: @font-medium;
+    }
+  }
+
+  .ant-dropdown-menu-item-active {
+    color: @blue-34;
+    background-color: @blue-33;
+    font-weight: @font-medium;
+  }
+}
+
+.entity-icon {
+  width: @size-2xl;
+  height: @size-2xl;
+  margin-right: @size-xs;
+}
+
+.curated-assets-grid {
+  width: 100%;
+}

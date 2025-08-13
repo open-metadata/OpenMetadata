@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
 import { ROUTES, VERSION } from '../../../../constants/constants';
-import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
@@ -31,13 +30,14 @@ const cookieStorage = new CookieStorage();
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { isFirstTimeUser } = useAuth();
   const { appVersion } = useApplicationStore();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
     modal: false,
   });
-  const cookieKey = getVersionedStorageKey(VERSION, appVersion);
+  const cookieKey = useMemo(() => {
+    return appVersion ? getVersionedStorageKey(VERSION, appVersion) : null;
+  }, [appVersion]);
 
   const { releaseLink, blogLink, isMajorRelease } = useMemo(() => {
     return {
@@ -63,18 +63,22 @@ const WhatsNewAlert = () => {
   );
 
   const handleCancel = useCallback(() => {
-    cookieStorage.setItem(cookieKey, 'true', {
-      expires: getReleaseVersionExpiry(),
-    });
+    if (cookieKey) {
+      cookieStorage.setItem(cookieKey, 'true', {
+        expires: getReleaseVersionExpiry(),
+      });
+    }
     onModalCancel();
   }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
 
   useEffect(() => {
-    setShowWhatsNew({
-      alert: cookieStorage.getItem(cookieKey) !== 'true',
-      modal: false,
-    });
-  }, [isFirstTimeUser, cookieKey]);
+    if (cookieKey) {
+      setShowWhatsNew((prev) => ({
+        ...prev,
+        alert: cookieStorage.getItem(cookieKey) !== 'true',
+      }));
+    }
+  }, [cookieKey]);
 
   return (
     <>
@@ -84,7 +88,7 @@ const WhatsNewAlert = () => {
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
-              <Col className="whats-new-alert-left" flex="160px">
+              <Col className="whats-new-alert-left" flex="210px">
                 <RocketIcon className="whats-new-alert-rocket-icon" />
                 <Typography.Text className="whats-new-alert-version">
                   {t('label.version-number', {
@@ -96,6 +100,9 @@ const WhatsNewAlert = () => {
                 <Typography.Text className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography.Text>
+                <Typography.Paragraph className="whats-new-alert-subtext">
+                  {t('label.to-learn-more-please-check-out')}
+                </Typography.Paragraph>
                 <div className="whats-new-alert-links">
                   <Button
                     className="p-0"

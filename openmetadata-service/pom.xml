@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.8.0-SNAPSHOT</version>
+    <version>1.9.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -19,7 +19,7 @@
     <org.testcontainers.version>1.20.3</org.testcontainers.version>
     <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
-    <azure-kv.version>4.9.0</azure-kv.version>
+    <azure-kv.version>4.10.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
@@ -36,6 +36,7 @@
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
+    <kubernetes-client.version>21.0.1</kubernetes-client.version>
   </properties>
 
   <dependencyManagement>
@@ -889,6 +890,12 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
+    <!-- Kubernetes Client for Secrets Management -->
+    <dependency>
+      <groupId>io.kubernetes</groupId>
+      <artifactId>client-java</artifactId>
+      <version>${kubernetes-client.version}</version>
     </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>

@@ -1,5 +1,6 @@
 ---
 title: How to Add a Custom Property to an Entity with API
+description: Learn how to add custom metadata properties to an entity to extend its structure and capture new details.
 slug: /developers/how-to-add-custom-property-to-an-entity
 ---
 

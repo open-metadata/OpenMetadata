@@ -1,5 +1,6 @@
 ---
 title: Get a Quick Glance of the Data Assets
+description: Instantly preview data assets with inline metadata, sample rows, schema details, tags, and quality metrics—without leaving the Explore page.
 slug: /how-to-guides/data-discovery/preview
 ---
 

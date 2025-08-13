@@ -197,6 +197,8 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
+  await page.waitForLoadState('networkidle');
+
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
   );

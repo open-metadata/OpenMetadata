@@ -26,7 +26,6 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  reloadAndWaitForNetworkIdle,
 } from '../../utils/common';
 import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
@@ -95,8 +94,8 @@ services.forEach((ServiceClass) => {
       test('Create Service and check the AutoPilot status', async ({
         page,
       }) => {
-        // 6 minutes max for AutoPilot tests to complete agents running.
-        test.setTimeout(6 * 60 * 1000);
+        // 8 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(8 * 60 * 1000);
 
         await settingClick(
           page,
@@ -115,56 +114,67 @@ services.forEach((ServiceClass) => {
           state: 'detached',
         });
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Wait for the auto pilot status banner to be visible
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
-          {
-            state: 'visible',
-            timeout: 5000,
-          }
-        );
-
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-RUNNING')
-        ).toBeHidden();
-
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
         // Wait for the auto pilot status banner to be visible
         await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
+          page.getByText('AutoPilot agents run completed successfully.')
         ).toBeVisible();
 
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
+        if (service.serviceType === 'Mysql') {
+          await page.getByTestId('agent-status-widget-view-more').click();
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
+          await page.waitForSelector(
+            '[data-testid="agent-status-card-Metadata"]',
+            {
+              state: 'visible',
+            }
+          );
 
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeHidden();
+          // Check the agents statuses
+          await expect(
+            page.getByTestId('agent-status-card-Lineage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Usage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Auto Classification')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Profiler')
+          ).toBeVisible();
+
+          // Check the agents summary
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Successful')
+              .getByTestId('pipeline-count')
+          ).toHaveText('3');
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Pending')
+              .getByTestId('pipeline-count')
+          ).toHaveText('2');
+
+          // Check the total data assets count
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database Schema-count')
+          ).toHaveText('2');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Table-count')
+          ).toHaveText('3');
+        }
       });
 
       test('Agents created by AutoPilot should be deleted', async ({

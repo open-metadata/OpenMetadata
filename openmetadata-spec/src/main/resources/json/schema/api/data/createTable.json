@@ -85,9 +85,12 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Table belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "dataProducts" : {
       "description": "List of fully qualified names of data products this entity is part of.",

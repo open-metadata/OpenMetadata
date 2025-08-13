@@ -35,6 +35,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -53,7 +54,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   breadCrumbList,
@@ -82,13 +83,15 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(currentVersionData.dataModel?.columns);
+    const colList = cloneDeep(
+      pruneEmptyChildren(currentVersionData.dataModel?.columns ?? [])
+    );
 
     return getColumnsDataWithVersionChanges<Column>(
       changeDescription,
@@ -180,7 +183,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

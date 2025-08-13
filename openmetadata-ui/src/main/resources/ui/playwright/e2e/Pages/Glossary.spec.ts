@@ -74,7 +74,9 @@ import {
   verifyColumnsVisibility,
   verifyGlossaryDetails,
   verifyGlossaryTermAssets,
+  verifyGlossaryWorkflowReviewerCase,
   verifyTaskCreated,
+  verifyWorkflowInstanceExists,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { TaskDetails } from '../../utils/task';
@@ -84,6 +86,7 @@ const user1 = new UserClass();
 const user2 = new UserClass();
 const team = new TeamClass();
 const user3 = new UserClass();
+const user4 = new UserClass();
 
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
@@ -91,6 +94,7 @@ test.describe('Glossary tests', () => {
     await user2.create(apiContext);
     await user1.create(apiContext);
     await user3.create(apiContext);
+    await user4.create(apiContext);
     team.data.users = [user2.responseData.id];
     await team.create(apiContext);
     await afterAction();
@@ -695,7 +699,9 @@ test.describe('Glossary tests', () => {
         const assetContainerText = await assetContainer.innerText();
 
         expect(assetContainerText).toContain(dashboardEntity.entity.name);
-        expect(assetContainerText).toContain(dashboardEntity.charts.name);
+        expect(assetContainerText).toContain(
+          dashboardEntity.charts.displayName
+        );
       });
     } finally {
       await glossaryTerm1.delete(apiContext);
@@ -1581,12 +1587,119 @@ test.describe('Glossary tests', () => {
     await afterAction();
   });
 
+  test('Term should stay approved when changes made by reviewer', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: reviewerPage, afterAction: reviewerAfterAction } =
+      await performUserLogin(browser, user4);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      await glossary.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/reviewers/0',
+          value: {
+            id: user4.responseData.id,
+            type: 'user',
+            displayName: user4.responseData.displayName,
+            fullyQualifiedName: user4.responseData.fullyQualifiedName,
+            name: user4.responseData.name,
+          },
+        },
+      ]);
+
+      await test.step(
+        'Navigate to glossary and verify workflow widget',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, glossary.data.displayName);
+
+          await verifyWorkflowInstanceExists(
+            page,
+            glossaryTerm.responseData.fullyQualifiedName
+          );
+
+          // Test workflow widget on hover
+          const escapedFqn = glossaryTerm.data.fullyQualifiedName.replace(
+            /"/g,
+            '\\"'
+          );
+          const statusSelector = `[data-testid="${escapedFqn}-status"]`;
+          await page.hover(statusSelector);
+
+          await expect(
+            page.locator('[data-testid="workflow-history-widget"]')
+          ).toBeVisible();
+
+          await clickOutside(page);
+
+          // Test workflow widget on term details page
+          await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
+
+          await expect(
+            page.locator('[data-testid="workflow-history-widget"]')
+          ).toBeVisible();
+        }
+      );
+
+      await test.step('Perform Changes by reviewer', async () => {
+        await redirectToHomePage(reviewerPage);
+        await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(reviewerPage, glossary.data.displayName);
+        await selectActiveGlossaryTerm(
+          reviewerPage,
+          glossaryTerm.data.displayName
+        );
+
+        await updateDescription(
+          reviewerPage,
+          'Demo description to be updated',
+          true
+        );
+
+        await verifyGlossaryWorkflowReviewerCase(
+          reviewerPage,
+          glossaryTerm.responseData.fullyQualifiedName
+        );
+
+        const waitForInstanceRes = reviewerPage.waitForResponse(
+          '/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/*'
+        );
+        await reviewerPage.reload();
+        await waitForInstanceRes;
+        await reviewerPage.getByTestId('workflow-history-widget').click();
+
+        await expect(
+          reviewerPage
+            .getByTestId('workflow-history-widget')
+            .getByText('Auto-Approved by Reviewer')
+        ).toBeVisible();
+      });
+    } finally {
+      await glossary.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await afterAction();
+      await reviewerAfterAction();
+    }
+  });
+
   test.afterAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
     await user3.create(apiContext);
     await team.delete(apiContext);
+    await user4.delete(apiContext);
     await afterAction();
   });
 });

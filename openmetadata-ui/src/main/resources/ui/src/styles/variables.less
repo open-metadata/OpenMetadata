@@ -47,6 +47,8 @@
 @green-13: #039855;
 @green-14: #507a02;
 @green-15: #f7ffe7;
+@green-16: #abefc6;
+@green-17: #067647;
 
 @yellow-1: #fbf2db;
 @yellow-2: #ffbe0e;
@@ -59,6 +61,8 @@
 @yellow-9: #ffbe0e0d;
 @yellow-10: #fffaeb;
 @yellow-11: #b54708;
+@yellow-12: #fedf89;
+
 @error-light-color: #ff9a8e40;
 @failed-color: #cb2431;
 @red-1: #cb2531;
@@ -80,12 +84,22 @@
 @red-17: #c01048;
 @red-18: #fff1f3;
 @red-19: #fecdca;
+@red-20: #bc1b06;
 @orange-1: #fff6ed;
+@orange-50: #fef6ee;
 @orange-2: #c4320a;
+@orange-3: #ffd6ae;
+@orange-7: #b93815;
+@orange-200: #f9dbaf;
 
 @purple-1: #f2edfd;
 @purple-2: #7147e8;
 @purple-3: #a2a1ff;
+@purple-4: #efedfe80;
+@purple-5: #6941c6;
+@purple-6: #f9f5ff;
+@purple-7: #e9d7fe;
+
 @blue-1: #ebf6fe;
 @blue-2: #3ca2f4;
 @blue-3: #0950c5;
@@ -113,8 +127,19 @@
 @blue-28: #e3f2fd4d;
 @blue-29: #eff4fa;
 @blue-30: #d2dbeb;
-@grey-text: #2c2c2c;
+@blue-31: #3a86ff;
+@blue-32: #0057e2;
+@blue-33: #eff8ff;
+@blue-34: #175cd3;
+@blue-35: #3d3dd6;
+@blue-36: #1568da;
+@blue-37: #215df3e5;
+@blue-38: #d0e3fc;
+@blue-39: #b2ddff;
+@blue-40: #f5faff;
+@blue-41: #b3b8db;
 
+@grey-text: #2c2c2c;
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
 @black: #000000;
@@ -140,7 +165,17 @@
 @grey-22: #d9d9d9;
 @grey-23: #f7f7f7;
 @grey-24: #979797;
+@grey-25: #dbe0e7;
 @grey-26: #fcfcfd;
+@grey-27: #0a0d120d;
+@grey-28: #00000040;
+@grey-29: #f9faff;
+@grey-30: #f4f6fb;
+@grey-31: #f1f3fc;
+@grey-32: #6b7f99;
+@grey-33: #4c526c;
+@grey-34: #d3d3d3;
+@grey-35: #0a0d120a;
 
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
@@ -152,8 +187,11 @@
 @button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
   0px 0px 0px 4px #f5f5f5;
+@box-shadow-surface-default: 0px 4px 6px -2px #0a0d1208,
+  0px 12px 16px -4px #0a0d1214;
 
 @white: #fff;
+@white-alpha-10: #ffffff1a;
 @checkbox-size: 14px;
 @switch-height: 16px;
 @switch-sm-height: 12px;
@@ -180,8 +218,12 @@
 @border-color-4: #e4e4e7;
 @border-color-5: #dde3ea;
 @border-color-6: #dfdfdf;
+@border-color-7: #faf9fc;
+@border-color-8: #e9e8eb;
 @global-border: 1px solid @border-color;
+@nlp-border-color: #b9e6fe;
 @active-color: #e8f4ff;
+@rdg-cell-range-selections-background-color: #e9effd;
 @background-color: #ffffff;
 @announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
@@ -308,14 +350,15 @@
 @severity-3-background: rgba(255, 165, 33, 0.1);
 @severity-4-background: rgba(255, 206, 41, 0.1);
 @severity-5-background: rgba(181, 198, 33, 0.1);
+@severity-6-background: rgba(154, 154, 154, 0.2);
 
 // Border Radius
-@border-radius-base: @size-xxs;
-@border-radius-xs: @size-xs;
-@border-radius-sm: @size-sm;
-@border-radius-md: @size-md;
-@border-radius-lg: @size-mlg;
-@border-radius-xl: @size-lg;
+@border-rad-base: @size-xxs;
+@border-rad-xs: @size-xs;
+@border-rad-sm: @size-sm;
+@border-rad-md: @size-md;
+@border-rad-lg: @size-mlg;
+@border-rad-xl: @size-lg;
 
 // vertical paddings
 @padding-lg: @size-lg; // containers
@@ -338,8 +381,8 @@
 @warning-bg-color: rgb(from @warning-color r g b / 0.1);
 @info-bg-color: rgb(from @info-color r g b / 0.1);
 
-@card-radius: @border-radius-sm;
-@menu-radius: @border-radius-sm;
+@card-radius: @border-rad-sm;
+@menu-radius: @border-rad-sm;
 
 // Layout
 
@@ -352,8 +395,11 @@
 
 // Buttons
 
-@btn-border-radius-base: @border-radius-xs;
-@btn-border-radius-sm: @border-radius-xs;
+@btn-border-radius-base: @border-rad-xs;
+@btn-border-radius-sm: @border-rad-xs;
+
+// Checkbox
+@checkbox-border-radius: 4px; // to override ant design default 2px
 
 //grey colors
 @grey-25: #fdfdfd;

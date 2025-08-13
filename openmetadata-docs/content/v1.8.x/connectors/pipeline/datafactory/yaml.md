@@ -1,5 +1,6 @@
 ---
 title: Run the Azure Data Factory Connector Externally
+description: Configure Azure Data Factory ingestion via YAML to extract ETL job metadata, lineage, and schedule logic.
 slug: /connectors/pipeline/datafactory/yaml
 collate: true
 ---
@@ -29,7 +30,7 @@ Configure and schedule Azure Data Factory metadata and profiler workflows from t
 
 The Ingestion framework uses [Azure Data Factory APIs](https://learn.microsoft.com/en-us/rest/api/datafactory/v2) to connect to the Data Factory and fetch metadata.
 
-You can find further information on the Azure Data Factory connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/datafactory).
+You can find further information on the Azure Data Factory connector in the [docs](/connectors/pipeline/datafactory).
 
 ## Permissions
 

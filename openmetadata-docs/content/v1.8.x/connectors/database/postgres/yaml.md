@@ -1,5 +1,6 @@
 ---
 title: Run the PostgreSQL Connector Externally
+description: Use YAML to configure Postgres metadata ingestion with profiling and schema extraction.
 slug: /connectors/database/postgres/yaml
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/database/postgres/yaml
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Sample Data", "Stored Procedures", "Reverse Metadata (Collate Only)", "Auto-Classification"]
-unavailableFeatures=[]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
+unavailableFeatures=["Stored Procedures Lineage"]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.

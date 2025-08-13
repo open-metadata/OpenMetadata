@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -87,7 +88,9 @@ const DataProductsSelectList = ({
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
             <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
-              {getEntityName(item.value.domain)}
+              {item.value.domains
+                ?.map((domain) => getEntityName(domain))
+                .join(', ')}
             </Typography.Paragraph>
             <Typography.Text ellipsis>
               {getEntityName(item.value)}
@@ -149,6 +152,12 @@ const DataProductsSelectList = ({
       const option = options.find((option) => option.label === item);
       if (option) {
         result.push(option.value);
+      } else {
+        result.push({
+          fullyQualifiedName: item,
+          name: item,
+          type: EntityType.DATA_PRODUCT,
+        } as unknown as DataProduct);
       }
 
       return result;

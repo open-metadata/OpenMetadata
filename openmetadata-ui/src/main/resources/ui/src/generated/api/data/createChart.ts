@@ -33,9 +33,13 @@ export interface CreateChart {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Chart belongs to.
+     * Fully qualified names of the domains the Chart belongs to.
      */
-    domain?: string;
+    domains?: string[];
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * Life Cycle of the entity
      */
@@ -73,13 +77,18 @@ export enum ChartType {
     Area = "Area",
     Bar = "Bar",
     BoxPlot = "BoxPlot",
+    Gauge = "Gauge",
+    Graph = "Graph",
+    Heatmap = "Heatmap",
     Histogram = "Histogram",
     Line = "Line",
+    Map = "Map",
     Other = "Other",
     Pie = "Pie",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",
+    Timeline = "Timeline",
 }
 
 /**

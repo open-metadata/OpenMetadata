@@ -48,10 +48,10 @@ export interface Dashboard {
      */
     displayName?: string;
     /**
-     * Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the
-     * dashboard service it belongs to.
+     * Domains the Dashboard belongs to. When not set, the Dashboard inherits the domain from
+     * the dashboard service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -316,9 +316,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the
- * dashboard service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to service where this dashboard is hosted in.
@@ -427,6 +424,7 @@ export interface AccessDetails {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",

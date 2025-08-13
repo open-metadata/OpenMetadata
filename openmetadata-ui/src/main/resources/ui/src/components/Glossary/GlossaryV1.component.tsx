@@ -227,11 +227,11 @@ const GlossaryV1 = ({
       setTermsLoading(true);
       // Update store with newly created term
       insertNewGlossaryTermToChildTerms(term);
-      if (!isGlossaryActive && tab !== 'terms') {
+      if (!isGlossaryActive && tab !== EntityTabs.GLOSSARY_TERMS) {
         navigate(
           getGlossaryTermDetailsPath(
             selectedData.fullyQualifiedName || '',
-            EntityTabs.TERMS
+            EntityTabs.GLOSSARY_TERMS
           )
         );
       }

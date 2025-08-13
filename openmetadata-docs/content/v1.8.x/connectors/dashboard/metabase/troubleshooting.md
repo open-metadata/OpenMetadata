@@ -1,6 +1,6 @@
 ---
 title: Metabase Troubleshooting Guide | OpenMetadata Support
-description: Resolve Metabase connector issues with OpenMetadata's comprehensive troubleshooting guide. Fix common errors, configuration problems, and data sync issues.
+description: Resolve Metabase connector issues with OpenMetadata'scomprehensive troubleshooting guide. Fix common errors, configuration problems, and data sync issues.
 slug: /connectors/dashboard/metabase/troubleshooting
 ---
 

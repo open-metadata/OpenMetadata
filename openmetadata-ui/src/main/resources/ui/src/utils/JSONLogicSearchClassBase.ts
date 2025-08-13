@@ -12,24 +12,36 @@
  */
 import {
   AntdConfig,
+  AsyncFetchListValuesResult,
   Config,
+  FieldOrGroup,
   Fields,
+  ListItem,
   ListValues,
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
-import { get, sortBy } from 'lodash';
+import { get, sortBy, toLower } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
+import {
+  COMMON_ENTITY_FIELDS_KEYS,
+  GLOSSARY_ENTITY_FIELDS_KEYS,
+  TABLE_ENTITY_FIELDS_KEYS,
+} from '../constants/JSONLogicSearch.constants';
 import {
   EntityFields,
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
+import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
+import {
+  getFieldsByKeys,
+  renderJSONLogicQueryBuilderButtons,
+} from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -125,7 +137,26 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.operators.is_not_null,
       label: t('label.is-set'),
     },
+    isReviewer: {
+      label: t('label.is-entity', { entity: t('label.reviewer') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isReviewer',
+      sqlOp: 'IS REVIEWER',
+    },
+    isOwner: {
+      label: t('label.is-entity', { entity: t('label.owner') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isOwner',
+      sqlOp: 'IS OWNER',
+    },
   };
+
+  mapFields: Record<string, FieldOrGroup>;
+
   defaultSelectOperators = [
     'select_equals',
     'select_not_equals',
@@ -134,6 +165,247 @@ class JSONLogicSearchClassBase {
     'is_null',
     'is_not_null',
   ];
+
+  constructor() {
+    this.mapFields = {
+      [EntityReferenceFields.SERVICE]: {
+        label: t('label.service'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.ALL,
+            entityField: EntityFields.SERVICE_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+      [EntityReferenceFields.OWNERS]: {
+        label: t('label.owner-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Owners',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: advancedSearchClassBase.autocomplete({
+                searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.DISPLAY_NAME]: {
+        label: t('label.display-name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.DISPLAY_NAME_ACTUAL_CASE,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: this.defaultSelectOperators,
+      },
+      [EntityReferenceFields.NAME]: {
+        label: t('label.name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: this.defaultSelectOperators,
+      },
+      deleted: {
+        label: t('label.deleted'),
+        type: 'boolean',
+        defaultValue: true,
+      },
+      [EntityReferenceFields.DESCRIPTION]: {
+        label: t('label.description'),
+        type: 'text',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: TEXT_FIELD_OPERATORS,
+      },
+      [EntityReferenceFields.TAG]: {
+        label: t('label.tag-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: 'Tags',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.TAG,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.DOMAIN]: {
+        label: t('label.domain'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Domain',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.DOMAIN,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.DATA_PRODUCT]: {
+        label: t('label.data-product'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Data Product',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.DATA_PRODUCT,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.TIER]: {
+        label: t('label.tier'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: this.autoCompleteTier,
+          useAsyncSearch: true,
+        },
+      },
+      [EntityReferenceFields.EXTENSION]: {
+        label: t('label.custom-property-plural'),
+        type: '!struct',
+        mainWidgetProps: this.mainWidgetProps,
+        subfields: {},
+      },
+      [EntityReferenceFields.DATABASE]: {
+        label: t('label.database'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.TABLE,
+            entityField: EntityFields.DATABASE_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityReferenceFields.DATABASE_SCHEMA]: {
+        label: t('label.database-schema'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.TABLE,
+            entityField: EntityFields.DATABASE_SCHEMA_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityReferenceFields.TABLE_TYPE]: {
+        label: t('label.table-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.TABLE,
+            entityField: EntityFields.TABLE_TYPE,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityReferenceFields.REVIEWERS]: {
+        label: t('label.reviewer-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Reviewers New',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: advancedSearchClassBase.autocomplete({
+                searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.UPDATED_BY]: {
+        label: t('label.updated-by'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [...this.defaultSelectOperators, 'isOwner', 'isReviewer'],
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+    };
+  }
+
+  public getMapFields = () => {
+    return this.mapFields;
+  };
 
   public searchAutocomplete: (args: {
     searchIndex: SearchIndex | SearchIndex[];
@@ -175,160 +447,44 @@ class JSONLogicSearchClassBase {
     valueLabel: t('label.criteria') + ':',
   };
 
-  glossaryEntityFields: Fields = {
-    [EntityReferenceFields.REVIEWERS]: {
-      label: t('label.reviewer-plural'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
-      fieldSettings: {
-        asyncFetch: advancedSearchClassBase.autocomplete({
-          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-        }),
-        useAsyncSearch: true,
-      },
-    },
-  };
+  public autoCompleteTier: SelectFieldSettings['asyncFetch'] = async (
+    searchOrValues: string | (string | number)[] | null
+  ) => {
+    let resolvedTierOptions: ListItem[] = [];
 
-  tableEntityFields: Fields = {
-    [EntityReferenceFields.DATABASE]: {
-      label: t('label.database'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
-      fieldSettings: {
-        asyncFetch: advancedSearchClassBase.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_NAME,
-          isCaseInsensitive: true,
-        }),
-        useAsyncSearch: true,
-      },
-    },
+    try {
+      const { data: tiers } = await getTags({
+        parent: 'Tier',
+        limit: 50,
+      });
 
-    [EntityReferenceFields.DATABASE_SCHEMA]: {
-      label: t('label.database-schema'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
-      fieldSettings: {
-        asyncFetch: advancedSearchClassBase.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA_NAME,
-          isCaseInsensitive: true,
-        }),
-        useAsyncSearch: true,
-      },
-    },
+      const tierFields = tiers.map((tier) => ({
+        title: tier.fullyQualifiedName, // tier.name,
+        value: tier.fullyQualifiedName,
+      }));
 
-    [EntityReferenceFields.TABLE_TYPE]: {
-      label: t('label.table-type'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
-      fieldSettings: {
-        asyncFetch: advancedSearchClassBase.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.TABLE_TYPE,
-        }),
-        useAsyncSearch: true,
-      },
-    },
-  };
+      resolvedTierOptions = tierFields as ListItem[];
+    } catch (error) {
+      resolvedTierOptions = [];
+    }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public getCommonConfig = (_: {
-    entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
-  }) => {
+    const search = Array.isArray(searchOrValues)
+      ? searchOrValues.join(',')
+      : searchOrValues;
+
     return {
-      [EntityReferenceFields.SERVICE]: {
-        label: t('label.service'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: SearchIndex.ALL,
-            entityField: EntityFields.SERVICE_NAME,
-            isCaseInsensitive: true,
-          }),
-          useAsyncSearch: true,
-        },
-      },
-      [EntityReferenceFields.OWNERS]: {
-        label: t('label.owner-plural'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-          }),
-          useAsyncSearch: true,
-        },
-      },
-      [EntityReferenceFields.DISPLAY_NAME]: {
-        label: t('label.display-name'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: SearchIndex.DATA_ASSET,
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-          }),
-          useAsyncSearch: true,
-        },
-        operators: this.defaultSelectOperators,
-      },
-      [EntityReferenceFields.NAME]: {
-        label: t('label.name'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: SearchIndex.DATA_ASSET,
-            entityField: EntityFields.NAME_KEYWORD,
-          }),
-          useAsyncSearch: true,
-        },
-        operators: this.defaultSelectOperators,
-      },
-      deleted: {
-        label: t('label.deleted'),
-        type: 'boolean',
-        defaultValue: true,
-      },
-      [EntityReferenceFields.DESCRIPTION]: {
-        label: t('label.description'),
-        type: 'text',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_OPERATORS,
-      },
-      [EntityReferenceFields.TAG]: {
-        label: t('label.tag-plural'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.searchAutocomplete({
-            searchIndex: SearchIndex.TAG,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
+      values: !search
+        ? resolvedTierOptions
+        : resolvedTierOptions.filter((tier: ListItem) =>
+            tier.title?.toLowerCase()?.includes(toLower(search))
+          ),
+      hasMore: false,
+    } as AsyncFetchListValuesResult;
+  };
 
-      [EntityReferenceFields.EXTENSION]: {
-        label: t('label.custom-property-plural'),
-        type: '!struct',
-        mainWidgetProps: this.mainWidgetProps,
-        subfields: {},
-        operators: TEXT_FIELD_OPERATORS,
-      },
+  public getCommonConfig = () => {
+    return {
+      ...getFieldsByKeys(COMMON_ENTITY_FIELDS_KEYS, this.mapFields),
     };
   };
 
@@ -337,8 +493,14 @@ class JSONLogicSearchClassBase {
   ): Fields {
     let configs: Fields = {};
     const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
-      [SearchIndex.TABLE]: this.tableEntityFields,
-      [SearchIndex.GLOSSARY_TERM]: this.glossaryEntityFields,
+      [SearchIndex.TABLE]: getFieldsByKeys(
+        TABLE_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
+      [SearchIndex.GLOSSARY_TERM]: getFieldsByKeys(
+        GLOSSARY_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
     };
 
     entitySearchIndex.forEach((index) => {
@@ -352,13 +514,12 @@ class JSONLogicSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
     tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
-      ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
+      ...this.getCommonConfig(),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
     };
 
@@ -387,7 +548,6 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        defaultField: EntityReferenceFields.OWNERS,
         renderButton: renderJSONLogicQueryBuilderButtons,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,

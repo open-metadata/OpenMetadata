@@ -20,6 +20,7 @@ public class SearchClusterMetrics {
   private final double cpuUsagePercent;
   private final double memoryUsagePercent;
   private final long maxPayloadSizeBytes;
+  private final long maxContentLength;
   private final int recommendedConcurrentRequests;
   private final int recommendedBatchSize;
   private final int recommendedProducerThreads;
@@ -61,7 +62,6 @@ public class SearchClusterMetrics {
       Map<String, Object> nodesStats = osClient.nodesStats();
       Map<String, Object> clusterSettings = osClient.clusterSettings();
 
-      // Debug logging for API responses
       LOG.debug("ClusterStats response: {}", clusterStats);
       LOG.debug("NodesStats response: {}", nodesStats);
 
@@ -175,10 +175,8 @@ public class SearchClusterMetrics {
       long totalEntities,
       int maxDbConnections) {
 
-    int maxProducerThreads = (maxDbConnections * 3) / 4; // 75% of connection pool
-    int recommendedConcurrentRequests = maxProducerThreads;
-    int recommendedProducerThreads =
-        Math.min(maxProducerThreads, 10 * totalNodes); // Reduced from 30 to 10 per node
+    int maxProducerThreads = (maxDbConnections * 3) / 4;
+    int recommendedProducerThreads = Math.min(maxProducerThreads, 10 * totalNodes);
 
     if (memoryUsagePercent > 80) {
       recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
@@ -186,22 +184,32 @@ public class SearchClusterMetrics {
       recommendedProducerThreads = Math.max(20, recommendedProducerThreads / 2);
     }
 
-    // Consumers transform entities to search documents - lighter work than producers
-    // Can have many consumers since they're not DB-bound
-    int recommendedConsumerThreads = 10 * totalNodes; // Reduced from 50 to 10 per node
+    // Consumers transform entities to search documents - can be CPU intensive
+    // With virtual threads, we can have more consumers for better throughput
+    int availableCores = Runtime.getRuntime().availableProcessors();
+    int recommendedConsumerThreads =
+        Math.min(30, Math.max(10, availableCores * 2)); // 2x cores, bounded
 
-    // Only limit if memory is very high
+    if (totalNodes > 3) {
+      recommendedConsumerThreads = Math.min(40, recommendedConsumerThreads + (totalNodes * 2));
+    }
+
     if (memoryUsagePercent > 80) {
       recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
+    } else if (memoryUsagePercent < 40 && totalEntities > 100000) {
+      recommendedConsumerThreads = Math.min(50, (int) (recommendedConsumerThreads * 1.5));
     }
-    recommendedConsumerThreads =
-        Math.min(20, recommendedConsumerThreads); // Cap at 20 to prevent thread exhaustion
 
-    int baseConcurrentRequests = totalNodes * 50;
+    int requestsPerNode = 50; // Base requests per node
+    if (cpuUsagePercent > 70 || memoryUsagePercent > 70) {
+      requestsPerNode = 25;
+    } else if (cpuUsagePercent < 30 && memoryUsagePercent < 50) {
+      requestsPerNode = 75;
+    }
+
+    int baseConcurrentRequests = Math.min(200, totalNodes * requestsPerNode);
     if (memoryUsagePercent > 80) {
       baseConcurrentRequests = Math.max(10, baseConcurrentRequests / 2);
-    } else if (memoryUsagePercent < 50) {
-      baseConcurrentRequests = Math.min(500, baseConcurrentRequests * 2);
     }
 
     long heapBasedPayloadSize =
@@ -213,27 +221,39 @@ public class SearchClusterMetrics {
     long maxPayloadSize =
         Math.min(heapBasedPayloadSize, maxContentLength * 9 / 10); // Use 90% of limit
 
-    // With optimized field loading, we can use larger batch sizes
-    int avgEntitySizeKB = 5; // Smaller with optimized fields
+    LOG.info(
+        "Calculated max payload size: {} MB (heap-based: {} MB, cluster limit: {} MB)",
+        maxPayloadSize / (1024 * 1024),
+        heapBasedPayloadSize / (1024 * 1024),
+        maxContentLength / (1024 * 1024));
+    int avgEntitySizeKB = maxPayloadSize <= 10 * 1024 * 1024 ? 20 : 10; // More conservative for AWS
     int recommendedBatchSize = (int) Math.min(1000, maxPayloadSize / (avgEntitySizeKB * 1024L));
-    recommendedBatchSize =
-        Math.max(100, recommendedBatchSize); // Higher minimum since entities are smaller
 
-    // Scale batch size based on dataset size but be conservative to avoid timeouts
+    if (maxPayloadSize <= 10 * 1024 * 1024) {
+      recommendedBatchSize = Math.min(300, recommendedBatchSize); // Cap at 300 for AWS
+    }
+    recommendedBatchSize = Math.max(50, recommendedBatchSize); // Lower minimum for safety
+
     if (totalEntities > 1000000) {
-      recommendedBatchSize = Math.min(500, recommendedBatchSize); // Cap at 500
-      recommendedProducerThreads =
-          Math.min(20, recommendedProducerThreads); // Cap at 20 to prevent thread exhaustion
+      recommendedBatchSize = Math.min(500, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
+      baseConcurrentRequests = Math.min(150, baseConcurrentRequests);
     } else if (totalEntities > 500000) {
-      recommendedBatchSize = Math.min(400, recommendedBatchSize); // Cap at 400
-      recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
+      recommendedBatchSize = Math.min(600, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(25, recommendedProducerThreads);
     } else if (totalEntities > 100000) {
-      recommendedBatchSize = Math.min(300, recommendedBatchSize); // Cap at 300
-      recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
+      recommendedBatchSize = Math.min(800, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
     }
 
-    int recommendedQueueSize =
-        recommendedBatchSize * recommendedConcurrentRequests * 2; // Buffer for smooth operation
+    if (totalEntities < 50000 && memoryUsagePercent < 60) {
+      recommendedBatchSize = Math.min(1000, recommendedBatchSize * 2);
+    }
+
+    int queueBatches = Math.min(recommendedProducerThreads * 2, 20);
+    int recommendedQueueSize = Math.min(10000, recommendedBatchSize * queueBatches);
+
+    recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
@@ -244,6 +264,7 @@ public class SearchClusterMetrics {
         .cpuUsagePercent(cpuUsagePercent)
         .memoryUsagePercent(memoryUsagePercent)
         .maxPayloadSizeBytes(maxPayloadSize)
+        .maxContentLength(maxContentLength)
         .recommendedConcurrentRequests(baseConcurrentRequests)
         .recommendedBatchSize(recommendedBatchSize)
         .recommendedProducerThreads(recommendedProducerThreads)
@@ -283,7 +304,6 @@ public class SearchClusterMetrics {
         compressionEnabled = (Boolean) defaultSettings.get("http.compression");
       }
 
-      // Default is false in Elasticsearch/OpenSearch
       return compressionEnabled != null ? compressionEnabled : false;
     } catch (Exception e) {
       LOG.debug("Failed to check compression setting, assuming disabled: {}", e.getMessage());
@@ -294,7 +314,9 @@ public class SearchClusterMetrics {
   @SuppressWarnings("unchecked")
   public static long extractMaxContentLength(Map<String, Object> clusterSettings) {
     try {
-      long defaultMaxContentLength = 100 * 1024 * 1024L; // 100MB
+      // Use a conservative 10MB default for AWS-managed OpenSearch/ElasticSearch
+      // AWS OpenSearch has a hard limit of 10MB that may not be exposed in cluster settings
+      long defaultMaxContentLength = 10 * 1024 * 1024L; // Conservative 10MB default
 
       Map<String, Object> persistentSettings =
           (Map<String, Object>) clusterSettings.get("persistent");
@@ -313,19 +335,27 @@ public class SearchClusterMetrics {
       }
 
       if (maxContentLengthStr != null) {
-        return parseByteSize(maxContentLengthStr);
+        long maxContentLength = parseByteSize(maxContentLengthStr);
+        LOG.info(
+            "Detected cluster max_content_length setting: {} ({})",
+            maxContentLengthStr,
+            maxContentLength + " bytes");
+        return maxContentLength;
       }
 
+      LOG.info(
+          "No max_content_length setting found in cluster, using conservative default: {} bytes",
+          defaultMaxContentLength);
       return defaultMaxContentLength;
     } catch (Exception e) {
       LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
-      return 100 * 1024 * 1024L; // Default 100MB
+      return 10 * 1024 * 1024L; // Conservative 10MB default for safety
     }
   }
 
   private static long parseByteSize(String sizeStr) {
     if (sizeStr == null || sizeStr.trim().isEmpty()) {
-      return 100 * 1024 * 1024L; // Default 100MB
+      return 10 * 1024 * 1024L; // Conservative 10MB default for safety
     }
 
     sizeStr = sizeStr.trim().toLowerCase();
@@ -373,19 +403,10 @@ public class SearchClusterMetrics {
     return 50.0;
   }
 
-  private static long extractLongValue(Map<String, Object> map, String key, long defaultValue) {
-    Object value = map.get(key);
-    if (value instanceof Number) {
-      return ((Number) value).longValue();
-    }
-    LOG.debug("Unable to extract long value for key '{}', using default: {}", key, defaultValue);
-    return defaultValue;
-  }
-
   private static int extractIntValue(Map<String, Object> map, String key, int defaultValue) {
     Object value = map.get(key);
-    if (value instanceof Number) {
-      return ((Number) value).intValue();
+    if (value instanceof Number number) {
+      return number.intValue();
     }
     LOG.debug("Unable to extract int value for key '{}', using default: {}", key, defaultValue);
     return defaultValue;
@@ -395,25 +416,22 @@ public class SearchClusterMetrics {
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     int conservativeBatchSize;
     if (totalEntities > 1000000) {
-      conservativeBatchSize = 500;
-    } else if (totalEntities > 500000) {
-      conservativeBatchSize = 400;
-    } else if (totalEntities > 250000) {
-      conservativeBatchSize = 300;
-    } else if (totalEntities > 100000) {
       conservativeBatchSize = 200;
-    } else if (totalEntities > 50000) {
+    } else if (totalEntities > 500000) {
       conservativeBatchSize = 150;
-    } else {
+    } else if (totalEntities > 250000) {
+      conservativeBatchSize = 125;
+    } else if (totalEntities > 100000) {
       conservativeBatchSize = 100;
+    } else if (totalEntities > 50000) {
+      conservativeBatchSize = 75;
+    } else {
+      conservativeBatchSize = 50;
     }
 
-    // Conservative DB connection usage - use 75% of configured max size
     int conservativeThreads = (maxDbConnections * 3) / 4;
-
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
-
-    int conservativeConsumerThreads = 20; // Default 20 consumers with virtual threads
+    int conservativeConsumerThreads = 20;
     int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
@@ -422,8 +440,8 @@ public class SearchClusterMetrics {
     long usedHeap = totalHeap - freeHeap;
     double heapUsagePercent = (maxHeap > 0) ? (double) usedHeap / maxHeap * 100 : 50.0;
 
-    // Default to 100MB if we can't fetch from cluster
-    long maxPayloadSize = 100 * 1024 * 1024L; // Default 100MB
+    // Default to conservative 10MB for AWS-managed clusters if we can't fetch from cluster
+    long maxPayloadSize = 10 * 1024 * 1024L; // Conservative 10MB default
     try {
       if (searchRepository != null) {
         SearchClient searchClient = searchRepository.getSearchClient();
@@ -441,8 +459,8 @@ public class SearchClusterMetrics {
           // Use actual max content length from cluster settings
           // Apply 90% to leave small buffer for HTTP headers and request overhead
           maxPayloadSize = maxContentLength * 9 / 10;
-          LOG.debug(
-              "Detected max content length: {} MB, effective payload size: {} MB",
+          LOG.info(
+              "Conservative defaults: Detected max content length: {} MB, effective payload size: {} MB",
               maxContentLength / (1024 * 1024),
               maxPayloadSize / (1024 * 1024));
         }
@@ -461,6 +479,7 @@ public class SearchClusterMetrics {
         .cpuUsagePercent(50.0)
         .memoryUsagePercent(heapUsagePercent)
         .maxPayloadSizeBytes(maxPayloadSize)
+        .maxContentLength(maxPayloadSize * 10 / 9)
         .recommendedConcurrentRequests(conservativeConcurrentRequests)
         .recommendedBatchSize(conservativeBatchSize)
         .recommendedProducerThreads(conservativeThreads)
@@ -479,21 +498,27 @@ public class SearchClusterMetrics {
         "Heap: {} MB total, {} MB available",
         heapSizeBytes / (1024 * 1024),
         availableMemoryBytes / (1024 * 1024));
-    LOG.info("=== Auto-Tune Recommendations (Virtual Threads Optimized) ===");
-    LOG.info("Batch Size: {}", recommendedBatchSize);
+    LOG.info("=== Auto-Tune Recommendations ===");
+    LOG.info("Batch Size: {} (entities per batch)", recommendedBatchSize);
+    LOG.info("Producer Threads: {} (DB readers)", recommendedProducerThreads);
+    LOG.info("Consumer Threads: {} (ES/OS writers)", recommendedConsumerThreads);
+    LOG.info("Queue Size: {} (buffered entities)", recommendedQueueSize);
+    LOG.info("Concurrent Bulk Requests: {}", recommendedConcurrentRequests);
+    LOG.info("Max Payload Size: {} MB per bulk request", maxPayloadSizeBytes / (1024 * 1024));
+    LOG.info("=== Estimated Performance ===");
+
+    // Calculate estimated throughput
+    long estimatedThroughput = (long) recommendedBatchSize * recommendedConcurrentRequests;
     LOG.info(
-        "Producer Threads: {} (virtual threads - lightweight & scalable)",
-        recommendedProducerThreads);
+        "Estimated throughput: ~{} entities/second",
+        estimatedThroughput / 5); // Assume 5 sec per batch
+
+    // Memory usage estimate
+    long queueMemoryMB = (recommendedQueueSize * 10L) / 1024; // Assume 10KB per entity
+    LOG.info("Estimated queue memory usage: ~{} MB", queueMemoryMB);
+
     LOG.info(
-        "Consumer Threads: {} (processing-heavy with full field loading)",
-        recommendedConsumerThreads);
-    LOG.info("Queue Size: {}", recommendedQueueSize);
-    LOG.info("Concurrent Requests: {}", recommendedConcurrentRequests);
-    LOG.info(
-        "Max Payload Size: {} MB (with compression optimization)",
-        maxPayloadSizeBytes / (1024 * 1024));
-    LOG.info("Note: Virtual threads enable high concurrency for I/O-bound operations");
-    LOG.info("Note: Request compression is enabled (~75% size reduction for JSON)");
+        "Note: Settings are conservative to ensure stability. The system will adapt during execution.");
     LOG.info("================================================================");
   }
 }

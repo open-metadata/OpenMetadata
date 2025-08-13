@@ -1,5 +1,6 @@
 ---
 title: Hybrid SaaS | Secure Metadata Ingestion for Collate
+description: Learn how to securely ingest metadata using the Collate Ingestion Agent in your own infrastructure. Ideal for private networks and hybrid SaaS setups.
 slug: /getting-started/day-1/hybrid-saas
 collate: true
 ---
@@ -309,9 +310,9 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
   {% inlineCallout
     color="violet-70"
     icon="10k"
-    bold="GCS Composer"
-    href="/deployment/ingestion/external/gcs-composer" %}
-    Run the ingestion process externally from GCS Composer
+    bold="GCP Composer "
+    href="/deployment/ingestion/external/gcp-composer" %}
+    Run the ingestion process externally from GCP Composer 
   {% /inlineCallout %}
   {% inlineCallout
     color="violet-70"

@@ -33,9 +33,9 @@ export interface CreateDashboardDataModel {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Dashboard Data Model belongs to.
+     * Fully qualified names of the domains the Dashboard Data Model belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -669,6 +669,7 @@ export interface AccessDetails {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",

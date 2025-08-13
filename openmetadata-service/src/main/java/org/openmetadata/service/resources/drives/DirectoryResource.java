@@ -76,7 +76,7 @@ import org.openmetadata.service.util.ResultList;
 public class DirectoryResource extends EntityResource<Directory, DirectoryRepository> {
   public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
-      "owners,children,parent,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
+      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
   private final DirectoryMapper mapper = new DirectoryMapper();
 
   @Override

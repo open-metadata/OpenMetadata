@@ -30,4 +30,9 @@ public class TriggerFactory {
   public static String getTriggerWorkflowId(String workflowFQN) {
     return String.format("%sTrigger", workflowFQN);
   }
+
+  public static String getMainWorkflowDefinitionNameFromTrigger(
+      String triggerWorkflowDefinitionName) {
+    return triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
+  }
 }

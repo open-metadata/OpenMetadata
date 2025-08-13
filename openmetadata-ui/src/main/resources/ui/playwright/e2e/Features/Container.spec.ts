@@ -15,6 +15,10 @@ import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import {
+  assignTagToChildren,
+  removeTagsFromChildren,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const container = new ContainerClass();
@@ -23,6 +27,8 @@ test.slow(true);
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
@@ -30,6 +36,8 @@ test.describe('Container entity specific tests ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await container.delete(apiContext);
@@ -111,5 +119,37 @@ test.describe('Container entity specific tests ', () => {
     await expect(page.getByTestId('page-indicator')).toContainText(
       'Page 1 of 2'
     );
+  });
+
+  test('expand / collapse should not appear after updating nested fields for container', async ({
+    page,
+  }) => {
+    await page.goto('/container/s3_storage_sample.departments.finance');
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator('[data-row-key="budget_executor"]')
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
   });
 });

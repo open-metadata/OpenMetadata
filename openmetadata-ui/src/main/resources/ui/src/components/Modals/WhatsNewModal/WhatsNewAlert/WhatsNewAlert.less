@@ -21,11 +21,11 @@
   z-index: 2000;
 
   .whats-new-alert-card {
-    border-radius: @border-radius-lg;
+    border-radius: @border-rad-lg;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     min-width: 420px;
-    max-width: 560px;
+    max-width: 578px;
 
     .ant-card-body {
       padding: 0;
@@ -37,27 +37,29 @@
 
     color: @white;
     display: flex;
-    flex-direction: column;
     align-items: center;
+    gap: 8px;
     justify-content: center;
     min-width: 140px;
-    padding: @size-lg @size-md;
-    text-align: center;
-    height: 100%;
+    padding: @size-lg 0;
 
     .whats-new-alert-rocket-icon {
-      width: 48px;
-      height: 48px;
-      margin-bottom: @size-md;
+      width: 30px;
+      height: 30px;
     }
   }
 }
 
 .whats-new-alert-right {
   padding: 16px 16px 16px 20px;
+
+  .whats-new-alert-subtext {
+    color: @text-color-tertiary;
+    font-weight: 400;
+  }
 }
 
-.whats-new-alert-close {
+.whats-new-alert-close.anticon {
   padding: 16px;
   color: @grey-400;
   font-size: 12px;
@@ -66,14 +68,14 @@
 .whats-new-alert-version {
   .text-lg();
   font-weight: 600;
-  margin-top: 8px;
+
   color: @white !important;
 }
 
 .whats-new-alert-links {
   display: flex;
   gap: 32px;
-  margin-top: 54px;
+
   a.ant-btn {
     height: 28px;
     line-height: 28px;

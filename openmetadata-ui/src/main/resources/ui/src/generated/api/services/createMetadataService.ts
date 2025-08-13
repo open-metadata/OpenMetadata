@@ -24,9 +24,9 @@ export interface CreateMetadataService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Metadata Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
@@ -751,6 +751,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",

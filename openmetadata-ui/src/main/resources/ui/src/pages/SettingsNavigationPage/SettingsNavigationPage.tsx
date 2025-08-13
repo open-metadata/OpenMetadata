@@ -29,8 +29,8 @@ import {
   TreeProps,
   Typography,
 } from 'antd';
-import { cloneDeep } from 'lodash';
-import { useCallback, useState } from 'react';
+import { cloneDeep, isEqual } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
@@ -41,20 +41,34 @@ import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
+import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
 
 interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
-  currentNavigation?: NavigationItem[];
 }
 
-export const SettingsNavigationPage = ({
-  onSave,
-  currentNavigation,
-}: Props) => {
+const getNavigationItems = (
+  treeData: TreeDataNode[],
+  hiddenKeys: string[]
+): NavigationItem[] => {
+  return treeData.map((item) => {
+    return {
+      id: item.key,
+      title: item.title,
+      isHidden: hiddenKeys.includes(item.key as string),
+      children: getNavigationItems(item.children ?? [], hiddenKeys),
+    } as NavigationItem;
+  });
+};
+
+export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const { getNavigation } = useCustomizeStore();
+  const currentNavigation = getNavigation();
+
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
     getHiddenKeysFromNavigationItems(currentNavigation)
   );
@@ -62,21 +76,27 @@ export const SettingsNavigationPage = ({
     currentNavigation ? getTreeDataForNavigationItems(currentNavigation) : []
   );
 
+  const disableSave = useMemo(() => {
+    // Get the initial hidden keys from the current navigation
+    const initialHiddenKeys =
+      getHiddenKeysFromNavigationItems(currentNavigation);
+
+    // Get the current navigation items from the tree data
+    const currentNavigationItems =
+      getNavigationItems(treeData, hiddenKeys) || [];
+
+    // Get the current hidden keys from the current navigation items
+    const currentHiddenKeys =
+      getHiddenKeysFromNavigationItems(currentNavigationItems) || [];
+
+    // Check if the initial hidden keys are the same as the current hidden keys
+    return isEqual(initialHiddenKeys, currentHiddenKeys);
+  }, [currentNavigation, treeData, hiddenKeys]);
+
   const handleSave = async () => {
     setSaving(true);
 
-    const getNavigationItems = (treeData: TreeDataNode[]): NavigationItem[] => {
-      return treeData.map((item) => {
-        return {
-          id: item.key,
-          title: item.title,
-          isHidden: hiddenKeys.includes(item.key as string),
-          children: getNavigationItems(item.children ?? []),
-        } as NavigationItem;
-      });
-    };
-
-    const navigationItems = getNavigationItems(treeData);
+    const navigationItems = getNavigationItems(treeData, hiddenKeys);
 
     await onSave(navigationItems);
     setSaving(false);
@@ -169,7 +189,7 @@ export const SettingsNavigationPage = ({
 
   return (
     <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-      <Row className="p-x-lg" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <Card
             bodyStyle={{ padding: 0 }}
@@ -192,6 +212,7 @@ export const SettingsNavigationPage = ({
                 </Button>
                 <Button
                   data-testid="save-button"
+                  disabled={disableSave}
                   icon={<SaveOutlined />}
                   loading={saving}
                   type="primary"

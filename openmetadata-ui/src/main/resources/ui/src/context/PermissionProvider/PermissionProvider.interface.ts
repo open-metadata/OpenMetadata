@@ -83,6 +83,7 @@ export enum ResourceEntity {
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  INGESTION_RUNNER = 'ingestionRunner',
 }
 
 export interface PermissionContextType {

@@ -20,6 +20,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
@@ -55,15 +56,16 @@ export const DomainListItemRenderer = (props: EntityReference) => {
 };
 
 const DomainSelectableList = ({
-  onUpdate,
   children,
+  disabled,
   hasPermission,
-  popoverProps,
-  selectedDomain,
   multiple = false,
   onCancel,
-  wrapInButton = true,
+  onUpdate,
+  popoverProps,
+  selectedDomain,
   showAllDomains = false,
+  wrapInButton = true,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -110,35 +112,42 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <FocusTrapWithContainer active={popoverProps?.open || false}>
-            <DomainSelectablTree
-              initialDomains={initialDomains}
-              isMultiple={multiple}
-              showAllDomains={showAllDomains}
-              value={selectedDomainsList as string[]}
-              visible={popupVisible || Boolean(popoverProps?.open)}
-              onCancel={handleCancel}
-              onSubmit={handleUpdate}
-            />
-          </FocusTrapWithContainer>
+          !disabled && (
+            <FocusTrapWithContainer active={popoverProps?.open || false}>
+              <DomainSelectablTree
+                initialDomains={initialDomains}
+                isMultiple={multiple}
+                showAllDomains={showAllDomains}
+                value={selectedDomainsList as string[]}
+                visible={popupVisible || Boolean(popoverProps?.open)}
+                onCancel={handleCancel}
+                onSubmit={handleUpdate}
+              />
+            </FocusTrapWithContainer>
+          )
         }
+        getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
         overlayClassName="domain-select-popover w-400"
         placement="bottomRight"
         showArrow={false}
         trigger="click"
-        onOpenChange={setPopupVisible}
+        onOpenChange={(visible) => {
+          if (!disabled) {
+            setPopupVisible(visible);
+          }
+        }}
         {...popoverProps}>
         {children ??
           (!isVersionView && (
             <EditIconButton
               newLook
               data-testid="add-domain"
-              disabled={!hasPermission}
+              disabled={!hasPermission || disabled}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.domain'),
+                entity: t('label.domain-plural'),
               })}
               onClick={(e) => e.stopPropagation()}
             />
@@ -162,6 +171,7 @@ const DomainSelectableList = ({
     return (
       <Button
         className="remove-button-default-styling flex-center"
+        disabled={disabled}
         onClick={(e) => e.stopPropagation()}>
         {popoverContent}
       </Button>
