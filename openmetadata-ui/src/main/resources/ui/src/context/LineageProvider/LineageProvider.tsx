@@ -1043,6 +1043,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setZoomValue(value);
   }, []);
 
+  const onCloseDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
+    setSelectedEdge(undefined);
+  }, []);
+
   const toggleColumnView = useCallback(() => {
     const updatedVal = !expandAllColumns;
     setExpandAllColumns(updatedVal);
@@ -1658,6 +1663,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       expandAllColumns,
       platformView,
       isPlatformLineage,
+      exportLineageData,
+      onCloseDrawer,
       toggleColumnView,
       onInitReactFlow,
       onPaneClick,
@@ -1708,6 +1715,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     columnsHavingLineage,
     expandAllColumns,
     isPlatformLineage,
+    exportLineageData,
+    onCloseDrawer,
     toggleColumnView,
     onInitReactFlow,
     onPaneClick,
@@ -1792,10 +1801,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edge={selectedEdge} // handle this access
               nodes={nodes}
               visible={isDrawerOpen}
-              onClose={() => {
-                setIsDrawerOpen(false);
-                setSelectedEdge(undefined);
-              }}
+              onClose={onCloseDrawer}
               onEdgeDetailsUpdate={onEdgeDetailsUpdate}
             />
           ) : (
@@ -1803,7 +1809,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               <EntityInfoDrawer
                 selectedNode={selectedNode}
                 show={isDrawerOpen}
-                onCancel={() => setIsDrawerOpen(false)}
+                onCancel={onCloseDrawer}
               />
             )
           ))}

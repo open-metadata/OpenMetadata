@@ -21,6 +21,7 @@ import {
   NodeProps,
   ReactFlowInstance,
 } from 'reactflow';
+import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -61,6 +62,8 @@ export interface LineageContextType {
   platformView: LineagePlatformView;
   expandAllColumns: boolean;
   isPlatformLineage: boolean;
+  exportLineageData: (_: string) => Promise<CSVExportResponse>;
+  onCloseDrawer: () => void;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
