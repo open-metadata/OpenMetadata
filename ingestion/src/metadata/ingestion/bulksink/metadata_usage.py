@@ -198,7 +198,7 @@ class MetadataUsageBulkSink(BulkSink):
                 try:
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
-                        service_name=self.service_name,
+                        service_names=self.service_name,
                         database_name=table_usage.databaseName,
                         database_schema=table_usage.databaseSchema,
                         table_name=table_usage.table,
@@ -359,7 +359,7 @@ class MetadataUsageBulkSink(BulkSink):
         """
         table_entities = get_table_entities_from_query(
             metadata=self.metadata,
-            service_name=self.service_name,
+            service_names=self.service_name,
             database_name=database,
             database_schema=database_schema,
             table_name=table_column.table,

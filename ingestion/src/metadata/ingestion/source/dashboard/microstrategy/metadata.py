@@ -228,7 +228,7 @@ class MicrostrategySource(DashboardServiceSource):
                 for table in lineage_parser.source_tables:
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
-                        service_name=prefix_db_service_name,
+                        service_names=prefix_db_service_name,
                         database_name="*",
                         database_schema="*",
                         table_name=str(table),
