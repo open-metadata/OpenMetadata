@@ -53,7 +53,7 @@ CREATE TABLE public.automations_workflow (
     id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
     name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
     workflowtype character varying(256) GENERATED ALWAYS AS ((json ->> 'workflowType'::text)) STORED NOT NULL,
-    status character varying(256) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED,
+    status character varying(256) GENERATED ALWAYS AS ((json ->> 'workflowStatus'::text)) STORED,
     json jsonb NOT NULL,
     updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
     updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,

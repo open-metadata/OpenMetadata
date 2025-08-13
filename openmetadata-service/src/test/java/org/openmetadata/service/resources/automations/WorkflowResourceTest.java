@@ -60,11 +60,11 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   @Test
   void get_listWorkflowsFiltered(TestInfo test) throws IOException {
     CreateWorkflow createWorkflowTest =
-        createRequest(test.getDisplayName()).withStatus(WorkflowStatus.SUCCESSFUL);
+        createRequest(test.getDisplayName()).withWorkflowStatus(WorkflowStatus.SUCCESSFUL);
     createAndCheckEntity(createWorkflowTest, ADMIN_AUTH_HEADERS);
 
     CreateWorkflow createWorkflowTest2 =
-        createRequest(test.getDisplayName() + "2").withStatus(WorkflowStatus.RUNNING);
+        createRequest(test.getDisplayName() + "2").withWorkflowStatus(WorkflowStatus.RUNNING);
     createAndCheckEntity(createWorkflowTest2, ADMIN_AUTH_HEADERS);
 
     // Filter by status
@@ -88,7 +88,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
       Workflow expected, Workflow updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getWorkflowType(), updated.getWorkflowType());
-    assertEquals(expected.getStatus(), updated.getStatus());
+    assertEquals(expected.getWorkflowStatus(), updated.getWorkflowStatus());
   }
 
   @Override

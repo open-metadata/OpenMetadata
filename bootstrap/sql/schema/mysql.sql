@@ -8,8 +8,8 @@ DROP TABLE IF EXISTS `automations_workflow`;
 CREATE TABLE `automations_workflow` (
   `id` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
   `name` varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.name'))) VIRTUAL NOT NULL,
-  `workflowType` varchar(256) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  `status` varchar(256) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `workflowType` varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.workflowType'))) STORED NOT NULL,
+  `status` varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.workflowStatus'))) STORED,
   `json` json NOT NULL,
   `updatedAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) VIRTUAL NOT NULL,
   `updatedBy` varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedBy'))) VIRTUAL NOT NULL,
