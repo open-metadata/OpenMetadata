@@ -42,7 +42,10 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getTableExpandableConfig,
+  pruneEmptyChildren,
+} from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
@@ -65,6 +68,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
+
+  const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -99,13 +104,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(dataModel?.columns ?? []);
+    const tags = getAllTags(schema);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [dataModel?.columns]);
+  }, [schema]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -226,7 +231,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     ]
   );
 
-  if (isEmpty(dataModel?.columns)) {
+  if (isEmpty(schema)) {
     return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
@@ -236,7 +241,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
-        dataSource={dataModel?.columns}
+        dataSource={schema}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),

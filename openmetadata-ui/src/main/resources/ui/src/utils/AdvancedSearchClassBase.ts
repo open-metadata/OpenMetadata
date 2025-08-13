@@ -802,6 +802,27 @@ class AdvancedSearchClassBase {
           listValues: TAG_LABEL_TYPE_LIST_VALUES,
         },
       },
+      [EntityFields.TIER_LABEL_TYPE]: {
+        label: t('label.tier-label-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: TAG_LABEL_TYPE_LIST_VALUES,
+        },
+      },
+      [EntityFields.CREATED_BY]: {
+        label: t('label.created-by'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.USER],
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
     };
   }
 

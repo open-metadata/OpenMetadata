@@ -29,6 +29,7 @@ export enum EntityType {
   MLMODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
   SEARCH_SERVICE = 'searchService',
+  SECURITY_SERVICE = 'securityService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -77,6 +78,8 @@ export enum EntityType {
   METRIC = 'metric',
   WORKFLOW_DEFINITION = 'workflowDefinition',
   SERVICE = 'service',
+  DATA_CONTRACT = 'dataContract',
+  INGESTION_RUNNER = 'ingestionRunner',
 }
 
 export enum EntityLineageDirection {

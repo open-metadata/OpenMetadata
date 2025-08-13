@@ -14,12 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import {
-  assignDomain,
-  removeDomain,
-  updateDomain,
-  uuid,
-} from '../../utils/common';
+import { assignDomain, removeDomain, uuid } from '../../utils/common';
 import {
   addMultiOwner,
   addOwner,
@@ -212,23 +207,6 @@ export class DatabaseClass extends EntityClass {
     await databaseResponse;
   }
 
-  async visitEntityPageWithCustomSearchBox(page: Page) {
-    await visitServiceDetailsPage(
-      page,
-      {
-        name: this.service.name,
-        type: SERVICE_TYPE.Database,
-      },
-      false
-    );
-
-    const databaseResponse = page.waitForResponse(
-      `/api/v1/databases/name/*${this.entity.name}?**`
-    );
-    await page.getByTestId(this.entity.name).click();
-    await databaseResponse;
-  }
-
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
@@ -281,8 +259,10 @@ export class DatabaseClass extends EntityClass {
     await expect(
       page
         .getByTestId(`table-data-card_${searchTerm}`)
-        .getByTestId('domain-link')
+        .getByTestId('domains-link')
     ).toContainText(domain.displayName);
+
+    await page.getByTestId('searchBox').clear();
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
@@ -366,7 +346,8 @@ export class DatabaseClass extends EntityClass {
   ) {
     await assignDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
-    await updateDomain(page, domain2);
+    await removeDomain(page, domain1);
+    await assignDomain(page, domain2);
     await removeDomain(page, domain2);
   }
 }

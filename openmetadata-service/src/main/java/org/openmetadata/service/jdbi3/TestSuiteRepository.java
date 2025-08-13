@@ -527,10 +527,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(
-      SecurityContext securityContext, TestSuite original, boolean hardDelete) {
+      String updatedBy, TestSuite original, boolean hardDelete) {
     // deleting a logical will delete the test suite and only remove the relationship to
     // test cases if hardDelete is true. Test Cases will not be deleted.
-    String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
     deleteChildIngestionPipelines(original.getId(), hardDelete, updatedBy);
@@ -581,7 +580,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         () -> {
           try {
             RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+                deleteLogicalTestSuite(
+                    securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
             deleteFromSearch(deleteResponse.entity(), hardDelete);
 
             WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
@@ -670,6 +670,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       recordChange(UPDATE_FIELDS, origTests, updatedTests);
       recordChange(
           "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
+      recordChange("dataContract", original.getDataContract(), updated.getDataContract());
     }
   }
 }

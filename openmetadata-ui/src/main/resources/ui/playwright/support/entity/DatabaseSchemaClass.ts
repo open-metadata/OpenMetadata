@@ -142,28 +142,6 @@ export class DatabaseSchemaClass extends EntityClass {
     await databaseSchemaResponse;
   }
 
-  async visitEntityPageWithCustomSearchBox(page: Page) {
-    await visitServiceDetailsPage(
-      page,
-      {
-        name: this.service.name,
-        type: SERVICE_TYPE.Database,
-      },
-      false
-    );
-
-    const databaseResponse = page.waitForResponse(
-      `/api/v1/databases/name/*${this.database.name}?**`
-    );
-    await page.getByTestId(this.database.name).click();
-    await databaseResponse;
-    const databaseSchemaResponse = page.waitForResponse(
-      `/api/v1/databaseSchemas/name/*${this.entity}?*`
-    );
-    await page.getByTestId(this.entity.name).click();
-    await databaseSchemaResponse;
-  }
-
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

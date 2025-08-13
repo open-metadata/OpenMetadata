@@ -1,10 +1,10 @@
 {
-    "name": "Domains",
-    "displayName": "Domains",
-    "description": "Discover and access domains that have been set up in OpenMetadata.",
-    "entityType": "KnowledgePanel",
-    "fullyQualifiedName": "KnowledgePanel.Domains",
-    "data": {
-        "gridSizes": ["small", "medium"]
-    }
+  "name": "Domains",
+  "displayName": "Domains",
+  "description": "Displays all available domains to explore and access data grouped by specific data assets.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.Domains",
+  "data": {
+    "gridSizes": ["small", "medium"]
+  }
 }

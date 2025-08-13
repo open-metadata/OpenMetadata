@@ -12,11 +12,9 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface SubDomainsTableProps {
-  subDomains?: Domain[];
-  isLoading?: boolean;
+  domainFqn: string;
   permissions: OperationPermission;
   onAddSubDomain: () => void;
 }

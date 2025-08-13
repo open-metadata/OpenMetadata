@@ -15,6 +15,7 @@ import { ReactComponent as DeprecatedIcon } from '../assets/svg/arrow-down-color
 import { ReactComponent as ApprovedIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as DraftIcon } from '../assets/svg/clipboard-colored.svg';
 import { ReactComponent as InReviewIcon } from '../assets/svg/eye-colored.svg';
+import { ReactComponent as FailedIcon } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as ActiveErrorIcon } from '../assets/svg/ic-alert-circle.svg';
 import { ReactComponent as CompletedIcon } from '../assets/svg/ic-check-circle-colored.svg';
 import { ReactComponent as PendingIcon } from '../assets/svg/ic-pause.svg';
@@ -22,6 +23,7 @@ import { ReactComponent as RunningIcon } from '../assets/svg/ic-play.svg';
 import { ReactComponent as StartedIcon } from '../assets/svg/ic-rocket.svg';
 import { ReactComponent as StoppedIcon } from '../assets/svg/ic-stop-circle.svg';
 import { ReactComponent as RejectedIcon } from '../assets/svg/x-colored.svg';
+import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status as AppStatus } from '../generated/entity/applications/appRunRecord';
 import { Status } from '../generated/entity/data/glossaryTerm';
 import { TestCaseStatus } from '../generated/tests/testCase';
@@ -46,4 +48,17 @@ export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
   [AppStatus.Pending]: PendingIcon,
   [AppStatus.ActiveError]: ActiveErrorIcon,
   [TestCaseStatus.Aborted]: AbortedIcon,
+};
+
+export const iconsV2: Partial<Record<StatusType, IconComponent>> = {
+  [StatusType.Success]: CompletedIcon,
+  [StatusType.Warning]: ActiveErrorIcon,
+  [StatusType.Failure]: FailedIcon,
+  [StatusType.ActiveError]: DraftIcon,
+  [StatusType.Running]: RunningIcon,
+  [StatusType.Started]: StartedIcon,
+  [StatusType.Stopped]: StoppedIcon,
+  [StatusType.Pending]: PendingIcon,
+  [StatusType.InReview]: InReviewIcon,
+  [StatusType.Deprecated]: DeprecatedIcon,
 };

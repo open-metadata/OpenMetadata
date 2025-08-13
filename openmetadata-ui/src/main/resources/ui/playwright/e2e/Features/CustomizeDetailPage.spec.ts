@@ -30,7 +30,6 @@ import {
 } from '../../utils/customizeDetails';
 import {
   checkDefaultStateForNavigationTree,
-  selectPersona,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import { settingClick } from '../../utils/sidebar';
@@ -157,7 +156,7 @@ test.describe('Persona customize UI tab', async () => {
 
   test('should show all the customize options', async ({ adminPage }) => {
     await expect(adminPage.getByText('Navigation')).toBeVisible();
-    await expect(adminPage.getByText('Homepage')).toBeVisible();
+    await expect(adminPage.getByText('Home Page')).toBeVisible();
     await expect(adminPage.getByText('Governance')).toBeVisible();
     await expect(adminPage.getByText('Data Assets')).toBeVisible();
   });
@@ -232,7 +231,6 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await redirectToHomePage(userPage);
-        await selectPersona(userPage, navigationPersona);
         await userPage.reload();
         await userPage.waitForLoadState('networkidle');
 
@@ -390,6 +388,9 @@ test.describe('Persona customization', () => {
           .getByTestId('remove-widget-button')
           .click();
 
+        await adminPage.getByTestId('tab-Custom Properties').click();
+        await adminPage.getByText('Hide', { exact: true }).click();
+
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
         await adminPage
@@ -415,7 +416,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -510,7 +511,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -526,6 +527,74 @@ test.describe('Persona customization', () => {
 
         await expect(visibleDescription).toBeVisible();
       });
+    });
+  });
+
+  test('Validate Glossary Term details page after customization of tabs', async ({
+    adminPage,
+    userPage,
+  }) => {
+    test.slow();
+
+    await test.step('apply customization', async () => {
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage
+        .getByTestId(`persona-details-card-${persona.data.name}`)
+        .click();
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Glossary Term', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const dragElement = adminPage.getByTestId('tab-Overview');
+      const dropTarget = adminPage.getByTestId('tab-Custom Properties');
+
+      await dragElement.dragTo(dropTarget);
+
+      expect(adminPage.getByTestId('save-button')).toBeEnabled();
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step('Validate customization', async () => {
+      await redirectToHomePage(userPage);
+
+      const entity = getCustomizeDetailsEntity(
+        ECustomizedGovernance.GLOSSARY_TERM
+      );
+      await entity.visitEntityPage(userPage);
+      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
+      expect(
+        userPage.getByRole('tab', { name: 'Glossary Terms' })
+      ).toBeVisible();
+      expect(
+        userPage.getByTestId('create-error-placeholder-Glossary Term')
+      ).toBeVisible();
+
+      await userPage.getByRole('tab', { name: 'Overview' }).click();
+
+      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+
+      await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
+
+      expect(
+        userPage.getByTestId('create-error-placeholder-Glossary Term')
+      ).toBeVisible();
     });
   });
 });

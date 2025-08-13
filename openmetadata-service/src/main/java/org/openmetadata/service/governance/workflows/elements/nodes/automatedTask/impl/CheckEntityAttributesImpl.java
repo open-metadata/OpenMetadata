@@ -6,8 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARI
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import io.github.jamsesso.jsonlogic.JsonLogic;
-import io.github.jamsesso.jsonlogic.JsonLogicException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -21,6 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.rules.RuleEngine;
 
 @Slf4j
 public class CheckEntityAttributesImpl implements JavaDelegate {
@@ -53,15 +52,12 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   private Boolean checkAttributes(MessageParser.EntityLink entityLink, String rules) {
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    JsonLogic jsonLogic = new JsonLogic();
-    boolean result = false;
-
+    boolean result;
     try {
-      result = (boolean) jsonLogic.apply(rules, JsonUtils.getMap(entity));
-    } catch (JsonLogicException e) {
+      result = (boolean) RuleEngine.getInstance().apply(rules, JsonUtils.getMap(entity));
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
-
     return result;
   }
 }

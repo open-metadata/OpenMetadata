@@ -1514,6 +1514,7 @@ export const getEntityLinkFromType = (
     case EntityType.TABLE:
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
+    case EntityType.CHART:
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
@@ -1660,6 +1661,21 @@ export const getBreadcrumbForTable = (
   ];
 };
 
+export const getBreadcrumbForChart = (entity: Chart) => {
+  const { service } = entity;
+
+  return [
+    {
+      name: getEntityName(service),
+      url: getServiceDetailsPath(
+        service?.name ?? '',
+        ServiceCategoryPlural[
+          service?.type as keyof typeof ServiceCategoryPlural
+        ]
+      ),
+    },
+  ];
+};
 export const getBreadCrumbForAPICollection = (entity: APICollection) => {
   const { service } = entity;
 
@@ -1871,6 +1887,8 @@ export const getEntityBreadcrumbs = (
   includeCurrent = false
 ) => {
   switch (entityType) {
+    case EntityType.CHART:
+      return getBreadcrumbForChart(entity as Chart);
     case EntityType.TABLE:
     case EntityType.STORED_PROCEDURE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
@@ -2088,6 +2106,17 @@ export const getEntityBreadcrumbs = (
           url: getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
             getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.SECURITY_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.SECURITY_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.SECURITY_SERVICES)
           ),
         },
       ];
@@ -2373,6 +2402,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     dashboard: t('label.dashboard'),
     testCase: t('label.test-case'),
     testSuite: t('label.test-suite'),
+    dataContract: t('label.data-contract'),
     ingestionPipeline: t('label.ingestion-pipeline'),
     all: t('label.all'),
     announcement: t('label.announcement'),
@@ -2623,4 +2653,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.LINEAGE_EDGE]: t('label.lineage-edge'),
   [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
   [EntityType.SERVICE]: t('label.service'),
+  [EntityType.DATA_CONTRACT]: t('label.data-contract'),
+  [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
 };

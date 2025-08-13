@@ -15,10 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -169,14 +166,6 @@ export class TopicClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
-    await visitEntityPageWithCustomSearchBox({
-      page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }

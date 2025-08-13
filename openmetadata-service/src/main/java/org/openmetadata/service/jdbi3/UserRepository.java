@@ -80,6 +80,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -246,6 +247,15 @@ public class UserRepository extends EntityRepository<User> {
         JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+
+    // Update lastActivityTime immediately on login for metrics visibility
+    // This ensures user metrics show activity right after login
+    if (!orginalUser.getIsBot()) {
+      // Track in the batch system for ongoing updates
+      UserActivityTracker.getInstance().trackActivity(orginalUser.getName());
+      // Also update immediately in DB for instant visibility
+      updateUserLastActivityTime(orginalUser.getName(), lastLoginTime);
+    }
   }
 
   @Transaction
@@ -279,6 +289,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> nameHashes = new ArrayList<>();
 
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
+      // User FQNs are stored with quoteName applied, so we must match that format
       String fqn = quoteName(entry.getKey().toLowerCase());
       String fqnHash = FullyQualifiedName.buildHash(fqn);
 
@@ -1017,7 +1028,7 @@ public class UserRepository extends EntityRepository<User> {
           updated.getLastLoginTime(),
           false,
           objectMatch,
-          true);
+          false);
 
       // Updates
       updateRoles(original, updated);
