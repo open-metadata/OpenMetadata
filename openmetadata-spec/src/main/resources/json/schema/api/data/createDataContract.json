@@ -21,7 +21,7 @@
       "description": "Description of the data contract.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "status": {
+    "entityStatus": {
       "$ref": "../../type/entityStatus.json",
       "default": "Draft"
     },

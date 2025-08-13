@@ -119,6 +119,10 @@
       "entityType": {
         "type": "keyword"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "version": {
         "type": "float"
       },
@@ -523,6 +527,10 @@
             "format": "strict_date_optional_time||epoch_millis"
           }
         }
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

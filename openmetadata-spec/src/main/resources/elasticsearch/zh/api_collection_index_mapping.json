@@ -119,6 +119,10 @@
       "entityType": {
         "type": "keyword"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tier": {
         "properties": {
           "tagFQN": {

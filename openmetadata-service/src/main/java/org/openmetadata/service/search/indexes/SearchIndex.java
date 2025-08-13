@@ -103,7 +103,10 @@ public interface SearchIndex {
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
+    map.put("reviewers", getEntitiesWithDisplayName(entity.getReviewers()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
+    Optional.ofNullable(entity.getEntityStatus())
+        .ifPresent(status -> map.put("entityStatus", status.value()));
     int totalVotes =
         nullOrEmpty(entity.getVotes())
             ? 0

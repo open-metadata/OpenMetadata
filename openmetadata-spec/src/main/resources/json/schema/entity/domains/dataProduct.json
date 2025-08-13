@@ -92,7 +92,7 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Data Product.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"
