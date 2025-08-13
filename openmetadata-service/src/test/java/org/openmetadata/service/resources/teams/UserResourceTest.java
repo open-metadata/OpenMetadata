@@ -2258,4 +2258,65 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNotNull(onlineUsers);
     assertNotNull(onlineUsers.getData());
   }
+
+  @Test
+  void test_loginWithDeletedUpdatedByUser_200_ok(TestInfo test) throws HttpResponseException {
+    // Create an admin user to update another user
+    String username = "tempAdmin";
+    Map<String, String> TEMP_ADMIN_AUTH_HEADERS = authHeaders(username + "@open-metadata.org");
+    User adminUser =
+        createEntity(createRequest("tempAdmin").withIsAdmin(true), TEMP_ADMIN_AUTH_HEADERS);
+
+    // Create a target user that will be updated by the admin
+    User targetUser =
+        createEntity(
+            createRequest(test)
+                .withName("targetUser")
+                .withDisplayName("Target User")
+                .withEmail("targetuser@email.com")
+                .withIsBot(false)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withPassword("Test@1234")
+                .withConfirmPassword("Test@1234"),
+            TEMP_ADMIN_AUTH_HEADERS);
+
+    assertEquals(adminUser.getName(), targetUser.getUpdatedBy());
+
+    // Delete the admin user who updated the target user
+    deleteEntity(adminUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify admin user is deleted
+    assertResponse(
+        () -> getEntity(adminUser.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.USER, adminUser.getId()));
+
+    // Try to login with the target user - this should not throw an exception
+    // even though the updatedBy user (adminUser) has been deleted
+    LoginRequest loginRequest =
+        new LoginRequest()
+            .withEmail("targetuser@email.com")
+            .withPassword(encodePassword("Test@1234"));
+
+    // This login should succeed without throwing an exception
+    // The bug fix ensures that when updateUserLastLoginTime is called,
+    // it handles the case where the updatedBy user no longer exists
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"),
+            loginRequest,
+            JwtResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(jwtResponse);
+    assertNotNull(jwtResponse.getAccessToken());
+
+    // Verify the target user still has the deleted admin user name in updatedBy
+    User loggedInUser = getEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(adminUser.getName(), loggedInUser.getUpdatedBy());
+
+    // Clean up
+    deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+  }
 }

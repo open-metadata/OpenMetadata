@@ -47,7 +47,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.findEntityByNameOrNull;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
@@ -3558,10 +3558,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
-      this.updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+      User originalUser =
+          original.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
+              : findEntityByNameOrNull(USER, original.getUpdatedBy(), ALL);
+      if (originalUser == null) {
+        // user not found, create a new user with name
+        // This is to handle the case where the user is not found in the system. maybe deleted
+        originalUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
+      }
+      this.updatingUser = originalUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
     }

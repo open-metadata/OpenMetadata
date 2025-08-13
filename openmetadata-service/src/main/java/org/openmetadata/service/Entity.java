@@ -528,6 +528,18 @@ public final class Entity {
     return entity;
   }
 
+  public static <T> T findEntityByNameOrNull(String entityType, String fqn, Include include) {
+    return findByNameOrNull(entityType, fqn, include);
+  }
+
+  /** Retrieve the entity using id from given entity reference and fields */
+  public static <T> T findByNameOrNull(String entityType, String fqn, Include include) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity = (T) entityRepository.findByNameOrNull(fqn, include);
+    return entity;
+  }
+
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
