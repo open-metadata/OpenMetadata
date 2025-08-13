@@ -579,7 +579,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsStatus) {
       return;
     }
-    // Skip if status is already set (for both create and update operations)
+    // Skip if status is already set
     if (entity.getEntityStatus() != null) {
       return;
     }
