@@ -74,14 +74,6 @@ public record SubjectContext(User user) {
     return false;
   }
 
-  /**
-   * Checks if the entity has no domains assigned.
-   * Returns true if the entity has no domains (empty or null domains list).
-   */
-  public boolean noDomain(List<EntityReference> domains) {
-    return listOrEmpty(domains).isEmpty();
-  }
-
   public boolean hasDomains(List<EntityReference> domains) {
     return listOrEmpty(user.getDomains()).stream()
         .anyMatch(

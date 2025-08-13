@@ -103,7 +103,8 @@ public class RuleEvaluator {
     if (resourceContext == null || subjectContext == null) {
       return false;
     }
-    return subjectContext.noDomain(resourceContext.getDomains());
+    // Returns true only if entity has no domains
+    return nullOrEmpty(resourceContext.getDomains());
   }
 
   @Function(
