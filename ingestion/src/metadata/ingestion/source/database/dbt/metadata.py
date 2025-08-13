@@ -375,11 +375,11 @@ class DbtSource(DbtServiceSource):
             custom_properties = extract_meta_fields_from_node(manifest_node)
 
             if not custom_properties:
-                logger.debug(f"No customProperties to process for table {table_fqn}")
+                logger.debug(f"No custom_properties to process for table {table_fqn}")
                 return
 
             logger.info(
-                f"Processing {len(custom_properties)} customProperties for table {table_fqn}"
+                f"Processing {len(custom_properties)} custom_properties for table {table_fqn}"
             )
 
             self._update_table_custom_properties(
@@ -387,7 +387,7 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.warning(
-                f"Error processing customProperties for {data_model_link.table_entity.fullyQualifiedName.root}: {exc}"
+                f"Error processing custom_properties for {data_model_link.table_entity.fullyQualifiedName.root}: {exc}"
             )
 
     def _update_table_custom_properties(

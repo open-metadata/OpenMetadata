@@ -1183,16 +1183,16 @@ class DbtUnitTest(TestCase):
 
         self.assertIsNone(result)
 
-    # Test CustomProperties extraction
+    # Test custom_properties extraction
 
     def test_extract_meta_fields_with_custom_properties(self):
         """
-        Test extraction of customProperties from manifest node
+        Test extraction of custom_properties from manifest node
         """
         node = MagicMock()
         node.meta = {
             "openmetadata": {
-                "customProperties": {
+                "custom_properties": {
                     "dataRetentionDays": 90,
                     "dataClassification": "Confidential",
                     "businessOwner": "john.doe@company.com",
@@ -1209,7 +1209,7 @@ class DbtUnitTest(TestCase):
 
     def test_extract_meta_fields_no_custom_properties(self):
         """
-        Test when no customProperties exist
+        Test when no custom_properties exist
         """
         node = MagicMock()
         node.meta = {"openmetadata": {"owner": "some_owner"}}
@@ -1231,7 +1231,7 @@ class DbtUnitTest(TestCase):
         result = extract_meta_fields_from_node(node_none_meta)
         self.assertEqual(result, {})
 
-    # Test CustomProperties validation
+    # Test custom_properties validation
 
     def test_validate_custom_property_string_types(self):
         """
@@ -1509,7 +1509,7 @@ class DbtUnitTest(TestCase):
 
         manifest_node = MagicMock()
         manifest_node.meta = {
-            "openmetadata": {"customProperties": {"dataRetentionDays": 90}}
+            "openmetadata": {"custom_properties": {"dataRetentionDays": 90}}
         }
 
         mock_extract.return_value = {"dataRetentionDays": 90}
@@ -1721,7 +1721,7 @@ class DbtUnitTest(TestCase):
         self, mock_find_domain, mock_get_by_name, mock_patch, mock_format_domain
     ):
         """
-        Integration test for processing DBT model with domain and customProperties
+        Integration test for processing DBT model with domain and custom_properties
         """
         test_uuid = str(uuid.uuid4())
 
@@ -1751,7 +1751,7 @@ class DbtUnitTest(TestCase):
         manifest_node.meta = {
             "openmetadata": {
                 "domain": "Finance",
-                "customProperties": {"dataRetentionDays": 90},
+                "custom_properties": {"dataRetentionDays": 90},
             }
         }
 

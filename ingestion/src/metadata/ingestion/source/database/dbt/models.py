@@ -41,7 +41,7 @@ class DbtMetaOpenmetadata(BaseModel):
     tier: Optional[str] = None
     domain: Optional[str] = None
     glossary: Optional[List[str]] = None
-    customProperties: Optional[Dict[str, Any]] = None
+    custom_properties: Optional[Dict[str, Any]] = None
 
 
 class DbtMeta(BaseModel):
