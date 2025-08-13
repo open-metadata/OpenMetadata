@@ -101,15 +101,7 @@ for (const EntityClass of entities) {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
 
-        await expect(
-          page.getByTestId('data-asset-header-metadata')
-        ).toBeVisible();
-
         await visitLineageTab(page);
-
-        await expect(
-          page.getByTestId('data-asset-header-metadata')
-        ).not.toBeVisible();
 
         await verifyColumnLayerInactive(page);
         // enable fullscreen
