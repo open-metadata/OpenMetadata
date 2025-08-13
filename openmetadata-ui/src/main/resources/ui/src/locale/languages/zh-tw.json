@@ -794,6 +794,7 @@
     "ingestion-pipeline": "擷取管線",
     "ingestion-pipeline-name": "擷取管線名稱",
     "ingestion-plural": "擷取",
+    "ingestion-runner": "擷取執行器",
     "ingestion-workflow-lowercase": "擷取工作流程",
     "inherited": "已繼承",
     "inherited-entity": "已繼承的 {{entity}}",
