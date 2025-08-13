@@ -389,7 +389,7 @@ test.describe('Persona customization', () => {
           .click();
 
         await adminPage.getByTestId('tab-Custom Properties').click();
-        await adminPage.getByText('Hide').click();
+        await adminPage.getByText('Hide', { exact: true }).click();
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
