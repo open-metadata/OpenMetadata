@@ -307,7 +307,7 @@
       "minLength": 1,
       "maxLength": 32
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Pipeline.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

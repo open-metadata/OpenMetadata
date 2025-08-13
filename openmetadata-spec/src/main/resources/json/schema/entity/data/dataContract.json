@@ -98,8 +98,8 @@
       "description": "Link to this data contract resource.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "status": {
-      "description": "Status of the data contract.",
+    "entityStatus": {
+      "description": "Approval status of the data contract.",
       "$ref": "../../type/entityStatus.json",
       "default": "Draft"
     },

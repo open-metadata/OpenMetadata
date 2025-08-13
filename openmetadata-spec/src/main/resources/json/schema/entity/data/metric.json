@@ -203,7 +203,7 @@
     "certification": {
       "$ref": "../../type/assetCertification.json"
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Metric.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

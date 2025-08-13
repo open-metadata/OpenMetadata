@@ -133,7 +133,7 @@
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Query.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

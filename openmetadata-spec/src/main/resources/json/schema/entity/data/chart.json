@@ -198,7 +198,7 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Chart.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

@@ -113,7 +113,7 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Glossary.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

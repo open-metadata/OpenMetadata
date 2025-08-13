@@ -209,7 +209,7 @@
       "type": "boolean",
       "default": false
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the StoredProcedure.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

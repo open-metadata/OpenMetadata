@@ -22,10 +22,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "status": {
-      "type": "string",
-      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -126,8 +122,8 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "status": {
-      "description": "Status of the glossary term.",
+    "entityStatus": {
+      "description": "Approval status of the glossary term.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"
     },

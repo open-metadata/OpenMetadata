@@ -186,7 +186,7 @@
     "certification": {
       "$ref": "../../type/assetCertification.json"
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Spreadsheet.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

@@ -158,7 +158,7 @@
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Worksheet.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

@@ -178,7 +178,7 @@
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Directory.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"

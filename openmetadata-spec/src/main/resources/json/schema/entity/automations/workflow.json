@@ -55,7 +55,7 @@
       "description": "Type of the workflow.",
       "$ref": "#/definitions/workflowType"
     },
-    "workflowStatus": {
+    "status": {
       "description": "Workflow computation status.",
       "$ref": "#/definitions/workflowStatus",
       "default": "Pending"

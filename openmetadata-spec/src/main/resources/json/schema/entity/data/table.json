@@ -1211,7 +1211,7 @@
       },
       "default": null
     },
-    "status": {
+    "entityStatus": {
       "description": "Status of the Table.",
       "$ref": "../../type/entityStatus.json",
       "default": "Approved"
