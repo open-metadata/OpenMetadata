@@ -9,14 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 @WebServlet("/callback")
 @Slf4j
 public class AuthCallbackServlet extends HttpServlet {
-  private final AuthenticationCodeFlowHandler authenticationCodeFlowHandler;
-
-  public AuthCallbackServlet(AuthenticationCodeFlowHandler authenticationCodeFlowHandler) {
-    this.authenticationCodeFlowHandler = authenticationCodeFlowHandler;
-  }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-    authenticationCodeFlowHandler.handleCallback(req, resp);
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleCallback(req, resp);
   }
 }

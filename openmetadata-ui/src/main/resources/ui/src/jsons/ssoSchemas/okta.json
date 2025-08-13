@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Okta SSO Configuration",
+  "description": "Okta SSO configuration schema for OpenMetadata",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "title": "SSO Provider",
+      "description": "Select the SSO provider to configure",
+      "type": "string",
+      "enum": [
+        "Google",
+        "Auth0",
+        "Azure",
+        "Okta",
+        "CustomOidc",
+        "Saml",
+        "Basic"
+      ],
+      "default": "Okta"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Okta Client ID",
+      "type": "string",
+      "minLength": 1
+    },
+    "orgURL": {
+      "title": "Organization URL",
+      "description": "Okta org url",
+      "type": "string",
+      "minLength": 1
+    },
+    "privateKey": {
+      "title": "Private Key",
+      "description": "Okta Private Key",
+      "type": "string",
+      "format": "password",
+      "minLength": 1
+    },
+    "email": {
+      "title": "Service Account Email",
+      "description": "Okta Service account Email",
+      "type": "string",
+      "format": "email",
+      "minLength": 1
+    },
+    "scopes": {
+      "title": "Scopes",
+      "description": "Okta client scopes",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["openid", "profile", "email"]
+    }
+  },
+  "required": ["provider", "clientId", "orgURL", "privateKey", "email"],
+  "additionalProperties": false
+}

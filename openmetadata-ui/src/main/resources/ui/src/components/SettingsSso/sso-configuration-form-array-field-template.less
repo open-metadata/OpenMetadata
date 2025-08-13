@@ -1,0 +1,94 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../styles/variables.less');
+
+.sso-array-field {
+  &-container {
+    position: relative;
+  }
+
+  &-divider {
+    position: absolute;
+    right: 36px;
+    top: 0;
+    min-height: 32px;
+    height: 100%;
+    border-left: 1px solid @grey-22;
+    margin-top: @size-xxs;
+  }
+
+  &-copy-button {
+    position: absolute;
+    right: 0;
+    &.ant-btn-icon-only.ant-btn-sm {
+      padding: 10px 0px;
+      text-align: center;
+      &:hover,
+      &:focus,
+      &:active {
+        svg path {
+          stroke: @grey-500;
+        }
+      }
+    }
+  }
+}
+
+.sso-select-container {
+  position: relative;
+  overflow: hidden;
+
+  .ant-select-selection-overflow {
+    padding-right: @size-md;
+    gap: @size-xxs;
+  }
+
+  .ant-select-selection-item {
+    display: flex;
+    align-items: center;
+    gap: @size-xxs;
+    background: @blue-29;
+    border: 1px solid @blue-30;
+    border-radius: @border-rad-xs;
+    margin: 0px;
+    height: 30px;
+    color: @grey-900;
+    font-size: @size-sm;
+    font-weight: @font-medium;
+
+    .ant-select-selection-item-remove {
+      margin-left: @size-xxs;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background-color: transparent;
+      border: none;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
+  }
+
+  .ant-select-selector {
+    background: @grey-50;
+    border: 1px solid @grey-200;
+    border-radius: @border-rad-xs;
+    padding: @size-xxs;
+  }
+
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    border-radius: 8px;
+  }
+}
