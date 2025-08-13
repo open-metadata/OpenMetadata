@@ -72,6 +72,14 @@ export interface Classification {
     owners?:   EntityReference[];
     provider?: ProviderType;
     /**
+     * User references of the reviewers for this tag.
+     */
+    reviewers?: EntityReference[];
+    /**
+     * Status of the tag.
+     */
+    status?: EntityStatus;
+    /**
      * Total number of children tag terms under this classification. This includes all the
      * children in the hierarchy.
      */
@@ -227,4 +235,18 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * Status of the tag.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
