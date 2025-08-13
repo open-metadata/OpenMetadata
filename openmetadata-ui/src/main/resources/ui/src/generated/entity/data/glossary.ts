@@ -44,6 +44,10 @@ export interface Glossary {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Glossary.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -82,10 +86,6 @@ export interface Glossary {
      * User references of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    /**
-     * Status of the Glossary.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this glossary.
      */
@@ -239,18 +239,6 @@ export interface EntityReference {
 }
 
 /**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
  * Status of the Glossary.
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
@@ -262,6 +250,18 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**

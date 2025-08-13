@@ -50,6 +50,10 @@ export interface DatabaseSchema {
      */
     domains?: EntityReference[];
     /**
+     * Status of the DatabaseSchema.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -108,10 +112,6 @@ export interface DatabaseSchema {
      * Source URL of database schema.
      */
     sourceUrl?: string;
-    /**
-     * Status of the DatabaseSchema.
-     */
-    status?: EntityStatus;
     /**
      * References to tables in the schema.
      */
@@ -490,6 +490,20 @@ export enum SamplingMethodType {
 }
 
 /**
+ * Status of the DatabaseSchema.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -587,20 +601,6 @@ export enum DatabaseServiceType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
-}
-
-/**
- * Status of the DatabaseSchema.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

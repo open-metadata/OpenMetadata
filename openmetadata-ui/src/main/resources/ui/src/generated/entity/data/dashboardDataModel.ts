@@ -47,6 +47,10 @@ export interface DashboardDataModel {
      */
     domains?: EntityReference[];
     /**
+     * Status of the DashboardDataModel.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -103,10 +107,6 @@ export interface DashboardDataModel {
      * In case the Data Model is based on a SQL query.
      */
     sql?: string;
-    /**
-     * Status of the DashboardDataModel.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this data model.
      */
@@ -751,6 +751,20 @@ export enum DataModelType {
 }
 
 /**
+ * Status of the DashboardDataModel.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -819,20 +833,6 @@ export enum DashboardServiceType {
     Superset = "Superset",
     Tableau = "Tableau",
     ThoughtSpot = "ThoughtSpot",
-}
-
-/**
- * Status of the DashboardDataModel.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

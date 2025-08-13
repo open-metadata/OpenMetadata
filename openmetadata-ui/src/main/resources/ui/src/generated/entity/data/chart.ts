@@ -47,6 +47,10 @@ export interface Chart {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Chart.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -98,10 +102,6 @@ export interface Chart {
      * Chart URL suffix from its service.
      */
     sourceUrl?: string;
-    /**
-     * Status of the Chart.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this chart.
      */
@@ -379,6 +379,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Chart.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -447,20 +461,6 @@ export enum DashboardServiceType {
     Superset = "Superset",
     Tableau = "Tableau",
     ThoughtSpot = "ThoughtSpot",
-}
-
-/**
- * Status of the Chart.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

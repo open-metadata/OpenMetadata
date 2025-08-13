@@ -54,6 +54,10 @@ export interface StoredProcedure {
      */
     domains?: EntityReference[];
     /**
+     * Status of the StoredProcedure.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -109,10 +113,6 @@ export interface StoredProcedure {
      * Source URL of database schema.
      */
     sourceUrl?: string;
-    /**
-     * Status of the StoredProcedure.
-     */
-    status?: EntityStatus;
     /**
      * Stored Procedure Code.
      */
@@ -377,6 +377,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the StoredProcedure.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -474,20 +488,6 @@ export enum DatabaseServiceType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
-}
-
-/**
- * Status of the StoredProcedure.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 export interface StoredProcedureCodeObject {

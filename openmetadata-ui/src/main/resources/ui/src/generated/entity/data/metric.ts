@@ -43,6 +43,10 @@ export interface Metric {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Metric.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -90,10 +94,6 @@ export interface Metric {
      * Related Metrics.
      */
     relatedMetrics?: EntityReference[];
-    /**
-     * Status of the Metric.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this chart.
      */
@@ -346,6 +346,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Metric.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Metric's granularity.
  *
  * This schema defines the type of Metric's granularity.
@@ -404,20 +418,6 @@ export enum MetricType {
     StandardDeviation = "STANDARD_DEVIATION",
     Sum = "SUM",
     Variance = "VARIANCE",
-}
-
-/**
- * Status of the Metric.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

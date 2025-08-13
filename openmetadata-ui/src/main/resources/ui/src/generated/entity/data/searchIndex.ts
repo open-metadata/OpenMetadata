@@ -42,6 +42,10 @@ export interface SearchIndex {
      */
     domains?: EntityReference[];
     /**
+     * Status of the SearchIndex.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -106,10 +110,6 @@ export interface SearchIndex {
      * Source hash of the entity
      */
     sourceHash?: string;
-    /**
-     * Status of the SearchIndex.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this searchIndex.
      */
@@ -362,6 +362,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the SearchIndex.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * This schema defines the type for a field in a searchIndex.
  */
 export interface SearchIndexField {
@@ -518,20 +532,6 @@ export enum SearchServiceType {
     CustomSearch = "CustomSearch",
     ElasticSearch = "ElasticSearch",
     OpenSearch = "OpenSearch",
-}
-
-/**
- * Status of the SearchIndex.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

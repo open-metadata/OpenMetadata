@@ -38,6 +38,10 @@ export interface Report {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Report.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * A unique name that identifies a report in the format 'ServiceName.ReportName'.
      */
     fullyQualifiedName?: string;
@@ -65,10 +69,6 @@ export interface Report {
      * Link to service where this report is hosted in.
      */
     service: EntityReference;
-    /**
-     * Status of the Report.
-     */
-    status?: EntityStatus;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.

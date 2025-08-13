@@ -49,6 +49,10 @@ export interface Worksheet {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Worksheet.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -120,10 +124,6 @@ export interface Worksheet {
      * Reference to the parent File entity (with fileType=Spreadsheet)
      */
     spreadsheet: EntityReference;
-    /**
-     * Status of the Worksheet.
-     */
-    status?: EntityStatus;
     /**
      * Tags associated with this worksheet.
      */
@@ -758,6 +758,20 @@ export interface HistogramClass {
 }
 
 /**
+ * Status of the Worksheet.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -826,20 +840,6 @@ export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
     SharePoint = "SharePoint",
-}
-
-/**
- * Status of the Worksheet.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

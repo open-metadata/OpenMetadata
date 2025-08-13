@@ -50,6 +50,10 @@ export interface Mlmodel {
      */
     domains?: EntityReference[];
     /**
+     * Status of the MlModel.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -118,10 +122,6 @@ export interface Mlmodel {
      * Source URL of mlModel.
      */
     sourceUrl?: string;
-    /**
-     * Status of the MlModel.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this ML Model.
      */
@@ -386,6 +386,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the MlModel.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -550,20 +564,6 @@ export enum MlModelServiceType {
     SageMaker = "SageMaker",
     Sklearn = "Sklearn",
     VertexAI = "VertexAI",
-}
-
-/**
- * Status of the MlModel.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

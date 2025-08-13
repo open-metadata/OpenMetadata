@@ -47,6 +47,10 @@ export interface Topic {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Topic.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -129,10 +133,6 @@ export interface Topic {
      * Source URL of topic.
      */
     sourceUrl?: string;
-    /**
-     * Status of the Topic.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this table.
      */
@@ -397,6 +397,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Topic.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -558,20 +572,6 @@ export enum MessagingServiceType {
     Kafka = "Kafka",
     Kinesis = "Kinesis",
     Redpanda = "Redpanda",
-}
-
-/**
- * Status of the Topic.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

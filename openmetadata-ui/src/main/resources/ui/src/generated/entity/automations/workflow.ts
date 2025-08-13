@@ -73,6 +73,10 @@ export interface Workflow {
      */
     response?: TestConnectionResult;
     /**
+     * Workflow computation status.
+     */
+    status?: WorkflowStatus;
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -85,10 +89,6 @@ export interface Workflow {
      * Metadata version of the entity.
      */
     version?: number;
-    /**
-     * Workflow computation status.
-     */
-    workflowStatus?: WorkflowStatus;
     /**
      * Type of the workflow.
      */

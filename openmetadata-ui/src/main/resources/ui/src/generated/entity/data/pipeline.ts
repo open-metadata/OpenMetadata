@@ -48,6 +48,10 @@ export interface Pipeline {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Pipeline.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -119,10 +123,6 @@ export interface Pipeline {
      * State of the Pipeline.
      */
     state?: PipelineState;
-    /**
-     * Status of the Pipeline.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this Pipeline.
      */
@@ -383,6 +383,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Pipeline.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -520,20 +534,6 @@ export enum PipelineServiceType {
 export enum PipelineState {
     Active = "Active",
     Inactive = "Inactive",
-}
-
-/**
- * Status of the Pipeline.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 export interface Task {

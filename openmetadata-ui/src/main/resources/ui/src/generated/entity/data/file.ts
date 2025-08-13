@@ -57,6 +57,10 @@ export interface File {
      */
     downloadLink?: string;
     /**
+     * Status of the File.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -141,10 +145,6 @@ export interface File {
      * Link to this file in the source system.
      */
     sourceUrl?: string;
-    /**
-     * Status of the File.
-     */
-    status?: EntityStatus;
     /**
      * Tags associated with this file.
      */
@@ -409,6 +409,20 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the File.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Type of file based on content
  */
 export enum FileType {
@@ -480,20 +494,6 @@ export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
     SharePoint = "SharePoint",
-}
-
-/**
- * Status of the File.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

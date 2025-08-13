@@ -37,6 +37,10 @@ export interface DataProduct {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Data Product.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * List of users who are experts for this Data Product.
      */
     experts?: EntityReference[];
@@ -76,11 +80,7 @@ export interface DataProduct {
      * User references of the reviewers for this Data Product.
      */
     reviewers?: EntityReference[];
-    /**
-     * Status of the Data Product.
-     */
-    status?: EntityStatus;
-    style?:  Style;
+    style?:     Style;
     /**
      * Tags associated with the Data Product.
      */

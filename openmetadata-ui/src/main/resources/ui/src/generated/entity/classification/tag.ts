@@ -58,6 +58,10 @@ export interface Tag {
      */
     domains?: EntityReference[];
     /**
+     * Status of the tag.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Unique name of the tag of format `Classification.tag1.tag2`.
      */
     fullyQualifiedName?: string;
@@ -99,11 +103,7 @@ export interface Tag {
      * User references of the reviewers for this tag.
      */
     reviewers?: EntityReference[];
-    /**
-     * Status of the tag.
-     */
-    status?: EntityStatus;
-    style?:  Style;
+    style?:     Style;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -249,18 +249,6 @@ export interface EntityReference {
 }
 
 /**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
  * Status of the tag.
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
@@ -272,6 +260,18 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**

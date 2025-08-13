@@ -51,6 +51,10 @@ export interface APICollection {
      */
     endpointURL: string;
     /**
+     * Status of the API Collection.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -95,10 +99,6 @@ export interface APICollection {
      * Source hash of the entity
      */
     sourceHash?: string;
-    /**
-     * Status of the API Collection.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this API Collection.
      */
@@ -351,6 +351,20 @@ export interface FieldChange {
 }
 
 /**
+ * Status of the API Collection.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -402,20 +416,6 @@ export interface AccessDetails {
 export enum APIServiceType {
     REST = "Rest",
     Webhook = "WEBHOOK",
-}
-
-/**
- * Status of the API Collection.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

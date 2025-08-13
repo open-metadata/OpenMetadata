@@ -40,6 +40,10 @@ export interface Query {
      */
     duration?: number;
     /**
+     * Status of the Query.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Flag to check if query is to be excluded while processing usage
      */
     exclude_usage?: boolean;
@@ -95,10 +99,6 @@ export interface Query {
      * Link to the service this query belongs to.
      */
     service: EntityReference;
-    /**
-     * Status of the Query.
-     */
-    status?: EntityStatus;
     /**
      * Tags for this SQL query.
      */
