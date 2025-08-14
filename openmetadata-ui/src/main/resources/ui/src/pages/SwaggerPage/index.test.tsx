@@ -22,8 +22,8 @@ jest.mock('./RapiDocReact', () => {
   ));
 });
 
-jest.mock('../../utils/LocalStorageUtils', () => ({
-  getOidcToken: jest.fn().mockReturnValue('fakeToken'),
+jest.mock('../../utils/SwTokenStorageUtils', () => ({
+  getOidcToken: jest.fn().mockResolvedValue('fakeToken'),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({

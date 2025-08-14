@@ -178,6 +178,10 @@ module.exports = {
           from: path.join(__dirname, 'public/locales'),
           to: outputPath,
         },
+        {
+          from: path.join(__dirname, 'public/app-worker.js'),
+          to: outputPath,
+        }
       ],
     }),
   ],

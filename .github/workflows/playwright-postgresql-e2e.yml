@@ -101,7 +101,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.48.2 install --with-deps
+        run: npx playwright@1.54.2 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
