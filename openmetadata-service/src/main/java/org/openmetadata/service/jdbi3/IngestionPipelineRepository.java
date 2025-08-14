@@ -30,9 +30,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
@@ -544,5 +546,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     } else {
       return ingestionPipeline.getPipelineType().value();
     }
+  }
+
+  public PipelineServiceClientResponse deployIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
 }
