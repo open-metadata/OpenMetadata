@@ -469,7 +469,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
+      updateProcessingEngine(original.getProcessingEngine(), updated.getProcessingEngine());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
+    }
+
+    private void updateProcessingEngine(
+        EntityReference originalProcessingEngine, EntityReference updatedProcessingEngine) {
+      if (!originalProcessingEngine.equals(updatedProcessingEngine)) {
+        recordChange("processingEngine", originalProcessingEngine, updatedProcessingEngine);
+      }
     }
 
     private void updateSourceConfig() {
