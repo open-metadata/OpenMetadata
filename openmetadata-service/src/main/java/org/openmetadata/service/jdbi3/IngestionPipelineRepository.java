@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -251,6 +252,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           ingestionPipeline.getIngestionRunner().getType(),
           Relationship.USES);
     }
+
+    if (ingestionPipeline.getProcessingEngine() != null) {
+      addRelationship(
+          ingestionPipeline.getId(),
+          ingestionPipeline.getProcessingEngine().getId(),
+          entityType,
+          ingestionPipeline.getProcessingEngine().getType(),
+          Relationship.USES);
+    }
   }
 
   @Override
@@ -469,15 +479,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
-      updateProcessingEngine(original.getProcessingEngine(), updated.getProcessingEngine());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
+      updateProcessingEngine(original, updated);
     }
 
-    private void updateProcessingEngine(
-        EntityReference originalProcessingEngine, EntityReference updatedProcessingEngine) {
-      if (!originalProcessingEngine.equals(updatedProcessingEngine)) {
-        recordChange("processingEngine", originalProcessingEngine, updatedProcessingEngine);
+    private void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
+      String entityType =
+          original.getProcessingEngine() != null
+              ? original.getProcessingEngine().getType()
+              : updated.getProcessingEngine() != null
+                  ? updated.getProcessingEngine().getType()
+                  : null;
+      if (entityType == null) {
+        return;
       }
+      updateToRelationship(
+          "processingEngine",
+          INGESTION_PIPELINE,
+          original.getId(),
+          Relationship.USES,
+          entityType,
+          original.getProcessingEngine(),
+          updated.getProcessingEngine(),
+          false);
     }
 
     private void updateSourceConfig() {
@@ -523,7 +547,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
+  protected static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted =
         JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
     SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
