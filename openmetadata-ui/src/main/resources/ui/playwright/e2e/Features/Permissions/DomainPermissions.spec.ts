@@ -114,7 +114,6 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
   // Test that domain operation elements are visible
   const directElements = [
     'edit-description',
-    'add-owner',
     'add-tag',
     'edit-icon-right-panel',
     'add-domain',
@@ -138,6 +137,13 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
 
     await expect(element).toBeVisible();
   }
+
+  const ownerButton = testUserPage
+    .getByTestId('add-owner')
+    .or(testUserPage.getByTestId('edit-owner'))
+    .first();
+
+  await expect(ownerButton).toBeVisible();
 
   // Click manage button once and test elements inside it
   const manageButton = testUserPage.getByTestId('manage-button');
@@ -180,7 +186,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   // Test that domain operation elements are visible
   const directElements = [
     'edit-description',
-    'add-owner',
+
     'add-tag',
     'edit-icon-right-panel',
     'add-domain',
@@ -203,6 +209,12 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 
     await expect(element).not.toBeVisible();
   }
+  const ownerButton = testUserPage
+    .getByTestId('add-owner')
+    .or(testUserPage.getByTestId('edit-owner'))
+    .first();
+
+  await expect(ownerButton).not.toBeVisible();
 
   // Click manage button once and test elements inside it
   const manageButton = testUserPage.getByTestId('manage-button');
