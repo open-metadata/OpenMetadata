@@ -59,6 +59,7 @@ class MockStoredProcedureSource(StoredProcedureLineageMixin):
         self.source_config.schemaFilterPattern = None
         self.source_config.storedProcedureFilterPattern = None
         self.source_config.incrementalLineageProcessing = False
+        self.source_config.processCrossDatabaseLineage = False
         self.source_config.parsingTimeoutLimit = 30
 
         self.metadata = Mock()
