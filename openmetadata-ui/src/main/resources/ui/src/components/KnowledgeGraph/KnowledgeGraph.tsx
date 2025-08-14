@@ -40,43 +40,23 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataSet } from 'vis-data';
-import { Network, Options } from 'vis-network';
-import { EntityReference } from '../../generated/entity/type';
+import {
+  ChosenNodeValues,
+  Edge,
+  IdType,
+  Network,
+  NodeChosenNodeFunction,
+  Options,
+} from 'vis-network';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  GraphData,
+  GraphNode,
+  KnowledgeGraphProps,
+} from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
 import KnowledgeGraphNodeDetails from './KnowledgeGraphNodeDetails';
-
-interface KnowledgeGraphProps {
-  entity: EntityReference;
-  entityType: string;
-  depth?: number;
-}
-
-interface GraphNode {
-  id: string;
-  label: string;
-  type: string;
-  group: string;
-  title?: string;
-  description?: string;
-  owner?: string;
-  tags?: Array<{ name: string; tagFQN: string }>;
-  name?: string;
-  fullyQualifiedName?: string;
-}
-
-interface GraphEdge {
-  from: string;
-  to: string;
-  label: string;
-  arrows?: string;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-}
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
@@ -160,10 +140,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           roundness: 0.8,
         },
         chosen: {
-          edge: function (values) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          edge: function (values: any) {
             values.width = 2.5;
             values.color = '#1890ff';
-          },
+            // Had to typecase to boolean to solve the type error
+            // Refer: https://github.com/visjs/vis-network/blob/382d75257bab3f8cb052b52495fc51d9ff2aff8e/types/network/Network.d.ts#L992
+          } as unknown as boolean,
         },
       },
       groups: {
@@ -412,7 +395,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
     // Enhance nodes with better tooltips and styling
     const enhancedNodes = graphData.nodes.map((node) => {
-      const isCurrentEntity = node.id.includes(entity.id);
+      const isCurrentEntity = node.id.includes(entity?.id ?? '');
 
       // Get icon for node type
       const getNodeIcon = (type: string) => {
@@ -463,7 +446,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           right: 15,
         },
         chosen: {
-          node: function (values, id, selected, hovering) {
+          node: function (
+            values: ChosenNodeValues,
+            _id: IdType,
+            _selected: boolean,
+            hovering: boolean
+          ): ReturnType<NodeChosenNodeFunction> {
             values.borderWidth = isCurrentEntity ? 4 : 2;
             if (hovering) {
               values.shadow = true;
@@ -472,12 +460,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             }
           },
         },
-      };
+      } as unknown as GraphNode;
     });
 
     // Create vis network
     const nodes = new DataSet(enhancedNodes);
-    const edges = new DataSet(graphData.edges);
+    const edges = new DataSet(graphData.edges as Edge[]);
 
     const data = {
       nodes: nodes,
@@ -494,8 +482,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     networkRef.current.on('click', (params) => {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0];
-        const node = nodes.get(nodeId) as GraphNode;
-        setSelectedNode(node);
+        const node = nodes.get(nodeId);
+        setSelectedNode(node as unknown as GraphNode);
       } else {
         setSelectedNode(null);
       }
@@ -505,7 +493,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     networkRef.current.on('doubleClick', (params) => {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0];
-        const node = nodes.get(nodeId) as GraphNode;
+        const node = nodes.get(nodeId) as unknown as GraphNode;
         if (node.type && node.id) {
           const entityIdMatch = node.id.match(/\/([a-f0-9-]{36})$/);
           if (entityIdMatch) {
@@ -518,14 +506,14 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
     // Enhanced hover effects
     networkRef.current.on('hoverNode', (params) => {
-      networkRef.current?.canvas.body.container.style.cursor = 'pointer';
+      //   networkRef.current?.canvas.body.container.style.cursor = 'pointer';
       const nodeId = params.node;
-      const node = nodes.get(nodeId) as GraphNode;
+      const node = nodes.get(nodeId) as unknown as GraphNode;
       setHoveredNode(node);
     });
 
     networkRef.current.on('blurNode', () => {
-      networkRef.current?.canvas.body.container.style.cursor = 'default';
+      //   networkRef.current?.canvas.body.container.style.cursor = 'default';
       setHoveredNode(null);
     });
 
@@ -535,7 +523,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
       // Center on current entity
       const currentNodeId = graphData.nodes.find((node) =>
-        node.id.includes(entity.id)
+        node.id.includes(entity?.id ?? '')
       )?.id;
       if (currentNodeId) {
         networkRef.current?.focus(currentNodeId, {
@@ -551,7 +539,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     return () => {
       networkRef.current?.destroy();
     };
-  }, [graphData, loading, networkOptions, entity.id]);
+  }, [graphData, loading, networkOptions, entity?.id]);
 
   // Re-fetch data when depth changes
   useEffect(() => {
