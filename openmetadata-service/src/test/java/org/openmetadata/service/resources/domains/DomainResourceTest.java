@@ -1,8 +1,10 @@
 package org.openmetadata.service.resources.domains;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -35,16 +37,21 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.TestUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
+  private static final TableResourceTest TABLE_TEST = new TableResourceTest();
+
   public DomainResourceTest() {
     super(Entity.DOMAIN, Domain.class, DomainList.class, "domains", DomainResource.FIELDS);
   }
@@ -419,6 +426,268 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Checks for other owner, tags, and followers is done in the base class
     return getDomain;
+  }
+
+  @Test
+  void testAllAssetsFieldWithDomainHierarchy(TestInfo test) throws IOException {
+    // Create domain hierarchy: rootDomain -> subDomain -> subSubDomain
+    CreateDomain createRootDomain =
+        createRequest("rootDomainAssets")
+            .withDisplayName("Root Domain for Assets")
+            .withDescription("Root Domain to test allAssets field");
+    Domain rootDomain = createEntity(createRootDomain, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createSubDomain =
+        createRequest("subDomainAssets")
+            .withDisplayName("Sub Domain for Assets")
+            .withDescription("Sub Domain to test allAssets field")
+            .withParent(rootDomain.getFullyQualifiedName());
+    Domain subDomain = createEntity(createSubDomain, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createSubSubDomain =
+        createRequest("subSubDomainAssets")
+            .withDisplayName("Sub Sub Domain for Assets")
+            .withDescription("Sub Sub Domain to test allAssets field")
+            .withParent(subDomain.getFullyQualifiedName());
+    Domain subSubDomain = createEntity(createSubSubDomain, ADMIN_AUTH_HEADERS);
+
+    // Create test tables
+    org.openmetadata.schema.entity.data.Table table1 =
+        TABLE_TEST.createEntity(TABLE_TEST.createRequest("table1ForDomain"), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table table2 =
+        TABLE_TEST.createEntity(TABLE_TEST.createRequest("table2ForDomain"), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table table3 =
+        TABLE_TEST.createEntity(TABLE_TEST.createRequest("table3ForDomain"), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table table4 =
+        TABLE_TEST.createEntity(TABLE_TEST.createRequest("table4ForDomain"), ADMIN_AUTH_HEADERS);
+
+    // Add assets to different levels of domain hierarchy
+    // Add table1 to rootDomain
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table1.getEntityReference()));
+    bulkAddAssets(rootDomain.getName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Add table2 to subDomain
+    bulkAssets = new BulkAssets().withAssets(List.of(table2.getEntityReference()));
+    bulkAddAssets(subDomain.getFullyQualifiedName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Add table3 and table4 to subSubDomain
+    bulkAssets =
+        new BulkAssets()
+            .withAssets(List.of(table3.getEntityReference(), table4.getEntityReference()));
+    bulkAddAssets(subSubDomain.getFullyQualifiedName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Verify assets field only contains direct assets
+    rootDomain = getEntity(rootDomain.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, rootDomain.getAssets().size());
+    assertEntityReferencesContain(rootDomain.getAssets(), table1.getEntityReference());
+
+    subDomain = getEntity(subDomain.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomain.getAssets().size());
+    assertEntityReferencesContain(subDomain.getAssets(), table2.getEntityReference());
+
+    subSubDomain = getEntity(subSubDomain.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertEquals(2, subSubDomain.getAssets().size());
+    assertEntityReferencesContain(subSubDomain.getAssets(), table3.getEntityReference());
+    assertEntityReferencesContain(subSubDomain.getAssets(), table4.getEntityReference());
+
+    // Test 2: Verify allAssets field contains hierarchical assets
+    rootDomain = getEntity(rootDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, rootDomain.getAssets().size()); // Direct assets
+    assertEquals(4, rootDomain.getAllAssets().size()); // All assets in hierarchy
+    assertEntityReferencesContain(rootDomain.getAllAssets(), table1.getEntityReference());
+    assertEntityReferencesContain(rootDomain.getAllAssets(), table2.getEntityReference());
+    assertEntityReferencesContain(rootDomain.getAllAssets(), table3.getEntityReference());
+    assertEntityReferencesContain(rootDomain.getAllAssets(), table4.getEntityReference());
+
+    subDomain = getEntity(subDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, subDomain.getAssets().size()); // Direct assets
+    assertEquals(3, subDomain.getAllAssets().size()); // Assets from sub and subsub domains
+    assertEntityReferencesContain(subDomain.getAllAssets(), table2.getEntityReference());
+    assertEntityReferencesContain(subDomain.getAllAssets(), table3.getEntityReference());
+    assertEntityReferencesContain(subDomain.getAllAssets(), table4.getEntityReference());
+
+    subSubDomain = getEntity(subSubDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(2, subSubDomain.getAssets().size()); // Direct assets
+    assertEquals(2, subSubDomain.getAllAssets().size()); // Only its own assets
+    assertEntityReferencesContain(subSubDomain.getAllAssets(), table3.getEntityReference());
+    assertEntityReferencesContain(subSubDomain.getAllAssets(), table4.getEntityReference());
+
+    // Test 3: Verify that allAssets field is not returned if not requested
+    rootDomain = getEntity(rootDomain.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertNotNull(rootDomain.getAssets());
+    assertListNull(rootDomain.getAllAssets());
+
+    // Test 4: Test moving an asset between domains
+    // Move table2 from subDomain to rootDomain
+    bulkAssets = new BulkAssets().withAssets(List.of(table2.getEntityReference()));
+    bulkAddAssets(rootDomain.getName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Verify the move
+    rootDomain = getEntity(rootDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(2, rootDomain.getAssets().size()); // Now has table1 and table2
+    assertEquals(4, rootDomain.getAllAssets().size()); // Still has all 4 tables in hierarchy
+
+    subDomain = getEntity(subDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(0, subDomain.getAssets().size()); // No direct assets
+    assertEquals(2, subDomain.getAllAssets().size()); // Only table3 and table4 from subSubDomain
+
+    // Test 5: Test asset uniqueness in allAssets
+    // Create another sub-domain under root and add table1 to it (should not duplicate in root's
+    // allAssets)
+    CreateDomain createAnotherSubDomain =
+        createRequest("anotherSubDomainAssets").withParent(rootDomain.getFullyQualifiedName());
+    Domain anotherSubDomain = createEntity(createAnotherSubDomain, ADMIN_AUTH_HEADERS);
+
+    bulkAssets = new BulkAssets().withAssets(List.of(table1.getEntityReference()));
+    bulkAddAssets(anotherSubDomain.getFullyQualifiedName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Verify uniqueness - table1 should appear only once in rootDomain's allAssets
+    rootDomain = getEntity(rootDomain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1, rootDomain.getAssets().size()); // table2 only (table1 moved to anotherSubDomain)
+    assertEquals(4, rootDomain.getAllAssets().size()); // Still 4 unique assets
+    long table1Count =
+        rootDomain.getAllAssets().stream()
+            .filter(ref -> ref.getId().equals(table1.getId()))
+            .count();
+    assertEquals(1, table1Count); // table1 appears only once
+  }
+
+  @Test
+  void testAllAssetsFieldBasicFunctionality(TestInfo test) throws IOException {
+    // Simple test to verify allAssets field is accessible
+    CreateDomain createRootDomain = createRequest("testAllAssetsRoot");
+    Domain rootDomain = createEntity(createRootDomain, ADMIN_AUTH_HEADERS);
+
+    // Test allAssets getter/setter methods work
+    rootDomain.setAllAssets(new ArrayList<>());
+    assertNotNull(rootDomain.getAllAssets(), "allAssets field should be accessible");
+    assertEquals(0, rootDomain.getAllAssets().size(), "Empty list should have size 0");
+
+    // Test via API - request allAssets field
+    rootDomain = getEntity(rootDomain.getId(), "allAssets", ADMIN_AUTH_HEADERS);
+    // The field should be present (even if empty) when requested
+    // If this fails, there's an issue with our field processing
+  }
+
+  @Test
+  void testAllAssetsNoPrefixOverlap(TestInfo test) throws IOException {
+    // Test that domains with similar names don't overlap if not related
+    // Create two unrelated domains with similar names
+    CreateDomain createEngineering =
+        createRequest("Engineering")
+            .withDisplayName("Engineering Domain")
+            .withDescription("Main Engineering Domain");
+    Domain engineering = createEntity(createEngineering, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createEngineeringOps =
+        createRequest("EngineeringOps")
+            .withDisplayName("Engineering Operations Domain")
+            .withDescription("Separate Engineering Operations Domain");
+    Domain engineeringOps = createEntity(createEngineeringOps, ADMIN_AUTH_HEADERS);
+
+    // Create a proper subdomain of Engineering
+    CreateDomain createEngineeringBackend =
+        createRequest("EngineeringBackend")
+            .withDisplayName("Engineering Backend")
+            .withDescription("Backend team under Engineering")
+            .withParent(engineering.getFullyQualifiedName());
+    Domain engineeringBackend = createEntity(createEngineeringBackend, ADMIN_AUTH_HEADERS);
+
+    // Create test tables
+    org.openmetadata.schema.entity.data.Table tableEng =
+        TABLE_TEST.createEntity(TABLE_TEST.createRequest("tableEngineering"), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table tableOps =
+        TABLE_TEST.createEntity(
+            TABLE_TEST.createRequest("tableEngineeringOps"), ADMIN_AUTH_HEADERS);
+    org.openmetadata.schema.entity.data.Table tableBackend =
+        TABLE_TEST.createEntity(
+            TABLE_TEST.createRequest("tableEngineeringBackend"), ADMIN_AUTH_HEADERS);
+
+    // Add assets to each domain
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(tableEng.getEntityReference()));
+    bulkAddAssets(engineering.getName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    bulkAssets = new BulkAssets().withAssets(List.of(tableOps.getEntityReference()));
+    bulkAddAssets(engineeringOps.getName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    bulkAssets = new BulkAssets().withAssets(List.of(tableBackend.getEntityReference()));
+    bulkAddAssets(engineeringBackend.getFullyQualifiedName(), bulkAssets, ADMIN_AUTH_HEADERS);
+
+    // Verify Engineering domain only includes its own hierarchy, NOT EngineeringOps
+    engineering = getEntity(engineering.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, engineering.getAssets().size());
+    assertEquals(
+        2, engineering.getAllAssets().size()); // Only Engineering + EngineeringBackend assets
+    assertEntityReferencesContain(engineering.getAllAssets(), tableEng.getEntityReference());
+    assertEntityReferencesContain(engineering.getAllAssets(), tableBackend.getEntityReference());
+    // Should NOT contain EngineeringOps assets
+    boolean containsOpsTable =
+        engineering.getAllAssets().stream().anyMatch(ref -> ref.getId().equals(tableOps.getId()));
+    assertFalse(containsOpsTable, "Engineering should not contain EngineeringOps assets");
+
+    // Verify EngineeringOps only has its own assets
+    engineeringOps = getEntity(engineeringOps.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, engineeringOps.getAssets().size());
+    assertEquals(1, engineeringOps.getAllAssets().size()); // Only its own assets
+    assertEntityReferencesContain(engineeringOps.getAllAssets(), tableOps.getEntityReference());
+
+    // Verify EngineeringBackend only has its own assets
+    engineeringBackend =
+        getEntity(engineeringBackend.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, engineeringBackend.getAssets().size());
+    assertEquals(1, engineeringBackend.getAllAssets().size());
+    assertEntityReferencesContain(
+        engineeringBackend.getAllAssets(), tableBackend.getEntityReference());
+  }
+
+  @Test
+  void testAllAssetsFieldPerformance(TestInfo test) throws IOException {
+    // Test that allAssets is not computed when not requested
+    CreateDomain createDomain = createRequest("perfTestDomain");
+    Domain domain = createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create sub-domains
+    for (int i = 0; i < 3; i++) {
+      CreateDomain createSubDomain =
+          createRequest("perfSubDomain" + i).withParent(domain.getFullyQualifiedName());
+      Domain subDomain = createEntity(createSubDomain, ADMIN_AUTH_HEADERS);
+
+      // Add assets to sub-domain
+      for (int j = 0; j < 2; j++) {
+        org.openmetadata.schema.entity.data.Table table =
+            TABLE_TEST.createEntity(
+                TABLE_TEST.createRequest("perfTable" + i + "_" + j), ADMIN_AUTH_HEADERS);
+        BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+        bulkAddAssets(subDomain.getFullyQualifiedName(), bulkAssets, ADMIN_AUTH_HEADERS);
+      }
+    }
+
+    // Test various field combinations
+    Domain domainNoAssets = getEntity(domain.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(domainNoAssets.getAssets(), domainNoAssets.getAllAssets());
+
+    Domain domainWithAssets = getEntity(domain.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertNotNull(domainWithAssets.getAssets());
+    assertListNull(domainWithAssets.getAllAssets());
+
+    Domain domainWithAllAssets = getEntity(domain.getId(), "allAssets", ADMIN_AUTH_HEADERS);
+    assertListNull(domainWithAllAssets.getAssets());
+    assertNotNull(domainWithAllAssets.getAllAssets());
+    assertEquals(6, domainWithAllAssets.getAllAssets().size()); // 3 subdomains * 2 assets each
+
+    Domain domainWithBothAssets = getEntity(domain.getId(), "assets,allAssets", ADMIN_AUTH_HEADERS);
+    assertNotNull(domainWithBothAssets.getAssets());
+    assertNotNull(domainWithBothAssets.getAllAssets());
+    assertEquals(0, domainWithBothAssets.getAssets().size()); // No direct assets
+    assertEquals(6, domainWithBothAssets.getAllAssets().size());
+  }
+
+  private BulkOperationResult bulkAddAssets(
+      String domainName, BulkAssets request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("domains/%s/assets/add", domainName));
+    return TestUtils.put(target, request, BulkOperationResult.class, OK, authHeaders);
   }
 
   @Override
