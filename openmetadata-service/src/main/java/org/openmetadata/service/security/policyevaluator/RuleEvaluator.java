@@ -110,6 +110,10 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
+    if (nullOrEmpty(tags)) {
+      LOG.debug("No Tags found for resource");
+      return false;
+    }
     LOG.debug(
         "matchAllTags {} resourceTags {}",
         Arrays.toString(tagFQNs),
