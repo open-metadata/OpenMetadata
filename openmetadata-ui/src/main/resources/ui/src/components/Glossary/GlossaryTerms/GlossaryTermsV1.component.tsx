@@ -25,8 +25,8 @@ import {
   Glossary,
 } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -101,9 +101,10 @@ const GlossaryTermsV1 = ({
   const { t } = useTranslation();
 
   const assetPermissions = useMemo(() => {
-    const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
+    const glossaryTermStatus =
+      glossaryTerm.entityStatus ?? EntityStatus.Approved;
 
-    return glossaryTermStatus === Status.Approved
+    return glossaryTermStatus === EntityStatus.Approved
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);

@@ -11,33 +11,33 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Status } from '../../../generated/entity/data/glossaryTerm';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { GlossaryStatusBadge } from './GlossaryStatusBadge.component';
 
 describe('GlossaryStatusBadge', () => {
   it('renders the correct status', () => {
-    render(<GlossaryStatusBadge status={Status.Approved} />);
+    render(<GlossaryStatusBadge status={EntityStatus.Approved} />);
     const statusElement = screen.getByText('Approved');
 
     expect(statusElement).toHaveClass('success');
   });
 
   it('renders the correct class based on draft status', () => {
-    render(<GlossaryStatusBadge status={Status.Draft} />);
+    render(<GlossaryStatusBadge status={EntityStatus.Draft} />);
     const statusElement = screen.getByText('Draft');
 
     expect(statusElement).toHaveClass('pending');
   });
 
   it('renders the correct class based on rejected status', () => {
-    render(<GlossaryStatusBadge status={Status.Rejected} />);
+    render(<GlossaryStatusBadge status={EntityStatus.Rejected} />);
     const statusElement = screen.getByText('Rejected');
 
     expect(statusElement).toHaveClass('failure');
   });
 
   it('renders the correct class based on Deprecated status', () => {
-    render(<GlossaryStatusBadge status={Status.Deprecated} />);
+    render(<GlossaryStatusBadge status={EntityStatus.Deprecated} />);
     const statusElement = screen.getByText('Deprecated');
 
     expect(statusElement).toHaveClass('deprecated');

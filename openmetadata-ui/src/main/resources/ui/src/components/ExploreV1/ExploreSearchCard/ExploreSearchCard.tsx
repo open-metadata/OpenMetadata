@@ -23,8 +23,8 @@ import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
@@ -191,7 +191,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&
-        (source as GlossaryTerm).status !== Status.Approved;
+        (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
         <Row gutter={[8, 8]}>
@@ -293,7 +293,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
                 {hasGlossaryTermStatus && (
                   <GlossaryStatusBadge
-                    status={(source as GlossaryTerm).status ?? Status.Approved}
+                    status={
+                      (source as GlossaryTerm).entityStatus ??
+                      EntityStatus.Approved
+                    }
                   />
                 )}
               </div>

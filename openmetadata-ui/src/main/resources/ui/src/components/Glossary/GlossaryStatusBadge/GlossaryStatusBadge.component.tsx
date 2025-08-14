@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Divider, Space } from 'antd';
-import { Status } from '../../../generated/entity/data/glossaryTerm';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { StatusClass } from '../../../utils/GlossaryUtils';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 
-export const GlossaryStatusBadge = ({ status }: { status: Status }) => {
+export const GlossaryStatusBadge = ({ status }: { status: EntityStatus }) => {
   return (
     <Space>
       <Divider className="m-x-xs h-6" type="vertical" />

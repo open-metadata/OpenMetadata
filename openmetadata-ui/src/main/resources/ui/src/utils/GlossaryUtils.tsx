@@ -33,8 +33,8 @@ import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.e
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
@@ -122,7 +122,7 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
         must: [
           {
             term: {
-              status: Status.Approved,
+              entityStatus: EntityStatus.Approved,
             },
           },
         ],
@@ -132,15 +132,15 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
 };
 
 export const StatusClass = {
-  [Status.Approved]: StatusType.Success,
-  [Status.Draft]: StatusType.Pending,
-  [Status.Rejected]: StatusType.Failure,
-  [Status.Deprecated]: StatusType.Deprecated,
-  [Status.InReview]: StatusType.InReview,
+  [EntityStatus.Approved]: StatusType.Success,
+  [EntityStatus.Draft]: StatusType.Pending,
+  [EntityStatus.Rejected]: StatusType.Failure,
+  [EntityStatus.Deprecated]: StatusType.Deprecated,
+  [EntityStatus.InReview]: StatusType.InReview,
 };
 
-export const StatusFilters = Object.values(Status)
-  .filter((status) => status !== Status.Deprecated) // Deprecated not in use for this release
+export const StatusFilters = Object.values(EntityStatus)
+  .filter((status) => status !== EntityStatus.Deprecated) // Deprecated not in use for this release
   .map((status) => ({
     text: status,
     value: status,
