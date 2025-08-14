@@ -1752,7 +1752,7 @@
     "view-all-task-plural": "View All Tasks",
     "view-definition": "View Definition",
     "view-detail-plural": "View Details",
-    "view-entity": "View Entity",
+    "view-entity": "View {{entity}}",
     "view-in-explore-page": "View in explore page",
     "view-in-service-type": "View in {{serviceType}}",
     "view-less": "View less",
