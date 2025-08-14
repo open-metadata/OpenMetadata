@@ -75,6 +75,17 @@
       "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
       "type": "string"
     },
+    "useSSL": {
+      "title": "Use SSL",
+      "description": "Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure communication.",
+      "type": "boolean",
+      "default": false
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "metastoreConnection":{
       "title": "Hive Metastore Connection Details",
       "description": "Hive Metastore Connection Details",
