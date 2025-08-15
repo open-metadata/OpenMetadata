@@ -18,6 +18,10 @@
           "limit": {
             "type": "integer",
             "description": "Maximum number of results to return. Default is 10. Try to keep this number low unless the user asks for more."
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated list of additional fields to include in the response. By default, returns essential fields: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames. Available additional fields by entity type:\n\nTable entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\nTopic entities: messageSchema, partitions, replicationFactor\nDashboard entities: charts, dataModels, project\nPipeline entities: tasks, pipelineUrl, scheduleInterval\nAll entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' to include column details and sample queries for tables."
           }
         },
         "required": [
