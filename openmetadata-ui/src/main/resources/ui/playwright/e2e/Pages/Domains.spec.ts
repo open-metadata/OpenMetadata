@@ -1188,9 +1188,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       ).not.toBeVisible();
 
       // Verify table details are visible
-      await expect(
-        userPage.getByTestId('entity-header-display-name')
-      ).toBeVisible();
+      await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
     });
 
     await test.step('Verify user can access subdomain assets', async () => {
@@ -1206,9 +1204,7 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       ).not.toBeVisible();
 
       // Verify table details are visible
-      await expect(
-        userPage.getByTestId('entity-header-display-name')
-      ).toBeVisible();
+      await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
     });
 
     await userAfterAction();
