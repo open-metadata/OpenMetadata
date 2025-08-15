@@ -1,0 +1,271 @@
+{
+  "endpoints": [
+    {
+      "name": "updatePet",
+      "displayName": "Update Pet",
+      "description": "Update an existing pet",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/updatePet",
+      "apiCollection": "pw_sample_api_service.pet",
+      "requestMethod": "PUT",
+      "requestSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "INT",
+            "description": "ID of pet that needs to be updated"
+          },
+          {
+            "name": "name",
+            "dataType": "STRING",
+            "description": "Name of pet"
+          },
+          {
+            "name": "category",
+            "dataType": "RECORD",
+            "description": "Category of pet",
+            "children": [
+              {
+                "name": "id",
+                "dataType": "INT",
+                "description": "ID of category"
+              },
+              {
+                "name": "name",
+                "dataType": "STRING",
+                "description": "Name of category"
+              }
+            ]
+          },
+          {
+            "name": "photoUrls",
+            "dataType": "ARRAY",
+            "description": "URLs of pet's photos"
+          },
+          {
+            "name": "tags",
+            "dataType": "ARRAY",
+            "description": "Tags of pet"
+          },
+          {
+            "name": "status",
+            "dataType": "STRING",
+            "description": "Status of pet"
+          }
+        ]
+      },
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "INT",
+            "description": "ID of pet that needs to be updated"
+          },
+          {
+            "name": "name",
+            "dataType": "STRING",
+            "description": "Name of pet"
+          },
+          {
+            "name": "category",
+            "dataType": "RECORD",
+            "description": "Category of pet",
+            "children": [
+              {
+                "name": "id",
+                "dataType": "INT",
+                "description": "ID of category"
+              },
+              {
+                "name": "name",
+                "dataType": "STRING",
+                "description": "Name of category"
+              }
+            ]
+          },
+          {
+            "name": "photoUrls",
+            "dataType": "ARRAY",
+            "description": "URLs of pet's photos"
+          },
+          {
+            "name": "tags",
+            "dataType": "ARRAY",
+            "description": "Tags of pet"
+          },
+          {
+            "name": "status",
+            "dataType": "STRING",
+            "description": "Status of pet"
+          }
+        ]
+      }
+    },
+    {
+      "name": "addPet",
+      "displayName": "Add Pet",
+      "apiCollection": "pw_sample_api_service.pet",
+      "description": "add a new pet",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/addPet",
+      "requestMethod": "POST",
+      "requestSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "INT",
+            "description": "ID of pet that needs to be updated"
+          },
+          {
+            "name": "name",
+            "dataType": "STRING",
+            "description": "Name of pet"
+          },
+          {
+            "name": "category",
+            "dataType": "RECORD",
+            "description": "Category of pet",
+            "children": [
+              {
+                "name": "id",
+                "dataType": "INT",
+                "description": "ID of category"
+              },
+              {
+                "name": "name",
+                "dataType": "STRING",
+                "description": "Name of category"
+              }
+            ]
+          },
+          {
+            "name": "photoUrls",
+            "dataType": "ARRAY",
+            "description": "URLs of pet's photos"
+          },
+          {
+            "name": "tags",
+            "dataType": "ARRAY",
+            "description": "Tags of pet"
+          },
+          {
+            "name": "status",
+            "dataType": "STRING",
+            "description": "Status of pet"
+          }
+        ]
+      },
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "INT",
+            "description": "ID of pet that needs to be updated"
+          },
+          {
+            "name": "name",
+            "dataType": "STRING",
+            "description": "Name of pet"
+          },
+          {
+            "name": "category",
+            "dataType": "RECORD",
+            "description": "Category of pet",
+            "children": [
+              {
+                "name": "id",
+                "dataType": "INT",
+                "description": "ID of category"
+              },
+              {
+                "name": "name",
+                "dataType": "STRING",
+                "description": "Name of category"
+              }
+            ]
+          },
+          {
+            "name": "photoUrls",
+            "dataType": "ARRAY",
+            "description": "URLs of pet's photos"
+          },
+          {
+            "name": "tags",
+            "dataType": "ARRAY",
+            "description": "Tags of pet"
+          },
+          {
+            "name": "status",
+            "dataType": "STRING",
+            "description": "Status of pet"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getPetById",
+      "displayName": "Find pet by ID",
+      "description": "Returns a single pet",
+      "apiCollection": "pw_sample_api_service.pet",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/addPet",
+      "requestMethod": "GET",
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "id",
+            "dataType": "INT",
+            "description": "ID of pet that needs to be updated"
+          },
+          {
+            "name": "name",
+            "dataType": "STRING",
+            "description": "Name of pet"
+          },
+          {
+            "name": "category",
+            "dataType": "RECORD",
+            "description": "Category of pet",
+            "children": [
+              {
+                "name": "id",
+                "dataType": "INT",
+                "description": "ID of category"
+              },
+              {
+                "name": "name",
+                "dataType": "STRING",
+                "description": "Name of category"
+              }
+            ]
+          },
+          {
+            "name": "photoUrls",
+            "dataType": "ARRAY",
+            "description": "URLs of pet's photos"
+          },
+          {
+            "name": "tags",
+            "dataType": "ARRAY",
+            "description": "Tags of pet"
+          },
+          {
+            "name": "status",
+            "dataType": "STRING",
+            "description": "Status of pet"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deletePet",
+      "apiCollection": "pw_sample_api_service.pet",
+      "displayName": "Delete pet by ID",
+      "description": "Delete pet by ID",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/deletePet",
+      "requestMethod": "DELETE"
+    }
+  ]
+}
