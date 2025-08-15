@@ -1,0 +1,166 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Maven Postgres RDF Tests CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/rdfConfiguration.json"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
+      - "pom.xml"
+      - "openmetadata-service/pom.xml"
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/rdfConfiguration.json"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
+      - "pom.xml"
+      - "openmetadata-service/pom.xml"
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency: 
+  group: maven-build-postgres-rdf-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  maven-postgresql-rdf-ci:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Cache Maven dependencies
+        id: cache-output
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+ 
+      - name: Set up JDK 21
+        if: steps.cache-output.outputs.exit-code == 0
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Install Ubuntu dependencies
+        if: steps.cache-output.outputs.exit-code == 0
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          librdkafka-dev unixodbc-dev libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Start PostgreSQL with RDF enabled
+        run: |
+          cd ./docker/development
+          docker compose up -d postgresql
+          # Wait for PostgreSQL to be ready
+          sleep 30
+          # Verify PostgreSQL is running
+          docker compose ps
+
+      - name: Build OpenMetadata dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Build spec module first
+          mvn clean install -DskipTests -pl openmetadata-spec
+          # Build common module
+          mvn clean install -DskipTests -pl common
+
+      - name: Run RDF Integration Tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_RDF_ENABLED: true
+          OM_RDF_STORAGE_TYPE: IN_MEMORY
+          OM_RDF_BASE_URI: https://open-metadata.org/
+        run: |
+          mvn -Ppostgres-rdf-tests clean test -pl openmetadata-service \
+            -Dtest=org.openmetadata.service.resources.rdf.RdfResourceTest \
+            -DfailIfNoTests=false
+
+      - name: Upload RDF Test Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdf-test-logs
+          path: |
+            openmetadata-service/target/surefire-reports/
+            openmetadata-service/logs/
+
+      - name: Clean Up
+        if: always()
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: 'openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.*.xml'
+          
+      - name: Generate Job Summary
+        if: always()
+        run: |
+          echo "## RDF Integration Tests Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.RdfResourceTest.xml" ]; then
+            echo "✅ RDF tests completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ RDF tests failed or did not run" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- RDF Enabled: true" >> $GITHUB_STEP_SUMMARY
+          echo "- Storage Type: IN_MEMORY" >> $GITHUB_STEP_SUMMARY
+          echo "- Base URI: https://open-metadata.org/" >> $GITHUB_STEP_SUMMARY

@@ -342,6 +342,9 @@ test.describe('Persona customization', () => {
     }) => {
       test.slow();
 
+      // Close navbar to get more space
+      await userPage.getByTestId('sidebar-toggle').click();
+
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
@@ -422,7 +425,9 @@ test.describe('Persona customization', () => {
           state: 'detached',
         });
 
-        expect(userPage.getByRole('tab', { name: 'New Tab' })).toBeVisible();
+        await expect(
+          userPage.getByRole('tab', { name: 'New Tab' })
+        ).toBeVisible();
 
         await userPage.getByRole('tab', { name: 'New Tab' }).click();
 

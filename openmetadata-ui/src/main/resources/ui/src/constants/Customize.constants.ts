@@ -26,6 +26,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.PROFILER]: 'label.data-observability',
   [EntityTabs.INCIDENTS]: 'label.incident-plural',
   [EntityTabs.LINEAGE]: 'label.lineage',
+  [EntityTabs.KNOWLEDGE_GRAPH]: 'label.knowledge-graph',
   [EntityTabs.VIEW_DEFINITION]: 'label.view-definition',
   [EntityTabs.DBT]: 'label.dbt-lowercase',
   [EntityTabs.CHILDREN]: 'label.children',

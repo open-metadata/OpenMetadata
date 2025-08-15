@@ -47,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -55,11 +56,13 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -481,5 +484,114 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Test
+  void testDashboardRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create charts for the dashboard
+    Chart chart1 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart1")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+    Chart chart2 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart2")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create dashboard with owner, tags and charts
+    CreateDashboard createDashboard =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(List.of(USER1_REF))
+            .withTags(List.of(TIER1_TAG_LABEL))
+            .withCharts(List.of(chart1.getFullyQualifiedName(), chart2.getFullyQualifiedName()));
+
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists in RDF
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+
+    // Verify hierarchical relationship (service CONTAINS dashboard)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Verify dashboard tags
+    RdfTestUtils.verifyTagsInRdf(dashboard.getFullyQualifiedName(), dashboard.getTags());
+
+    // Verify HAS relationships with charts
+    for (Chart chart : List.of(chart1, chart2)) {
+      RdfTestUtils.verifyRelationshipInRdf(
+          dashboard.getEntityReference(),
+          chart.getEntityReference(),
+          org.openmetadata.schema.type.Relationship.HAS);
+    }
+  }
+
+  @Test
+  void testDashboardRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard =
+        createRequest(test).withService(getContainer().getName()).withOwners(List.of(USER1_REF));
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the dashboard
+    deleteEntity(dashboard.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the dashboard
+    Dashboard restored =
+        restoreEntity(new RestoreEntity().withId(dashboard.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDashboardRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard = createRequest(test).withService(getContainer().getName());
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Hard delete the dashboard
+    deleteEntity(dashboard.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(dashboard.getFullyQualifiedName());
   }
 }

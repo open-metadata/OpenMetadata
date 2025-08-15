@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdfConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RdfConfiguration",
+  "description": "Configuration for RDF/Knowledge Graph support in OpenMetadata",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.RdfConfiguration",
+  "properties": {
+    "enabled": {
+      "description": "Enable or disable RDF support",
+      "type": "boolean",
+      "default": false
+    },
+    "storageType": {
+      "description": "Type of RDF storage backend",
+      "type": "string",
+      "enum": ["FUSEKI", "QLEVER"],
+      "default": "FUSEKI"
+    },
+    "remoteEndpoint": {
+      "description": "SPARQL endpoint URL for remote RDF storage",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "description": "Username for RDF storage authentication",
+      "type": "string"
+    },
+    "password": {
+      "description": "Password for RDF storage authentication",
+      "type": "string"
+    },
+    "dataset": {
+      "description": "Dataset name in RDF storage",
+      "type": "string",
+      "default": "openmetadata"
+    },
+    "baseUri": {
+      "description": "Base URI for RDF resources",
+      "type": "string",
+      "format": "uri",
+      "default": "https://open-metadata.org/"
+    }
+  },
+  "required": ["enabled", "storageType"],
+  "additionalProperties": false
+}

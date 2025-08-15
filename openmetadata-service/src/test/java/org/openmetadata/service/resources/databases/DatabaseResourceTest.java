@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.databases;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -52,6 +53,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -61,10 +63,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -513,5 +517,91 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       deleteEntity(db1.getId(), ADMIN_AUTH_HEADERS);
       deleteEntity(db2.getId(), ADMIN_AUTH_HEADERS);
     }
+  }
+
+  @Test
+  void testDatabaseRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database with owner and tags
+    CreateDatabase createDatabase =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(listOf(USER1_REF))
+            .withTags(listOf(TIER1_TAG_LABEL));
+
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists in RDF
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+
+    // Verify hierarchical relationship (service CONTAINS database)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Verify database tags
+    RdfTestUtils.verifyTagsInRdf(database.getFullyQualifiedName(), database.getTags());
+  }
+
+  @Test
+  void testDatabaseRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase =
+        createRequest(test).withService(getContainer().getName()).withOwners(listOf(USER1_REF));
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the database
+    deleteEntity(database.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the database
+    Database restored =
+        restoreEntity(new RestoreEntity().withId(database.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDatabaseRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase = createRequest(test).withService(getContainer().getName());
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+
+    // Hard delete the database
+    deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify database no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(database.getFullyQualifiedName());
   }
 }

@@ -128,6 +128,14 @@ ingestion/tests/cli_e2e/**/*test.yaml
 # Tests
 **/metastore_db/
 
+# Docker volumes for local development
+docker-volumes/
+**/docker-volumes/
+docker/docker-compose-quickstart/docker-volumes/
+docker/development/docker-volumes/
+fuseki-volume/
+search-volume/
+
 # Cursor rules
 .cursorrules
 .cursor/

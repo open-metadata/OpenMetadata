@@ -118,7 +118,8 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  protected void postDelete(Type entity) {
+  protected void postDelete(Type entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     TypeRegistry.instance().removeType(entity.getName());
   }
 

@@ -1,0 +1,133 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "om": "https://open-metadata.org/ontology/",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "void": "http://rdfs.org/ns/void#",
+    "dct": "http://purl.org/dc/terms/",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    
+    "id": "@id",
+    "type": "@type",
+    "name": {
+      "@id": "rdfs:label",
+      "@type": "xsd:string"
+    },
+    "displayName": {
+      "@id": "skos:prefLabel",
+      "@type": "xsd:string"
+    },
+    "fullyQualifiedName": {
+      "@id": "om:fullyQualifiedName",
+      "@type": "xsd:string"
+    },
+    "description": {
+      "@id": "dct:description",
+      "@type": "xsd:string"
+    },
+    "version": {
+      "@id": "dct:hasVersion",
+      "@type": "xsd:decimal"
+    },
+    "updatedAt": {
+      "@id": "dct:modified",
+      "@type": "xsd:dateTime"
+    },
+    "updatedBy": {
+      "@id": "dct:contributor",
+      "@type": "@id"
+    },
+    "href": {
+      "@id": "rdfs:seeAlso",
+      "@type": "@id"
+    },
+    "deleted": {
+      "@id": "om:isDeleted",
+      "@type": "xsd:boolean"
+    },
+    "provider": {
+      "@id": "dct:publisher",
+      "@type": "xsd:string"
+    },
+    "disabled": {
+      "@id": "om:isDisabled",
+      "@type": "xsd:boolean"
+    },
+    "retentionPeriod": {
+      "@id": "om:retentionPeriod",
+      "@type": "xsd:string"
+    },
+    "extension": {
+      "@id": "om:hasExtension",
+      "@type": "@json"
+    },
+    "sourceUrl": {
+      "@id": "dct:source",
+      "@type": "@id"
+    },
+    "domain": {
+      "@id": "om:belongsToDomain",
+      "@type": "@id"
+    },
+    "dataProducts": {
+      "@id": "om:hasDataProduct",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "votes": {
+      "@id": "om:hasVotes",
+      "@type": "@json"
+    },
+    "lifeCycle": {
+      "@id": "om:hasLifeCycle",
+      "@type": "@json"
+    },
+    "tags": {
+      "@id": "om:hasTag",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "customProperties": {
+      "@id": "om:hasCustomProperty",
+      "@type": "@json"
+    },
+    "changeDescription": {
+      "@id": "om:hasChangeDescription",
+      "@type": "@json"
+    },
+    "owners": {
+      "@id": "om:hasOwner",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "experts": {
+      "@id": "om:hasExpert",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "followers": {
+      "@id": "om:hasFollower",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "children": {
+      "@id": "om:hasChild",
+      "@type": "@id",
+      "@container": "@list"
+    },
+    "hasGlossaryTerm": {
+      "@id": "om:hasGlossaryTerm",
+      "@type": "@id"
+    },
+    "Tag": "om:Tag",
+    "TagLabel": "om:TagLabel",
+    "labelType": "om:labelType",
+    "tagState": "om:tagState",
+    "tagSource": "om:tagSource"
+  }
+}
