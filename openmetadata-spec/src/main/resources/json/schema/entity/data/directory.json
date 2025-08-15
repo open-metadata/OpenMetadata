@@ -177,6 +177,11 @@
       "description": "Latest usage information for this directory.",
       "$ref": "../../type/usageDetails.json",
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Directory.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

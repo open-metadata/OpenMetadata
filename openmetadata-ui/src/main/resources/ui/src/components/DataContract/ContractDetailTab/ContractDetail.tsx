@@ -300,7 +300,7 @@ const ContractDetail: React.FC<{
           <div className="contract-status-badge-container">
             <StatusBadgeV2
               externalIcon={FlagIcon}
-              label={contract.status ?? t('label.active')}
+              label={contract.entityStatus ?? t('label.active')}
               status={StatusType.Success}
             />
 

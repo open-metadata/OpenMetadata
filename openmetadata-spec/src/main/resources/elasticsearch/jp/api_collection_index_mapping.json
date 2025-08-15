@@ -229,6 +229,10 @@
       "entityType": {
         "type": "keyword"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "version": {
         "type": "float"
       },

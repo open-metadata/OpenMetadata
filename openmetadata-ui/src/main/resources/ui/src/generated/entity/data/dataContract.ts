@@ -47,6 +47,10 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Approval status of the data contract.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
@@ -94,7 +98,6 @@ export interface DataContract {
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -261,6 +264,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Approval status of the data contract.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
@@ -786,13 +803,4 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
-}
-
-/**
- * Status of the data contract.
- */
-export enum ContractStatus {
-    Active = "Active",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
 }

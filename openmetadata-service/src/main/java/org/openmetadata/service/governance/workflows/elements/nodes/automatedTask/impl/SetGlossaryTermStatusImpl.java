@@ -17,6 +17,7 @@ import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -62,10 +63,10 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
-    if (!Objects.equals(status, glossaryTerm.getStatus().value())) {
+    if (!Objects.equals(status, glossaryTerm.getEntityStatus().value())) {
       String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
-      glossaryTerm.setStatus(GlossaryTerm.Status.fromValue(status));
+      glossaryTerm.setEntityStatus(EntityStatus.fromValue(status));
       String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
 
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);

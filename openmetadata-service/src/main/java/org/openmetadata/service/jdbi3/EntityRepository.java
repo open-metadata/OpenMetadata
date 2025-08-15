@@ -36,6 +36,7 @@ import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -157,6 +158,7 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -282,6 +284,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
+  @Getter protected final boolean supportsStatus;
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -404,6 +407,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
+    this.supportsStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
+    if (supportsStatus) {
+      this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+      this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+    }
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -560,6 +568,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
+  }
+
+  /**
+   * Set default status for entities that support status field.
+   * All entities use EntityStatus.APPROVED as the default.
+   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   */
+  protected void setDefaultStatus(T entity, boolean update) {
+    if (!supportsStatus) {
+      return;
+    }
+    // Skip if status is already set
+    if (entity.getEntityStatus() != null) {
+      return;
+    }
+    // Set default status to APPROVED
+    entity.setEntityStatus(EntityStatus.APPROVED);
   }
 
   /**
@@ -1121,6 +1146,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
+    setDefaultStatus(entity, update);
     // Domain is already validated
   }
 
@@ -3749,6 +3775,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -3774,6 +3801,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -3828,6 +3856,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateDisplayName() {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
+    }
+
+    private void updateEntityStatus() {
+      if (supportsStatus) {
+        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+      }
     }
 
     private void updateOwners() {

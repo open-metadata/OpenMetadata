@@ -25,19 +25,19 @@ import { ReactComponent as StoppedIcon } from '../assets/svg/ic-stop-circle.svg'
 import { ReactComponent as RejectedIcon } from '../assets/svg/x-colored.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status as AppStatus } from '../generated/entity/applications/appRunRecord';
-import { Status } from '../generated/entity/data/glossaryTerm';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { TestCaseStatus } from '../generated/tests/testCase';
 
 export type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
-export type AllStatusTypes = Status | AppStatus | TestCaseStatus;
+export type AllStatusTypes = EntityStatus | AppStatus | TestCaseStatus;
 
 export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
-  [Status.Approved]: ApprovedIcon,
-  [Status.Rejected]: RejectedIcon,
-  [Status.InReview]: InReviewIcon,
-  [Status.Draft]: DraftIcon,
-  [Status.Deprecated]: DeprecatedIcon,
+  [EntityStatus.Approved]: ApprovedIcon,
+  [EntityStatus.Rejected]: RejectedIcon,
+  [EntityStatus.InReview]: InReviewIcon,
+  [EntityStatus.Draft]: DraftIcon,
+  [EntityStatus.Deprecated]: DeprecatedIcon,
   [AppStatus.Active]: ApprovedIcon,
   [AppStatus.Completed]: CompletedIcon,
   [AppStatus.Failed]: RejectedIcon,

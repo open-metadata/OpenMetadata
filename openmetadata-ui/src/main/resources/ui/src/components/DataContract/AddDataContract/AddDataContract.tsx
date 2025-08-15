@@ -27,8 +27,8 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ContractStatus,
   DataContract,
+  EntityStatus,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
@@ -93,7 +93,7 @@ const AddDataContract: React.FC<{
               type: EntityType.TABLE,
             },
             semantics: validSemantics,
-            status: ContractStatus.Active,
+            entityStatus: EntityStatus.Approved,
           }));
 
       showSuccessToast(t('message.data-contract-saved-successfully'));

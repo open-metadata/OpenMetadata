@@ -19,8 +19,8 @@ import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-ch
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
 import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../../../generated/entity/data/glossaryTerm';
 import {
   WorkflowInstanceState,
@@ -62,10 +62,10 @@ const WorkflowHistory = memo(
 
     // Collapse only when status is approved
     const initialCollapseState = useMemo(() => {
-      const status = glossaryTerm?.status ?? Status.Approved;
+      const status = glossaryTerm?.entityStatus ?? EntityStatus.Approved;
 
-      return status === Status.Approved && !propGlossaryTerm;
-    }, [glossaryTerm?.status]);
+      return status === EntityStatus.Approved && !propGlossaryTerm;
+    }, [glossaryTerm?.entityStatus]);
 
     const [isCollapsed, setIsCollapsed] = useState(initialCollapseState);
 
