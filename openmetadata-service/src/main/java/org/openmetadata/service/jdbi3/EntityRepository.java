@@ -3571,11 +3571,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     public final void update() {
-      boolean consolidateChanges = consolidateChanges(original, updated, operation);
-      incrementalChange();
-      if (consolidateChanges) {
-        revert();
-      }
+      // boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      // incrementalChange();
+      // if (consolidateChanges) {
+      //  revert();
+      // }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
       updateInternal();
