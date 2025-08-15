@@ -793,3 +793,125 @@ export const setupDomainOwnershipTest = async (apiContext: any) => {
     cleanup,
   };
 };
+
+/**
+ * Sets up a complete environment for testing hasDomain() rule condition
+ * Creates user, domain, subdomain, assets, policy with hasDomain(), role, and team
+ * Returns all created objects and a cleanup function
+ */
+export const setupDomainHasDomainTest = async (
+  apiContext: APIRequestContext
+) => {
+  const id = uuid();
+
+  // Create test user
+  const testUser = new UserClass();
+  await testUser.create(apiContext);
+  const mainDomain = new Domain();
+  await mainDomain.create(apiContext);
+  const subDomain = new SubDomain(mainDomain);
+  await subDomain.create(apiContext);
+
+  // Create assets for domain and subdomain
+  const domainTable = new TableClass();
+  const subDomainTable = new TableClass();
+  await domainTable.create(apiContext);
+  await subDomainTable.create(apiContext);
+
+  // Create policy with hasDomain() rule
+  const domainPolicy = new PolicyClass();
+  const domainRule = [
+    {
+      name: 'HasDomainRule',
+      description: '',
+      resources: ['domain'],
+      operations: ['All'],
+      effect: 'allow',
+      condition: 'hasDomain()',
+    },
+  ];
+  await domainPolicy.create(apiContext, domainRule);
+
+  // Create role with the policy
+  const domainRole = new RolesClass();
+  await domainRole.create(apiContext, [domainPolicy.responseData.name]);
+
+  // Create team with the user and assign the role
+  const domainTeam = new TeamClass({
+    name: `PW_Team_HasDomain_${id}`,
+    displayName: `PW Team HasDomain ${id}`,
+    description: 'Team for hasDomain() rule testing',
+    teamType: 'Group',
+    users: [testUser.responseData.id ?? ''],
+    defaultRoles: [domainRole.responseData.id ?? ''],
+  });
+  await domainTeam.create(apiContext);
+
+  // Add user to domain
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Assign assets to domain and subdomain
+  await domainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  await subDomainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: subDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Cleanup function
+  const cleanup = async (cleanupContext: APIRequestContext) => {
+    await domainTable.delete(cleanupContext);
+    await subDomainTable.delete(cleanupContext);
+    await subDomain.delete(cleanupContext);
+    await mainDomain.delete(cleanupContext);
+    await domainTeam.delete(cleanupContext);
+    await domainRole.delete(cleanupContext);
+    await domainPolicy.delete(cleanupContext);
+    await testUser.delete(cleanupContext);
+  };
+
+  return {
+    testUser,
+    mainDomain,
+    subDomain,
+    domainTable,
+    subDomainTable,
+    domainPolicy,
+    domainRole,
+    domainTeam,
+    cleanup,
+  };
+};

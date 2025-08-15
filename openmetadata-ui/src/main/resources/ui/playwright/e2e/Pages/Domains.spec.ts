@@ -14,6 +14,8 @@ import base, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
@@ -21,10 +23,12 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -55,6 +59,7 @@ import {
   selectDomain,
   selectSubDomain,
   setupAssetsForDomain,
+  setupDomainHasDomainTest,
   setupDomainOwnershipTest,
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
@@ -1130,5 +1135,82 @@ test.describe('Data Consumer Domain Ownership', () => {
     );
 
     await consumerAfterAction();
+  });
+});
+
+test.describe('Domain Access with hasDomain() Rule', () => {
+  test.slow(true);
+
+  let testResources: {
+    testUser: UserClass;
+    mainDomain: Domain;
+    subDomain: SubDomain;
+    domainTable: TableClass;
+    subDomainTable: TableClass;
+    domainPolicy: PolicyClass;
+    domainRole: RolesClass;
+    domainTeam: TeamClass;
+    cleanup: (apiContext1: APIRequestContext) => Promise<void>;
+  };
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    testResources = await setupDomainHasDomainTest(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testResources.cleanup(apiContext);
+    await afterAction();
+  });
+
+  test('User with hasDomain() rule can access domain and subdomain assets', async ({
+    browser,
+  }) => {
+    // Login as test user and verify access
+    const { page: userPage, afterAction: userAfterAction } =
+      await performUserLogin(browser, testResources.testUser);
+
+    await test.step('Verify user can access domain assets', async () => {
+      // Navigate to the domain table
+      const domainTableFqn =
+        testResources.domainTable.entityResponseData.fullyQualifiedName;
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Verify no permission error
+      await expect(
+        userPage.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
+
+      // Verify table details are visible
+      await expect(
+        userPage.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+    });
+
+    await test.step('Verify user can access subdomain assets', async () => {
+      // Navigate to the subdomain table
+      const subDomainTableFqn =
+        testResources.subDomainTable.entityResponseData.fullyQualifiedName;
+      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
+      await userPage.waitForLoadState('networkidle');
+
+      // Verify no permission error
+      await expect(
+        userPage.getByTestId('permission-error-placeholder')
+      ).not.toBeVisible();
+
+      // Verify table details are visible
+      await expect(
+        userPage.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+    });
+
+    await userAfterAction();
   });
 });
