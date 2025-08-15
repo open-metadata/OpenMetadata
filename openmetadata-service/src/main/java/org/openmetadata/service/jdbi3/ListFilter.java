@@ -81,7 +81,10 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+    if (assignee == null) {
+      return "";
+    }
+    return "assignee = :assignee";
   }
 
   private String getCreatedByCondition() {
@@ -96,14 +99,18 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
-    return workflowDefinitionId == null
-        ? ""
-        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+    if (workflowDefinitionId == null) {
+      return "";
+    }
+    return "workflowDefinitionId = :workflowDefinitionId";
   }
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    if (entityLinkStr == null) {
+      return "";
+    }
+    return "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
@@ -112,9 +119,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+        return "JSON_EXTRACT(json, '$.agentType') = :agentType";
       } else {
-        return String.format("json->>'agentType' = '%s'", agentType);
+        return "json->>'agentType' = :agentType";
       }
     }
   }
@@ -142,9 +149,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+        return "JSON_EXTRACT(json, '$.alertType') = :alertType";
       } else {
-        return String.format("json->>'alertType' = '%s'", alertType);
+        return "json->>'alertType' = :alertType";
       }
     }
   }
@@ -153,7 +160,7 @@ public class ListFilter extends Filter<ListFilter> {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
     return testFailureStatus == null
         ? ""
-        : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
+        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
   }
 
   public String getIncludeCondition(String tableName) {
@@ -232,7 +239,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return String.format("directoryFqn = '%s'", directoryFqn);
+    return "directoryFqn = :directory";
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -240,7 +247,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (spreadsheetFqn == null) {
       return "";
     }
-    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+    return "spreadsheetFqn = :spreadsheet";
   }
 
   public String getFileTypeCondition(String tableName) {
@@ -248,7 +255,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    return String.format("fileType = '%s'", fileType);
+    return "fileType = :fileType";
   }
 
   public String getDisabledCondition() {

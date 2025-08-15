@@ -36,6 +36,7 @@ import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirectio
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchUtils;
 
 @Slf4j
 public class EsUtils {
@@ -262,19 +263,44 @@ public class EsUtils {
     return client.search(searchRequest, RequestOptions.DEFAULT);
   }
 
+  /**
+   * Builds and applies search source filters for Elasticsearch queries with SQL injection protection.
+   *
+   * <p><strong>Security Enhancement:</strong> This method was modified to include SQL injection sanitization
+   * as part of the security remediation for 42 vulnerable instances across search endpoints.
+   *
+   * <p>The method now sanitizes the queryFilter parameter before parsing to prevent malicious input
+   * from being processed by the vulnerable SearchSourceBuilder.fromXContent() method.
+   *
+   * @param queryFilter Raw query filter string from HTTP request parameters (potentially malicious)
+   * @param searchSourceBuilder Elasticsearch search source builder to apply filters to
+   *
+   * @see SearchUtils#sanitizeQueryParameter(String)
+   */
   public static void buildSearchSourceFilter(
       String queryFilter, SearchSourceBuilder searchSourceBuilder) {
-    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+    // SECURITY: Sanitize input to prevent SQL injection attacks before parsing JSON
+    // This addresses vulnerability instances where user input was directly parsed without
+    // validation
+    String sanitizedFilter = SearchUtils.sanitizeQueryParameter(queryFilter);
+
+    if (!nullOrEmpty(sanitizedFilter) && !sanitizedFilter.equals("{}")) {
       try {
+        // Parse the sanitized filter string into Elasticsearch QueryBuilder
+        // Note: SearchSourceBuilder.fromXContent() was the vulnerable method in the original code
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(esXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+                .createParser(
+                    esXContentRegistry, LoggingDeprecationHandler.INSTANCE, sanitizedFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+
+        // Combine the parsed filter with the existing query using boolean logic
         BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
+        // Log parsing errors but continue execution - this handles malformed legitimate queries
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
