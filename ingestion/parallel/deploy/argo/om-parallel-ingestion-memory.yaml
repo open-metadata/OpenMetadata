@@ -1,0 +1,320 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: om-parallel-ingestion-memory
+  namespace: openmetadata
+spec:
+  entrypoint: pipeline
+  serviceAccountName: om-argo-sa
+  
+  # Shared volume for caching (ephemeral)
+  volumeClaimTemplates:
+  - metadata:
+      name: cache-volume
+    spec:
+      accessModes: [ "ReadWriteMany" ]  # Important: RWX for shared access
+      storageClassName: "standard"      # Use your cluster's RWX storage class
+      resources:
+        requests:
+          storage: 10Gi
+  
+  templates:
+  - name: pipeline
+    dag:
+      tasks:
+      - name: discover-and-cache
+        template: discover-and-cache
+        arguments:
+          parameters:
+          - name: source_config
+            value: "{{workflow.parameters.source_config}}"
+      
+      # For in-memory caching (small datasets)
+      - name: process-memory-shards
+        dependencies: [discover-and-cache]
+        template: process-memory-shard
+        when: "{{tasks.discover-and-cache.outputs.parameters.cache_type}} == memory"
+        withParam: "{{tasks.discover-and-cache.outputs.parameters.shards}}"
+        arguments:
+          parameters:
+          - name: shard
+            value: "{{item}}"
+          - name: cached_entities
+            value: "{{tasks.discover-and-cache.outputs.parameters.cached_entities}}"
+          - name: source_class
+            value: "{{workflow.parameters.source_class}}"
+          - name: processor_class
+            value: "{{workflow.parameters.processor_class}}"
+          - name: sink_class
+            value: "{{workflow.parameters.sink_class}}"
+      
+      # For volume-based caching (large datasets)
+      - name: process-volume-shards
+        dependencies: [discover-and-cache]
+        template: process-volume-shard
+        when: "{{tasks.discover-and-cache.outputs.parameters.cache_type}} == volume"
+        withParam: "{{tasks.discover-and-cache.outputs.parameters.shards}}"
+        arguments:
+          parameters:
+          - name: shard
+            value: "{{item}}"
+          - name: source_class
+            value: "{{workflow.parameters.source_class}}"
+          - name: processor_class
+            value: "{{workflow.parameters.processor_class}}"
+          - name: sink_class
+            value: "{{workflow.parameters.sink_class}}"
+
+  # Template that discovers shards and caches entities
+  - name: discover-and-cache
+    inputs:
+      parameters:
+      - name: source_config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        import os
+        from importlib import import_module
+        
+        # Initialize source
+        source_config = json.loads('''{{inputs.parameters.source_config}}''')
+        source_class = source_config.get("source_class")
+        
+        module_name, class_name = source_class.rsplit(".", 1)
+        module = import_module(module_name)
+        SourceClass = getattr(module, class_name)
+        
+        source = SourceClass(source_config.get("config", {}))
+        
+        # Check if source supports filtering
+        supports_filtering = any([
+            hasattr(source, 'databaseFilterPattern'),
+            hasattr(source, 'schemaFilterPattern'),
+            source_config.get("config", {}).get("supports_filtering", False)
+        ])
+        
+        if supports_filtering:
+            # Use normal discovery without caching
+            shards = source.discover_shards()
+            output = {
+                "cache_type": "none",
+                "shards": [s.model_dump() for s in shards],
+                "cached_entities": []
+            }
+        else:
+            # Need to cache - run source once
+            from ingestion.parallel.adapters.memory_cache import InMemorySourceCache
+            
+            cache = InMemorySourceCache(max_size_mb=10)
+            cache_metadata = cache.cache_entities(source._iter())
+            
+            # Discover shards from cached data
+            if cache_metadata["type"] == "memory":
+                # Create shards based on cached entities
+                entity_index = cache_metadata["index"]
+                shards = [
+                    {"type": "cached", "id": key, "metadata": {"key": key}}
+                    for key in entity_index.keys()
+                ]
+                
+                output = {
+                    "cache_type": "memory",
+                    "shards": shards,
+                    "cached_entities": cache_metadata["entities"][:1000]  # Argo param size limit
+                }
+            else:
+                # Volume-based caching
+                shards = source.discover_shards()  # Still need shard strategy
+                output = {
+                    "cache_type": "volume",
+                    "shards": [s.model_dump() for s in shards],
+                    "cached_entities": [],
+                    "cache_path": cache_metadata["path"]
+                }
+        
+        # Output for Argo
+        with open('/tmp/cache_type', 'w') as f:
+            f.write(output["cache_type"])
+        
+        with open('/tmp/shards', 'w') as f:
+            f.write(json.dumps(output["shards"]))
+        
+        if output["cache_type"] == "memory":
+            with open('/tmp/cached_entities', 'w') as f:
+                f.write(json.dumps(output["cached_entities"]))
+        
+        # For volume caching, write to shared volume
+        if output["cache_type"] == "volume":
+            import shutil
+            shutil.copytree(cache_metadata["path"], "/cache/entities")
+      
+      volumeMounts:
+      - name: cache-volume
+        mountPath: /cache
+    
+    outputs:
+      parameters:
+      - name: cache_type
+        valueFrom:
+          path: /tmp/cache_type
+      - name: shards
+        valueFrom:
+          path: /tmp/shards
+      - name: cached_entities
+        valueFrom:
+          path: /tmp/cached_entities
+        optional: true
+
+  # Process shards from memory cache
+  - name: process-memory-shard
+    inputs:
+      parameters:
+      - name: shard
+      - name: cached_entities
+      - name: source_class
+      - name: processor_class
+      - name: sink_class
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        from ingestion.parallel.adapters.memory_cache import ShardedMemoryAdapter
+        from ingestion.parallel.om_adapters import Record, ProcessedRecord
+        
+        # Parse inputs
+        shard = json.loads('''{{inputs.parameters.shard}}''')
+        cached_entities = json.loads('''{{inputs.parameters.cached_entities}}''')
+        
+        # Create adapter with in-memory cache
+        cache_metadata = {
+            "type": "memory",
+            "entities": cached_entities,
+            "index": {}  # Would be built from entities
+        }
+        
+        adapter = ShardedMemoryAdapter(cache_metadata)
+        entities = adapter.get_entities_for_shard(shard["metadata"]["key"])
+        
+        # Process entities
+        # Initialize processor and sink...
+        # Process each entity from cache
+        
+        print(f"Processed {len(entities)} entities from memory cache for shard {shard['id']}")
+
+  # Process shards from volume cache
+  - name: process-volume-shard
+    inputs:
+      parameters:
+      - name: shard
+      - name: source_class
+      - name: processor_class
+      - name: sink_class
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        from ingestion.parallel.adapters.memory_cache import KubernetesMemoryCache
+        
+        shard = json.loads('''{{inputs.parameters.shard}}''')
+        
+        # Read from shared volume
+        cache = KubernetesMemoryCache()
+        entities = cache.read_from_volume(f"shard_{shard['id']}", "/cache")
+        
+        # Process entities
+        print(f"Processed {len(entities)} entities from volume cache for shard {shard['id']}")
+      
+      volumeMounts:
+      - name: cache-volume
+        mountPath: /cache
+
+  # Global parameters
+  parameters:
+  - name: source_config
+    value: |
+      {
+        "source_class": "ingestion.parallel.adapters.universal_source.MetadataSourceAdapter",
+        "config": {}
+      }
+  - name: source_class
+    value: "ingestion.parallel.adapters.universal_source.MetadataSourceAdapter"
+  - name: processor_class
+    value: "ingestion.parallel.adapters.universal_processor.UniversalProcessorAdapter"
+  - name: sink_class
+    value: "ingestion.parallel.adapters.universal_sink.UniversalSinkAdapter"
+  - name: runner_image
+    value: "openmetadata/om-ray-runner:latest"
+  - name: openmetadata_host
+    value: "http://openmetadata.default.svc.cluster.local:8585"
+
+---
+# Alternative: Using ConfigMap for small datasets
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: om-parallel-ingestion-configmap
+  namespace: openmetadata
+spec:
+  entrypoint: pipeline
+  serviceAccountName: om-argo-sa
+  
+  templates:
+  - name: pipeline
+    dag:
+      tasks:
+      - name: cache-to-configmap
+        template: cache-to-configmap
+        arguments:
+          parameters:
+          - name: source_config
+            value: "{{workflow.parameters.source_config}}"
+      
+      - name: process-from-configmap
+        dependencies: [cache-to-configmap]
+        template: process-from-configmap
+        withParam: "{{tasks.cache-to-configmap.outputs.parameters.shards}}"
+        arguments:
+          parameters:
+          - name: shard
+            value: "{{item}}"
+          - name: configmap_name
+            value: "{{tasks.cache-to-configmap.outputs.parameters.configmap_name}}"
+
+  - name: cache-to-configmap
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        from ingestion.parallel.adapters.memory_cache import KubernetesMemoryCache
+        
+        # Run source and cache to ConfigMap
+        cache = KubernetesMemoryCache(cache_type="configmap")
+        
+        # ... initialize source and run
+        # entities = list(source._iter())
+        
+        # For small datasets only
+        configmap_name = cache.write_to_configmap(entities, workflow.name)
+        
+        # Output
+        shards = [{"id": f"shard-{i}"} for i in range(5)]  # Example
+        print(json.dumps({
+            "configmap_name": configmap_name,
+            "shards": shards
+        }))
+    outputs:
+      parameters:
+      - name: configmap_name
+        valueFrom:
+          jsonPath: '{.configmap_name}'
+      - name: shards
+        valueFrom:
+          jsonPath: '{.shards}'
