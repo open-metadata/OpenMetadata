@@ -103,55 +103,84 @@ server:
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
+# Using async appenders by default for better performance
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
     org.openmetadata.service.util.OpenMetadataSetup:
       level: INFO
       appenders:
-        - type: console
-          logFormat: "%msg%n"
-          timeZone: UTC
-        - type: file
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-          layout:
-            type: json
-          currentLogFilename: ./logs/openmetadata-operations.log
-          archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
-          archivedFileCount: 7
-          timeZone: UTC
-          maxFileSize: 50MB
+        - type: async
+          queueSize: 512
+          discardingThreshold: 0
+          includeCallerData: false
+          appender:
+            type: console
+            logFormat: "%msg%n"
+            timeZone: UTC
+        - type: async
+          queueSize: 512
+          discardingThreshold: 0
+          includeCallerData: false
+          appender:
+            type: file
+            logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+            layout:
+              type: json
+            currentLogFilename: ${LOG_DIR:-./logs}/openmetadata-operations.log
+            archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
+            archivedFileCount: 7
+            timeZone: UTC
+            maxFileSize: 50MB
   appenders:
-    - type: console
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      timeZone: UTC
-    - type: file
-      layout:
-        type: json
-        appendLineSeparator: true
-      filterFactories:
-        - type: audit-exclude-filter-factory
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      currentLogFilename: ./logs/openmetadata.log
-      archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 7
-      timeZone: UTC
-      maxFileSize: 50MB
-    - type: file
-      layout:
-        type: json
-        appendLineSeparator: true
-      filterFactories:
-        - type: audit-only-filter-factory
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      currentLogFilename: ./logs/audit.log
-      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 25
-      timeZone: UTC
-      maxFileSize: 50MB
+    # Async console appender for better performance
+    - type: async
+      queueSize: 1024
+      discardingThreshold: 80  # Start dropping non-error logs at 80% full
+      includeCallerData: false  # Disabled for performance
+      appender:
+        type: console
+        threshold: TRACE
+        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+        timeZone: UTC
+    # Async file appender for main logs
+    - type: async
+      queueSize: 1024
+      discardingThreshold: 80
+      includeCallerData: false
+      appender:
+        type: file
+        layout:
+          type: json
+          appendLineSeparator: true
+        filterFactories:
+          - type: audit-exclude-filter-factory
+        threshold: TRACE
+        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+        currentLogFilename: ${LOG_DIR:-./logs}/openmetadata.log
+        archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
+        archivedFileCount: 7
+        timeZone: UTC
+        maxFileSize: 50MB
+    # Async audit file appender - never discard audit logs
+    - type: async
+      queueSize: 512
+      discardingThreshold: 0  # Never discard audit logs
+      includeCallerData: false
+      appender:
+        type: file
+        layout:
+          type: json
+          appendLineSeparator: true
+        filterFactories:
+          - type: audit-only-filter-factory
+        threshold: TRACE
+        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+        currentLogFilename: ${LOG_DIR:-./logs}/audit.log
+        archivedLogFilenamePattern: ${LOG_DIR:-./logs}/audit-%d{yyyy-MM-dd}-%i.log.gz
+        archivedFileCount: 25
+        timeZone: UTC
+        maxFileSize: 50MB
 
 database:
   # the name of the JDBC driver, mysql in our case
@@ -161,13 +190,37 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+  
+  # Connection pool optimization for better performance
   maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
   minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
   initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
+  
+  # Connection validation settings
   checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
-  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-true}
+  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Set to false for better performance
+  validationQuery: ${DB_VALIDATION_QUERY:-"SELECT 1"}
+  validationInterval: ${DB_VALIDATION_INTERVAL:-30 seconds}
+  
+  # Connection timeout settings for better responsiveness
+  maxWaitForConnection: ${DB_MAX_WAIT_FOR_CONNECTION:-1 second}
+  connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30 seconds}
+  
+  # Eviction settings
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
+  maxConnectionAge: ${DB_MAX_CONNECTION_AGE:-30 minutes}
+  
+  # Statement caching for better performance
+  jdbcInterceptors: ${DB_JDBC_INTERCEPTORS:-"StatementCache(max=200)"}
+  
+  # Additional performance properties
+  properties:
+    cachePrepStmts: ${DB_CACHE_PREP_STMTS:-true}
+    prepStmtCacheSize: ${DB_PREP_STMT_CACHE_SIZE:-250}
+    prepStmtCacheSqlLimit: ${DB_PREP_STMT_CACHE_SQL_LIMIT:-2048}
+    useServerPrepStmts: ${DB_USE_SERVER_PREP_STMTS:-true}
+    rewriteBatchedStatements: ${DB_REWRITE_BATCHED_STATEMENTS:-true}
 
 objectStorage:
   enabled: false

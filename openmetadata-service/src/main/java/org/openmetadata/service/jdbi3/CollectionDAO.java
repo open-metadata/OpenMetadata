@@ -2999,7 +2999,13 @@ public interface CollectionDAO {
       return App.class;
     }
 
-    @SqlQuery("SELECT id, name from installed_apps")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) as displayName from installed_apps",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, name, json ->> 'displayName' as displayName from installed_apps",
+        connectionType = POSTGRES)
     @RegisterRowMapper(AppEntityReferenceMapper.class)
     List<EntityReference> listAppsRef();
 
@@ -3007,9 +3013,12 @@ public interface CollectionDAO {
       @Override
       public EntityReference map(ResultSet rs, StatementContext ctx) throws SQLException {
         String fqn = rs.getString("name");
+        String displayName = rs.getString("displayName");
+
         return new EntityReference()
             .withId(UUID.fromString(rs.getString("id")))
             .withName(fqn)
+            .withDisplayName(displayName)
             .withFullyQualifiedName(fqn)
             .withType(APPLICATION);
       }
@@ -4024,38 +4033,59 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
-    @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state "
-            + "FROM tag_usage "
-            + "WHERE targetFQNHash IN (<targetFQNHashes>) "
-            + "ORDER BY targetFQNHash, tagFQN")
-    @UseRowMapper(TagLabelWithFQNHashMapper.class)
-    List<TagLabelWithFQNHash> getTagsInternalBatch(
-        @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
-
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, gterm.json AS json "
-                + "FROM glossary_term_entity AS gterm "
-                + "JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.source = 1 AND tu.targetFQNHash LIKE :targetFQNHash "
-                + "UNION ALL "
-                + "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, ta.json AS json "
-                + "FROM tag AS ta "
-                + "JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.source = 0 AND tu.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.targetFQNHash, tu.source, tu.tagFQN, tu.labelType, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash IN (<targetFQNHashes>) "
+                + "ORDER BY tu.targetFQNHash, tu.tagFQN",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, gterm.json AS json "
-                + "FROM glossary_term_entity AS gterm "
-                + "JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.source = 1 AND tu.targetFQNHash LIKE :targetFQNHash "
-                + "UNION ALL "
-                + "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, ta.json AS json "
-                + "FROM tag AS ta "
-                + "JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.source = 0 AND tu.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.targetFQNHash, tu.source, tu.tagFQN, tu.labelType, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash IN (<targetFQNHashes>) "
+                + "ORDER BY tu.targetFQNHash, tu.tagFQN",
+        connectionType = POSTGRES)
+    @UseRowMapper(TagLabelWithFQNHashMapper.class)
+    List<TagLabelWithFQNHash> getTagsInternalBatch(
+        @BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT /*+ INDEX(tu idx_tag_usage_target_fqn_hash) */ tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu FORCE INDEX (idx_tag_usage_target_fqn_hash) "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -4324,6 +4354,15 @@ public interface CollectionDAO {
         tag.setTagFQN(rs.getString("tagFQN"));
         tag.setLabelType(rs.getInt("labelType"));
         tag.setState(rs.getInt("state"));
+        // Map the json field if it exists (for batch queries with JOINs)
+        try {
+          String json = rs.getString("json");
+          if (json != null) {
+            tag.setJson(json);
+          }
+        } catch (SQLException e) {
+          // json column may not exist for some queries
+        }
         return tag;
       }
     }
@@ -4336,6 +4375,7 @@ public interface CollectionDAO {
       private String tagFQN;
       private int labelType;
       private int state;
+      private String json;
 
       // Getters and Setters
 
@@ -5330,6 +5370,13 @@ public interface CollectionDAO {
                 + "LIMIT 1",
         connectionType = POSTGRES)
     Long getMaxLastActivityTime();
+
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT id) FROM user_entity "
+            + "WHERE isBot = false "
+            + "AND deleted = false "
+            + "AND lastActivityTime >= :since")
+    int countDailyActiveUsers(@Bind("since") long since);
   }
 
   interface ChangeEventDAO {
