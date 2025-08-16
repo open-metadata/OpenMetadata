@@ -32,9 +32,11 @@ public class JdbiUtils {
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
     jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
-    // Add query performance monitoring
+    // Add query performance monitoring using SqlLogger
     QueryPerformanceLogger performanceLogger = new QueryPerformanceLogger();
-    jdbiInstance.getConfig(SqlStatements.class).setTimingCollector(performanceLogger);
+    jdbiInstance.setSqlLogger(performanceLogger);
+    // Also register as a statement customizer for additional hooks
+    jdbiInstance.getConfig(SqlStatements.class).addCustomizer(performanceLogger);
 
     return jdbiInstance;
   }
@@ -56,9 +58,11 @@ public class JdbiUtils {
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
     jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
-    // Add query performance monitoring
+    // Add query performance monitoring using SqlLogger
     QueryPerformanceLogger performanceLogger = new QueryPerformanceLogger();
-    jdbiInstance.getConfig(SqlStatements.class).setTimingCollector(performanceLogger);
+    jdbiInstance.setSqlLogger(performanceLogger);
+    // Also register as a statement customizer for additional hooks
+    jdbiInstance.getConfig(SqlStatements.class).addCustomizer(performanceLogger);
 
     return jdbiInstance;
   }

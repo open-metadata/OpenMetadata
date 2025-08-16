@@ -17,16 +17,16 @@ import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.statement.StatementCustomizer;
-import org.jdbi.v3.core.statement.TimingCollector;
 
 /**
  * Query performance logger that monitors and logs slow database queries.
  * This helps identify performance bottlenecks in database operations.
  */
 @Slf4j
-public class QueryPerformanceLogger implements StatementCustomizer, TimingCollector {
+public class QueryPerformanceLogger implements StatementCustomizer, SqlLogger {
 
   private static final long SLOW_QUERY_THRESHOLD_MS = 100;
   private static final long VERY_SLOW_QUERY_THRESHOLD_MS = 1000;
@@ -50,36 +50,34 @@ public class QueryPerformanceLogger implements StatementCustomizer, TimingCollec
       } else if (LOG.isDebugEnabled()) {
         LOG.debug("Query executed - Duration: {}ms, Query: {}", duration, query);
       }
-
-      // Store duration for metrics collection
       ctx.define("queryDuration", duration);
     }
   }
 
   @Override
-  public void collect(long elapsedTime, StatementContext ctx) {
-    String query = ctx.getRenderedSql();
-    long durationMs = Duration.of(elapsedTime, ChronoUnit.NANOS).toMillis();
+  public void logAfterExecution(StatementContext context) {
+    Long elapsedNanos = context.getElapsedTime(ChronoUnit.NANOS);
+    if (elapsedNanos != null) {
+      String query = context.getRenderedSql();
+      long durationMs = Duration.of(elapsedNanos, ChronoUnit.NANOS).toMillis();
+      String queryType = extractQueryType(query);
+      String table = extractTableName(query);
 
-    // Extract query type and table from SQL
-    String queryType = extractQueryType(query);
-    String table = extractTableName(query);
-
-    // Log with structured data for metrics collection
-    if (durationMs > VERY_SLOW_QUERY_THRESHOLD_MS) {
-      LOG.error(
-          "Query Performance - Type: {}, Table: {}, Duration: {}ms, Query: {}",
-          queryType,
-          table,
-          durationMs,
-          query);
-    } else if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
-      LOG.warn(
-          "Query Performance - Type: {}, Table: {}, Duration: {}ms, Query: {}",
-          queryType,
-          table,
-          durationMs,
-          query);
+      if (durationMs > VERY_SLOW_QUERY_THRESHOLD_MS) {
+        LOG.error(
+            "Query Performance - Type: {}, Table: {}, Duration: {}ms, Query: {}",
+            queryType,
+            table,
+            durationMs,
+            query);
+      } else if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
+        LOG.warn(
+            "Query Performance - Type: {}, Table: {}, Duration: {}ms, Query: {}",
+            queryType,
+            table,
+            durationMs,
+            query);
+      }
     }
   }
 
