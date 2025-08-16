@@ -37,7 +37,7 @@ def test_parse_analytic_view() -> None:
     )
 
     assert parsed_lineage
-    assert len(parsed_lineage.mappings) == 6
+    assert len(parsed_lineage.mappings) == 8  # 6 attributes + 2 measures
     assert parsed_lineage.sources == {ds}
     assert parsed_lineage.mappings[0] == ColumnMapping(
         data_source=ds,
@@ -267,3 +267,166 @@ def test_parsed_lineage_with_schema_mapping():
         mock_to_entity.assert_called_with(
             metadata=mock_metadata, engine=mock_engine, service_name="test_service"
         )
+
+
+def test_join_view_duplicate_column_mapping() -> None:
+    """Test that Join views correctly handle duplicate column mappings by keeping the first occurrence"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds_orders = DataSource(
+        name="CV_ORDERS",
+        location="/my-package/calculationviews/CV_ORDERS",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+    ds_aggregated = DataSource(
+        name="CV_AGGREGATED_ORDERS",
+        location="/my-package/calculationviews/CV_AGGREGATED_ORDERS",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+
+    assert parsed_lineage
+    assert parsed_lineage.sources == {ds_orders, ds_aggregated}
+
+    # Verify that when Join views have duplicate mappings (ORDER_ID mapped twice),
+    # we keep the first mapping and ignore the duplicate
+    # ORDER_ID_1 comes from first input (Projection_2 -> CV_AGGREGATED_ORDERS)
+    order_id_1_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "ORDER_ID_1"
+    ]
+    assert len(order_id_1_mappings) == 1
+    assert order_id_1_mappings[0].data_source == ds_aggregated
+    assert order_id_1_mappings[0].sources == ["ORDER_ID"]
+
+    # ORDER_ID_1_1 comes from second input (Projection_1 -> CV_ORDERS)
+    order_id_1_1_mappings = [
+        mapping
+        for mapping in parsed_lineage.mappings
+        if mapping.target == "ORDER_ID_1_1"
+    ]
+    assert len(order_id_1_1_mappings) == 1
+    assert order_id_1_1_mappings[0].data_source == ds_orders
+    assert order_id_1_1_mappings[0].sources == ["ORDER_ID"]
+
+    # Verify renamed columns maintain correct source mapping
+    quantity_1_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "QUANTITY_1"
+    ]
+    assert len(quantity_1_mappings) == 1
+    assert quantity_1_mappings[0].data_source == ds_aggregated
+    assert quantity_1_mappings[0].sources == ["QUANTITY"]
+
+    # QUANTITY_1_1 maps to CV_ORDERS.QUANTITY (renamed in Join)
+    quantity_1_1_mappings = [
+        mapping
+        for mapping in parsed_lineage.mappings
+        if mapping.target == "QUANTITY_1_1"
+    ]
+    assert len(quantity_1_1_mappings) == 1
+    assert quantity_1_1_mappings[0].data_source == ds_orders
+    assert quantity_1_1_mappings[0].sources == ["QUANTITY"]
+
+
+def test_union_view_with_multiple_projections() -> None:
+    """Test parsing of calculation view with Union combining multiple Projection sources"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds_orders = DataSource(
+        name="CV_ORDERS",
+        location="/my-package/calculationviews/CV_ORDERS",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+    ds_aggregated = DataSource(
+        name="CV_AGGREGATED_ORDERS",
+        location="/my-package/calculationviews/CV_AGGREGATED_ORDERS",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+    ds_sales = DataSource(
+        name="CV_DEV_SALES",
+        location="/my-package/calculationviews/CV_DEV_SALES",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+
+    assert parsed_lineage
+    assert parsed_lineage.sources == {ds_orders, ds_aggregated, ds_sales}
+
+    # Verify Union view correctly combines sources from multiple projections
+    # AMOUNT comes from CV_DEV_SALES through Projection_3
+    amount_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "AMOUNT"
+    ]
+    assert len(amount_mappings) == 1
+    assert amount_mappings[0].data_source == ds_sales
+    assert amount_mappings[0].sources == ["AMOUNT"]
+
+    # Test column name resolution through Union and Join layers
+    # PRICE_1 maps to Join_1.PRICE which traces back through Union_1 to CV_ORDERS
+    price_1_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1"
+    ]
+    assert len(price_1_mappings) == 1
+    assert price_1_mappings[0].data_source == ds_orders
+    assert price_1_mappings[0].sources == ["PRICE"]
+
+    # PRICE_1_1 maps to Join_1.PRICE_1 which comes from Projection_2 (CV_AGGREGATED_ORDERS)
+    price_1_1_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "PRICE_1_1"
+    ]
+    assert len(price_1_1_mappings) == 1
+    assert price_1_1_mappings[0].data_source == ds_aggregated
+    assert price_1_1_mappings[0].sources == ["PRICE"]
+
+
+def test_analytic_view_formula_column_source_mapping() -> None:
+    """Test that formula columns correctly map to their source table columns"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_analytic_view_formula_column.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds_orders = DataSource(
+        name="ORDERS",
+        location="SOURCE_SCHEMA",
+        source_type=ViewType.DATA_BASE_TABLE,
+    )
+    ds_customer = DataSource(
+        name="CUSTOMER_DATA",
+        location="SOURCE_SCHEMA",
+        source_type=ViewType.DATA_BASE_TABLE,
+    )
+
+    assert parsed_lineage
+    assert parsed_lineage.sources == {ds_orders, ds_customer}
+
+    # Test that base columns from ORDERS table are mapped correctly
+    orders_columns = ["ORDER_ID", "CUSTOMER_ID", "ORDER_DATE", "PRICE", "QUANTITY"]
+    for col_name in orders_columns:
+        col_mappings = [
+            mapping for mapping in parsed_lineage.mappings if mapping.target == col_name
+        ]
+        assert len(col_mappings) == 1
+        assert col_mappings[0].data_source == ds_orders
+        assert col_mappings[0].sources == [col_name]
+
+    # Test that columns from CUSTOMER_DATA table are mapped correctly
+    customer_columns = ["CUSTOMER_ID_1", "NAME", "EMAIL", "IS_ACTIVE", "SIGNUP_DATE"]
+    for col_name in customer_columns:
+        col_mappings = [
+            mapping for mapping in parsed_lineage.mappings if mapping.target == col_name
+        ]
+        assert len(col_mappings) == 1
+        assert col_mappings[0].data_source == ds_customer
+        # CUSTOMER_ID_1 maps from CUSTOMER_ID in CUSTOMER_DATA table
+        expected_source = "CUSTOMER_ID" if col_name == "CUSTOMER_ID_1" else col_name
+        assert col_mappings[0].sources == [expected_source]
