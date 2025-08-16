@@ -4044,35 +4044,27 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
-                + "FROM ("
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
-                + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 1 "
-                + "  UNION ALL "
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
-                + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 0 "
-                + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, gterm.json AS json "
+                + "FROM glossary_term_entity AS gterm "
+                + "JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.source = 1 AND tu.targetFQNHash LIKE :targetFQNHash "
+                + "UNION ALL "
+                + "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, ta.json AS json "
+                + "FROM tag AS ta "
+                + "JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.source = 0 AND tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
-                + "FROM ("
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
-                + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 1 "
-                + "  UNION ALL "
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
-                + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 0 "
-                + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, gterm.json AS json "
+                + "FROM glossary_term_entity AS gterm "
+                + "JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.source = 1 AND tu.targetFQNHash LIKE :targetFQNHash "
+                + "UNION ALL "
+                + "SELECT tu.source AS source, tu.tagFQN AS tagFQN, tu.labelType AS labelType, tu.targetFQNHash AS targetFQNHash, tu.state AS state, ta.json AS json "
+                + "FROM tag AS ta "
+                + "JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.source = 0 AND tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
