@@ -110,6 +110,8 @@ class RedashSource(DashboardServiceSource):
         )
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         return self.dashboard_list
 
     def get_dashboard_name(self, dashboard: dict) -> str:
@@ -123,6 +125,8 @@ class RedashSource(DashboardServiceSource):
         Get owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.get("user") and dashboard_details["user"].get("email"):
                 return self.metadata.get_reference_by_email(
                     dashboard_details["user"].get("email")
