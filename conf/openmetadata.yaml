@@ -28,16 +28,44 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
       maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
+      # Connection settings for better performance
+      idleTimeout: ${SERVER_CONNECTOR_IDLE_TIMEOUT:-30 seconds}
+      acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-1}        # 1 is usually enough for small-medium deployments
+      selectorThreads: ${SERVER_SELECTOR_THREADS:-2}        # 2 selectors handle most workloads
+      acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-1024}
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
   gzip:
+    enabled: ${SERVER_GZIP_ENABLED:-true}
+    minimumEntitySize: ${SERVER_GZIP_MIN_SIZE:-256 bytes}
+    bufferSize: ${SERVER_GZIP_BUFFER_SIZE:-8KiB}
+    deflateCompressionLevel: ${SERVER_GZIP_COMPRESSION_LEVEL:-6}
+    includedMethods: [GET, POST, PUT, PATCH, DELETE]
     syncFlush: true
 
-  maxThreads: ${SERVER_MAX_THREADS:-50}
-  minThreads: ${SERVER_MIN_THREADS:-10}
-  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+  # Thread pool configuration - defaults optimized for medium deployments
+  # For small deployments (< 2GB RAM): use maxThreads=50, minThreads=10
+  # For medium deployments (2-4GB RAM): use defaults below
+  # For large deployments (> 4GB RAM): use maxThreads=200-400, minThreads=50
+  maxThreads: ${SERVER_MAX_THREADS:-100}                # Balanced for medium deployments
+  minThreads: ${SERVER_MIN_THREADS:-10}                 # Low minimum to save resources
+  maxQueuedRequests: ${SERVER_MAX_QUEUED_REQUESTS:-1024} # Queue size for pending requests
+  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-60 seconds}
+  
+  # Request/Response settings
+  requestLog:
+    appenders:
+      - type: file
+        currentLogFilename: ${LOG_DIR:-./logs}/access.log
+        archivedLogFilenamePattern: ${LOG_DIR:-./logs}/access-%d.log.gz
+        archivedFileCount: 5
+        timeZone: UTC
+        queueSize: 256
+        discardingThreshold: 0
+        immediateFlush: false
+        bufferSize: 8KiB
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -103,84 +131,71 @@ server:
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
-# Using async appenders by default for better performance
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
     org.openmetadata.service.util.OpenMetadataSetup:
       level: INFO
       appenders:
-        - type: async
-          queueSize: 512
-          discardingThreshold: 0
-          includeCallerData: false
-          appender:
-            type: console
-            logFormat: "%msg%n"
-            timeZone: UTC
-        - type: async
-          queueSize: 512
-          discardingThreshold: 0
-          includeCallerData: false
-          appender:
-            type: file
-            logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-            layout:
-              type: json
-            currentLogFilename: ${LOG_DIR:-./logs}/openmetadata-operations.log
-            archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
-            archivedFileCount: 7
-            timeZone: UTC
-            maxFileSize: 50MB
+        - type: console
+          logFormat: "%msg%n"
+          timeZone: UTC
+        - type: file
+          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+          layout:
+            type: json
+          currentLogFilename: ${LOG_DIR:-./logs}/openmetadata-operations.log
+          archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
+          archivedFileCount: 7
+          timeZone: UTC
+          maxFileSize: 50MB
   appenders:
-    # Async console appender for better performance
-    - type: async
-      queueSize: 1024
-      discardingThreshold: 80  # Start dropping non-error logs at 80% full
-      includeCallerData: false  # Disabled for performance
-      appender:
-        type: console
-        threshold: TRACE
-        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-        timeZone: UTC
-    # Async file appender for main logs
-    - type: async
-      queueSize: 1024
-      discardingThreshold: 80
-      includeCallerData: false
-      appender:
-        type: file
-        layout:
-          type: json
-          appendLineSeparator: true
-        filterFactories:
-          - type: audit-exclude-filter-factory
-        threshold: TRACE
-        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-        currentLogFilename: ${LOG_DIR:-./logs}/openmetadata.log
-        archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
-        archivedFileCount: 7
-        timeZone: UTC
-        maxFileSize: 50MB
-    # Async audit file appender - never discard audit logs
-    - type: async
-      queueSize: 512
-      discardingThreshold: 0  # Never discard audit logs
-      includeCallerData: false
-      appender:
-        type: file
-        layout:
-          type: json
-          appendLineSeparator: true
-        filterFactories:
-          - type: audit-only-filter-factory
-        threshold: TRACE
-        logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-        currentLogFilename: ${LOG_DIR:-./logs}/audit.log
-        archivedLogFilenamePattern: ${LOG_DIR:-./logs}/audit-%d{yyyy-MM-dd}-%i.log.gz
-        archivedFileCount: 25
-        timeZone: UTC
-        maxFileSize: 50MB
+    # Console appender with async parameters
+    - type: console
+      threshold: INFO
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      timeZone: UTC
+      queueSize: 512                    # Async queue buffer size
+      discardingThreshold: 80            # Start dropping DEBUG/TRACE at 80% full
+      neverBlock: true                   # Don't block application threads
+    # File appender for main logs with async and performance parameters
+    - type: file
+      layout:
+        type: json
+        appendLineSeparator: true
+      filterFactories:
+        - type: audit-exclude-filter-factory
+      threshold: INFO
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      currentLogFilename: ${LOG_DIR:-./logs}/openmetadata.log
+      archivedLogFilenamePattern: ${LOG_DIR:-./logs}/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 7
+      timeZone: UTC
+      maxFileSize: 50MB
+      queueSize: 1024                   # Larger queue for file I/O
+      discardingThreshold: 80            # Start dropping non-critical logs at 80%
+      neverBlock: true                   # Don't block application threads
+      bufferSize: 8KiB                   # I/O buffer size for better performance
+      immediateFlush: false              # Buffer writes for better performance
+    # Audit file appender - never drop audit logs
+    - type: file
+      layout:
+        type: json
+        appendLineSeparator: true
+      filterFactories:
+        - type: audit-only-filter-factory
+      threshold: INFO
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      currentLogFilename: ${LOG_DIR:-./logs}/audit.log
+      archivedLogFilenamePattern: ${LOG_DIR:-./logs}/audit-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 25
+      timeZone: UTC
+      maxFileSize: 50MB
+      queueSize: 512                    # Moderate queue for audit logs
+      discardingThreshold: 0             # Never discard audit logs (0 = disabled)
+      neverBlock: false                  # Block if needed to preserve audit logs
+      bufferSize: 8KiB                   # I/O buffer size
+      immediateFlush: true               # Flush immediately for audit trail integrity
 
 database:
   # the name of the JDBC driver, mysql in our case
@@ -204,7 +219,6 @@ database:
   
   # Connection timeout settings for better responsiveness
   maxWaitForConnection: ${DB_MAX_WAIT_FOR_CONNECTION:-1 second}
-  connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30 seconds}
   
   # Eviction settings
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
