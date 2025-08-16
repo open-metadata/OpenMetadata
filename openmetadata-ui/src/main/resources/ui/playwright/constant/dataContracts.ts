@@ -44,9 +44,9 @@ export const DATA_CONTRACT_SEMANTICS2 = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
-  name: `table_row_count_to_equal_in_id_${uuid()}`,
-  label: 'Table Row Count To Equal',
-  type: 'tableRowCountToEqual',
-  value: '100000',
-  description: 'New table test case for TableRowCountToEqual',
+  name: `table_column_count_to_equal_in_id_${uuid()}`,
+  label: 'Table Column Count To Equal',
+  type: 'tableColumnCountToEqual',
+  value: '1000',
+  description: 'New table test case for TableColumnCountToEqual',
 };

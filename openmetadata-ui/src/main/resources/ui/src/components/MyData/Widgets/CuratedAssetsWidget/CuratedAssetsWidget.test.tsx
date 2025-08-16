@@ -140,6 +140,10 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
     })
 );
 
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
 

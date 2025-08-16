@@ -1,5 +1,5 @@
 ---
-title: SAS Troubleshooting Guide | `brandName` Support
+title: SAS Troubleshooting Guide | OpenMetadata Support
 description: Resolve SAS database connector issues in OpenMetadata with expert troubleshooting guides, common error fixes, and step-by-step solutions for seamless integration.
 slug: /connectors/database/sas/troubleshooting
 ---
