@@ -21,6 +21,8 @@ from functools import lru_cache
 from typing import Dict, Iterable, List, NewType, Optional, Set
 
 from pydantic import Field, computed_field
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -44,6 +46,7 @@ from metadata.ingestion.source.database.saphana.models import (
     SYS_BIC_SCHEMA_NAME,
     ViewType,
 )
+from metadata.ingestion.source.database.saphana.queries import SAPHANA_SCHEMA_MAPPING
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.dispatch import enum_register
@@ -158,6 +161,7 @@ class DataSource(BaseModel):
     def get_entity(
         self,
         metadata: OpenMetadata,
+        engine: Engine,
         service_name: str,
     ) -> Table:
         """Build the Entity Reference for this DataSource"""
@@ -168,13 +172,14 @@ class DataSource(BaseModel):
             )
 
         if self.source_type == ViewType.DATA_BASE_TABLE:
+            schema_name = _get_mapped_schema(engine=engine, schema_name=self.location)
             # The source is a table, so the location is the schema
             fqn_ = fqn.build(
                 metadata=metadata,
                 entity_type=Table,
                 service_name=service_name,
                 database_name=None,  # TODO: Can we assume HXE?
-                schema_name=self.location,
+                schema_name=schema_name,
                 table_name=self.name,
             )
         else:
@@ -243,13 +248,17 @@ class ParsedLineage(BaseModel):
         return id(self)
 
     def to_request(
-        self, metadata: OpenMetadata, service_name: str, to_entity: Table
+        self,
+        metadata: OpenMetadata,
+        engine: Engine,
+        service_name: str,
+        to_entity: Table,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Given the target entity, build the AddLineageRequest based on the sources in `self`"""
         for source in self.sources:
             try:
                 source_table = source.get_entity(
-                    metadata=metadata, service_name=service_name
+                    metadata=metadata, engine=engine, service_name=service_name
                 )
                 if not source_table:
                     logger.warning(f"Can't find table for source [{source}]")
@@ -770,3 +779,22 @@ def _group_mappings(mappings: List[DataSourceMapping]) -> List[DataSourceMapping
     ]
 
     return grouped_data
+
+
+@lru_cache(maxsize=256)
+def _get_mapped_schema(
+    engine: Engine,
+    schema_name: str,
+) -> str:
+    """
+    Get the physical schema for a given authoring schema
+    If schema is not mapped, then consider it as the physical schema
+    """
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(SAPHANA_SCHEMA_MAPPING.format(authoring_schema=schema_name))
+        )
+        row = result.fetchone()
+        if row is not None:
+            return row[0]
+    return schema_name
