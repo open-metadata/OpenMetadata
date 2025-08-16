@@ -36,11 +36,15 @@ public class UserActivityFilter implements ContainerRequestFilter {
   public void filter(ContainerRequestContext requestContext) {
     SecurityContext securityContext = requestContext.getSecurityContext();
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
+      LOG.trace(
+          "No security context or principal, skipping activity tracking for path: {}",
+          requestContext.getUriInfo().getPath());
       return;
     }
 
     String userName = securityContext.getUserPrincipal().getName();
     if (userName == null || userName.isEmpty()) {
+      LOG.trace("No username found in principal, skipping activity tracking");
       return;
     }
 
@@ -50,8 +54,10 @@ public class UserActivityFilter implements ContainerRequestFilter {
         LOG.trace("User {} is a bot, skipping activity tracking", userName);
         return;
       }
-      LOG.debug("Tracking activity for user: {}", userName);
+      String path = requestContext.getUriInfo().getPath();
+      LOG.trace("Tracking activity for user: {} on path: {}", userName, path);
       UserActivityTracker.getInstance().trackActivity(userName);
+      LOG.debug("Successfully tracked activity for user: {}", userName);
     } catch (Exception e) {
       LOG.error("Failed to track activity for user: {}", userName, e);
     }

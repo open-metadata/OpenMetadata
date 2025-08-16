@@ -270,11 +270,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
         LOG.debug("Redis cache miss for findFrom: {} ({})", toId, toEntity);
       }
 
-      // Fetch from database
       List<EntityRelationshipRecord> results =
           delegate.findFrom(toId, toEntity, relation, fromEntity);
 
-      // Store in Redis
       try {
         Map<String, Object> cacheData = new HashMap<>();
         cacheData.put(RELATIONSHIPS, results);
@@ -296,7 +294,6 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
 
       return results;
     } else {
-      // Redis not available, use internal cache
       try {
         List<EntityRelationshipRecord> cachedResults =
             INTERNAL_RELATIONSHIP_CACHE.getIfPresent(cacheKey);
@@ -313,11 +310,9 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
         LOG.debug("Internal cache miss for findFrom: {} ({})", toId, toEntity);
       }
 
-      // Fetch from database
       List<EntityRelationshipRecord> results =
           delegate.findFrom(toId, toEntity, relation, fromEntity);
 
-      // Store in internal cache
       if (results != null && !results.isEmpty()) {
         try {
           INTERNAL_RELATIONSHIP_CACHE.put(cacheKey, results);

@@ -5184,7 +5184,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
 
-    LOG.info(
+    LOG.trace(
         "batchFetchOwners: Found {} owner relationships for {} entities",
         records.size(),
         entities.size());
