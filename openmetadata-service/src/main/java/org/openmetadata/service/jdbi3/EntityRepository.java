@@ -55,7 +55,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceListMatch;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -260,6 +259,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1885,6 +1885,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+    // Tag cache invalidation is handled by CachedTagUsageDAO
   }
 
   @Transaction
@@ -2485,8 +2486,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    // Populate Glossary Tags on Read
-    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+    // CachedTagUsageDAO handles caching (Redis if available, internal cache otherwise)
+    List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(fqn);
+    // Add derived tags after fetching (make defensive copy if not null)
+    return tags != null ? addDerivedTags(new ArrayList<>(tags)) : null;
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
@@ -2915,10 +2918,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getDomains(T entity) {
+    // CachedEntityRelationshipDAO handles caching (Redis if available, internal cache otherwise)
     return supportsDomains ? getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN) : null;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
+    // CachedEntityRelationshipDAO handles caching (Redis if available, internal cache otherwise)
     return !supportsDataProducts
         ? null
         : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
@@ -4051,6 +4056,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Transaction
     public final void updateDomains(
         T entity, List<EntityReference> originalDomains, List<EntityReference> newDomains) {
+      // Cache invalidation is handled by CachedEntityRelationshipDAO
+
       List<EntityReference> addedDomains =
           diffLists(
               newDomains,
@@ -5067,9 +5074,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
 
     for (T entity : entities) {
-      entity.setTags(
-          addDerivedTags(
-              tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList())));
+      // Add derived tags when setting on entity
+      List<TagLabel> tags =
+          tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList());
+      // Make a defensive copy to avoid modifying cached data
+      entity.setTags(addDerivedTags(new ArrayList<>(tags)));
     }
   }
 
@@ -5341,18 +5350,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
 
-    Map<String, List<TagLabel>> targetHashToTagLabel =
-        populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
-    return entityFQNs.stream()
-        .collect(
-            Collectors.toMap(
-                Function.identity(),
-                fqn -> {
-                  String targetFQNHash = FullyQualifiedName.buildHash(fqn);
-                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
-                      .filter(list -> !list.isEmpty())
-                      .orElseGet(ArrayList::new);
-                }));
+    Map<String, List<TagLabel>> result = new HashMap<>();
+
+    // Batch fetch all tags (cache is handled by CachedTagUsageDAO)
+    // Note: BindListFQN will convert FQNs to hashes, so we pass FQNs not hashes
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages =
+        listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs));
+
+    Map<String, List<TagLabel>> targetHashToTagLabel = TagLabelUtil.populateTagLabel(tagUsages);
+
+    // Map results back to FQNs
+    for (String fqn : entityFQNs) {
+      String targetFQNHash = FullyQualifiedName.buildHash(fqn);
+      List<TagLabel> tags =
+          Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+              .filter(list -> !list.isEmpty())
+              .orElseGet(ArrayList::new);
+
+      // Return a copy to avoid modifications affecting cached data
+      result.put(fqn, new ArrayList<>(tags));
+    }
+
+    return result;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {

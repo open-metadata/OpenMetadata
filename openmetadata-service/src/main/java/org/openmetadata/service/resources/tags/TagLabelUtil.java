@@ -21,7 +21,6 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +34,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -57,37 +57,70 @@ public class TagLabelUtil {
 
   public static Map<String, List<TagLabel>> populateTagLabel(
       List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages) {
-    Map<String, List<String>> tagFqnMap = new HashMap<>();
-    Map<String, List<String>> termFqnMap = new HashMap<>();
-
-    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : tagUsages) {
-      String targetHash = usage.getTargetFQNHash();
-      String tagFQN = usage.getTagFQN();
-
-      if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
-        tagFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
-      } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
-        termFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
-      }
-    }
-
-    Set<String> allTargetHashes = new HashSet<>();
-    allTargetHashes.addAll(tagFqnMap.keySet());
-    allTargetHashes.addAll(termFqnMap.keySet());
-
     Map<String, List<TagLabel>> result = new HashMap<>();
 
-    for (String targetHash : allTargetHashes) {
+    // Group tag usages by target hash
+    Map<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> usagesByTarget =
+        new HashMap<>();
+    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : tagUsages) {
+      usagesByTarget.computeIfAbsent(usage.getTargetFQNHash(), k -> new ArrayList<>()).add(usage);
+    }
+
+    // Process each target's tags
+    for (Map.Entry<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> entry :
+        usagesByTarget.entrySet()) {
+      String targetHash = entry.getKey();
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> targetUsages = entry.getValue();
       List<TagLabel> tagLabels = new ArrayList<>();
 
-      List<String> tagFQNs = tagFqnMap.getOrDefault(targetHash, Collections.emptyList());
-      List<String> termFQNs = termFqnMap.getOrDefault(targetHash, Collections.emptyList());
+      // Separate tags that have JSON and those that don't
+      List<String> tagsToFetch = new ArrayList<>();
+      List<String> termsToFetch = new ArrayList<>();
 
-      Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
-      GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+      for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : targetUsages) {
+        // If we have JSON, parse it directly
+        if (usage.getJson() != null && !usage.getJson().isEmpty()) {
+          try {
+            if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
+              Tag tag = JsonUtils.readValue(usage.getJson(), Tag.class);
+              TagLabel label = EntityUtil.toTagLabel(tag);
+              label.setLabelType(TagLabel.LabelType.values()[usage.getLabelType()]);
+              label.setState(TagLabel.State.values()[usage.getState()]);
+              tagLabels.add(label);
+            } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
+              GlossaryTerm term = JsonUtils.readValue(usage.getJson(), GlossaryTerm.class);
+              TagLabel label = EntityUtil.toTagLabel(term);
+              label.setLabelType(TagLabel.LabelType.values()[usage.getLabelType()]);
+              label.setState(TagLabel.State.values()[usage.getState()]);
+              tagLabels.add(label);
+            }
+          } catch (Exception e) {
+            // If parsing fails, fall back to fetching
+            if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
+              tagsToFetch.add(usage.getTagFQN());
+            } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
+              termsToFetch.add(usage.getTagFQN());
+            }
+          }
+        } else {
+          // No JSON, need to fetch
+          if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
+            tagsToFetch.add(usage.getTagFQN());
+          } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
+            termsToFetch.add(usage.getTagFQN());
+          }
+        }
+      }
 
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
-      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      // Fetch any remaining tags/terms that didn't have JSON
+      if (!tagsToFetch.isEmpty()) {
+        Tag[] tags = getTags(tagsToFetch).toArray(new Tag[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
+      }
+      if (!termsToFetch.isEmpty()) {
+        GlossaryTerm[] terms = getGlossaryTerms(termsToFetch).toArray(new GlossaryTerm[0]);
+        tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+      }
 
       result.put(targetHash, tagLabels);
     }

@@ -1,5 +1,8 @@
 package org.openmetadata.service.cache;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Include;
@@ -21,7 +25,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 
 /**
  * Cached decorator for EntityRelationshipDAO that provides write-through caching
- * for entity relationships using Redis cache.
+ * for entity relationships using Redis cache when available, with Guava cache fallback.
  * This decorator intercepts read operations and checks the cache first, falling back
  * to database queries when needed. Write operations update both the database and cache.
  */
@@ -35,6 +39,22 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   private static final String TIMESTAMP = "timestamp";
   private static final String PREFETCHED = "prefetched";
   private static final String RELATIONSHIPS = "relationships";
+
+  // Internal Guava cache as fallback when Redis is not available
+  private static final LoadingCache<String, List<EntityRelationshipRecord>>
+      INTERNAL_RELATIONSHIP_CACHE =
+          CacheBuilder.newBuilder()
+              .maximumSize(10000)
+              .expireAfterWrite(5, TimeUnit.MINUTES)
+              .recordStats()
+              .build(
+                  new CacheLoader<String, List<EntityRelationshipRecord>>() {
+                    @Override
+                    public List<EntityRelationshipRecord> load(String key) {
+                      // This should not be called directly
+                      return Collections.emptyList();
+                    }
+                  });
 
   private static final Executor PREFETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -52,10 +72,17 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   }
 
   private void evictEntityFromCache(UUID entityId, String entityType) {
-    if (RelationshipCache.isAvailable() && entityId != null && entityType != null) {
+    if (entityId != null && entityType != null) {
       String cacheKey = createEntityCacheKey(entityId.toString(), entityType);
-      RelationshipCache.evict(cacheKey);
-      LOG.debug("Evicted cache for entity: {} ({})", entityId, entityType);
+
+      if (RelationshipCache.isAvailable()) {
+        RelationshipCache.evict(cacheKey);
+        LOG.debug("Evicted Redis cache for entity: {} ({})", entityId, entityType);
+      } else {
+        // Evict from internal cache - need to invalidate all keys that start with this entity
+        INTERNAL_RELATIONSHIP_CACHE.invalidateAll();
+        LOG.debug("Evicted internal cache for entity: {} ({})", entityId, entityType);
+      }
     }
   }
 
@@ -214,59 +241,100 @@ public class CachedEntityRelationshipDAO implements CollectionDAO.EntityRelation
   @Override
   public List<EntityRelationshipRecord> findFrom(
       UUID toId, String toEntity, int relation, String fromEntity) {
-    if (!RelationshipCache.isAvailable()) {
-      return delegate.findFrom(toId, toEntity, relation, fromEntity);
-    }
-
     String cacheKey =
         createRelationshipCacheKey(
             toId.toString(), toEntity, FIND_FROM_KEY, relation + ":" + fromEntity);
 
-    try {
-      Map<String, Object> cached = RelationshipCache.get(cacheKey);
-      if (cached.containsKey(RELATIONSHIPS)) {
-        Object data = cached.get(RELATIONSHIPS);
-        if (data instanceof List) {
-          @SuppressWarnings("unchecked")
-          List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
-          boolean isPrefetched = cached.containsKey(PREFETCHED) && (Boolean) cached.get(PREFETCHED);
+    // If Redis is available, use it exclusively
+    if (RelationshipCache.isAvailable()) {
+      try {
+        Map<String, Object> cached = RelationshipCache.get(cacheKey);
+        if (cached.containsKey(RELATIONSHIPS)) {
+          Object data = cached.get(RELATIONSHIPS);
+          if (data instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<EntityRelationshipRecord> cachedResults = (List<EntityRelationshipRecord>) data;
+            boolean isPrefetched =
+                cached.containsKey(PREFETCHED) && (Boolean) cached.get(PREFETCHED);
+            LOG.debug(
+                "Redis cache hit{} for findFrom: {} ({}), relation: {}, fromEntity: {}",
+                isPrefetched ? " (prefetched)" : "",
+                toId,
+                toEntity,
+                relation,
+                fromEntity);
+            return cachedResults;
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Redis cache miss for findFrom: {} ({})", toId, toEntity);
+      }
+
+      // Fetch from database
+      List<EntityRelationshipRecord> results =
+          delegate.findFrom(toId, toEntity, relation, fromEntity);
+
+      // Store in Redis
+      try {
+        Map<String, Object> cacheData = new HashMap<>();
+        cacheData.put(RELATIONSHIPS, results);
+        cacheData.put(TIMESTAMP, System.currentTimeMillis());
+        RelationshipCache.put(cacheKey, cacheData);
+        LOG.debug(
+            "Stored findFrom results in Redis: {} ({}), relation: {}, fromEntity: {}, count: {}",
+            toId,
+            toEntity,
+            relation,
+            fromEntity,
+            results.size());
+
+        triggerSimplePrefetch(toId, toEntity);
+
+      } catch (Exception e) {
+        LOG.warn("Error caching findFrom results in Redis: {} ({})", toId, toEntity, e);
+      }
+
+      return results;
+    } else {
+      // Redis not available, use internal cache
+      try {
+        List<EntityRelationshipRecord> cachedResults =
+            INTERNAL_RELATIONSHIP_CACHE.getIfPresent(cacheKey);
+        if (cachedResults != null) {
           LOG.debug(
-              "Cache hit{} for findFrom: {} ({}), relation: {}, fromEntity: {}",
-              isPrefetched ? " (prefetched)" : "",
+              "Internal cache hit for findFrom: {} ({}), relation: {}, fromEntity: {}",
               toId,
               toEntity,
               relation,
               fromEntity);
           return cachedResults;
         }
+      } catch (Exception e) {
+        LOG.debug("Internal cache miss for findFrom: {} ({})", toId, toEntity);
       }
-    } catch (Exception e) {
-      LOG.warn("Error reading from cache for findFrom: {} ({})", toId, toEntity, e);
+
+      // Fetch from database
+      List<EntityRelationshipRecord> results =
+          delegate.findFrom(toId, toEntity, relation, fromEntity);
+
+      // Store in internal cache
+      if (results != null && !results.isEmpty()) {
+        try {
+          INTERNAL_RELATIONSHIP_CACHE.put(cacheKey, results);
+          LOG.debug(
+              "Stored findFrom results in internal cache: {} ({}), relation: {}, fromEntity: {}, count: {}",
+              toId,
+              toEntity,
+              relation,
+              fromEntity,
+              results.size());
+        } catch (Exception e) {
+          LOG.warn("Error caching findFrom results in internal cache: {} ({})", toId, toEntity, e);
+        }
+      }
+
+      return results;
     }
-
-    List<EntityRelationshipRecord> results =
-        delegate.findFrom(toId, toEntity, relation, fromEntity);
-
-    try {
-      Map<String, Object> cacheData = new HashMap<>();
-      cacheData.put(RELATIONSHIPS, results);
-      cacheData.put(TIMESTAMP, System.currentTimeMillis());
-      RelationshipCache.put(cacheKey, cacheData);
-      LOG.debug(
-          "Cache miss - stored findFrom results: {} ({}), relation: {}, fromEntity: {}, count: {}",
-          toId,
-          toEntity,
-          relation,
-          fromEntity,
-          results.size());
-
-      triggerSimplePrefetch(toId, toEntity);
-
-    } catch (Exception e) {
-      LOG.warn("Error caching findFrom results: {} ({})", toId, toEntity, e);
-    }
-
-    return results;
   }
 
   @Override
