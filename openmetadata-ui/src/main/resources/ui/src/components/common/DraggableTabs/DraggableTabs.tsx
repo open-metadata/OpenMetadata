@@ -22,7 +22,7 @@ import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageUtils';
 import './draggable-tabs.less';
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
@@ -118,10 +118,10 @@ export const TabItem = ({
         trigger={['click']}>
         <Button
           className="draggable-tab-item"
-          data-testid={`tab-${item.displayName}`}
+          data-testid={`tab-${item.name}`}
           onClick={() => onItemClick?.(item.id)}>
           <Space>
-            {getEntityName(item)}
+            {getTabDisplayName(item)}
             <MoreOutlined />
           </Space>
         </Button>

@@ -13,14 +13,7 @@
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
-import {
-  cloneDeep,
-  isEmpty,
-  isNil,
-  isUndefined,
-  toString,
-  uniqueId,
-} from 'lodash';
+import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -50,6 +43,7 @@ import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
+  getTabDisplayName,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
@@ -418,9 +412,9 @@ export const CustomizeTabWidget = () => {
                   trigger={['click']}>
                   <Button
                     className="draggable-hidden-tab-item bg-grey"
-                    data-testid={`tab-${item.displayName}`}>
+                    data-testid={`tab-${item.name}`}>
                     <Space>
-                      {getEntityName(item)}
+                      {getTabDisplayName(item)}
                       <MoreOutlined />
                     </Space>
                   </Button>
@@ -508,7 +502,7 @@ export const CustomizeTabWidget = () => {
           onOk={handleRenameSave}>
           <Input
             autoFocus
-            value={toString(getEntityName(editableItem))}
+            value={getTabDisplayName(editableItem)}
             onChange={handleChange}
           />
         </Modal>
