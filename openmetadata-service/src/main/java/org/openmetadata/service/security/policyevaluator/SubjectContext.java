@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
@@ -75,11 +76,45 @@ public record SubjectContext(User user) {
   }
 
   public boolean hasDomains(List<EntityReference> domains) {
-    return listOrEmpty(user.getDomains()).stream()
-        .anyMatch(
-            userDomain ->
-                listOrEmpty(domains).stream()
-                    .anyMatch(domain -> userDomain.getId().equals(domain.getId())));
+    return checkDomainHierarchyAccess(user.getDomains(), domains);
+  }
+
+  /**
+   * Checks if user can access resource domains through hierarchy.
+   * Parent domain users can access sub-domain resources.
+   */
+  private boolean checkDomainHierarchyAccess(
+      List<EntityReference> userDomains, List<EntityReference> resourceDomains) {
+
+    if (listOrEmpty(resourceDomains).isEmpty()) return true; // No restrictions
+    if (listOrEmpty(userDomains).isEmpty()) return false; // No user domains
+
+    // Simple nested loops - optimal for typical small domain counts
+    for (EntityReference userDomain : userDomains) {
+      String userDomainFQN = userDomain.getFullyQualifiedName();
+      for (EntityReference resourceDomain : resourceDomains) {
+        if (isDomainParentOrEqual(userDomainFQN, resourceDomain.getFullyQualifiedName())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks if userDomainFQN is an parent of or equal to resourceDomainFQN.
+   * Example: "Engineering" is parent of "Engineering.Backend.Services"
+   */
+  private static boolean isDomainParentOrEqual(String userDomainFQN, String resourceDomainFQN) {
+    if (userDomainFQN.equals(resourceDomainFQN)) return true; // Exact match
+
+    // Check if user domain is parent by walking up resource domain hierarchy
+    String parentDomainFQN = FullyQualifiedName.getParentFQN(resourceDomainFQN);
+    while (parentDomainFQN != null) {
+      if (parentDomainFQN.equals(userDomainFQN)) return true;
+      parentDomainFQN = FullyQualifiedName.getParentFQN(parentDomainFQN);
+    }
+    return false;
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
