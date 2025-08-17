@@ -13,9 +13,13 @@
 
 package org.openmetadata.service.cache;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.type.TagLabel;
@@ -29,6 +33,49 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
   private static final String TAG_CACHE_PREFIX = "tags:";
   private static final String TAG_PREFIX_CACHE_PREFIX = "tags:prefix:";
   private static final String TAG_BATCH_CACHE_PREFIX = "tags:batch:";
+
+  private static final LoadingCache<String, List<TagLabel>> INTERNAL_TAG_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(10000)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .recordStats()
+          .build(
+              new CacheLoader<String, List<TagLabel>>() {
+                @Override
+                public List<TagLabel> load(String key) {
+                  // This should not be called directly
+                  return null;
+                }
+              });
+
+  private static final LoadingCache<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>>
+      INTERNAL_BATCH_CACHE =
+          CacheBuilder.newBuilder()
+              .maximumSize(5000)
+              .expireAfterWrite(5, TimeUnit.MINUTES)
+              .recordStats()
+              .build(
+                  new CacheLoader<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>>() {
+                    @Override
+                    public List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> load(String key) {
+                      // This should not be called directly
+                      return null;
+                    }
+                  });
+
+  private static final LoadingCache<String, Map<String, List<TagLabel>>> INTERNAL_PREFIX_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(5000)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .recordStats()
+          .build(
+              new CacheLoader<String, Map<String, List<TagLabel>>>() {
+                @Override
+                public Map<String, List<TagLabel>> load(String key) {
+                  // This should not be called directly
+                  return null;
+                }
+              });
 
   public CachedTagUsageDAO(CollectionDAO.TagUsageDAO delegate) {
     this.delegate = delegate;
@@ -44,10 +91,15 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       int state) {
     try {
       delegate.applyTag(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state);
+
       if (RelationshipCache.isAvailable()) {
         invalidateTagCaches(targetFQNHash);
         RelationshipCache.bumpTag(tagFQN, 1);
-        LOG.debug("Applied tag {} to entity {} and invalidated cache", tagFQN, targetFQNHash);
+        LOG.debug("Applied tag {} to entity {} and invalidated Redis cache", tagFQN, targetFQNHash);
+      } else {
+        invalidateInternalCaches(targetFQNHash);
+        LOG.debug(
+            "Applied tag {} to entity {} and invalidated internal cache", tagFQN, targetFQNHash);
       }
     } catch (Exception e) {
       LOG.error("Error applying tag {} to entity {}: {}", tagFQN, targetFQNHash, e.getMessage(), e);
@@ -55,81 +107,158 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     }
   }
 
+  private void invalidateInternalCaches(String targetFQNHash) {
+    // Invalidate only cache entries that might contain this entity's tags
+    // Note: Internal caches use FQN as key, not FQN hash
+
+    // 1. Direct tag cache - look for entries that might be this entity
+    // Since we have the hash but cache uses FQN, we need to check all entries
+    INTERNAL_TAG_CACHE
+        .asMap()
+        .entrySet()
+        .removeIf(
+            entry -> {
+              // Check if this cache entry is for the modified entity
+              String key = entry.getKey();
+              return FullyQualifiedName.buildHash(key).equals(targetFQNHash);
+            });
+
+    // 2. Batch caches that might include this entity's hash
+    INTERNAL_BATCH_CACHE.asMap().keySet().removeIf(key -> key.contains(targetFQNHash));
+
+    // 3. Prefix caches - only invalidate entries where the target might be affected
+    // Since prefix cache returns multiple entities, we need to check if any might match
+    INTERNAL_PREFIX_CACHE
+        .asMap()
+        .entrySet()
+        .removeIf(
+            entry -> {
+              Map<String, List<TagLabel>> value = entry.getValue();
+              if (value != null) {
+                // Check if any of the keys in the result might be the affected entity
+                return value.keySet().stream().anyMatch(k -> k.equals(targetFQNHash));
+              }
+              return false;
+            });
+  }
+
   @Override
   public List<TagLabel> getTags(String targetFQN) {
-    if (!RelationshipCache.isAvailable()) {
-      return delegate.getTags(targetFQN);
-    }
     String cacheKey = TAG_CACHE_PREFIX + targetFQN;
 
-    try {
-      Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
-      @SuppressWarnings("unchecked")
-      List<TagLabel> cachedTags = (List<TagLabel>) cachedData.get("tags");
-      if (cachedTags != null) {
-        LOG.debug("Cache hit for tags of entity: {}", targetFQN);
-        return cachedTags;
+    if (RelationshipCache.isAvailable()) {
+      try {
+        Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
+        @SuppressWarnings("unchecked")
+        List<TagLabel> cachedTags = (List<TagLabel>) cachedData.get("tags");
+        if (cachedTags != null) {
+          LOG.debug("Redis cache hit for tags of entity: {}", targetFQN);
+          return cachedTags;
+        }
+
+        List<TagLabel> tags = delegate.getTags(targetFQN);
+
+        if (tags != null && !tags.isEmpty()) {
+          Map<String, Object> cacheData = new HashMap<>();
+          cacheData.put("tags", tags);
+          RelationshipCache.put(cacheKey, cacheData);
+          LOG.debug("Cached {} tags in Redis for entity: {}", tags.size(), targetFQN);
+        }
+        return tags;
+      } catch (Exception e) {
+        LOG.error("Error with Redis cache for entity {}: {}", targetFQN, e.getMessage(), e);
+        return delegate.getTags(targetFQN);
       }
+    } else {
+      try {
+        List<TagLabel> cachedTags = INTERNAL_TAG_CACHE.getIfPresent(targetFQN);
+        if (cachedTags != null) {
+          LOG.debug("Internal cache hit for tags of entity: {}", targetFQN);
+          return cachedTags;
+        }
 
-      List<TagLabel> tags = delegate.getTags(targetFQN);
-      if (tags != null && !tags.isEmpty()) {
-        Map<String, Object> cacheData = new HashMap<>();
-        cacheData.put("tags", tags);
-        RelationshipCache.put(cacheKey, cacheData);
-        LOG.debug("Cached {} tags for entity: {}", tags.size(), targetFQN);
+        List<TagLabel> tags = delegate.getTags(targetFQN);
+        if (tags != null && !tags.isEmpty()) {
+          INTERNAL_TAG_CACHE.put(targetFQN, tags);
+          LOG.debug("Cached {} tags in internal cache for entity: {}", tags.size(), targetFQN);
+        }
+        return tags;
+      } catch (Exception e) {
+        LOG.error("Error with internal cache for entity {}: {}", targetFQN, e.getMessage(), e);
+        return delegate.getTags(targetFQN);
       }
-
-      return tags;
-
-    } catch (Exception e) {
-      LOG.error("Error retrieving tags for entity {}: {}", targetFQN, e.getMessage(), e);
-      return delegate.getTags(targetFQN);
     }
   }
 
   @Override
   public List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> getTagsInternalBatch(
-      List<String> targetFQNHashes) {
-    if (!RelationshipCache.isAvailable() || targetFQNHashes == null || targetFQNHashes.isEmpty()) {
-      return delegate.getTagsInternalBatch(targetFQNHashes);
+      List<String> targetFQNs) {
+    if (targetFQNs == null || targetFQNs.isEmpty()) {
+      return delegate.getTagsInternalBatch(targetFQNs);
     }
 
-    String batchKey =
-        TAG_BATCH_CACHE_PREFIX + String.join(",", targetFQNHashes.stream().sorted().toList());
+    List<String> targetFQNHashes =
+        targetFQNs.stream().map(FullyQualifiedName::buildHash).sorted().toList();
+    String batchKey = TAG_BATCH_CACHE_PREFIX + String.join(",", targetFQNHashes);
 
-    try {
-      Map<String, Object> cachedData = RelationshipCache.get(batchKey);
-      @SuppressWarnings("unchecked")
-      List<TagLabelWithFQNHash> cachedBatch =
-          (List<TagLabelWithFQNHash>) cachedData.get("batchTags");
-      if (cachedBatch != null) {
-        LOG.debug("Cache hit for batch tags query with {} entities", targetFQNHashes.size());
-        return cachedBatch;
-      }
+    if (RelationshipCache.isAvailable()) {
+      try {
+        Map<String, Object> cachedData = RelationshipCache.get(batchKey);
+        @SuppressWarnings("unchecked")
+        List<TagLabelWithFQNHash> cachedBatch =
+            (List<TagLabelWithFQNHash>) cachedData.get("batchTags");
+        if (cachedBatch != null) {
+          LOG.debug("Redis cache hit for batch tags query with {} entities", targetFQNs.size());
+          return cachedBatch;
+        }
 
-      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchTags =
-          delegate.getTagsInternalBatch(targetFQNHashes);
+        List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchTags =
+            delegate.getTagsInternalBatch(targetFQNs);
 
-      if (batchTags != null) {
-        Map<String, Object> cacheData = new HashMap<>();
-        cacheData.put("batchTags", batchTags);
-        RelationshipCache.put(batchKey, cacheData);
-        LOG.debug(
-            "Cached batch tags result for {} entities with {} total tags",
+        if (batchTags != null) {
+          Map<String, Object> cacheData = new HashMap<>();
+          cacheData.put("batchTags", batchTags);
+          RelationshipCache.put(batchKey, cacheData);
+          LOG.debug(
+              "Cached batch tags in Redis for {} entities with {} total tags",
+              targetFQNHashes.size(),
+              batchTags.size());
+        }
+        return batchTags;
+      } catch (Exception e) {
+        LOG.error(
+            "Error with Redis cache for batch tags ({} entities): {}",
             targetFQNHashes.size(),
-            batchTags.size());
+            e.getMessage(),
+            e);
+        return delegate.getTagsInternalBatch(targetFQNHashes);
       }
+    } else {
+      try {
+        List<TagLabelWithFQNHash> cachedBatch = INTERNAL_BATCH_CACHE.getIfPresent(batchKey);
+        if (cachedBatch != null) {
+          LOG.debug("Internal cache hit for batch tags query with {} entities", targetFQNs.size());
+          return cachedBatch;
+        }
 
-      return batchTags;
-
-    } catch (Exception e) {
-      LOG.error(
-          "Error retrieving batch tags for {} entities: {}",
-          targetFQNHashes.size(),
-          e.getMessage(),
-          e);
-      // Fallback to database on cache error
-      return delegate.getTagsInternalBatch(targetFQNHashes);
+        List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> batchTags =
+            delegate.getTagsInternalBatch(targetFQNs);
+        if (batchTags != null) {
+          INTERNAL_BATCH_CACHE.put(batchKey, batchTags);
+          LOG.debug(
+              "Cached batch tags in internal cache for {} entities with {} total tags",
+              targetFQNHashes.size(),
+              batchTags.size());
+        }
+        return batchTags;
+      } catch (Exception e) {
+        LOG.error(
+            "Error with internal cache for batch tags ({} entities): {}",
+            targetFQNHashes.size(),
+            e.getMessage(),
+            e);
+        return delegate.getTagsInternalBatch(targetFQNHashes);
+      }
     }
   }
 
@@ -192,8 +321,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     try {
       delegate.deleteTagLabelsByFqn(tagFQNHash);
       if (RelationshipCache.isAvailable()) {
-        // Don't clear all caches - this preserves tag usage counters
-        // Only invalidate specific tag caches that might be affected
         RelationshipCache.evict(TAG_CACHE_PREFIX + tagFQNHash);
         LOG.debug("Deleted tag {} and invalidated specific tag cache", tagFQNHash);
       }
@@ -209,14 +336,8 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       int deletedCount = delegate.getTagCount(source, tagFQNHash);
       delegate.deleteTagLabels(source, tagFQNHash);
       if (RelationshipCache.isAvailable()) {
-        // Don't clear all caches - this preserves tag usage counters
-        // Only invalidate specific tag caches that might be affected
         RelationshipCache.evict(TAG_CACHE_PREFIX + tagFQNHash);
         LOG.debug("Invalidated specific tag cache for hash: {}", tagFQNHash);
-
-        // Decrement tag usage counter for deleted tags
-        // Note: We need to extract the tag FQN from the hash for proper counter tracking
-        // This is a simplified approach - in a real scenario, we'd need to map hash to FQN
         if (deletedCount > 0) {
           // For now, we'll log that tags were deleted but can't update specific counter
           LOG.debug(
@@ -224,7 +345,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
               deletedCount,
               tagFQNHash);
         }
-
         LOG.debug(
             "Deleted tag labels for source {} and tagFQNHash {} and invalidated cache",
             source,
@@ -246,7 +366,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
    */
   private void invalidateTagCaches(String targetFQNHash) {
     try {
-      // We need to invalidate:
       // 1. Direct tag cache for this entity
       // 2. Any batch caches that might include this entity
       // 3. Any prefix caches that might include this entity
@@ -254,7 +373,6 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       // Since we can't efficiently find all cache keys that contain this entity,
       // we'll use a more targeted approach for direct entity cache
       RelationshipCache.evict(TAG_CACHE_PREFIX + targetFQNHash);
-
       // For batch and prefix caches, we'd need more sophisticated cache key tracking
       // For now, log that invalidation was performed
       LOG.debug("Invalidated direct tag cache for entity: {}", targetFQNHash);

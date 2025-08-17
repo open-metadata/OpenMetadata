@@ -110,6 +110,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -174,12 +175,15 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD)) {
-      populateEntityFieldTags(
-          entityType,
-          table.getColumns(),
-          table.getFullyQualifiedName(),
-          fields.contains(FIELD_TAGS));
+    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+      // Use optimized batch fetching for single table too
+      Map<String, List<TagLabel>> prefixTags = getTagsByPrefix(table.getFullyQualifiedName(), ".%");
+      if (prefixTags != null && !prefixTags.isEmpty() && table.getColumns() != null) {
+        applyTagsToColumns(table.getColumns(), prefixTags, table.getFullyQualifiedName());
+      }
+    } else if (fields.contains(COLUMN_FIELD)) {
+      // If only columns without tags
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), false);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -207,25 +211,69 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
-    // Bulk fetch and set default fields for all tables
     fetchAndSetDefaultFields(entities);
-
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    // Handle table-specific fields that aren't in fetchAndSetFields
-    entities.forEach(
-        table -> {
-          if (fields.contains(COLUMN_FIELD)) {
-            populateEntityFieldTags(
-                entityType,
-                table.getColumns(),
-                table.getFullyQualifiedName(),
-                fields.contains(FIELD_TAGS));
-          }
+    // Use bulk operation for populating column tags
+    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+      List<String> allFqnPrefixes = new ArrayList<>();
+      for (Table table : entities) {
+        if (table.getColumns() != null && !table.getColumns().isEmpty()) {
+          allFqnPrefixes.add(table.getFullyQualifiedName());
+        }
+      }
 
-          clearFieldsInternal(table, fields);
-        });
+      if (!allFqnPrefixes.isEmpty()) {
+        Map<String, Map<String, List<TagLabel>>> allTagsByPrefix = new HashMap<>();
+        for (String prefix : allFqnPrefixes) {
+          Map<String, List<TagLabel>> prefixTags = getTagsByPrefix(prefix, ".%");
+          if (prefixTags != null && !prefixTags.isEmpty()) {
+            allTagsByPrefix.put(prefix, prefixTags);
+          }
+        }
+
+        for (Table table : entities) {
+          Map<String, List<TagLabel>> tableTags =
+              allTagsByPrefix.get(table.getFullyQualifiedName());
+          if (tableTags != null && table.getColumns() != null) {
+            applyTagsToColumns(table.getColumns(), tableTags, table.getFullyQualifiedName());
+          }
+        }
+      }
+    } else if (fields.contains(COLUMN_FIELD)) {
+      entities.forEach(
+          table -> {
+            if (table.getColumns() != null) {
+              populateEntityFieldTags(
+                  entityType, table.getColumns(), table.getFullyQualifiedName(), false);
+            }
+          });
+    }
+
+    entities.forEach(table -> clearFieldsInternal(table, fields));
+  }
+
+  private void applyTagsToColumns(
+      List<Column> columns, Map<String, List<TagLabel>> tagsMap, String tablePrefix) {
+    if (columns == null || tagsMap == null) {
+      return;
+    }
+
+    for (Column column : columns) {
+      String columnFqn = FullyQualifiedName.add(tablePrefix, column.getName());
+      String columnFqnHash = FullyQualifiedName.buildHash(columnFqn);
+
+      List<TagLabel> columnTags = tagsMap.get(columnFqnHash);
+      if (columnTags != null && !columnTags.isEmpty()) {
+        column.setTags(TagLabelUtil.addDerivedTags(new ArrayList<>(columnTags)));
+      }
+
+      // Recursively apply tags to nested columns
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        applyTagsToColumns(column.getChildren(), tagsMap, columnFqn);
+      }
+    }
   }
 
   // Individual field fetchers registered in constructor

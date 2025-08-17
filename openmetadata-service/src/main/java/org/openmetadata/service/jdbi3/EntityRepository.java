@@ -55,7 +55,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceListMatch;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -205,6 +204,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PerformanceTimer;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -260,6 +260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1299,9 +1300,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
+    PerformanceTimer timer = new PerformanceTimer(String.format("PATCH.%s.%s", entityType, id));
+
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
-    setInheritedFields(original, patchFields);
+    // Use cached entity to avoid redundant DB queries
+    T original = timer.timePhase("find", () -> find(id, NON_DELETED, true)); // Use cache
+
+    // Set fields that are needed for PATCH
+    timer.timePhase(
+        "setFields",
+        () -> {
+          setFieldsInternal(original, patchFields);
+          setInheritedFields(original, patchFields);
+        });
 
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
@@ -1316,8 +1327,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+    PatchResponse<T> response =
+        timer.timePhase(
+            "patchCommon",
+            () ->
+                patchCommonWithOptimisticLocking(
+                    original,
+                    patch,
+                    user,
+                    uriInfo,
+                    changeSource,
+                    useOptimisticLocking,
+                    timer.createChild("common")));
+
+    timer.logIfSlow();
+    return response;
   }
 
   /**
@@ -1364,7 +1388,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
-    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, false, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -1374,40 +1399,89 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
-    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      PerformanceTimer timer) {
+
+    // Create timer if not provided
+    if (timer == null) {
+      timer = new PerformanceTimer(String.format("patchCommon.%s", entityType));
+    }
+
+    // Apply patch
+    T updated =
+        timer.timePhase("applyPatch", () -> JsonUtils.applyPatch(original, patch, entityClass));
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepareInternal(updated, true);
-    RuleEngine.getInstance().evaluateUpdate(original, updated);
+    // Prepare and validate
+    timer.timePhase(
+        "prepare",
+        () -> {
+          prepareInternal(updated, true);
+          RuleEngine.getInstance().evaluateUpdate(original, updated);
+        });
 
-    // Validate and populate owners
-    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
-    updated.setOwners(validatedOwners);
+    // Validate relationships
+    timer.timePhase(
+        "validateRelationships",
+        () -> {
+          // Validate and populate owners
+          List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+          updated.setOwners(validatedOwners);
 
-    // Validate and populate domain
-    List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
-    updated.setDomains(validatedDomains);
-    restorePatchAttributes(original, updated);
+          // Validate and populate domain
+          List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
+          updated.setDomains(validatedDomains);
+          restorePatchAttributes(original, updated);
+        });
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater;
-    if (useOptimisticLocking) {
-      // Use the 5-parameter version for optimistic locking
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
-      entityUpdater.updateWithOptimisticLocking();
-    } else {
-      // Use the 4-parameter version to maintain backward compatibility with concrete repository
-      // implementations
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-      entityUpdater.update();
-    }
+    EntityUpdater entityUpdater =
+        timer.timePhase(
+            "entityUpdate",
+            () -> {
+              EntityUpdater updater;
+              if (useOptimisticLocking) {
+                // Use the 5-parameter version for optimistic locking
+                updater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
+                updater.updateWithOptimisticLocking();
+              } else {
+                // Use the 4-parameter version to maintain backward compatibility with concrete
+                // repository
+                // implementations
+                updater = getUpdater(original, updated, Operation.PATCH, changeSource);
+                updater.update();
+              }
+              return updater;
+            });
+
     if (entityUpdater.fieldsChanged()) {
       // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
-      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+      timer.timePhase(
+          "refreshFields",
+          () -> {
+            setFieldsInternal(updated, patchFields);
+            setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+          });
     }
+
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
+
+    // Log performance if this is a child timer
+    if (timer.getOperation().contains(".common")) {
+      timer.logIfSlow();
+    }
+
     if (entityUpdater.incrementalFieldsChanged()) {
       return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
     }
@@ -1885,6 +1959,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+    // Tag cache invalidation is handled by CachedTagUsageDAO
   }
 
   @Transaction
@@ -2485,8 +2560,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    // Populate Glossary Tags on Read
-    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+    // CachedTagUsageDAO handles caching (Redis if available, internal cache otherwise)
+    List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(fqn);
+    // Add derived tags after fetching (make defensive copy if not null)
+    return tags != null ? addDerivedTags(new ArrayList<>(tags)) : null;
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
@@ -2915,10 +2992,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getDomains(T entity) {
+    // CachedEntityRelationshipDAO handles caching (Redis if available, internal cache otherwise)
     return supportsDomains ? getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN) : null;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
+    // CachedEntityRelationshipDAO handles caching (Redis if available, internal cache otherwise)
     return !supportsDataProducts
         ? null
         : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
@@ -4051,6 +4130,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Transaction
     public final void updateDomains(
         T entity, List<EntityReference> originalDomains, List<EntityReference> newDomains) {
+      // Cache invalidation is handled by CachedEntityRelationshipDAO
+
       List<EntityReference> addedDomains =
           diffLists(
               newDomains,
@@ -5067,9 +5148,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
 
     for (T entity : entities) {
-      entity.setTags(
-          addDerivedTags(
-              tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList())));
+      // Add derived tags when setting on entity
+      List<TagLabel> tags =
+          tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList());
+      // Make a defensive copy to avoid modifying cached data
+      entity.setTags(addDerivedTags(new ArrayList<>(tags)));
     }
   }
 
@@ -5177,7 +5260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
 
-    LOG.info(
+    LOG.trace(
         "batchFetchOwners: Found {} owner relationships for {} entities",
         records.size(),
         entities.size());
@@ -5341,18 +5424,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
 
-    Map<String, List<TagLabel>> targetHashToTagLabel =
-        populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
-    return entityFQNs.stream()
-        .collect(
-            Collectors.toMap(
-                Function.identity(),
-                fqn -> {
-                  String targetFQNHash = FullyQualifiedName.buildHash(fqn);
-                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
-                      .filter(list -> !list.isEmpty())
-                      .orElseGet(ArrayList::new);
-                }));
+    Map<String, List<TagLabel>> result = new HashMap<>();
+
+    // Batch fetch all tags (cache is handled by CachedTagUsageDAO)
+    // Note: BindListFQN will convert FQNs to hashes, so we pass FQNs not hashes
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages =
+        listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs));
+
+    Map<String, List<TagLabel>> targetHashToTagLabel = TagLabelUtil.populateTagLabel(tagUsages);
+
+    // Map results back to FQNs
+    for (String fqn : entityFQNs) {
+      String targetFQNHash = FullyQualifiedName.buildHash(fqn);
+      List<TagLabel> tags =
+          Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+              .filter(list -> !list.isEmpty())
+              .orElseGet(ArrayList::new);
+
+      // Return a copy to avoid modifications affecting cached data
+      result.put(fqn, new ArrayList<>(tags));
+    }
+
+    return result;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {
