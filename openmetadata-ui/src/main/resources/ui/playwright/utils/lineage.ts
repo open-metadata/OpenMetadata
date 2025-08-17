@@ -25,9 +25,9 @@ import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import {
-    getApiContext,
-    getEntityTypeSearchIndexMapping,
-    toastNotification,
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
+  toastNotification,
 } from './common';
 import { parseCSV } from './entityImport';
 
@@ -123,7 +123,7 @@ export const deleteEdge = async (
 
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.locator('[data-testid="add-edge-modal"]')).toBeVisible();
 
   await page
     .locator(
@@ -131,7 +131,9 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.locator('[data-testid="delete-edge-confirmation-modal"]')
+  ).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
