@@ -204,6 +204,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PerformanceTimer;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -1299,9 +1300,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
+    PerformanceTimer timer = new PerformanceTimer(String.format("PATCH.%s.%s", entityType, id));
+
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
-    setInheritedFields(original, patchFields);
+    // Use cached entity to avoid redundant DB queries
+    T original = timer.timePhase("find", () -> find(id, NON_DELETED, true)); // Use cache
+
+    // Set fields that are needed for PATCH
+    timer.timePhase(
+        "setFields",
+        () -> {
+          setFieldsInternal(original, patchFields);
+          setInheritedFields(original, patchFields);
+        });
 
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
@@ -1316,8 +1327,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+    PatchResponse<T> response =
+        timer.timePhase(
+            "patchCommon",
+            () ->
+                patchCommonWithOptimisticLocking(
+                    original,
+                    patch,
+                    user,
+                    uriInfo,
+                    changeSource,
+                    useOptimisticLocking,
+                    timer.createChild("common")));
+
+    timer.logIfSlow();
+    return response;
   }
 
   /**
@@ -1364,7 +1388,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
-    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, false, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -1374,38 +1399,89 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
-    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      PerformanceTimer timer) {
+
+    // Create timer if not provided
+    if (timer == null) {
+      timer = new PerformanceTimer(String.format("patchCommon.%s", entityType));
+    }
+
+    // Apply patch
+    T updated =
+        timer.timePhase("applyPatch", () -> JsonUtils.applyPatch(original, patch, entityClass));
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepareInternal(updated, true);
-    RuleEngine.getInstance().evaluateUpdate(original, updated);
+    // Prepare and validate
+    timer.timePhase(
+        "prepare",
+        () -> {
+          prepareInternal(updated, true);
+          RuleEngine.getInstance().evaluateUpdate(original, updated);
+        });
 
-    // Validate and populate owners
-    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
-    updated.setOwners(validatedOwners);
+    // Validate relationships
+    timer.timePhase(
+        "validateRelationships",
+        () -> {
+          // Validate and populate owners
+          List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
+          updated.setOwners(validatedOwners);
 
-    // Validate and populate domain
-    List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
-    updated.setDomains(validatedDomains);
-    restorePatchAttributes(original, updated);
+          // Validate and populate domain
+          List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
+          updated.setDomains(validatedDomains);
+          restorePatchAttributes(original, updated);
+        });
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater;
-    if (useOptimisticLocking) {
-      // Use the 5-parameter version for optimistic locking
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
-      entityUpdater.updateWithOptimisticLocking();
-    } else {
-      // Use the 4-parameter version to maintain backward compatibility with concrete repository
-      // implementations
-      entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-      entityUpdater.update();
-    }
+    EntityUpdater entityUpdater =
+        timer.timePhase(
+            "entityUpdate",
+            () -> {
+              EntityUpdater updater;
+              if (useOptimisticLocking) {
+                // Use the 5-parameter version for optimistic locking
+                updater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
+                updater.updateWithOptimisticLocking();
+              } else {
+                // Use the 4-parameter version to maintain backward compatibility with concrete
+                // repository
+                // implementations
+                updater = getUpdater(original, updated, Operation.PATCH, changeSource);
+                updater.update();
+              }
+              return updater;
+            });
+
     if (entityUpdater.fieldsChanged()) {
-      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+      // Refresh the entity fields from the database after the update
+      timer.timePhase(
+          "refreshFields",
+          () -> {
+            setFieldsInternal(updated, patchFields);
+            setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+          });
     }
+
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
+
+    // Log performance if this is a child timer
+    if (timer.getOperation().contains(".common")) {
+      timer.logIfSlow();
+    }
+
     if (entityUpdater.incrementalFieldsChanged()) {
       return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
     }
