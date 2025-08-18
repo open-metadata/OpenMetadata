@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openmetadata-fuseki
+  labels:
+    app: openmetadata-fuseki
+spec:
+  ports:
+    - port: 3030
+      targetPort: 3030
+      name: fuseki
+  selector:
+    app: openmetadata-fuseki
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fuseki-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openmetadata-fuseki
+  labels:
+    app: openmetadata-fuseki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openmetadata-fuseki
+  template:
+    metadata:
+      labels:
+        app: openmetadata-fuseki
+    spec:
+      containers:
+      - name: fuseki
+        image: openmetadata/fuseki-rdf:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3030
+          name: fuseki
+        env:
+        - name: FUSEKI_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fuseki-secrets
+              key: admin-password
+        - name: FUSEKI_OPENMETADATA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fuseki-secrets
+              key: openmetadata-password
+        - name: JAVA_OPTIONS
+          value: "-Xmx2g -Xms1g"
+        volumeMounts:
+        - name: fuseki-data
+          mountPath: /fuseki-data
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "3Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /$/ping
+            port: 3030
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /$/ping
+            port: 3030
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: fuseki-data
+        persistentVolumeClaim:
+          claimName: fuseki-data-pvc
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fuseki-secrets
+type: Opaque
+stringData:
+  admin-password: "your-secure-admin-password"
+  openmetadata-password: "your-secure-service-password"

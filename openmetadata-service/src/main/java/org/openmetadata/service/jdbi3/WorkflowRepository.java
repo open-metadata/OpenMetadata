@@ -64,7 +64,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
   /** Remove the secrets from the secret manager */
   @Override
-  protected void postDelete(Workflow workflow) {
+  protected void postDelete(Workflow workflow, boolean hardDelete) {
+    super.postDelete(workflow, hardDelete);
     SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
   }
 

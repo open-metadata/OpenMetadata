@@ -127,8 +127,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   @Override
-  protected void postDelete(TestCaseResult entity) {
-    super.postDelete(entity);
+  protected void postDelete(TestCaseResult entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
@@ -155,7 +155,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
-      postDelete(storedTestCaseResult);
+      postDelete(storedTestCaseResult, true); // Hard delete for specific timestamp
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(
