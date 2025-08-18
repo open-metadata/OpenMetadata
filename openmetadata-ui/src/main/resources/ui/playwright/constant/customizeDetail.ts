@@ -38,6 +38,7 @@ export const TABLE_DEFAULT_TABS = [
   'Custom Properties',
   'Data Observability',
   'Lineage',
+  'Knowledge Graph',
   'Queries',
   'Sample Data',
   'Schema',
