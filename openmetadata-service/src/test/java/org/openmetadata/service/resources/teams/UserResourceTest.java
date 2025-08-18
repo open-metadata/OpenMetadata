@@ -1050,17 +1050,45 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         BAD_REQUEST,
         "Persona with ID " + persona2.getId() + " is not assigned to this user");
 
-    // Test 8: User with no personas cannot set preferences
+    // Test 8: User with no personas can set preferences for system default persona
+    // First, create a system default persona
+    CreatePersona createSystemDefaultPersona =
+        personaResourceTest.createRequest(test, 8).withName("system-default-test").withDefault(true);
+    Persona systemDefaultPersona = personaResourceTest.createEntity(createSystemDefaultPersona, ADMIN_AUTH_HEADERS);
+    
     CreateUser create3 = createRequest(test, 3);
     User user3 = createEntity(create3, ADMIN_AUTH_HEADERS);
 
+    // User should be able to set preferences for system default persona even with no assigned personas
+    PersonaPreferences systemDefaultPref =
+        new PersonaPreferences()
+            .withPersonaId(systemDefaultPersona.getId())
+            .withPersonaName(systemDefaultPersona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#BA24D5"));
+
     String json7 = JsonUtils.pojoToJson(user3);
-    user3.setPersonaPreferences(listOf(preferencesWithoutImage));
+    user3.setPersonaPreferences(listOf(systemDefaultPref));
+
+    ChangeDescription change7 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change7, "personaPreferences", emptyList(), listOf(systemDefaultPref));
+    User user3Updated =
+        patchEntityAndCheck(user3, json7, authHeaders(user3.getName()), MINOR_UPDATE, change7);
+
+    // Verify preferences were saved for system default persona
+    assertNotNull(user3Updated.getPersonaPreferences());
+    assertEquals(1, user3Updated.getPersonaPreferences().size());
+    PersonaPreferences savedSystemPref = user3Updated.getPersonaPreferences().getFirst();
+    assertEquals(systemDefaultPersona.getId(), savedSystemPref.getPersonaId());
+    assertEquals("#BA24D5", savedSystemPref.getLandingPageSettings().getHeaderColor());
+
+    // Test 8b: User with no personas still cannot set preferences for non-system-default personas
+    String json7b = JsonUtils.pojoToJson(user3Updated);
+    user3Updated.setPersonaPreferences(listOf(preferencesWithoutImage)); // This uses persona from previous test which is not system default
 
     assertResponse(
-        () -> patchEntity(user3.getId(), json7, user3, authHeaders(user3.getName())),
+        () -> patchEntity(user3Updated.getId(), json7b, user3Updated, authHeaders(user3Updated.getName())),
         BAD_REQUEST,
-        "User has no personas assigned. Cannot set persona preferences.");
+        "Persona with ID " + persona.getId() + " is not assigned to this user");
 
     // Test 9: Remove persona preferences for a specific persona
     // First, let's set up a user with multiple personas and preferences

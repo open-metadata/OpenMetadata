@@ -1167,14 +1167,23 @@ public class UserRepository extends EntityRepository<User> {
 
       if (updatedPreferences != null && !updatedPreferences.isEmpty()) {
         var userPersonas = updated.getPersonas();
-        if (userPersonas == null || userPersonas.isEmpty()) {
-          throw new BadRequestException(
-              "User has no personas assigned. Cannot set persona preferences.");
-        }
         var assignedPersonaIds =
-            userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet());
+            userPersonas != null
+                ? userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet())
+                : new HashSet<UUID>();
+
+        // Get system default persona ID to allow preferences for it
+        PersonaRepository personaRepository =
+            (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+        Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
+        UUID systemDefaultPersonaId = systemDefaultPersona != null ? systemDefaultPersona.getId() : null;
+
         for (var pref : updatedPreferences) {
-          if (!assignedPersonaIds.contains(pref.getPersonaId())) {
+          // Allow preferences for assigned personas OR system default persona
+          boolean isAssignedPersona = assignedPersonaIds.contains(pref.getPersonaId());
+          boolean isSystemDefaultPersona = systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
+          
+          if (!isAssignedPersona && !isSystemDefaultPersona) {
             throw new BadRequestException(
                 "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
           }
