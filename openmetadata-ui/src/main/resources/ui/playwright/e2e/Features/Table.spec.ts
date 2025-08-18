@@ -454,7 +454,7 @@ test.describe(
       classification: testClassification.data.name,
     });
 
-    test.beforeEach(async ({ browser }) => {
+    test.beforeAll(async ({ browser }) => {
       const { apiContext } = await performAdminLogin(browser);
 
       await glossary.create(apiContext);
@@ -463,7 +463,7 @@ test.describe(
       await testTag.create(apiContext);
     });
 
-    test.afterEach(async ({ browser }) => {
+    test.afterAll(async ({ browser }) => {
       const { apiContext } = await performAdminLogin(browser);
 
       await glossary.delete(apiContext);
@@ -494,7 +494,7 @@ test.describe(
         .getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`)
         .getByTestId('expand-icon')
         .click();
-      await page.waitForResponse('api/v1/search/query*');
+      await page.waitForResponse('api/v1/search/query?*');
       await page
         .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
         .click();
@@ -503,9 +503,9 @@ test.describe(
 
       await page.waitForResponse('api/v1/columns/name/*');
 
-      await expect(page.getByTestId('tag-redirect-link')).toContainText(
-        glossaryTerm.responseData.displayName
-      );
+      await expect(
+        page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      ).toContainText(glossaryTerm.responseData.displayName);
 
       const getRequest = page.waitForResponse(
         'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
@@ -519,7 +519,9 @@ test.describe(
       await getRequest;
 
       await expect(
-        page.getByTestId('glossary-tags-0').getByTestId('tag-redirect-link')
+        page
+          .getByTestId('glossary-tags-0')
+          .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
       ).toContainText(glossaryTerm.responseData.displayName);
     });
 
@@ -553,9 +555,9 @@ test.describe(
 
       await page.waitForResponse('api/v1/columns/name/*');
 
-      await expect(page.getByTestId('tag-redirect-link')).toContainText(
-        testTag.responseData.displayName
-      );
+      await expect(
+        page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      ).toContainText(testTag.responseData.displayName);
 
       await page
         .getByTestId('search-bar-container')
@@ -569,7 +571,7 @@ test.describe(
       await expect(
         page
           .getByTestId('classification-tags-0')
-          .getByTestId('tag-redirect-link')
+          .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       ).toContainText(testTag.responseData.displayName);
     });
   }
