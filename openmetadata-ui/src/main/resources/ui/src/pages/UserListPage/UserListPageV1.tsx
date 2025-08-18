@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, noop } from 'lodash';

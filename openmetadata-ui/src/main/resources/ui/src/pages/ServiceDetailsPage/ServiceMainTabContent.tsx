@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

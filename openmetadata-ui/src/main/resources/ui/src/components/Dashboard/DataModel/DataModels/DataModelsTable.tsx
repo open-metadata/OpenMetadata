@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Switch, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';

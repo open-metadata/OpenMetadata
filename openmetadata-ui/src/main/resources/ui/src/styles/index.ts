@@ -28,6 +28,9 @@ import '@fontsource/inter/900.css'; // Font 900
 import '@react-awesome-query-builder/antd/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
+// Import Ant Design v4 styles
+import 'antd/dist/antd.css';
+import 'antd/dist/antd.variable.css';
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';

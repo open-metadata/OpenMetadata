@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
+import { Button, Col, Form, Input, Row, Select } from 'antd';
+import { Switch } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
