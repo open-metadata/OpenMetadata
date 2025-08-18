@@ -12,7 +12,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Radio, Space } from 'antd';
+import { Button, Dropdown, Radio, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -179,31 +179,34 @@ const CustomControls: FC<LineageControlProps> = ({
         className="new-radio-group"
         data-testid="lineage-view-switch"
         optionType="button"
-        options={[
-          {
-            label: (
-              <TableViewIcon
-                className="align-middle"
-                data-testid="lineage-table-view-icon"
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            ),
-            value: LINEAGE_TAB_VIEW.TABLE_VIEW,
-          },
-          {
-            label: (
-              <DiagramViewIcon
-                className="align-middle"
-                data-testid="lineage-diagram-view-icon"
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            ),
-            value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
-          },
-        ]}
         value={activeViewTab}
-        onChange={handleActiveViewTabChange}
-      />
+        onChange={handleActiveViewTabChange}>
+        <Tooltip
+          title={t('label.lineage-entity-view', {
+            entity: t('label.diagram'),
+          })}>
+          <Radio.Button value={LINEAGE_TAB_VIEW.DIAGRAM_VIEW}>
+            <DiagramViewIcon
+              className="align-middle"
+              data-testid="lineage-diagram-view-icon"
+              style={DATA_ASSET_ICON_DIMENSION}
+            />
+          </Radio.Button>
+        </Tooltip>
+
+        <Tooltip
+          title={t('label.lineage-entity-view', {
+            entity: t('label.table'),
+          })}>
+          <Radio.Button value={LINEAGE_TAB_VIEW.TABLE_VIEW}>
+            <TableViewIcon
+              className="align-middle"
+              data-testid="lineage-table-view-icon"
+              style={DATA_ASSET_ICON_DIMENSION}
+            />
+          </Radio.Button>
+        </Tooltip>
+      </Radio.Group>
     </div>
   );
 };
