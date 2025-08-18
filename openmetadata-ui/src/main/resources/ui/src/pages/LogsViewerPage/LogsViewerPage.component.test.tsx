@@ -188,7 +188,7 @@ describe('LogsViewerPage.component', () => {
     });
   });
 
-  it('should show basic configuration for application in right panel', async () => {
+  it('should show basic configuration for application in header section', async () => {
     (useParams as jest.Mock).mockReturnValue({
       logEntityType: 'apps',
       fqn: 'DataInsightsApplication',
