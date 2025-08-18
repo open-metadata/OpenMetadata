@@ -1,6 +1,6 @@
 ---
 title: SAP HANA Troubleshooting Guide | OpenMetadata Support
-description: Resolve SAP HANA connector issues with OpenMetadata's comprehensive troubleshooting guide. Fix connection errors, authentication problems, and metadata ...
+description: Resolve SAP HANA connector issues with OpenMetadata'scomprehensive troubleshooting guide. Fix connection errors, authentication problems, and metadata ...
 slug: /connectors/database/sap-hana/troubleshooting
 ---
 

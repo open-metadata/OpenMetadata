@@ -10,28 +10,47 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, {
-  EditOutlined,
-  PlayCircleOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import Icon, { PlayCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Loading } from '@melloware/react-logviewer';
-import { Button, Card, Col, Row, Space, Tag, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { Cell, Pie, PieChart } from 'recharts';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
+import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
+import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
-import { Cell, Pie, PieChart } from 'recharts';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  ICON_DIMENSION_USER_PAGE,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
+import { DataContractMode } from '../../../constants/DataContract.constants';
+import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import {
+  ContractExecutionStatus,
+  DataContractResult,
+} from '../../../generated/entity/datacontract/dataContractResult';
 import { TestCase, TestSummary } from '../../../generated/tests/testCase';
 import {
   getContractResultByResultId,
@@ -42,23 +61,32 @@ import {
   getTestCaseExecutionSummary,
 } from '../../../rest/testAPI';
 import {
+  downloadContractYamlFile,
   getConstraintStatus,
   getContractStatusType,
   getTestCaseSummaryChartItems,
 } from '../../../utils/DataContract/DataContractUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
+} from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { OwnerAvatar } from '../../common/OwnerAvtar/OwnerAvatar';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
+import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
+import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
+import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
-
-const { Title, Text } = Typography;
 
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
@@ -70,9 +98,10 @@ const ContractDetail: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
-    useState<DataContractResult | null>(null);
+    useState<DataContractResult>();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [testCaseResult, setTestCaseResult] = useState<TestCase[]>([]);
+  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
 
   const fetchLatestContractResults = async () => {
     try {
@@ -129,13 +158,19 @@ const ContractDetail: React.FC<{
       title: t('label.name'),
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <Text className="text-primary">{name}</Text>,
+      render: (name: string) => (
+        <Typography.Text className="text-primary">{name}</Typography.Text>
+      ),
     },
     {
       title: t('label.type'),
       dataIndex: 'dataType',
       key: 'dataType',
-      render: (type: string) => <Tag color="purple">{type}</Tag>,
+      render: (type: string) => (
+        <Tag className="custom-tag" color="purple">
+          {type}
+        </Tag>
+      ),
     },
     {
       title: t('label.constraint-plural'),
@@ -144,7 +179,9 @@ const ContractDetail: React.FC<{
       render: (constraint: string) => (
         <div>
           {constraint ? (
-            <Tag color="blue">{constraint}</Tag>
+            <Tag className="custom-tag" color="blue">
+              {constraint}
+            </Tag>
           ) : (
             <Typography.Text data-testid="no-constraints">
               {NO_DATA_PLACEHOLDER}
@@ -163,31 +200,201 @@ const ContractDetail: React.FC<{
     return getConstraintStatus(latestContractResults);
   }, [latestContractResults]);
 
-  const testCaseSummaryChartItems = useMemo(() => {
-    return getTestCaseSummaryChartItems(testCaseSummary);
-  }, [testCaseSummary]);
+  const { showTestCaseSummaryChart, testCaseSummaryChartItems } =
+    useMemo(() => {
+      return {
+        showTestCaseSummaryChart: Boolean(
+          testCaseSummary?.total ??
+            testCaseSummary?.success ??
+            testCaseSummary?.failed ??
+            testCaseSummary?.aborted
+        ),
+        testCaseSummaryChartItems:
+          getTestCaseSummaryChartItems(testCaseSummary),
+      };
+    }, [testCaseSummary]);
 
-  const handleRunNow = () => {
+  const showContractStatusAlert = useMemo(() => {
+    const { result, contractExecutionStatus } = latestContractResults ?? {};
+
+    return (
+      result &&
+      (contractExecutionStatus === ContractExecutionStatus.Failed ||
+        contractExecutionStatus === ContractExecutionStatus.Aborted)
+    );
+  }, [latestContractResults]);
+
+  const getSemanticIconPerLastExecution = (semanticName: string) => {
+    if (!latestContractResults) {
+      return DefaultIcon;
+    }
+    const isRuleFailed =
+      latestContractResults?.semanticsValidation?.failedRules?.find(
+        (rule) => rule.ruleName === semanticName
+      );
+
+    if (isRuleFailed) {
+      return FailIcon;
+    }
+
+    return CheckIcon;
+  };
+
+  const getTestCaseStatusIcon = (record: TestCase) => (
+    <Icon
+      className="test-status-icon"
+      component={
+        TEST_CASE_STATUS_ICON[
+          (record?.testCaseResult?.testCaseStatus ??
+            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
+        ]
+      }
+    />
+  );
+
+  const handleExportContract = useCallback(() => {
+    if (!contract) {
+      return;
+    }
+
+    downloadContractYamlFile(contract);
+  }, [contract]);
+
+  const handleRunNow = async () => {
     if (contract?.id) {
-      setValidateLoading(true);
-      validateContractById(contract.id)
-        .then(() =>
-          showSuccessToast('Contract validation trigger successfully.')
-        )
-        .finally(() => {
-          setValidateLoading(false);
-        });
+      try {
+        setValidateLoading(true);
+        await validateContractById(contract.id);
+        showSuccessToast(t('message.contract-validation-trigger-successfully'));
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setValidateLoading(false);
+      }
     }
   };
 
-  useEffect(() => {
-    if (contract?.id && !contract?.latestResult?.resultId) {
-      fetchLatestContractResults();
+  const handleModeChange = useCallback((e: RadioChangeEvent) => {
+    setMode(e.target.value);
+  }, []);
 
-      if (contract?.testSuite?.id) {
-        fetchTestCaseSummary();
-        fetchTestCases();
-      }
+  const renderDataContractHeader = useMemo(() => {
+    if (!contract) {
+      return null;
+    }
+
+    return (
+      <Row align="middle" justify="space-between">
+        <Col flex="auto">
+          <Typography.Text className="contract-title">
+            {getEntityName(contract)}
+          </Typography.Text>
+
+          <Typography.Text className="contract-time">
+            {t('message.modified-time-ago-by', {
+              time: getRelativeTime(contract.updatedAt),
+              by: contract.updatedBy,
+            })}
+          </Typography.Text>
+
+          <div className="contract-status-badge-container">
+            <StatusBadgeV2
+              externalIcon={FlagIcon}
+              label={contract.status ?? t('label.active')}
+              status={StatusType.Success}
+            />
+
+            <StatusBadgeV2
+              className="contract-version-badge"
+              label={t('label.version-number', {
+                version: contract.version,
+              })}
+              status={StatusType.Version}
+            />
+          </div>
+        </Col>
+        <Col>
+          <div className="contract-action-container">
+            {!isEmpty(contract.owners) && (
+              <div className="contract-owner-label-container">
+                <Typography.Text>{t('label.owner-plural')}</Typography.Text>
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
+                  maxVisibleOwners={5}
+                  owners={contract.owners}
+                  showLabel={false}
+                />
+              </div>
+            )}
+
+            <ContractViewSwitchTab
+              handleModeChange={handleModeChange}
+              mode={mode}
+            />
+
+            <Divider className="contract-divider" type="vertical" />
+
+            <Button
+              className="contract-run-now-button"
+              data-testid="contract-run-now-button"
+              icon={<PlayCircleOutlined />}
+              loading={validateLoading}
+              size="middle"
+              onClick={handleRunNow}>
+              {t('label.run-now')}
+            </Button>
+
+            <Button
+              className="contract-export-button"
+              data-testid="export-contract-button"
+              onClick={handleExportContract}>
+              {t('label.export')}
+            </Button>
+
+            <Button
+              danger
+              className="delete-button"
+              data-testid="delete-contract-button"
+              icon={<DeleteIcon />}
+              size="small"
+              onClick={onDelete}
+            />
+            <Button
+              className="contract-edit-button"
+              data-testid="contract-edit-button"
+              icon={
+                <EditIcon
+                  className="anticon"
+                  style={{ ...ICON_DIMENSION_USER_PAGE }}
+                />
+              }
+              type="primary"
+              onClick={onEdit}>
+              {t('label.edit')}
+            </Button>
+          </div>
+        </Col>
+      </Row>
+    );
+  }, [
+    contract,
+    mode,
+    onDelete,
+    onEdit,
+    handleRunNow,
+    handleModeChange,
+    validateLoading,
+  ]);
+
+  useEffect(() => {
+    if (contract?.id && contract?.latestResult?.resultId) {
+      fetchLatestContractResults();
+    }
+
+    if (contract?.testSuite?.id) {
+      fetchTestCaseSummary();
+      fetchTestCases();
     }
   }, [contract]);
 
@@ -204,6 +411,7 @@ const ContractDetail: React.FC<{
 
         <Button
           className="m-t-md"
+          data-testid="add-contract-button"
           icon={<PlusOutlined />}
           type="primary"
           onClick={onEdit}>
@@ -214,298 +422,308 @@ const ContractDetail: React.FC<{
   }
 
   return (
-    <>
-      {/* Header Section */}
-      <Card style={{ marginBottom: 16 }}>
-        <Row align="middle" justify="space-between">
-          <Col flex="auto">
-            <Title level={3} style={{ margin: 0 }}>
-              {contract.displayName || contract.name}
-            </Title>
+    <Card
+      className="contract-header-container"
+      style={{ marginBottom: 16 }}
+      title={renderDataContractHeader}>
+      {mode === DataContractMode.YAML ? (
+        <ContractYaml contract={contract} />
+      ) : (
+        <Row className="contract-detail-container" gutter={[16, 0]}>
+          {/* Left Column */}
+          <Col span={12}>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <ExpandableCard
+                  cardProps={{
+                    className: 'expandable-card-contract',
+                    title: (
+                      <div className="contract-card-title-container">
+                        <Typography.Text className="contract-card-title">
+                          {t('label.entity-detail-plural', {
+                            entity: t('label.contract'),
+                          })}
+                        </Typography.Text>
+                        <Typography.Text className="contract-card-description">
+                          {t('message.expected-schema-structure-of-this-asset')}
+                        </Typography.Text>
+                      </div>
+                    ),
+                  }}>
+                  <div className="expandable-card-contract-body">
+                    <DescriptionV1
+                      description={contract.description}
+                      entityType={EntityType.DATA_CONTRACT}
+                      showCommentsIcon={false}
+                      showSuggestions={false}
+                    />
+                  </div>
+                </ExpandableCard>
+              </Col>
 
-            <Text type="secondary">
-              {t('message.created-time-ago-by', {
-                time: getRelativeTime(contract.updatedAt),
-                by: contract.updatedBy,
-              })}
-            </Text>
-
-            <div className="d-flex items-center gap-2 m-t-xs">
-              <StatusBadgeV2
-                externalIcon={FlagIcon}
-                label={t('label.active')}
-                status={StatusType.Success}
-              />
-              <Text type="secondary">
-                {t('label.version-number', {
-                  version: contract.version,
-                })}
-              </Text>
-            </div>
+              <Col span={24}>
+                <ExpandableCard
+                  cardProps={{
+                    className: 'expandable-card-contract',
+                    title: (
+                      <div className="contract-card-title-container">
+                        <Typography.Text className="contract-card-title">
+                          {t('label.schema')}
+                        </Typography.Text>
+                        <Typography.Text className="contract-card-description">
+                          {t('message.expected-schema-structure-of-this-asset')}
+                        </Typography.Text>
+                      </div>
+                    ),
+                  }}>
+                  <Table
+                    columns={schemaColumns}
+                    dataSource={schemaDetail}
+                    pagination={false}
+                    rowKey="name"
+                    size="small"
+                  />
+                </ExpandableCard>
+              </Col>
+            </Row>
           </Col>
-          <Col>
-            <Space>
-              <Button
-                icon={<PlayCircleOutlined />}
-                loading={validateLoading}
-                size="small"
-                onClick={handleRunNow}>
-                {t('label.run-now')}
-              </Button>
-              <Button
-                danger
-                className="delete-button"
-                icon={<DeleteIcon />}
-                size="small"
-                onClick={onDelete}
-              />
-              <Button
-                icon={<EditOutlined />}
-                size="small"
-                type="primary"
-                onClick={onEdit}>
-                {t('label.edit')}
-              </Button>
-            </Space>
+
+          {/* Right Column */}
+          <Col span={12}>
+            {/* Contract Status Card */}
+
+            <Row gutter={[16, 16]}>
+              {contract?.latestResult?.resultId && (
+                <Col span={24}>
+                  <ExpandableCard
+                    cardProps={{
+                      className: 'expandable-card-contract',
+                      title: (
+                        <div
+                          className="contract-card-title-container"
+                          data-testid="contract-card-title-container">
+                          <Typography.Text className="contract-card-title">
+                            {t('label.contract-status')}
+                          </Typography.Text>
+                          <Typography.Text className="contract-card-description">
+                            {t('message.contract-status-description')}
+                          </Typography.Text>
+                        </div>
+                      ),
+                    }}>
+                    {isLoading ? (
+                      <Loading />
+                    ) : (
+                      <>
+                        {showContractStatusAlert && (
+                          <AlertBar
+                            defafultExpand
+                            className="h-full m-b-md"
+                            message={latestContractResults?.result ?? ''}
+                            type="error"
+                          />
+                        )}
+
+                        {constraintStatus.map((item) => (
+                          <div
+                            className="contract-status-card-item d-flex justify-between items-center"
+                            data-testid={`contract-status-card-item-${item.label}`}
+                            key={item.label}>
+                            <div className="d-flex items-center">
+                              <Icon
+                                className="contract-status-card-icon"
+                                component={item.icon}
+                                data-testid={`${item.label}-icon`}
+                              />
+
+                              <div className="d-flex flex-column m-l-md">
+                                <Typography.Text className="contract-status-card-label">
+                                  {item.label}
+                                </Typography.Text>
+                                <div>
+                                  <Typography.Text className="contract-status-card-desc">
+                                    {item.desc}
+                                  </Typography.Text>
+                                  <Typography.Text className="contract-status-card-time">
+                                    {item.time}
+                                  </Typography.Text>
+                                </div>
+                              </div>
+                            </div>
+
+                            <StatusBadgeV2
+                              dataTestId={`contract-status-card-item-${item.label}-status`}
+                              label={item.status}
+                              status={getContractStatusType(item.status)}
+                            />
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </ExpandableCard>
+                </Col>
+              )}
+
+              {/* Semantics Card */}
+              {contract?.semantics && contract?.semantics.length > 0 && (
+                <Col span={24}>
+                  <ExpandableCard
+                    cardProps={{
+                      className: 'expandable-card-contract',
+                      title: (
+                        <div className="contract-card-title-container">
+                          <Typography.Text className="contract-card-title">
+                            {t('label.semantic-plural')}
+                          </Typography.Text>
+                          <Typography.Text className="contract-card-description">
+                            {t('message.semantics-description')}
+                          </Typography.Text>
+                        </div>
+                      ),
+                    }}>
+                    <div className="expandable-card-contract-body">
+                      <Typography.Text className="card-subtitle">
+                        {t('label.custom-integrity-rules')}
+                      </Typography.Text>
+                      <div className="rule-item-container">
+                        {(contract?.semantics ?? []).map((item) => (
+                          <div className="rule-item">
+                            <Icon
+                              className={classNames('rule-icon', {
+                                'rule-icon-default': !latestContractResults,
+                              })}
+                              component={getSemanticIconPerLastExecution(
+                                item.name
+                              )}
+                            />
+                            <span className="rule-name">{item.name}</span>{' '}
+                            <span className="rule-description">
+                              {item.description}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </ExpandableCard>
+                </Col>
+              )}
+
+              {/* Quality Card */}
+              {contract?.testSuite?.id && (
+                <Col span={24}>
+                  <ExpandableCard
+                    cardProps={{
+                      className: 'expandable-card-contract',
+                      title: (
+                        <div className="contract-card-title-container">
+                          <Typography.Text className="contract-card-title">
+                            {t('label.quality')}
+                          </Typography.Text>
+                          <Typography.Text className="contract-card-description">
+                            {t('message.data-quality-test-contract-title')}
+                          </Typography.Text>
+                        </div>
+                      ),
+                    }}>
+                    <div className="expandable-card-contract-body">
+                      {isTestCaseLoading ? (
+                        <Loading />
+                      ) : (
+                        <div className="data-quality-card-container">
+                          {showTestCaseSummaryChart && (
+                            <Link
+                              className="data-quality-chart-container-link"
+                              to={getTestSuitePath(
+                                contract?.testSuite?.fullyQualifiedName ?? ''
+                              )}>
+                              <div className="data-quality-chart-container">
+                                {testCaseSummaryChartItems.map((item) => (
+                                  <div
+                                    className="data-quality-chart-item"
+                                    key={item.label}>
+                                    <Typography.Text className="chart-label">
+                                      {item.label}
+                                    </Typography.Text>
+
+                                    <PieChart
+                                      className="data-quality-chart-pie-chart"
+                                      height={120}
+                                      width={120}>
+                                      <Pie
+                                        cx="50%"
+                                        cy="50%"
+                                        data={item.chartData}
+                                        dataKey="value"
+                                        innerRadius={40}
+                                        outerRadius={50}>
+                                        {item.chartData.map((entry, index) => (
+                                          <Cell
+                                            fill={entry.color}
+                                            key={`cell-${index}`}
+                                          />
+                                        ))}
+                                      </Pie>
+                                      <text
+                                        className="chart-center-text"
+                                        dominantBaseline="middle"
+                                        textAnchor="middle"
+                                        x="50%"
+                                        y="50%">
+                                        {item.value}
+                                      </text>
+                                    </PieChart>
+                                  </div>
+                                ))}
+                              </div>{' '}
+                            </Link>
+                          )}
+
+                          <Space direction="vertical">
+                            {testCaseResult.map((item) => {
+                              return (
+                                <div
+                                  className="data-quality-item d-flex items-center"
+                                  key={item.id}>
+                                  {getTestCaseStatusIcon(item)}
+                                  <div className="data-quality-item-content">
+                                    <Link
+                                      className="data-quality-item-name-link"
+                                      to={getTestCaseDetailPagePath(
+                                        item.fullyQualifiedName ?? ''
+                                      )}>
+                                      <Typography.Text className="data-quality-item-name">
+                                        {item.name}
+                                      </Typography.Text>
+                                    </Link>
+
+                                    <Typography.Text className="data-quality-item-description">
+                                      <RichTextEditorPreviewerNew
+                                        markdown={item.description ?? ''}
+                                      />
+                                    </Typography.Text>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </Space>
+                        </div>
+                      )}
+                    </div>
+                  </ExpandableCard>
+                </Col>
+              )}
+
+              {/* Contract Execution Chart */}
+              {contract.id && contract.latestResult?.resultId && (
+                <Col span={24}>
+                  <ContractExecutionChart contract={contract} />
+                </Col>
+              )}
+            </Row>
           </Col>
         </Row>
-        {contract.owners && contract.owners.length > 0 && (
-          <Row style={{ marginTop: 16 }}>
-            <Col>
-              <Text strong style={{ marginRight: 8 }}>
-                {t('label.owner')}
-              </Text>
-              <OwnerAvatar avatarSize={24} owner={contract.owners[0]} />
-            </Col>
-          </Row>
-        )}
-      </Card>
-
-      <Row gutter={[16, 16]}>
-        {/* Left Column */}
-        <Col span={12}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <DescriptionV1
-                wrapInCard
-                description={contract.description}
-                entityType={EntityType.DATA_CONTRACT}
-                showCommentsIcon={false}
-                showSuggestions={false}
-              />
-            </Col>
-
-            <Col span={24}>
-              <ExpandableCard
-                cardProps={{
-                  title: (
-                    <div>
-                      <Title level={5}>{t('label.schema')}</Title>
-                      <Typography.Text type="secondary">
-                        {t('message.expected-schema-structure-of-this-asset')}
-                      </Typography.Text>
-                    </div>
-                  ),
-                }}>
-                <Table
-                  columns={schemaColumns}
-                  dataSource={schemaDetail}
-                  pagination={false}
-                  rowKey="name"
-                  size="small"
-                />
-              </ExpandableCard>
-            </Col>
-          </Row>
-        </Col>
-
-        {/* Right Column */}
-        <Col span={12}>
-          {/* Contract Status Card */}
-
-          <Row gutter={[16, 16]}>
-            {contract?.latestResult?.resultId && (
-              <Col span={24}>
-                <ExpandableCard
-                  cardProps={{
-                    title: (
-                      <div>
-                        <Title level={5}>{t('label.contract-status')}</Title>
-                        <Typography.Text type="secondary">
-                          {t('message.contract-status-description')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }}>
-                  {isLoading ? (
-                    <Loading />
-                  ) : (
-                    constraintStatus.map((item) => (
-                      <div
-                        className="contract-status-card-item d-flex justify-between items-center"
-                        key={item.label}>
-                        <div className="d-flex items-center">
-                          <Icon
-                            className="contract-status-card-icon"
-                            component={item.icon}
-                            data-testid={`${item.label}-icon`}
-                          />
-
-                          <div className="d-flex flex-column m-l-md">
-                            <Text className="contract-status-card-label">
-                              {item.label}
-                            </Text>
-                            <div>
-                              <Text className="contract-status-card-desc">
-                                {item.desc}
-                              </Text>
-                              <Text className="contract-status-card-time">
-                                {item.time}
-                              </Text>
-                            </div>
-                          </div>
-                        </div>
-
-                        <StatusBadgeV2
-                          label={item.status}
-                          status={getContractStatusType(item.status)}
-                        />
-                      </div>
-                    ))
-                  )}
-                </ExpandableCard>
-              </Col>
-            )}
-
-            {/* Semantics Card */}
-            {contract?.semantics && contract?.semantics.length > 0 && (
-              <Col span={24}>
-                <ExpandableCard
-                  cardProps={{
-                    title: (
-                      <div>
-                        <Title level={5}>{t('label.semantic-plural')}</Title>
-                        <Typography.Text type="secondary">
-                          {t('message.semantics-description')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }}>
-                  <Text className="card-subtitle">
-                    {t('label.custom-integrity-rules')}
-                  </Text>
-                  {(contract?.semantics ?? []).map((item) => (
-                    <div className="rule-item">
-                      <Icon className="rule-icon" component={CheckIcon} />
-                      <span className="rule-name">{item.name}</span>{' '}
-                      <span className="rule-description">
-                        {item.description}
-                      </span>
-                    </div>
-                  ))}
-                </ExpandableCard>
-              </Col>
-            )}
-
-            {/* Quality Card */}
-            {contract?.testSuite?.id && (
-              <Col span={24}>
-                <ExpandableCard
-                  cardProps={{
-                    title: (
-                      <div>
-                        <Title level={5}>{t('label.quality')}</Title>
-                        <Typography.Text type="secondary">
-                          {t('message.data-quality-test-contract-title')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }}>
-                  {isTestCaseLoading ? (
-                    <Loading />
-                  ) : (
-                    <Row
-                      className="data-quality-card-container"
-                      gutter={[0, 8]}>
-                      <Col span={24}>
-                        <Row
-                          align="middle"
-                          className="data-quality-chart-container"
-                          gutter={8}>
-                          {testCaseSummaryChartItems.map((item) => (
-                            <Col key={item.label} span={6}>
-                              <div
-                                className="data-quality-chart-item"
-                                key={item.label}>
-                                <Text className="chart-label">
-                                  {item.label}
-                                </Text>
-
-                                <PieChart height={120} width={120}>
-                                  <Pie
-                                    cx="50%"
-                                    cy="50%"
-                                    data={item.chartData}
-                                    dataKey="value"
-                                    innerRadius={40}
-                                    outerRadius={50}>
-                                    {item.chartData.map((entry, index) => (
-                                      <Cell
-                                        fill={entry.color}
-                                        key={`cell-${index}`}
-                                      />
-                                    ))}
-                                  </Pie>
-                                  <text
-                                    className="chart-center-text"
-                                    dominantBaseline="middle"
-                                    textAnchor="middle"
-                                    x="50%"
-                                    y="50%">
-                                    {item.value}
-                                  </text>
-                                </PieChart>
-                              </div>
-                            </Col>
-                          ))}
-                        </Row>
-                      </Col>
-                      <Col span={24} style={{ marginTop: 8 }}>
-                        <Space direction="vertical">
-                          {testCaseResult.map((item) => (
-                            <div
-                              className="data-quality-item d-flex items-center"
-                              key={item.id}>
-                              <StatusBadgeV2
-                                className="data-quality-list-badge"
-                                label=""
-                                status={
-                                  item.testCaseStatus
-                                    ? getContractStatusType(item.testCaseStatus)
-                                    : StatusType.Pending
-                                }
-                              />
-                              <div className="data-quality-item-content">
-                                <Typography.Text className="data-quality-item-name">
-                                  {item.name}
-                                </Typography.Text>
-                                <Text className="data-quality-item-description">
-                                  {item.description}
-                                </Text>
-                              </div>
-                            </div>
-                          ))}
-                        </Space>
-                      </Col>
-                    </Row>
-                  )}
-                </ExpandableCard>
-              </Col>
-            )}
-          </Row>
-        </Col>
-      </Row>
-    </>
+      )}
+    </Card>
   );
 };
 

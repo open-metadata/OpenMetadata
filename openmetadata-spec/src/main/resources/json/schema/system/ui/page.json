@@ -28,14 +28,17 @@
         "APICollection",
         "APIEndpoint",
         "Metric",
-        "MlModel"
+        "MlModel",
+        "Chart"
       ]
     }
   },
   "properties": {
     "entityType": {
       "description": "Entity Type.",
-      "enum": ["Page"],
+      "enum": [
+        "Page"
+      ],
       "default": "Page"
     },
     "pageType": {
@@ -48,7 +51,9 @@
     "tabs": {
       "description": "Tabs included in this page.",
       "type": "array",
-      "items": { "$ref": "tab.json" },
+      "items": {
+        "$ref": "tab.json"
+      },
       "default": []
     },
     "persona": {
@@ -64,6 +69,11 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["entityType", "pageType", "knowledgePanels", "layout"],
+  "required": [
+    "entityType",
+    "pageType",
+    "knowledgePanels",
+    "layout"
+  ],
   "additionalProperties": false
 }

@@ -19,7 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
-import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   FOLLOWING_WIDGET_FILTER_OPTIONS,
@@ -79,7 +83,7 @@ function FollowingWidget({
       const sortOrder = getSortOrder(selectedEntityFilter);
 
       const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
+        pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
         query: '*',
         filters: `followers:${currentUser.id}`,
@@ -181,12 +185,8 @@ function FollowingWidget({
     []
   );
 
-  const showMoreCount = useMemo(() => {
-    return followedData.length > 0 ? followedData.length.toString() : '';
-  }, [followedData]);
-
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > PAGE_SIZE_BASE,
     [followedData, isLoadingOwnedData]
   );
 
@@ -194,7 +194,7 @@ function FollowingWidget({
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {followedData.map((item) => {
+          {followedData.slice(0, PAGE_SIZE_BASE).map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
@@ -300,9 +300,7 @@ function FollowingWidget({
               currentUser?.name ?? '',
               UserPageTabs.FOLLOWING
             )}
-            moreButtonText={t('label.view-more-count', {
-              countValue: showMoreCount,
-            })}
+            moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
@@ -313,14 +311,13 @@ function FollowingWidget({
     emptyState,
     followingContent,
     currentUser?.name,
-    showMoreCount,
     showWidgetFooterMoreButton,
     t,
   ]);
 
   return (
     <WidgetWrapper
-      dataLength={followedData.length !== 0 ? followedData.length : 10}
+      dataTestId="KnowledgePanel.Following"
       header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}

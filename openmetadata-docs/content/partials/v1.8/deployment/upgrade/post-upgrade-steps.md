@@ -4,7 +4,7 @@
 
 #### With UI
 
-{% partial file="/v1.7/deployment/reindex.md" /%}
+{% partial file="/v1.8/deployment/reindex.md" /%}
 
 Since this is required after the upgrade, we want to reindex `All` the entities.
 
@@ -79,7 +79,7 @@ pip install openmetadata-managed-apis==x.y.z
 
 #### With UI
 
-{% partial file="/v1.7/deployment/redeploy.md" /%}
+{% partial file="/v1.8/deployment/redeploy.md" /%}
 
 #### With Kubernetes
 

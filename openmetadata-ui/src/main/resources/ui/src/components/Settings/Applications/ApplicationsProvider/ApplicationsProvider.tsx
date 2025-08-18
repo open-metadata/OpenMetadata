@@ -25,6 +25,8 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import Loader from '../../../common/Loader/Loader';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
+import type { AppPlugin } from '../plugins/AppPlugin';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
@@ -45,7 +47,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         (app) => app.name ?? app.fullyQualifiedName ?? ''
       );
       setApplicationsName(applicationsNameList);
-    } catch (err) {
+    } catch {
       // do not handle error
     } finally {
       setLoading(false);
@@ -60,9 +62,23 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const appContext = useMemo(() => {
-    return { applications };
+  const installedPluginInstances: AppPlugin[] = useMemo(() => {
+    return applications
+      .map((app) => {
+        if (!app.name) {
+          return null;
+        }
+
+        const PluginClass = applicationsClassBase.appPluginRegistry[app.name];
+
+        return PluginClass ? new PluginClass(app.name, true) : null;
+      })
+      .filter(Boolean) as AppPlugin[];
   }, [applications]);
+
+  const appContext = useMemo(() => {
+    return { applications, plugins: installedPluginInstances };
+  }, [applications, installedPluginInstances]);
 
   return (
     <ApplicationsContext.Provider value={appContext}>

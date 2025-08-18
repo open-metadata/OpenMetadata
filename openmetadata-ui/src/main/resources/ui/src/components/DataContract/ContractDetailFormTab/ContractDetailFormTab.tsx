@@ -10,29 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { EntityReference } from '../../../generated/type/entityReference';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../interface/FormUtils.interface';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import './contract-detail-form-tab.less';
 
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
-  onNext: (formData: Partial<DataContract>) => Promise<void>;
+  onNext: () => void;
+  onChange: (formData: Partial<DataContract>) => void;
   nextLabel?: string;
-}> = ({ initialValues, onNext, nextLabel }) => {
+}> = ({ initialValues, onNext, nextLabel, onChange }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-
-  const owners = Form.useWatch<EntityReference[]>('owners', form);
 
   const fields: FieldProp[] = [
     {
@@ -41,6 +36,25 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        'data-testid': 'contract-name',
+      },
+    },
+    {
+      label: t('label.owner-plural'),
+      name: 'owners',
+      id: 'root/owner',
+      type: FieldTypes.USER_TEAM_SELECT_INPUT,
+      required: false,
+      props: {
+        owner: initialValues?.owners,
+        hasPermission: true,
+        multiple: { user: true, team: false },
+      },
+      formItemProps: {
+        valuePropName: 'owners',
+        trigger: 'onUpdate',
+      },
     },
     {
       label: t('label.description'),
@@ -49,39 +63,11 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
-        'data-testid': 'description',
+        'data-testid': 'contract-description',
         initialValue: initialValues?.description ?? '',
       },
     },
-    {
-      label: t('label.owner-plural'),
-      id: 'owners',
-      name: 'owners',
-      type: FieldTypes.USER_TEAM_SELECT,
-      required: false,
-      props: {
-        hasPermission: true,
-        children: (
-          <Button
-            data-testid="add-owner"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            size="small"
-            type="primary"
-          />
-        ),
-        multiple: { user: true, team: false },
-      },
-      formItemLayout: FormItemLayout.HORIZONTAL,
-      formItemProps: {
-        valuePropName: 'owners',
-        trigger: 'onUpdate',
-      },
-    },
   ];
-
-  const handleSubmit = () => {
-    form.submit();
-  };
 
   useEffect(() => {
     if (initialValues) {
@@ -96,29 +82,37 @@ export const ContractDetailFormTab: React.FC<{
   return (
     <>
       <Card className="container bg-grey p-box">
-        <div className="m-b-sm">
-          <Typography.Title className="m-0" level={5}>
+        <div>
+          <Typography.Text className="contract-detail-form-tab-title">
             {t('label.contract-detail-plural')}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0 text-sm" type="secondary">
+          </Typography.Text>
+          <Typography.Paragraph className="contract-detail-form-tab-description">
             {t('message.contract-detail-plural-description')}
           </Typography.Paragraph>
         </div>
 
-        <Form
-          className="bg-white p-box"
-          form={form}
-          layout="vertical"
-          onFinish={onNext}>
-          {generateFormFields(fields)}
-
-          {owners?.length > 0 && <OwnerLabel owners={owners} />}
-        </Form>
+        <div className="contract-form-content-container">
+          <Form
+            className="new-form-style contract-detail-form"
+            form={form}
+            layout="vertical"
+            onValuesChange={onChange}>
+            {generateFormFields(fields)}
+          </Form>
+        </div>
       </Card>
-      <div className="d-flex justify-end m-t-md">
-        <Button htmlType="submit" type="primary" onClick={handleSubmit}>
+      <div className="d-flex justify-between m-t-md">
+        <Button className="contract-prev-button" type="default">
+          {t('label.contract-detail-plural')}
+        </Button>
+
+        <Button
+          className="contract-next-button"
+          htmlType="submit"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>

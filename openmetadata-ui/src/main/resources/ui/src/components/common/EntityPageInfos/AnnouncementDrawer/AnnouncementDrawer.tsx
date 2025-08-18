@@ -111,6 +111,7 @@ const AnnouncementDrawer: FC<Props> = ({
   return (
     <Drawer
       closable={false}
+      data-testid="announcement-drawer"
       open={open}
       placement="right"
       title={title}

@@ -893,13 +893,30 @@ export interface SemanticsRule {
      */
     entityType?: string;
     /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
      * Name of the semantics rule.
      */
-    name: string;
+    name:      string;
+    provider?: ProviderType;
     /**
      * Definition of the semantics rule.
      */
     rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**
@@ -1312,6 +1329,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     */
+    embeddingProvider?: string;
+    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -1329,6 +1350,14 @@ export interface Bedrock {
      * AWS access key for Bedrock service authentication
      */
     accessKey?: string;
+    /**
+     * Dimension of the embedding vector
+     */
+    embeddingDimension?: number;
+    /**
+     * Bedrock embedding model identifier to use for vector search
+     */
+    embeddingModelId?: string;
     /**
      * Bedrock model identifier to use for query transformation
      */

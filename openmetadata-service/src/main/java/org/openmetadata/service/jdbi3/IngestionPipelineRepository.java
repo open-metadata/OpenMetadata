@@ -124,13 +124,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return;
     }
     // Bulk fetch and set default fields (service) for all pipelines first
-    fetchAndSetDefaultFields(entities);
+    fetchAndSetDefaultFields(entities, fields);
 
     // Then call parent's implementation which handles standard fields
     super.setFieldsInBulk(fields, entities);
   }
 
-  private void fetchAndSetDefaultFields(List<IngestionPipeline> pipelines) {
+  private void fetchAndSetDefaultFields(List<IngestionPipeline> pipelines, Fields fields) {
     if (pipelines == null || pipelines.isEmpty()) {
       return;
     }
@@ -141,6 +141,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Set service field for all pipelines
     for (IngestionPipeline pipeline : pipelines) {
       EntityReference serviceRef = serviceRefs.get(pipeline.getId());
+      pipeline.setPipelineStatuses(
+          fields.contains("pipelineStatuses")
+              ? getLatestPipelineStatus(pipeline)
+              : pipeline.getPipelineStatuses());
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
@@ -257,7 +261,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected void postDelete(IngestionPipeline entity) {
+  protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Delete deployed pipeline in the Pipeline Service Client
     pipelineServiceClient.deletePipeline(entity);
     // Clean pipeline status

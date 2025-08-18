@@ -40,6 +40,7 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
@@ -215,68 +216,71 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <PageLayoutV1
-        className="p-box customise-my-data"
-        pageTitle={t('label.customize-entity', {
-          entity: t('label.landing-page'),
-        })}>
-        <CustomizablePageHeader
-          disableSave={disableSave}
-          personaName={getEntityName(personaDetails)}
-          onAddWidget={handleOpenCustomiseHomeModal}
-          onReset={handleReset}
-          onSave={handleSave}
-        />
-        <div className="grid-wrapper">
-          <CustomiseLandingPageHeader
-            overlappedContainer
-            addedWidgetsList={addedWidgetsList}
-            backgroundColor={backgroundColor}
-            handleAddWidget={handleMainPanelAddWidget}
-            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+    <NavigationBlocker enabled={!disableSave}>
+      <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+        <PageLayoutV1
+          className="p-box customise-my-data"
+          pageTitle={t('label.customize-entity', {
+            entity: t('label.landing-page'),
+          })}>
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onAddWidget={handleOpenCustomiseHomeModal}
+            onReset={handleReset}
+            onSave={handleSave}
           />
-          {/* 
+          <div className="grid-wrapper">
+            <CustomiseLandingPageHeader
+              overlappedContainer
+              addedWidgetsList={addedWidgetsList}
+              backgroundColor={backgroundColor}
+              dataTestId="customise-landing-page-header"
+              handleAddWidget={handleMainPanelAddWidget}
+              onBackgroundColorUpdate={handleBackgroundColorUpdate}
+            />
+            {/* 
             ReactGridLayout with optimized drag and drop behavior
             - verticalCompact: Packs widgets tightly without gaps
             - preventCollision={false}: Enables automatic widget repositioning on collision
             - useCSSTransforms: Uses CSS transforms for better performance during drag
           */}
-          <ReactGridLayout
-            useCSSTransforms
-            verticalCompact
-            className="grid-container layout"
-            cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
-            compactType="horizontal"
-            draggableHandle=".drag-widget-icon"
-            isResizable={false}
-            margin={[
-              customizeMyDataPageClassBase.landingPageWidgetMargin,
-              customizeMyDataPageClassBase.landingPageWidgetMargin,
-            ]}
-            maxRows={maxRows}
-            preventCollision={false}
-            rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
-            onLayoutChange={handleLayoutUpdate}>
-            {widgets}
-          </ReactGridLayout>
-        </div>
-      </PageLayoutV1>
+            <ReactGridLayout
+              useCSSTransforms
+              verticalCompact
+              className="grid-container layout"
+              cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+              compactType="horizontal"
+              draggableHandle=".drag-widget-icon"
+              isResizable={false}
+              margin={[
+                customizeMyDataPageClassBase.landingPageWidgetMargin,
+                customizeMyDataPageClassBase.landingPageWidgetMargin,
+              ]}
+              maxRows={maxRows}
+              preventCollision={false}
+              rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
+              onLayoutChange={handleLayoutUpdate}>
+              {widgets}
+            </ReactGridLayout>
+          </div>
+        </PageLayoutV1>
 
-      {isWidgetModalOpen && (
-        <CustomiseHomeModal
-          addedWidgetsList={addedWidgetsList}
-          currentBackgroundColor={backgroundColor}
-          defaultSelectedKey={CustomiseHomeModalSelectedKey.ALL_WIDGETS}
-          handleAddWidget={handleMainPanelAddWidget}
-          open={isWidgetModalOpen}
-          placeholderWidgetKey={placeholderWidgetKey}
-          onBackgroundColorUpdate={onBackgroundColorUpdate}
-          onClose={handleCloseCustomiseHomeModal}
-          onHomePage={false}
-        />
-      )}
-    </AdvanceSearchProvider>
+        {isWidgetModalOpen && (
+          <CustomiseHomeModal
+            addedWidgetsList={addedWidgetsList}
+            currentBackgroundColor={backgroundColor}
+            defaultSelectedKey={CustomiseHomeModalSelectedKey.ALL_WIDGETS}
+            handleAddWidget={handleMainPanelAddWidget}
+            open={isWidgetModalOpen}
+            placeholderWidgetKey={placeholderWidgetKey}
+            onBackgroundColorUpdate={onBackgroundColorUpdate}
+            onClose={handleCloseCustomiseHomeModal}
+            onHomePage={false}
+          />
+        )}
+      </AdvanceSearchProvider>
+    </NavigationBlocker>
   );
 }
 

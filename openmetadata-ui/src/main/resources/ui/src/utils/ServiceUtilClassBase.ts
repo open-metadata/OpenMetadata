@@ -15,7 +15,9 @@ import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
@@ -52,6 +54,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GRAFANA,
   GREENPLUM,
   HIVE,
   IBMDB2,
@@ -168,6 +171,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -318,6 +322,50 @@ class ServiceUtilClassBase {
         Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
+  }
+
+  public getEntityTypeFromServiceType(serviceType: string): EntityType {
+    const serviceTypes = this.getSupportedServiceFromList();
+
+    // Check which service category the serviceType belongs to
+    if (serviceTypes.databaseServices.includes(serviceType)) {
+      return EntityType.TABLE;
+    }
+
+    if (serviceTypes.messagingServices.includes(serviceType)) {
+      return EntityType.TOPIC;
+    }
+
+    if (serviceTypes.dashboardServices.includes(serviceType)) {
+      return EntityType.DASHBOARD;
+    }
+
+    if (serviceTypes.pipelineServices.includes(serviceType)) {
+      return EntityType.PIPELINE;
+    }
+
+    if (serviceTypes.mlmodelServices.includes(serviceType)) {
+      return EntityType.MLMODEL;
+    }
+
+    if (serviceTypes.storageServices.includes(serviceType)) {
+      return EntityType.CONTAINER;
+    }
+
+    if (serviceTypes.searchServices.includes(serviceType)) {
+      return EntityType.SEARCH_INDEX;
+    }
+
+    if (serviceTypes.apiServices.includes(serviceType)) {
+      return EntityType.API_ENDPOINT;
+    }
+
+    if (serviceTypes.securityServices.includes(serviceType)) {
+      return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    // Default fallback
+    return EntityType.TABLE;
   }
 
   public getServiceLogo(type: string) {
@@ -601,6 +649,9 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;
 
+      case this.DashboardServiceTypeSmallCase.Grafana:
+        return GRAFANA;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -739,7 +790,9 @@ class ServiceUtilClassBase {
 
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
       PlatformInsightsWidget,
+      TotalDataAssetsWidget,
     };
 
     return widgets;

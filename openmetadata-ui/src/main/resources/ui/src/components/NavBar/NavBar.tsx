@@ -466,13 +466,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {isHomePage ? (
-              <Typography.Text className="font-semibold navbar-title">
-                {t('label.home')}
-              </Typography.Text>
-            ) : isTourPage ? (
-              <></>
-            ) : (
+            {!isHomePage && !isTourPage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList

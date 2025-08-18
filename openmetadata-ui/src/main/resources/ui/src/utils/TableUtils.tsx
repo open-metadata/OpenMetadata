@@ -39,6 +39,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
@@ -133,6 +134,7 @@ import SchemaTable from '../components/Database/SchemaTable/SchemaTable.componen
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -159,6 +161,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -453,6 +456,8 @@ export const getEntityIcon = (
     [EntityType.API_COLLECTION]: APICollectionIcon,
     [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
     ['location']: LocationIcon,
+    [EntityType.QUERY]: QueryIcon,
+    [SearchIndex.QUERY]: QueryIcon,
   };
 
   switch (indexType) {
@@ -905,6 +910,36 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.KNOWLEDGE_GRAPH}
+          name={get(
+            labelMap,
+            EntityTabs.KNOWLEDGE_GRAPH,
+            t('label.knowledge-graph')
+          )}
+        />
+      ),
+      key: EntityTabs.KNOWLEDGE_GRAPH,
+      children: (
+        <KnowledgeGraph
+          depth={2}
+          entity={
+            tableDetails
+              ? {
+                  id: tableDetails.id,
+                  name: tableDetails.name,
+                  fullyQualifiedName: tableDetails.fullyQualifiedName,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
+      ),
+      isHidden: !useApplicationStore.getState().rdfEnabled,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.DBT}
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
@@ -963,6 +998,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          isBeta
           id={EntityTabs.CONTRACT}
           isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
