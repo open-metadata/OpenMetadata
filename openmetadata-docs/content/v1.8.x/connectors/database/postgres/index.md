@@ -1,6 +1,6 @@
 ---
-title: PostgreSQL Connector | `brandName` Database Integration
-description: Connect PostgreSQL to `brandName` with our comprehensive database connector guide. Step-by-step setup, configuration examples, and metadata extraction tips.
+title: PostgreSQL Connector | OpenMetadata Database Integration
+description: Connect PostgreSQL to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration examples, and metadata extraction tips.
 slug: /connectors/database/postgres
 ---
 

@@ -48,7 +48,8 @@ public class MigrationUtil {
   private static final String AUTOMATOR_APP_TYPE = "Automator";
   private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
   private static final int BATCH_SIZE = 100;
-  static DataInsightSystemChartRepository dataInsightSystemChartRepository;
+  static DataInsightSystemChartRepository dataInsightSystemChartRepository =
+      new DataInsightSystemChartRepository();
 
   public static void updateChart(String chartName, Object chartDetails) {
     DataInsightCustomChart chart =
@@ -85,7 +86,6 @@ public class MigrationUtil {
   }
 
   public static void updateServiceCharts() {
-    dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
     updateChart(
         "tag_source_breakdown",
         new LineChart()
