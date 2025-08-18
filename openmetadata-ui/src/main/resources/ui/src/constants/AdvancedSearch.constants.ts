@@ -338,6 +338,7 @@ export const CURATED_ASSETS_LIST = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
+  EntityType.DATA_PRODUCT,
   EntityType.GLOSSARY_TERM,
   EntityType.METRIC,
   EntityType.MLMODEL,
