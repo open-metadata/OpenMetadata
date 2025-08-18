@@ -40,6 +40,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
+from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_collection
 from metadata.utils.helpers import clean_uri
@@ -77,7 +78,7 @@ class RestSource(ApiServiceSource):
         Here is where filtering happens
         """
         try:
-            self.json_response = self.connection.json()
+            self.json_response = parse_openapi_schema(self.connection)
             collections_list = []
             tags_collection_set = set()
             if self.json_response.get("tags", []):

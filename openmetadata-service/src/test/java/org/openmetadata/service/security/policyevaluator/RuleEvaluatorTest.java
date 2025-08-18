@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -143,6 +144,8 @@ class RuleEvaluatorTest {
     Mockito.when(dataProductRepository.getEntityType()).thenReturn(Entity.DATA_PRODUCT);
     Mockito.when(dataProductRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, dataProductRepository);
+    Mockito.when(dataProductRepository.getParentEntity(any(DataProduct.class), anyString()))
+        .thenReturn(null); // DataProduct doesn't have direct parent, should use domains
 
     user = new User().withId(UUID.randomUUID()).withName("user").withFullyQualifiedName("user");
     ownerUser =
@@ -343,6 +346,33 @@ class RuleEvaluatorTest {
     assertTrue(evaluateExpression("!matchAllTags('tag2', 'tag4')"));
     assertFalse(evaluateExpression("matchAllTags('tag4')"));
     assertTrue(evaluateExpression("!matchAllTags('tag4')"));
+  }
+
+  @Test
+  void test_matchAllTags_withNullTags() {
+    // Test the scenario where getTags() returns null (e.g., due to deny policies)
+    // Set table tags to null to simulate the deny policy scenario
+    table.setTags(null);
+
+    // Create a mock ResourceContext that returns null for getTags()
+    ResourceContext<?> nullTagsResourceContext = Mockito.spy(resourceContext);
+    Mockito.when(nullTagsResourceContext.getTags()).thenReturn(null);
+
+    // Create RuleEvaluator with the mock context
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullTagsResourceContext);
+    EvaluationContext testEvaluationContext = new StandardEvaluationContext(ruleEvaluator);
+
+    // Test that matchAllTags handles null tags gracefully without throwing NPE
+    // Before the fix, this would throw: "Cannot invoke \"java.util.List.toArray()\" because
+    // \"tags\" is null"
+    Boolean result =
+        parseExpression("matchAllTags('tag1', 'tag2')")
+            .getValue(testEvaluationContext, Boolean.class);
+    assertNotEquals(Boolean.TRUE, result, "matchAllTags should return false when tags is null");
+
+    // Test with single tag
+    result = parseExpression("matchAllTags('tag1')").getValue(testEvaluationContext, Boolean.class);
+    assertNotEquals(Boolean.TRUE, result, "matchAllTags should return false when tags is null");
   }
 
   @Test
