@@ -447,7 +447,13 @@ web:
 
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
-  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-    
-    
-  
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}
+
+rdf:
+  enabled: ${RDF_ENABLED:-true}
+  baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
+  storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  username: ${RDF_REMOTE_USERNAME:-"admin"}
+  password: ${RDF_REMOTE_PASSWORD:-"admin"}
+  dataset: ${RDF_DATASET:-"openmetadata"}
