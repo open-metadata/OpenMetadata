@@ -198,13 +198,13 @@ describe('LogsViewerPage.component', () => {
       render(<LogsViewerPage />);
     });
 
-    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Type:')).toBeInTheDocument();
     expect(screen.getByText('Custom')).toBeInTheDocument();
 
-    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('Schedule:')).toBeInTheDocument();
     expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
 
-    expect(screen.getByText('Recent Runs')).toBeInTheDocument();
+    expect(screen.getByText('Recent Runs:')).toBeInTheDocument();
     expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
   });
 
