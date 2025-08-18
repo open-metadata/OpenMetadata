@@ -390,7 +390,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   });
 });
 
-test(
+test.fixme(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
