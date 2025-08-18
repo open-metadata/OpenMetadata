@@ -1,5 +1,0 @@
--cp
-
--sourcepath
-openmetadata-service/src/main/java
-openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/UserRepository.java
