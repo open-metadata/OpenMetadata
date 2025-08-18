@@ -14,6 +14,7 @@
 import { FC } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
   public importSchema(fqn: string) {
@@ -55,6 +56,11 @@ class ApplicationsClassBase {
   public importAppScreenshot(screenshotName: string) {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
   }
+
+  public appPluginRegistry: Record<
+    string,
+    new (name: string, isInstalled: boolean) => AppPlugin
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,

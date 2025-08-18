@@ -58,9 +58,17 @@ public class ConfigResource {
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public Map<String, String> getConfig() {
-    Map<String, String> config = new HashMap<>();
+  public Map<String, Object> getConfig() {
+    Map<String, Object> config = new HashMap<>();
     config.put("basePath", openMetadataApplicationConfig.getBasePath());
+
+    // Add RDF configuration
+    if (openMetadataApplicationConfig.getRdfConfiguration() != null) {
+      config.put("rdfEnabled", openMetadataApplicationConfig.getRdfConfiguration().getEnabled());
+    } else {
+      config.put("rdfEnabled", false);
+    }
+
     return config;
   }
 

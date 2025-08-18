@@ -128,6 +128,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Given an Entity type and Source entity and Destination entity,
         generate a JSON Patch and apply it.
 
+        This method provides fine-grained control over entity updates and can
+        override fields that create_or_update() cannot due to server-side restrictions
+        across various entity types. Use override_metadata=True to force updates of
+        protected metadata fields.
+
         Args
             entity (T): Entity Type
             source: Source payload which is current state of the source in OpenMetadata
@@ -135,7 +140,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
             array_entity_fields: List of array fields to sort for consistent patching
-            override_metadata: Whether to override existing metadata fields
+            override_metadata: Whether to override existing metadata fields. Set to True
+                to force updates of protected fields across various entity types.
             skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
         Returns
@@ -188,12 +194,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         Given an Entity type and ID, JSON PATCH the description.
 
+        This method is useful when you need to update descriptions that cannot be
+        overridden through create_or_update() due to server-side business rules
+        across various entity types. Use force=True to override existing descriptions.
+
         Args
             entity (T): Entity Type
             source: source entity object
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
+                the existing data. Set to True to override existing descriptions across entity types.
             skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity

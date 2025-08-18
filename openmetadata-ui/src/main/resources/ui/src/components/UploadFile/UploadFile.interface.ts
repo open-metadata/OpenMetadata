@@ -15,6 +15,7 @@ import { RcFile } from 'antd/lib/upload';
 declare type BeforeUploadValueType = void | boolean | string | Blob | File;
 
 export interface UploadFileProps {
+  disabled?: boolean;
   fileType: string;
   beforeUpload?: (
     file: RcFile,
