@@ -1591,11 +1591,14 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     // Use a simpler query filter that doesn't require complex JSON parsing
     String legitimateFilter = "{\"match_all\": {}}";
 
+    // Encode JSON parameter consistently with other tests
+    String encodedFilter = URLEncoder.encode(legitimateFilter, StandardCharsets.UTF_8);
+
     WebTarget target =
         getResource("search/query")
             .queryParam("q", "*")
             .queryParam("index", "table_search_index")
-            .queryParam("query_filter", legitimateFilter)
+            .queryParam("query_filter", encodedFilter)
             .queryParam("size", "5");
 
     Response response = executeSearchRequest(target);

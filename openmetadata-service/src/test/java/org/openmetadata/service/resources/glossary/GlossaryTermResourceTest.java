@@ -2175,8 +2175,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm createdTerm = createEntity(createRequest, ADMIN_AUTH_HEADERS);
 
     // Verify: Workflow task should be created and term should move to IN_REVIEW
-    // Use longer timeout for task creation to handle processing delays
-    waitForTaskToBeCreated(createdTerm.getFullyQualifiedName(), 60000L);
+    // Use smart timeout calculation based on entity name complexity
+    waitForTaskToBeCreated(createdTerm.getFullyQualifiedName());
     Thread approvalTask = assertApprovalTask(createdTerm, TaskStatus.Open);
 
     // Fetch the updated term to see status change
