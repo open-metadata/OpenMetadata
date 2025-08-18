@@ -131,6 +131,8 @@
     "tinycolor2": "^1.6.0",
     "turndown": "^7.1.2",
     "use-analytics": "1.1.0",
+    "vis-data": "^7.1.4",
+    "vis-network": "^9.1.6",
     "zustand": "^4.5.0"
   },
   "browserslist": {

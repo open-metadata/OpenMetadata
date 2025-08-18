@@ -17,6 +17,14 @@ Collate AI is an AI-powered tool within Collate that simplifies and enhances met
 - **SQL Query Optimization and Fixing**: Capable of optimizing and troubleshooting SQL queries to improve their performance and efficiency.
 - **AI-Driven Test Automation**: Automatically suggests and deploys relevant data quality tests based on table constraints and similarity with other assets, streamlining your data validation efforts.
 - **Automated Tier Classification**: Uses data lineage and usage analytics to intelligently assign Tier levels, helping teams prioritize and govern critical data assets.
+- **Natural Language Search**: Search for data assets using plain, user-friendly phrases — no complex syntax required. NLP interprets your query to return relevant results.
+
+Examples:
+
+ > - **Tables owned by marketing** – Shows all assets owned by the marketing team.
+ > - **Tables with Tier 1 classification** – Lists all Tier 1 classified assets.
+
+Click the icon again to switch back to standard search.
 
 ## Why Collate AI is Useful
 
