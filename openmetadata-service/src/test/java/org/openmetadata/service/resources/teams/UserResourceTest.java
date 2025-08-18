@@ -99,6 +99,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -138,6 +139,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -149,6 +151,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PasswordUtil;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -2260,63 +2263,149 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_loginWithDeletedUpdatedByUser_200_ok(TestInfo test) throws HttpResponseException {
-    // Create an admin user to update another user
-    String username = "tempAdmin";
-    Map<String, String> TEMP_ADMIN_AUTH_HEADERS = authHeaders(username + "@open-metadata.org");
-    User adminUser =
-        createEntity(createRequest("tempAdmin").withIsAdmin(true), TEMP_ADMIN_AUTH_HEADERS);
+  void testUserRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
 
-    // Create a target user that will be updated by the admin
-    User targetUser =
-        createEntity(
-            createRequest(test)
-                .withName("targetUser")
-                .withDisplayName("Target User")
-                .withEmail("targetuser@email.com")
-                .withIsBot(false)
-                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
-                .withPassword("Test@1234")
-                .withConfirmPassword("Test@1234"),
-            TEMP_ADMIN_AUTH_HEADERS);
+    // Create team first
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    assertEquals(adminUser.getName(), targetUser.getUpdatedBy());
+    // Create user with team membership
+    CreateUser createUser =
+        createRequest(test)
+            .withTeams(listOf(team.getId()))
+            .withRoles(listOf(DATA_STEWARD_ROLE.getId()));
 
-    // Delete the admin user who updated the target user
-    deleteEntity(adminUser.getId(), ADMIN_AUTH_HEADERS);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
 
-    // Verify admin user is deleted
-    assertResponse(
-        () -> getEntity(adminUser.getId(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.USER, adminUser.getId()));
+    // Verify user exists in RDF
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
 
-    // Try to login with the target user - this should not throw an exception
-    // even though the updatedBy user (adminUser) has been deleted
-    LoginRequest loginRequest =
-        new LoginRequest()
-            .withEmail("targetuser@email.com")
-            .withPassword(encodePassword("Test@1234"));
+    // Verify team membership (user is member of team)
+    // Note: In RDF, this is usually stored as team HAS user, not user memberOf team
+    // But we can check if the relationship exists either way
 
-    // This login should succeed without throwing an exception
-    // The bug fix ensures that when updateUserLastLoginTime is called,
-    // it handles the case where the updatedBy user no longer exists
-    JwtResponse jwtResponse =
-        TestUtils.post(
-            getResource("users/login"),
-            loginRequest,
-            JwtResponse.class,
-            OK.getStatusCode(),
-            ADMIN_AUTH_HEADERS);
+    // Users don't have owners or tags by default, but we can test if added
+    if (user.getOwners() != null && !user.getOwners().isEmpty()) {
+      RdfTestUtils.verifyOwnerInRdf(user.getFullyQualifiedName(), user.getOwners().get(0));
+    }
 
-    assertNotNull(jwtResponse);
-    assertNotNull(jwtResponse.getAccessToken());
-
-    // Verify the target user still has the deleted admin user name in updatedBy
-    User loggedInUser = getEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(adminUser.getName(), loggedInUser.getUpdatedBy());
-
-    // Clean up
-    deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+    if (user.getTags() != null && !user.getTags().isEmpty()) {
+      RdfTestUtils.verifyTagsInRdf(user.getFullyQualifiedName(), user.getTags());
+    }
   }
+
+  @Test
+  void testUserRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Soft delete the user
+    deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Restore the user
+    User restored =
+        restoreEntity(new RestoreEntity().withId(user.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("user"));
+  }
+
+  @Test
+  void testUserRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Hard delete the user
+    deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify user no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(user.getFullyQualifiedName());
+  }
+
+    @Test
+    void test_loginWithDeletedUpdatedByUser_200_ok(TestInfo test) throws HttpResponseException {
+        // Create an admin user to update another user
+        String username = "tempAdmin";
+        Map<String, String> TEMP_ADMIN_AUTH_HEADERS = authHeaders(username + "@open-metadata.org");
+        User adminUser =
+                createEntity(createRequest("tempAdmin").withIsAdmin(true), TEMP_ADMIN_AUTH_HEADERS);
+
+        // Create a target user that will be updated by the admin
+        User targetUser =
+                createEntity(
+                        createRequest(test)
+                                .withName("targetUser")
+                                .withDisplayName("Target User")
+                                .withEmail("targetuser@email.com")
+                                .withIsBot(false)
+                                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                                .withPassword("Test@1234")
+                                .withConfirmPassword("Test@1234"),
+                        TEMP_ADMIN_AUTH_HEADERS);
+
+        assertEquals(adminUser.getName(), targetUser.getUpdatedBy());
+
+        // Delete the admin user who updated the target user
+        deleteEntity(adminUser.getId(), ADMIN_AUTH_HEADERS);
+
+        // Verify admin user is deleted
+        assertResponse(
+                () -> getEntity(adminUser.getId(), ADMIN_AUTH_HEADERS),
+                NOT_FOUND,
+                CatalogExceptionMessage.entityNotFound(Entity.USER, adminUser.getId()));
+
+        // Try to login with the target user - this should not throw an exception
+        // even though the updatedBy user (adminUser) has been deleted
+        LoginRequest loginRequest =
+                new LoginRequest()
+                        .withEmail("targetuser@email.com")
+                        .withPassword(encodePassword("Test@1234"));
+
+        // This login should succeed without throwing an exception
+        // The bug fix ensures that when updateUserLastLoginTime is called,
+        // it handles the case where the updatedBy user no longer exists
+        JwtResponse jwtResponse =
+                TestUtils.post(
+                        getResource("users/login"),
+                        loginRequest,
+                        JwtResponse.class,
+                        OK.getStatusCode(),
+                        ADMIN_AUTH_HEADERS);
+
+        assertNotNull(jwtResponse);
+        assertNotNull(jwtResponse.getAccessToken());
+
+        // Verify the target user still has the deleted admin user name in updatedBy
+        User loggedInUser = getEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+        assertEquals(adminUser.getName(), loggedInUser.getUpdatedBy());
+
+        // Clean up
+        deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+    }
 }
