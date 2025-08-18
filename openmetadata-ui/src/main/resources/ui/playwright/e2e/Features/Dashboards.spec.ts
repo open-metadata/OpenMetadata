@@ -37,7 +37,6 @@ test.describe('Dashboards', () => {
     const dashboardChildren = generateEntityChildren('dashboard', 25);
 
     await dashboardEntity.create(apiContext, dashboardChildren);
-    await dashboard.create(apiContext);
 
     await afterAction();
   });
@@ -46,7 +45,6 @@ test.describe('Dashboards', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await dashboardEntity.delete(apiContext);
-    await dashboard.delete(apiContext);
     await afterAction();
   });
 
