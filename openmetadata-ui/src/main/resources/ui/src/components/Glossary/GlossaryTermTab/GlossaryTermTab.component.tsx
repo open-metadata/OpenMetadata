@@ -31,13 +31,12 @@ import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import { debounce } from 'lodash';
+import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useInView } from 'react-intersection-observer';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
+import { useInView } from 'react-intersection-observer';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -145,7 +144,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       expandableKeys: findExpandableKeysForArray(terms),
       glossaryTerms: terms,
     };
-  }, [glossaryChildTerms]);
+  }, [glossaryChildTerms, findExpandableKeysForArray]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -810,7 +809,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsStatusDropdownVisible(false);
   };
 
-  const toggleExpandAll = async () => {
+  const toggleExpandAll = useCallback(async () => {
     if (isExpandingAll) {
       return; // Prevent multiple simultaneous expand operations
     }
@@ -820,14 +819,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setExpandedRowKeys([]);
     } else {
       setIsExpandingAll(true);
-
-      // Expand all first-level terms only
-      const firstLevelExpandableKeys = glossaryTerms
-        .filter((term) => term.childrenCount && term.childrenCount > 0)
-        .map((term) => term.fullyQualifiedName || term.name)
-        .filter(Boolean) as string[];
-
-      setExpandedRowKeys(firstLevelExpandableKeys);
 
       // Load children for first-level terms only
       const termsToLoad = glossaryTerms.filter(
@@ -882,7 +873,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         // Update all terms at once after all data is collected
         if (Object.keys(allChildData).length > 0) {
           const currentTerms = glossaryChildTerms;
-          
+
           if (!Array.isArray(currentTerms)) {
             return;
           }
@@ -900,6 +891,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           });
 
           setGlossaryChildTerms(updatedTerms);
+          const firstLevelExpandableKeys = updatedTerms
+            .filter((term) => term.childrenCount && term.childrenCount > 0)
+            .map((term) => term.fullyQualifiedName || term.name)
+            .filter(Boolean) as string[];
+          setExpandedRowKeys(firstLevelExpandableKeys);
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -907,7 +903,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setIsExpandingAll(false);
       }
     }
-  };
+  }, [
+    glossaryTerms,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    loadingChildren,
+    setLoadingChildren,
+    expandedRowKeys,
+    expandableKeys,
+    setIsExpandingAll,
+    setExpandedRowKeys,
+    showErrorToast,
+    isExpandingAll,
+  ]);
 
   const isAllExpanded = useMemo(() => {
     return expandedRowKeys.length === expandableKeys.length;
@@ -1279,7 +1287,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
                 expandable={expandableConfig}
                 extraTableFilters={extraTableFilters}
-                loading={isTableLoading}
+                loading={isTableLoading || isExpandingAll}
                 pagination={false}
                 rowKey="fullyQualifiedName"
                 size="small"
