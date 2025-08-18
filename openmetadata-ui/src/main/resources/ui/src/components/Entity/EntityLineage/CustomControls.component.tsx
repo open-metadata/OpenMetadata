@@ -30,8 +30,6 @@ import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
 const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,
-  activeViewTab,
-  handleActiveViewTabChange,
 }: LineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
@@ -168,40 +166,6 @@ const CustomControls: FC<LineageControlProps> = ({
           </Space>
         </div>
       )}
-
-      {/* Removing this currently as we will re-design the lineage table view  */}
-      {/* <Radio.Group
-        className="new-radio-group"
-        data-testid="lineage-view-switch"
-        optionType="button"
-        value={activeViewTab}
-        onChange={handleActiveViewTabChange}>
-        <Tooltip
-          title={t('label.lineage-entity-view', {
-            entity: t('label.diagram'),
-          })}>
-          <Radio.Button value={LINEAGE_TAB_VIEW.DIAGRAM_VIEW}>
-            <DiagramViewIcon
-              className="align-middle"
-              data-testid="lineage-diagram-view-icon"
-              style={DATA_ASSET_ICON_DIMENSION}
-            />
-          </Radio.Button>
-        </Tooltip>
-
-        <Tooltip
-          title={t('label.lineage-entity-view', {
-            entity: t('label.table'),
-          })}>
-          <Radio.Button value={LINEAGE_TAB_VIEW.TABLE_VIEW}>
-            <TableViewIcon
-              className="align-middle"
-              data-testid="lineage-table-view-icon"
-              style={DATA_ASSET_ICON_DIMENSION}
-            />
-          </Radio.Button>
-        </Tooltip>
-      </Radio.Group> */}
     </div>
   );
 };
