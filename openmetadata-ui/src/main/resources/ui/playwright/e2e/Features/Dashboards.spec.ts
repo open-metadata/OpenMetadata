@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   assignTagToChildren,
   generateEntityChildren,
   removeTagsFromChildren,
+  restoreEntity,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -81,6 +84,89 @@ test.describe('Dashboards', () => {
     await expect(page.getByTestId('page-indicator')).toContainText(
       'Page 1 of 1'
     );
+  });
+
+  test('should be able to toggle between deleted and non-deleted charts', async ({
+    page,
+  }) => {
+    await dashboardEntity.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    await page.click('[data-testid="manage-button"]');
+    await page.click('[data-testid="delete-button"]');
+
+    await page.waitForSelector('[role="dialog"].ant-modal');
+
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+    await expect(page.locator('.ant-modal-title')).toContainText(
+      dashboardEntity.entityResponseData.displayName
+    );
+
+    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+    const deleteResponse = page.waitForResponse(
+      `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
+    );
+    await page.click('[data-testid="confirm-button"]');
+
+    await deleteResponse;
+    await page.waitForLoadState('networkidle');
+
+    await toastNotification(
+      page,
+      /(deleted successfully!|Delete operation initiated)/,
+      BIG_ENTITY_DELETE_TIMEOUT
+    );
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    // Retry mechanism for checking deleted badge
+    let deletedBadge = page.locator('[data-testid="deleted-badge"]');
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (attempts < maxAttempts) {
+      const isVisible = await deletedBadge.isVisible();
+      if (isVisible) {
+        break;
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        deletedBadge = page.locator('[data-testid="deleted-badge"]');
+      }
+    }
+
+    await expect(deletedBadge).toHaveText('Deleted');
+    await expect(
+      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+    ).toBeVisible();
+
+    await page.getByTestId('show-deleted').click();
+
+    await expect(
+      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+    ).not.toBeVisible();
+
+    await restoreEntity(page);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(
+      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+    ).toBeVisible();
+
+    await page.getByTestId('show-deleted').click();
+
+    await expect(
+      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+    ).not.toBeVisible();
   });
 });
 
