@@ -87,6 +87,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
     TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
     TABLE_TYPE = getEntityByName("table-cp", "", ADMIN_AUTH_HEADERS);
+    TABLE_COLUMN_TYPE = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    DASHBOARD_DATA_MODEL_COLUMN_TYPE =
+        getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -422,6 +425,162 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         () -> addCustomProperty(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
         Status.BAD_REQUEST,
         "Only entity types can be extended and field types can't be extended");
+  }
+
+  @Test
+  void put_patch_tableColumnCustomProperty_200() throws IOException {
+    Type tableColumnEntity = getEntityByName("tableColumn", "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(tableColumnEntity.getCustomProperties()).isEmpty());
+
+    // Add a custom property with name tcProp1 with type string with PUT
+    CustomProperty fieldA =
+        new CustomProperty()
+            .withName("tcProp1")
+            .withDescription("tcProp1")
+            .withPropertyType(STRING_TYPE.getEntityReference())
+            .withDisplayName("Table Column String Property");
+    ChangeDescription change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), tableColumnEntity.getCustomProperties());
+
+    // Changing custom property description and displayName with PUT
+    fieldA.withDescription("updated").withDisplayName("Updated Table Column String Property");
+    change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "tcProp1", "updated");
+    fieldUpdated(
+        change,
+        EntityUtil.getCustomField(fieldA, "displayName"),
+        "Table Column String Property",
+        "Updated Table Column String Property");
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), tableColumnEntity.getCustomProperties());
+
+    // Add a second property with name tcProp2 with type integer
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(INT_TYPE.getEntityReference().getType())
+            .withId(INT_TYPE.getEntityReference().getId());
+    CustomProperty fieldB =
+        new CustomProperty()
+            .withName("tcProp2")
+            .withDescription("tcProp2")
+            .withPropertyType(typeRef)
+            .withDisplayName("Table Column Integer Property");
+    change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldB.setPropertyType(INT_TYPE.getEntityReference());
+    assertEquals(2, tableColumnEntity.getCustomProperties().size());
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA, fieldB)), tableColumnEntity.getCustomProperties());
+  }
+
+  @Test
+  void put_patch_dashboardDataModelColumnCustomProperty_200() throws IOException {
+    Type dashboardColumnEntity =
+        getEntityByName("dashboardDataModelColumn", "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(dashboardColumnEntity.getCustomProperties()).isEmpty());
+
+    // Add a custom property with name dashboardProp1 with type string with PUT
+    CustomProperty fieldA =
+        new CustomProperty()
+            .withName("dashboardProp1")
+            .withDescription("dashboardProp1")
+            .withPropertyType(STRING_TYPE.getEntityReference())
+            .withDisplayName("Dashboard Column String Property");
+    ChangeDescription change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), dashboardColumnEntity.getCustomProperties());
+
+    // Changing custom property description and displayName with PUT
+    fieldA.withDescription("updated").withDisplayName("Updated Dashboard Column String Property");
+    change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change, EntityUtil.getCustomField(fieldA, "description"), "dashboardProp1", "updated");
+    fieldUpdated(
+        change,
+        EntityUtil.getCustomField(fieldA, "displayName"),
+        "Dashboard Column String Property",
+        "Updated Dashboard Column String Property");
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), dashboardColumnEntity.getCustomProperties());
+
+    // Add a second property with name dashboardProp2 with type number
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(NUMBER_TYPE.getEntityReference().getType())
+            .withId(NUMBER_TYPE.getEntityReference().getId());
+    CustomProperty fieldB =
+        new CustomProperty()
+            .withName("dashboardProp2")
+            .withDescription("dashboardProp2")
+            .withPropertyType(typeRef)
+            .withDisplayName("Dashboard Column Number Property");
+    change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldB.setPropertyType(NUMBER_TYPE.getEntityReference());
+    assertEquals(2, dashboardColumnEntity.getCustomProperties().size());
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA, fieldB)), dashboardColumnEntity.getCustomProperties());
+  }
+
+  @Test
+  void put_customPropertyToColumnContextTypes_200() throws IOException {
+    // Test that tableColumn type allows custom properties (should not throw exception)
+    Type tableColumnType = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, tableColumnType.getCategory());
+
+    // Test that dashboardDataModelColumn type allows custom properties (should not throw exception)
+    Type dashboardColumnType = getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, dashboardColumnType.getCategory());
+  }
+
+  @Test
+  void put_customPropertyToRegularFieldType_4xx() {
+    // Test that regular field types still cannot have custom properties
+    Type intType = INT_TYPE; // This is a regular field type
+
+    CustomProperty fieldProp =
+        new CustomProperty()
+            .withName("invalidProp")
+            .withDescription("This should fail")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+
+    assertResponse(
+        () -> addCustomProperty(intType.getId(), fieldProp, Status.CREATED, ADMIN_AUTH_HEADERS),
+        Status.BAD_REQUEST,
+        "Only entity types can be extended and field types can't be extended");
+  }
+
+  @Test
+  void test_columnTypesExist() throws IOException {
+    // Verify that our column types can be retrieved
+    Type tableColumnType = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, tableColumnType.getCategory());
+    assertEquals("tableColumn", tableColumnType.getName());
+
+    Type dashboardColumnType = getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, dashboardColumnType.getCategory());
+    assertEquals("dashboardDataModelColumn", dashboardColumnType.getName());
   }
 
   @Override
