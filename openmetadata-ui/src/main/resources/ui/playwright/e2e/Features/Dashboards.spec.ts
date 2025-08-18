@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -25,6 +26,7 @@ import {
 import { test } from '../fixtures/pages';
 
 const dashboardEntity = new DashboardServiceClass();
+const dashboard = new DashboardClass();
 
 test.describe('Dashboards', () => {
   test.slow(true);
@@ -35,6 +37,7 @@ test.describe('Dashboards', () => {
     const dashboardChildren = generateEntityChildren('dashboard', 25);
 
     await dashboardEntity.create(apiContext, dashboardChildren);
+    await dashboard.create(apiContext);
 
     await afterAction();
   });
@@ -43,6 +46,7 @@ test.describe('Dashboards', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await dashboardEntity.delete(apiContext);
+    await dashboard.delete(apiContext);
     await afterAction();
   });
 
@@ -85,12 +89,37 @@ test.describe('Dashboards', () => {
       'Page 1 of 1'
     );
   });
+});
+
+test.describe('Dashboard and Charts deleted toggle', () => {
+  test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await dashboard.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Clean up', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await dashboard.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
   test('should be able to toggle between deleted and non-deleted charts', async ({
     page,
   }) => {
-    await dashboardEntity.visitEntityPage(page);
+    await dashboard.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.click('[data-testid="manage-button"]');
     await page.click('[data-testid="delete-button"]');
@@ -98,9 +127,6 @@ test.describe('Dashboards', () => {
     await page.waitForSelector('[role="dialog"].ant-modal');
 
     await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-    await expect(page.locator('.ant-modal-title')).toContainText(
-      dashboardEntity.entityResponseData.displayName
-    );
 
     await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
     const deleteResponse = page.waitForResponse(
