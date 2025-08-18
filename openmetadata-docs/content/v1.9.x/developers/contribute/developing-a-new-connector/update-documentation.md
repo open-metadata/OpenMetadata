@@ -7,7 +7,7 @@ slug: /developers/contribute/developing-a-new-connector/update-documentation
 
 One important part of developing a new connector is to document how it works after it is done.
 
-The documentation for connectors can be found within `openmetadata-docs/content/v{version}-SNAPSHOT/connectors`
+The documentation for connectors can be found within `https://github.com/open-metadata/docs-v1/tree/main/content/v{version}-SNAPSHOT/connectors`
 where `{version}` depends on the time of reading.
 
 There you need to create a new folder within the proper Source Type you are building a connector for (Database, Dashboard, MLModel, etc) and create two files:
@@ -19,9 +19,9 @@ Again the best way to create the documentation is to use another connector's doc
 
 Once the documentation is done, it's important to add it to the proper indexes and menus:
 
-- `openmetadata-docs/content/v{version}-SNAPSHOT/menu.md`
-- `openmetadata-docs/content/v{version}-SNAPSHOT/connectors/index.md`
-- `openmetadata-docs/content/v{version}-SNAPSHOT/connectors/{source_type}/index.md`
+- `https://github.com/open-metadata/docs-v1/tree/main/content/v{version}-SNAPSHOT/menu.md`
+- `https://github.com/open-metadata/docs-v1/tree/main/content/v{version}-SNAPSHOT/connectors/index.md`
+- `https://github.com/open-metadata/docs-v1/tree/main/content/v{version}-SNAPSHOT/connectors/{source_type}/index.md`
 
 This will guarantee that the connector is shown in the menus.
 

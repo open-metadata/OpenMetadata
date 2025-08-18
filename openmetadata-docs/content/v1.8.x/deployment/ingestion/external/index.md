@@ -263,7 +263,7 @@ This will stop certain APIs and monitors related to the Pipeline Service Client 
 This is not an exhaustive list, and it will keep growing over time. Not because the orchestrators X or Y are not supported,
 but just because we did not have the time yet to add it here. If you'd like to chip in and help us expand these guides and examples,
 don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or directly open a PR in
-[GitHub](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-docs/content).
+[GitHub](https://github.com/open-metadata/docs-v1/tree/main/content).
 
 {% /note %}
 {% inlineCalloutContainer %}
