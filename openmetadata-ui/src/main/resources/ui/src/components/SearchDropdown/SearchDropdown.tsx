@@ -17,7 +17,6 @@ import {
   Checkbox,
   Col,
   Divider,
-  Dropdown,
   Input,
   MenuItemProps,
   MenuProps,
@@ -26,6 +25,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { Dropdown } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import {

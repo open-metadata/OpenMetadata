@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
+import { Button, Modal, Skeleton, Space, Typography } from 'antd';
+import { Switch } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';

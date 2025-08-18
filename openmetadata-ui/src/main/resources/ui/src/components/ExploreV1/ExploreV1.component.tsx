@@ -17,7 +17,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
+import { Alert, Button, Card, Col, Menu, Row, Typography } from 'antd';
+import { Switch } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
