@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Remove Tags Action Type
+ * Remove Classification Tags Action Type
  */
 export interface RemoveTagsAction {
     /**
@@ -28,7 +28,7 @@ export interface RemoveTagsAction {
      */
     labels?: LabelElement[];
     /**
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
     tags?: TagLabel[];
     /**
@@ -137,7 +137,7 @@ export interface Style {
 /**
  * Application Type
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
  */
 export enum RemoveTagsActionType {
     RemoveTagsAction = "RemoveTagsAction",

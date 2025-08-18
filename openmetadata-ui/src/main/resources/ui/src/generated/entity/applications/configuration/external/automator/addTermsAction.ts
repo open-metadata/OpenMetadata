@@ -15,13 +15,13 @@
  */
 export interface AddTermsAction {
     /**
-     * Apply terms to the children of the selected assets that match the criteria. E.g., columns,
-     * tasks, topic fields,...
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
      */
     applyToChildren?: string[];
     /**
-     * Update terms even if they are already defined in the asset. By default, incoming terms are
-     * merged with the existing ones.
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
      */
     overwriteMetadata?: boolean;
     /**

@@ -17,16 +17,16 @@ export interface RemoveTermsAction {
     /**
      * Remove terms from all the children and parent of the selected assets.
      */
-    applyToAll?: boolean | null;
+    applyToAll?: boolean;
     /**
      * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
-    applyToChildren?: string[] | null;
+    applyToChildren?: string[];
     /**
      * Remove terms by its label type
      */
-    labels?: LabelType[] | null;
+    labels?: LabelElement[];
     /**
      * Glossary Terms to remove
      */
@@ -40,7 +40,7 @@ export interface RemoveTermsAction {
 /**
  * Remove terms by its label type
  */
-export enum LabelType {
+export enum LabelElement {
     Automated = "Automated",
     Manual = "Manual",
     Propagated = "Propagated",
@@ -69,7 +69,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType_;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -94,7 +94,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType_ {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Generated = "Generated",
