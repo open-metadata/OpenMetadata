@@ -26,6 +26,7 @@ Contents:
 - [Features](#key-features-of-openmetadata)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
+- [Health Check API](#health-check-api)
 - [Roadmap](https://docs.open-metadata.org/latest/roadmap)
 - [Documentation and Support](#documentation-and-support)
 - [Contributors](#contributors)
@@ -75,6 +76,96 @@ Take a look and play with sample data at [http://sandbox.open-metadata.org](http
 
 ## Install and Run OpenMetadata
 Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/quick-start/local-docker-deployment).
+
+## Health Check API
+
+OpenMetadata provides a comprehensive health check endpoint to validate the deployment and connectivity of all system components.
+
+### GET `/api/v1/system/status`
+
+**Description**: Validates the OpenMetadata deployment by checking connectivity against your database, search instance (Elasticsearch/OpenSearch), pipeline service client, JWT configuration, and database migrations.
+
+**Request**:
+- **Method**: GET
+- **URL**: `http://localhost:8585/api/v1/system/status`
+- **Authentication**: Admin token required
+- **Content-Type**: `application/json`
+
+**Response**:
+- **Success Status Code**: 200 OK
+- **Content-Type**: `application/json`
+
+**Response Schema**:
+```json
+{
+  "database": {
+    "description": "Validate that we can properly run a query against the configured database.",
+    "passed": true,
+    "message": "Connected to jdbc:mysql://localhost:3306/openmetadata_db"
+  },
+  "searchInstance": {
+    "description": "Validate that the search client is available.",
+    "passed": true,
+    "message": "Connected to localhost"
+  },
+  "pipelineServiceClient": {
+    "description": "Validate that the pipeline service client is available.",
+    "passed": true,
+    "message": "Airflow is available at http://localhost:8080"
+  },
+  "jwks": {
+    "description": "Validate that the ingestion-bot JWT token can be properly decoded.",
+    "passed": true,
+    "message": "Ingestion Bot token has been validated"
+  },
+  "migrations": {
+    "description": "Validate that all the necessary migrations have been properly executed.",
+    "passed": true,
+    "message": "Executed migrations: [1.0.0, 1.1.0, 1.2.0, ...]"
+  }
+}
+```
+
+**Response Fields**:
+- **database**: Database connectivity validation
+- **searchInstance**: Search service (Elasticsearch/OpenSearch) connectivity validation
+- **pipelineServiceClient**: Pipeline service (Airflow) connectivity validation
+- **jwks**: JWT token validation for the ingestion bot
+- **migrations**: Database migration status validation
+
+Each validation object contains:
+- **description**: What is being tested
+- **passed**: Boolean indicating if the validation succeeded
+- **message**: Results, connection details, or error information
+
+**Usage Example**:
+```bash
+curl -X GET "http://localhost:8585/api/v1/system/status" \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json"
+```
+
+**Error Response Example** (when components are not available):
+```json
+{
+  "database": {
+    "description": "Validate that we can properly run a query against the configured database.",
+    "passed": false,
+    "message": "Connection refused: Unable to connect to database"
+  },
+  "searchInstance": {
+    "description": "Validate that the search client is available.",
+    "passed": false,
+    "message": "Search instance is not reachable or available"
+  }
+}
+```
+
+This endpoint is used by the OpenMetadata UI health check page and can be integrated into monitoring systems to ensure all components are functioning correctly.
+
+**Additional Health Endpoints**:
+- **Dropwizard Admin Health Check**: Available at `http://localhost:8586/healthcheck` (admin port) for basic server health status
+- **Event Monitoring**: The system also monitors events at configured paths including `/api/v1/health-check` for internal event tracking
 
 ## Documentation and Support
 
