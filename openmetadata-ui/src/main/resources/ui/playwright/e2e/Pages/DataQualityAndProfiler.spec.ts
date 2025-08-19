@@ -51,11 +51,27 @@ const testGlossary = new Glossary();
 const testGlossaryTerm1 = new GlossaryTerm(testGlossary);
 const testGlossaryTerm2 = new GlossaryTerm(testGlossary);
 
+const testCaseResult = {
+  result: 'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
+  testCaseStatus: 'Failed',
+  testResultValue: [
+    {
+      name: 'minValueForMaxInCol',
+      value: '10001',
+    },
+    {
+      name: 'maxValueForMaxInCol',
+      value: '27809',
+    },
+  ],
+  timestamp: getCurrentMillis(),
+};
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await table1.create(apiContext);
   await table2.create(apiContext);
-  await table2.createTestCase(apiContext, {
+  const testCase = await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
     entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
@@ -63,6 +79,13 @@ test.beforeAll(async ({ browser }) => {
     ],
     testDefinition: 'columnValuesToBeInSet',
   });
+
+  // Create test case result
+  await table2.addTestCaseResult(
+    apiContext,
+    testCase['fullyQualifiedName'],
+    testCaseResult
+  );
 
   // Create test tags and glossary terms
   await testClassification.create(apiContext);
@@ -415,7 +438,7 @@ test.fixme(
   }
 );
 
-test.fixme(
+test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
@@ -424,8 +447,9 @@ test.fixme(
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
       serviceName: 'sample_data',
-      testCaseName: 'column_value_max_to_be_between',
     };
+
+    const testCase1 = table2.testCasesResponseData[0];
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
@@ -480,25 +504,16 @@ test.fixme(
       await expect(page.locator('#math_graph')).toBeVisible();
       await expect(page.locator('#sum_graph')).toBeVisible();
 
-      await page
-        .getByRole('menuitem', {
-          name: 'Data Quality',
-        })
-        .click();
-
-      await page.waitForSelector(
-        `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
-      );
       const getTestCaseDetails = page.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
       const getTestResult = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseResults/*?*'
       );
-      await page
-        .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
-        .getByText(DATA_QUALITY_TABLE.testCaseName)
-        .click();
+
+      await page.goto(
+        `test-case/${testCase1.fullyQualifiedName}/test-case-results`
+      );
 
       const getTestCaseDetailsResponse = await getTestCaseDetails;
       const getTestResultResponse = await getTestResult;
@@ -506,9 +521,7 @@ test.fixme(
       expect(getTestCaseDetailsResponse.status()).toBe(200);
       expect(getTestResultResponse.status()).toBe(200);
 
-      await expect(
-        page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
-      ).toBeVisible();
+      await expect(page.locator(`#${testCase1.name}_graph`)).toBeVisible();
     };
 
     // Run all three user roles in parallel
