@@ -12,18 +12,12 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Radio, Space } from 'antd';
+import { Button, Dropdown, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TableViewIcon } from '../../../assets/svg/ic-column.svg';
-import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-platform-lineage.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
-import {
-  LINEAGE_DEFAULT_QUICK_FILTERS,
-  LINEAGE_TAB_VIEW,
-} from '../../../constants/Lineage.constants';
+import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
@@ -36,8 +30,6 @@ import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
 const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,
-  activeViewTab,
-  handleActiveViewTabChange,
 }: LineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
@@ -174,36 +166,6 @@ const CustomControls: FC<LineageControlProps> = ({
           </Space>
         </div>
       )}
-
-      <Radio.Group
-        className="new-radio-group"
-        data-testid="lineage-view-switch"
-        optionType="button"
-        options={[
-          {
-            label: (
-              <TableViewIcon
-                className="align-middle"
-                data-testid="lineage-table-view-icon"
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            ),
-            value: LINEAGE_TAB_VIEW.TABLE_VIEW,
-          },
-          {
-            label: (
-              <DiagramViewIcon
-                className="align-middle"
-                data-testid="lineage-diagram-view-icon"
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            ),
-            value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
-          },
-        ]}
-        value={activeViewTab}
-        onChange={handleActiveViewTabChange}
-      />
     </div>
   );
 };
