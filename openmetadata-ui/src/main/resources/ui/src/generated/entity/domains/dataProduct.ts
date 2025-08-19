@@ -97,15 +97,14 @@ export interface DataProduct {
      */
     providesTo?: EntityReference[];
     /**
+     * User references of the reviewers for this Data Product.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Service Level Agreement for this data product
      */
     sla?:   SlaDefinition;
     style?: Style;
-    /**
-     * User references of the reviewers for this Data Product.
-     */
-    reviewers?: EntityReference[];
-    style?:     Style;
     /**
      * Tags associated with the Data Product.
      */
@@ -249,6 +248,20 @@ export interface FieldChange {
 }
 
 /**
+ * Status of the Data Product.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Port definition for data product input/output
  */
 export interface DataProductPort {
@@ -369,20 +382,6 @@ export enum Tier {
     Custom = "CUSTOM",
     Gold = "GOLD",
     Silver = "SILVER",
-}
-
-/**
- * Status of the Data Product.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**
