@@ -1210,7 +1210,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       // Verify that the requested fields are populated in bulk results
       if (!bulkResult.getData().isEmpty()) {
-        T entity = bulkResult.getData().get(0);
+        T entity = bulkResult.getData().getFirst();
 
         // Test that bulk loading populates the same fields as individual loading
         T individualEntity = getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);

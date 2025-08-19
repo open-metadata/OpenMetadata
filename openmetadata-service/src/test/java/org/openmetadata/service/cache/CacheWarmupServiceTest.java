@@ -215,6 +215,7 @@ class CacheWarmupServiceTest extends CachedOpenMetadataApplicationResourceTest {
           tagFQN,
           "test-tag-hash-" + i,
           entityFQN,
+          entityFQN, // targetFQN
           LabelType.MANUAL.ordinal(),
           State.CONFIRMED.ordinal());
     }

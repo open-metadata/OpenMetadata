@@ -4,8 +4,10 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
 import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -237,6 +239,50 @@ public final class RelationshipCache {
 
     } catch (RedisCacheException e) {
       LOG.error("Error evicting cache for entity: {}", entityId, e);
+    }
+  }
+
+  /**
+   * Evict all keys matching a pattern
+   * @param pattern The pattern to match (e.g., "tags:prefix:*")
+   */
+  public static void evictPattern(String pattern) {
+    if (!isAvailable()) {
+      return;
+    }
+
+    String fullPattern = RELATIONSHIP_KEY_PREFIX + pattern;
+
+    try {
+      executeWithRetry(
+          () -> {
+            try {
+              if (clusterMode) {
+                // In cluster mode, use KEYS command (SCAN is complex across nodes)
+                RedisAdvancedClusterCommands<String, String> commands = clusterConnection.sync();
+                List<String> keysToDelete = commands.keys(fullPattern);
+                if (!keysToDelete.isEmpty()) {
+                  return commands.del(keysToDelete.toArray(new String[0]));
+                }
+              } else {
+                RedisCommands<String, String> commands = redisConnection.sync();
+                // For non-cluster mode, use KEYS command for simplicity
+                // Note: KEYS can be slow on large datasets, but cache keys are limited
+                List<String> keysToDelete = commands.keys(fullPattern);
+                if (!keysToDelete.isEmpty()) {
+                  return commands.del(keysToDelete.toArray(new String[0]));
+                }
+              }
+              return 0L;
+            } catch (Exception e) {
+              throw new RedisCacheException("Failed to evict pattern: " + pattern, e);
+            }
+          });
+
+      LOG.debug("Evicted cache keys matching pattern: {}", pattern);
+
+    } catch (RedisCacheException e) {
+      LOG.error("Error evicting pattern {}: {}", pattern, e.getMessage());
     }
   }
 
