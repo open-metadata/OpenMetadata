@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
     Table,
+    TableData,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -50,6 +51,8 @@ from metadata.ingestion.models.custom_basemodel_validation import (
     revert_separators,
     transform_entity_names,
 )
+from metadata.profiler.api.models import ProfilerResponse
+from metadata.utils.entity_link import CustomColumnName
 
 
 class TestCustomBasemodelValidation(TestCase):
@@ -140,13 +143,13 @@ class TestCustomBasemodelValidation(TestCase):
         """Test the TRANSFORMABLE_ENTITIES configuration."""
         # Test that expected entities are configured
         expected_entities = {
-            "Table",
-            "DashboardDataModel",
-            "CustomColumnName",
-            "ProfilerResponse",
-            "TableData",
-            "CreateTableRequest",
-            "CreateDashboardDataModelRequest",
+            Table,
+            DashboardDataModel,
+            CustomColumnName,
+            ProfilerResponse,
+            TableData,
+            CreateTableRequest,
+            CreateDashboardDataModelRequest,
         }
 
         for entity in expected_entities:
@@ -176,7 +179,7 @@ class TestCustomBasemodelValidation(TestCase):
     def test_get_entity_config(self):
         """Test get_entity_config function."""
         # Test existing entity
-        table_config = get_entity_config("Table")
+        table_config = get_entity_config(Table)
         self.assertIsNotNone(table_config)
         self.assertEqual(table_config["direction"], TransformDirection.DECODE)
         self.assertIn("name", table_config["fields"])
@@ -188,12 +191,12 @@ class TestCustomBasemodelValidation(TestCase):
     def test_get_transformer(self):
         """Test get_transformer function."""
         # Test DECODE transformer
-        table_transformer = get_transformer("Table")
+        table_transformer = get_transformer(Table)
         self.assertIsNotNone(table_transformer)
         self.assertEqual(table_transformer, revert_separators)
 
         # Test ENCODE transformer
-        create_table_transformer = get_transformer("CreateTableRequest")
+        create_table_transformer = get_transformer(CreateTableRequest)
         self.assertIsNotNone(create_table_transformer)
         self.assertEqual(create_table_transformer, replace_separators)
 
@@ -306,7 +309,7 @@ class TestCustomBasemodelValidation(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
-        result = transform_entity_names(table, "Table")
+        result = transform_entity_names(table, Table)
         self.assertEqual(result.name.root, "test::table>name")
 
         # Test CreateTable (ENCODE direction)
@@ -316,7 +319,7 @@ class TestCustomBasemodelValidation(TestCase):
             databaseSchema=FullyQualifiedEntityName("db.schema"),
         )
 
-        result = transform_entity_names(create_request, "CreateTableRequest")
+        result = transform_entity_names(create_request, CreateTableRequest)
         expected = "my__reserved__colon__table__reserved__arrow__with__reserved__quote__special_chars"
         self.assertEqual(result.name.root, expected)
 
@@ -330,7 +333,7 @@ class TestCustomBasemodelValidation(TestCase):
         )
 
         # Use a model name not in explicit config to trigger dynamic pattern
-        result = transform_entity_names(create_request, "CreateCustomEntity")
+        result = transform_entity_names(create_request, CreateTableRequest)
         expected = "dynamic__reserved__colon__table__reserved__arrow__name__reserved__quote__test"
         self.assertEqual(result.name.root, expected)
 
@@ -340,19 +343,19 @@ class TestCustomBasemodelValidation(TestCase):
             name=EntityName('my::database>service"with_separators'), serviceType="Mysql"
         )
 
-        result = transform_entity_names(service_request, "CreateDatabaseServiceRequest")
+        result = transform_entity_names(service_request, CreateDatabaseServiceRequest)
         # Should NOT be transformed
         self.assertEqual(result.name.root, 'my::database>service"with_separators')
 
     def test_transform_entity_names_edge_cases(self):
         """Test transform_entity_names with edge cases."""
         # Test None entity
-        result = transform_entity_names(None, "Table")
+        result = transform_entity_names(None, Table)
         self.assertIsNone(result)
 
         # Test entity without __dict__ (edge case)
         simple_value = "test_string"
-        result = transform_entity_names(simple_value, "Table")
+        result = transform_entity_names(simple_value, Table)
         self.assertEqual(result, simple_value)
 
         # Test entity with minimal name
@@ -363,7 +366,7 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.minimal",
             columns=[],
         )
-        result = transform_entity_names(table_minimal, "Table")
+        result = transform_entity_names(table_minimal, Table)
         self.assertEqual(result.name.root, "a")
 
     def test_transform_entity_names_with_nested_structures(self):
@@ -398,7 +401,7 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.complex_table",
         )
 
-        result = transform_entity_names(table, "Table")
+        result = transform_entity_names(table, Table)
 
         # Verify table name transformation (DECODE operation)
         self.assertEqual(result.name.root, "complex::table")
@@ -418,7 +421,7 @@ class TestCustomBasemodelValidation(TestCase):
 
         # Test transformation of root attribute
         entity = MockEntityWithRoot("test__reserved__colon__value")
-        result = transform_entity_names(entity, "Table")
+        result = transform_entity_names(entity, Table)
         self.assertEqual(result.root, "test::value")
 
     def test_unicode_and_international_characters(self):
@@ -434,7 +437,7 @@ class TestCustomBasemodelValidation(TestCase):
             ],
         )
 
-        result = transform_entity_names(table_unicode, "Table")
+        result = transform_entity_names(table_unicode, Table)
         self.assertEqual(result.name.root, "測試::表格>名稱")
         # Column names should also be decoded since Table config includes columns
         self.assertEqual(result.columns[0].name.root, 'unicode"列')
@@ -450,7 +453,7 @@ class TestCustomBasemodelValidation(TestCase):
             ],
         )
 
-        result = transform_entity_names(table_emoji, "Table")
+        result = transform_entity_names(table_emoji, Table)
         self.assertEqual(result.name.root, "table🚀::data📊>chart")
         self.assertEqual(result.columns[0].name.root, 'emoji"field🎯')
 
@@ -473,7 +476,7 @@ class TestCustomBasemodelValidation(TestCase):
             columns=[],
         )
 
-        result = transform_entity_names(table, "Table")
+        result = transform_entity_names(table, Table)
 
         # Should still transform correctly
         expected = "a" * 50 + "::" + "b" * 50 + ">" + "c" * 50
@@ -492,7 +495,7 @@ class TestCustomBasemodelValidation(TestCase):
             columns=[],
         )
 
-        result = transform_entity_names(table, "Table")
+        result = transform_entity_names(table, Table)
         # This should handle the overlapping keywords correctly
         expected = "test::::reserved__name"
         self.assertEqual(result.name.root, expected)
@@ -518,7 +521,7 @@ class TestCustomBasemodelValidation(TestCase):
         with patch(
             "metadata.ingestion.models.custom_basemodel_validation.logger"
         ) as mock_logger:
-            result = transform_entity_names(problematic_entity, "Table")
+            result = transform_entity_names(problematic_entity, Table)
             # Should return original entity on error
             self.assertEqual(result, problematic_entity)
 
@@ -541,7 +544,7 @@ class TestCustomBasemodelValidation(TestCase):
         )
 
         # Should handle large datasets efficiently
-        result = transform_entity_names(large_table, "Table")
+        result = transform_entity_names(large_table, Table)
 
         self.assertEqual(result.name.root, "large>table")
         self.assertEqual(len(result.columns), 100)
@@ -577,7 +580,7 @@ class TestCustomBasemodelValidation(TestCase):
             columns=[parent_column],
         )
 
-        result = transform_entity_names(dashboard_model, "DashboardDataModel")
+        result = transform_entity_names(dashboard_model, DashboardDataModel)
 
         # Verify transformations
         self.assertEqual(result.name.root, 'dashboard::model"name')
@@ -694,9 +697,7 @@ class TestDashboardDataModelValidation(TestCase):
             ],
         )
 
-        result = transform_entity_names(
-            create_request, "CreateDashboardDataModelRequest"
-        )
+        result = transform_entity_names(create_request, CreateDashboardDataModelRequest)
 
         # Verify main name transformation (ENCODE for Create operations)
         self.assertEqual(
@@ -778,7 +779,7 @@ class TestDashboardDataModelValidation(TestCase):
             ],
         )
 
-        result = transform_entity_names(dashboard_model, "DashboardDataModel")
+        result = transform_entity_names(dashboard_model, DashboardDataModel)
 
         # Verify main name transformation (DECODE for fetch operations)
         self.assertEqual(result.name.root, 'analytics::report>model"quarterly')
@@ -820,9 +821,7 @@ class TestDashboardDataModelValidation(TestCase):
             ],
         )
 
-        result_empty = transform_entity_names(
-            model_empty_children, "DashboardDataModel"
-        )
+        result_empty = transform_entity_names(model_empty_children, DashboardDataModel)
         self.assertEqual(result_empty.name.root, "test::model")
         self.assertEqual(result_empty.columns[0].name.root, "parent>column")
 
@@ -844,7 +843,7 @@ class TestDashboardDataModelValidation(TestCase):
             ],
         )
 
-        result_none = transform_entity_names(model_none_children, "DashboardDataModel")
+        result_none = transform_entity_names(model_none_children, DashboardDataModel)
         self.assertEqual(result_none.name.root, 'test"model')
         self.assertEqual(result_none.columns[0].name.root, 'parent"column')
 
@@ -906,7 +905,7 @@ class TestDashboardDataModelValidation(TestCase):
             ],
         )
 
-        result = transform_entity_names(complex_model, "DashboardDataModel")
+        result = transform_entity_names(complex_model, DashboardDataModel)
 
         # Verify transformations at each level
         self.assertEqual(result.name.root, "complex::model>test")
@@ -966,7 +965,7 @@ class TestDashboardDataModelValidation(TestCase):
                 )
 
                 create_result = transform_entity_names(
-                    create_request, "CreateDashboardDataModelRequest"
+                    create_request, CreateDashboardDataModelRequest
                 )
                 self.assertEqual(create_result.name.root, encoded_name)
                 self.assertEqual(create_result.columns[0].name.root, encoded_name)
@@ -988,7 +987,7 @@ class TestDashboardDataModelValidation(TestCase):
                     ],
                 )
 
-                fetch_result = transform_entity_names(fetch_model, "DashboardDataModel")
+                fetch_result = transform_entity_names(fetch_model, DashboardDataModel)
                 self.assertEqual(fetch_result.name.root, original_name)
                 self.assertEqual(fetch_result.columns[0].name.root, original_name)
 

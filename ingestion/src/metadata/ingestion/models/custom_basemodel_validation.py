@@ -18,7 +18,6 @@ from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger("metadata")
 
-
 RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
@@ -51,37 +50,66 @@ def is_service_level_create_model(model_name: str) -> bool:
 
 
 # Explicit configuration for entity name transformations
-TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
-    # Fetch models - decode reserved keywords back to original characters
-    "Table": {
-        "fields": {"name", "columns", "children", "tableConstraints"},
-        "direction": TransformDirection.DECODE,
-    },
-    "DashboardDataModel": {
-        "fields": {"name", "columns", "children"},
-        "direction": TransformDirection.DECODE,
-    },
-    "CustomColumnName": {"fields": {"root"}, "direction": TransformDirection.DECODE},
-    # Create/Store models - encode special characters to reserved keywords
-    "ProfilerResponse": {
-        "fields": {"name", "profile"},
-        "direction": TransformDirection.ENCODE,
-    },
-    "TableData": {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
-    "ColumnName": {"fields": {"root"}, "direction": TransformDirection.ENCODE},
-    "CreateTableRequest": {
-        "fields": {"name", "columns", "children", "tableConstraints"},
-        "direction": TransformDirection.ENCODE,
-    },
-    "CreateDashboardDataModelRequest": {
-        "fields": {"name", "columns", "children"},
-        "direction": TransformDirection.ENCODE,
-    },
-    "ColumnProfile": {
-        "fields": {"name"},
-        "direction": TransformDirection.ENCODE,
-    },
-}
+# This dictionary will be populated lazily to avoid circular imports
+TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}
+
+
+def _initialize_transformable_entities():
+    """Initialize the transformable entities dictionary lazily to avoid circular imports"""
+    # Import all model classes here to avoid circular dependency at module load time
+    from metadata.generated.schema.api.data.createDashboardDataModel import (
+        CreateDashboardDataModelRequest,
+    )
+    from metadata.generated.schema.api.data.createTable import CreateTableRequest
+    from metadata.generated.schema.entity.data.dashboardDataModel import (
+        DashboardDataModel,
+    )
+    from metadata.generated.schema.entity.data.table import (
+        ColumnName,
+        ColumnProfile,
+        Table,
+        TableData,
+    )
+    from metadata.profiler.api.models import ProfilerResponse
+    from metadata.utils.entity_link import CustomColumnName
+
+    # Now populate the dictionary with the imported classes
+    TRANSFORMABLE_ENTITIES.update(
+        {
+            # Fetch models - decode reserved keywords back to original characters
+            Table: {
+                "fields": {"name", "columns", "children", "tableConstraints"},
+                "direction": TransformDirection.DECODE,
+            },
+            DashboardDataModel: {
+                "fields": {"name", "columns", "children"},
+                "direction": TransformDirection.DECODE,
+            },
+            CustomColumnName: {
+                "fields": {"root"},
+                "direction": TransformDirection.DECODE,
+            },
+            # Create/Store models - encode special characters to reserved keywords
+            ProfilerResponse: {
+                "fields": {"name", "profile"},
+                "direction": TransformDirection.ENCODE,
+            },
+            TableData: {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
+            ColumnName: {"fields": {"root"}, "direction": TransformDirection.ENCODE},
+            CreateTableRequest: {
+                "fields": {"name", "columns", "children", "tableConstraints"},
+                "direction": TransformDirection.ENCODE,
+            },
+            CreateDashboardDataModelRequest: {
+                "fields": {"name", "columns", "children"},
+                "direction": TransformDirection.ENCODE,
+            },
+            ColumnProfile: {
+                "fields": {"name"},
+                "direction": TransformDirection.ENCODE,
+            },
+        }
+    )
 
 
 def revert_separators(value):
@@ -100,14 +128,15 @@ def replace_separators(value):
     )
 
 
-def get_entity_config(model_name: str) -> Optional[Dict[str, Any]]:
+def get_entity_config(model: Optional[Any]) -> Optional[Dict[str, Any]]:
     """Get transformation configuration for entity"""
-    return TRANSFORMABLE_ENTITIES.get(model_name)
+    _initialize_transformable_entities()  # Ensure entities are loaded
+    return TRANSFORMABLE_ENTITIES.get(model)
 
 
-def get_transformer(model_name: str) -> Optional[Callable]:
+def get_transformer(model: Optional[Any]) -> Optional[Callable]:
     """Get the appropriate transformer function for model"""
-    config = get_entity_config(model_name)
+    config = get_entity_config(model)
     if not config:
         return None
 
@@ -153,8 +182,9 @@ def transform_all_names(obj, transformer):
         obj.name = transformer(name)
 
 
-def transform_entity_names(entity: Any, model_name: str) -> Any:
+def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
     """Transform entity names"""
+    model_name = model.__name__
     if not entity or (
         model_name.startswith("Create") and is_service_level_create_model(model_name)
     ):
@@ -170,7 +200,7 @@ def transform_entity_names(entity: Any, model_name: str) -> Any:
         return entity
 
     # Get model-specific transformer
-    transformer = get_transformer(model_name)
+    transformer = get_transformer(model)
     if not transformer:
         # Fallback to original logic for backward compatibility
         transformer = (

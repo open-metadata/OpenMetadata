@@ -76,9 +76,8 @@ class BaseModel(PydanticBaseModel):
             return values
 
         try:
-            model_name = cls.__name__
             # Try new hybrid system first
-            return transform_entity_names(values, model_name)
+            return transform_entity_names(entity=values, model=cls)
         except Exception as exc:
             logger.warning("Exception while parsing Basemodel: %s", exc)
             return values
