@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -543,7 +543,7 @@ class DbtSource(DbtServiceSource):
 
                     if (
                         dbt_objects.dbt_sources
-                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                        and resource_type == DbtCommonEnum.SOURCE.value
                     ):
                         self.add_dbt_sources(
                             key,
@@ -605,12 +605,17 @@ class DbtSource(DbtServiceSource):
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
+                    if resource_type == DbtCommonEnum.SOURCE.value:
+                        schema_name = "*"
+                    else:
+                        schema_name = get_corrected_name(manifest_node.schema_)
+
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
                         database_name=get_corrected_name(manifest_node.database),
-                        schema_name=get_corrected_name(manifest_node.schema_),
+                        schema_name=schema_name,
                         table_name=model_name,
                     )
 
@@ -689,12 +694,21 @@ class DbtSource(DbtServiceSource):
                             self.parse_upstream_nodes(manifest_entities, parent_node)
                         )
                     else:
+                        # If the node is a source node, then we need to use the schema name as *
+                        # This is because the source node is not a table, but a source of tables
+                        if (
+                            manifest_entities[node].resource_type
+                            == DbtCommonEnum.SOURCE.value
+                        ):
+                            schema_name = "*"
+                        else:
+                            schema_name = get_corrected_name(parent_node.schema_)
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
-                            schema_name=get_corrected_name(parent_node.schema_),
+                            schema_name=schema_name,
                             table_name=table_name,
                         )
 
@@ -707,20 +721,6 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
-
-        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
-            parent_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=get_corrected_name(dbt_node.database),
-                schema_name=get_corrected_name(dbt_node.schema_),
-                table_name=dbt_node.name,
-            )
-
-            # check if the parent table exists in OM before adding it to the upstream list
-            if self._get_table_entity(table_fqn=parent_fqn):
-                upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
 
