@@ -340,6 +340,7 @@ export const CURATED_ASSETS_LIST = [
   EntityType.DATABASE_SCHEMA,
   EntityType.DATA_PRODUCT,
   EntityType.GLOSSARY_TERM,
+  EntityType.KNOWLEDGE_PAGE,
   EntityType.METRIC,
   EntityType.MLMODEL,
   EntityType.PIPELINE,
