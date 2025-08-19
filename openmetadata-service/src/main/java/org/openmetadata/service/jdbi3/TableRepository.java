@@ -176,14 +176,23 @@ public class TableRepository extends EntityRepository<Table> {
               : table.getUsageSummary());
     }
     if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
-      // Use optimized batch fetching for single table too
-      Map<String, List<TagLabel>> prefixTags = getTagsByPrefix(table.getFullyQualifiedName(), ".%");
-      if (prefixTags != null && !prefixTags.isEmpty() && table.getColumns() != null) {
-        applyTagsToColumns(table.getColumns(), prefixTags, table.getFullyQualifiedName());
+      boolean needsTagFetch = false;
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          if (column.getTags() == null || column.getTags().isEmpty()) {
+            needsTagFetch = true;
+            break;
+          }
+        }
       }
-    } else if (fields.contains(COLUMN_FIELD)) {
-      // If only columns without tags
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), false);
+      
+      if (needsTagFetch) {
+        // Fallback to DB query only if tags are missing from JSON
+        Map<String, List<TagLabel>> prefixTags = getTagsByPrefix(table.getFullyQualifiedName(), ".%");
+        if (prefixTags != null && !prefixTags.isEmpty() && table.getColumns() != null) {
+          applyTagsToColumns(table.getColumns(), prefixTags, table.getFullyQualifiedName());
+        }
+      }
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -357,6 +366,26 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
+    
+    // IMPORTANT: Columns are ALWAYS returned as they are a core part of table structure
+    // Only clear column tags if tags are not requested
+    if (table.getColumns() != null && !fields.contains(FIELD_TAGS)) {
+      // Clear column tags when tags are not requested
+      for (Column column : table.getColumns()) {
+        clearColumnTags(column);
+      }
+    }
+    // Never clear columns themselves - they are always part of the table entity
+  }
+  
+  private void clearColumnTags(Column column) {
+    column.setTags(null);
+    // Recursively clear tags from nested columns if present
+    if (column.getChildren() != null) {
+      for (Column child : column.getChildren()) {
+        clearColumnTags(child);
+      }
+    }
   }
 
   @Override
@@ -929,10 +958,10 @@ public class TableRepository extends EntityRepository<Table> {
     EntityReference service = table.getService();
     table.withService(null);
 
-    // Don't store column tags as JSON but build it on the fly based on relationships
+    // HYBRID STORAGE: Keep column tags in JSON for fast reads
+    // Also store in tag_usage for referential integrity
+    // This avoids expensive LIKE queries on tag_usage table
     List<Column> columnWithTags = table.getColumns();
-    table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-    table.getColumns().forEach(column -> column.setTags(null));
 
     store(table, update);
 
@@ -974,7 +1003,10 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void validateTags(Table entity) {
     super.validateTags(entity);
-    validateColumnTags(entity.getColumns());
+    // Columns can be null when the columns field is not requested
+    if (entity.getColumns() != null) {
+      validateColumnTags(entity.getColumns());
+    }
   }
 
   @Override
@@ -982,7 +1014,10 @@ public class TableRepository extends EntityRepository<Table> {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    // Handle null columns gracefully (can be null when columns field not requested)
+    if (table.getColumns() != null) {
+      table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    }
     if (table.getDataModel() != null) {
       EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
       for (Column column : listOrEmpty(table.getDataModel().getColumns())) {

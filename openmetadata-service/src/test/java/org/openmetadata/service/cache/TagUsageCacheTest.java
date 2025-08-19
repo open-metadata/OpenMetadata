@@ -177,6 +177,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         TEST_TAG_FQN,
         TEST_TAG_FQN_HASH,
         testEntityFQNHash,
+        testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
 
@@ -201,6 +202,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
         TEST_TAG_FQN_HASH,
+        testEntityFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -239,6 +241,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
         TEST_TAG_FQN_HASH,
+        testEntityFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -305,6 +308,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
         TEST_TAG_FQN_HASH,
+        testEntityFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -384,6 +388,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
           TagSource.CLASSIFICATION.ordinal(),
           tagFQN,
           tagHash,
+          testEntityFQNHash,
           testEntityFQNHash,
           LabelType.MANUAL.ordinal(),
           State.CONFIRMED.ordinal());

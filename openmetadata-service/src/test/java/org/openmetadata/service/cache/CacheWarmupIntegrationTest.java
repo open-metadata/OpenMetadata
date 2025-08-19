@@ -201,6 +201,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
           tagFQN,
           tagHash,
           table.getFullyQualifiedName(),
+          table.getFullyQualifiedName(),
           LabelType.MANUAL.ordinal(),
           State.CONFIRMED.ordinal());
 
@@ -421,6 +422,7 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
           TagSource.CLASSIFICATION.ordinal(),
           testTagFQN,
           tagHash,
+          table.getFullyQualifiedName(),
           table.getFullyQualifiedName(),
           LabelType.MANUAL.ordinal(),
           State.CONFIRMED.ordinal());

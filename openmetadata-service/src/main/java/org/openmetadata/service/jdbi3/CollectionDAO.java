@@ -230,6 +230,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TagUsageDAO tagUsageDAO();
+  
+  @CreateSqlObject
+  EntityTagUpdateDAO entityTagUpdateDAO();
 
   @CreateSqlObject
   TagDAO tagDAO();
@@ -3986,16 +3989,17 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQN, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQN, :targetFQNHash, :labelType, :state)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQN, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQN, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
         @Bind("tagFQN") String tagFQN,
         @BindFQN("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQN") String targetFQN,
         @BindFQN("targetFQNHash") String targetFQNHash,
         @Bind("labelType") int labelType,
         @Bind("state") int state);
@@ -4065,15 +4069,16 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT /*+ INDEX(tu idx_tag_usage_target_fqn_hash) */ tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
                 + "END as json "
-                + "FROM tag_usage tu FORCE INDEX (idx_tag_usage_target_fqn_hash) "
+                + "FROM tag_usage tu FORCE INDEX (idx_tag_usage_prefix_covering) "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE tu.targetFQNPrefix = LEFT(:targetFQNHash, 16) "
+                + "AND tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -4085,7 +4090,8 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
+                + "WHERE LEFT(tu.targetFQNHash, 16) = LEFT(:targetFQNHash, 16) "
+                + "AND tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -4286,6 +4292,9 @@ public interface CollectionDAO {
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
+    
+    @SqlQuery("select DISTINCT targetFQN FROM tag_usage where tagFQN = :tagFQN")
+    List<String> getTargetFQNsForTag(@Bind("tagFQN") String tagFQN);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
@@ -4445,6 +4454,7 @@ public interface CollectionDAO {
       List<Integer> sources = new ArrayList<>();
       List<String> tagFQNs = new ArrayList<>();
       List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNs = new ArrayList<>();
       List<String> targetFQNHashes = new ArrayList<>();
       List<Integer> labelTypes = new ArrayList<>();
       List<Integer> states = new ArrayList<>();
@@ -4453,27 +4463,29 @@ public interface CollectionDAO {
         sources.add(tagLabel.getSource().ordinal());
         tagFQNs.add(tagLabel.getTagFQN());
         tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+        targetFQNs.add(targetFQN);
         targetFQNHashes.add(targetFQNHash);
         labelTypes.add(tagLabel.getLabelType().ordinal());
         states.add(tagLabel.getState().ordinal());
       }
 
-      applyTagsBatchInternal(sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+      applyTagsBatchInternal(sources, tagFQNs, tagFQNHashes, targetFQNs, targetFQNHashes, labelTypes, states);
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQN, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQN, :targetFQNHash, :labelType, :state)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQN, targetFQNHash, labelType, state) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQN, :targetFQNHash, :labelType, :state) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
         @Bind("tagFQN") List<String> tagFQNs,
         @Bind("tagFQNHash") List<String> tagFQNHashes,
+        @Bind("targetFQN") List<String> targetFQNs,
         @Bind("targetFQNHash") List<String> targetFQNHashes,
         @Bind("labelType") List<Integer> labelTypes,
         @Bind("state") List<Integer> states);
@@ -4748,6 +4760,49 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+  }
+  
+  interface EntityTagUpdateDAO {
+    /**
+     * Updates glossary term FQNs in entity JSONs when a glossary term is renamed or moved.
+     * This method updates all occurrences of the old FQN with the new FQN in the JSON.
+     */
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
+            + "WHERE <nameHashColumn> = :targetFqnHash "
+            + "AND json LIKE '%\"<oldFqn>\"%'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
+            + "WHERE <nameHashColumn> = :targetFqnHash "
+            + "AND json::text LIKE '%\"<oldFqn>\"%'",
+        connectionType = POSTGRES)
+    int updateTagFqnInEntityJson(
+        @Define("table") String table,
+        @Define("nameHashColumn") String nameHashColumn,
+        @Define("oldFqn") String oldFqn,
+        @Define("newFqn") String newFqn,
+        @BindFQN("targetFqnHash") String targetFqnHash);
+    
+    /**
+     * Updates glossary term FQNs in entity JSONs for multiple entities at once.
+     */
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
+            + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
+            + "AND json LIKE '%\"<oldFqn>\"%'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
+            + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
+            + "AND json::text LIKE '%\"<oldFqn>\"%'",
+        connectionType = POSTGRES)
+    int updateTagFqnInEntityJsonBatch(
+        @Define("table") String table,
+        @Define("nameHashColumn") String nameHashColumn,
+        @Define("oldFqn") String oldFqn,
+        @Define("newFqn") String newFqn,
+        @BindListFQN("targetFqnHashes") List<String> targetFqnHashes);
   }
 
   @RegisterRowMapper(UsageDetailsMapper.class)
