@@ -80,6 +80,9 @@ source:
         includes:
           - Supplier Quality Analysis Sample
           - "Customer"
+      lineageInformation:
+        dbServicePrefixes:
+          - ingested_db_service_name
 sink:
   type: metadata-rest
   config: {}
