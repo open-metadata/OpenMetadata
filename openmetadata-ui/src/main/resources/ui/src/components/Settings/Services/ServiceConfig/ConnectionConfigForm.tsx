@@ -37,6 +37,7 @@ import {
   getFilteredSchema,
   getUISchemaWithNestedDefaultFilterFieldsHidden,
 } from '../../../../utils/ServiceConnectionUtils';
+import { shouldTestConnection } from '../../../../utils/ServiceUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
@@ -60,10 +61,17 @@ const ConnectionConfigForm = ({
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
+  const { isAirflowAvailable, platform } = useAirflowStatus();
+  const allowTestConn = useMemo(() => {
+    return shouldTestConnection(serviceType);
+  }, [serviceType]);
+
+  const [hasTestedConnection, setHasTestedConnection] = useState(
+    !isAirflowAvailable || !allowTestConn || disableTestConnection
+  );
 
   const formRef = useRef<Form<ConfigData>>(null);
 
-  const { isAirflowAvailable, platform } = useAirflowStatus();
   const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
@@ -153,6 +161,10 @@ const ConnectionConfigForm = ({
     }
   }, [formRef.current?.state?.formData]);
 
+  const handleTestConnection = () => {
+    setHasTestedConnection(true);
+  };
+
   return (
     <Fragment>
       <AirflowMessageBanner />
@@ -160,6 +172,7 @@ const ConnectionConfigForm = ({
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={validConfig}
+        hasTestedConnection={hasTestedConnection}
         okText={okText ?? ''}
         ref={formRef}
         schema={schemaWithoutDefaultFilterPatternFields}
@@ -190,19 +203,18 @@ const ConnectionConfigForm = ({
             type="info"
           />
         )}
-        {!isEmpty(connSch.schema) &&
-          isAirflowAvailable &&
-          formRef.current?.state?.formData && (
-            <TestConnection
-              connectionType={serviceType}
-              getData={() => formRef.current?.state?.formData}
-              hostIp={hostIp}
-              isTestingDisabled={disableTestConnection}
-              serviceCategory={serviceCategory}
-              serviceName={data?.name}
-              onValidateFormRequiredFields={handleRequiredFieldsValidation}
-            />
-          )}
+        {!isEmpty(connSch.schema) && (
+          <TestConnection
+            connectionType={serviceType}
+            getData={() => formRef.current?.state?.formData}
+            hostIp={hostIp}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={data?.name}
+            onTestConnection={handleTestConnection}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
         {!isUndefined(inlineAlertDetails) && (
           <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
         )}
