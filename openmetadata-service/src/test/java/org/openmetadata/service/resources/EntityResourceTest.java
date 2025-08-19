@@ -44,6 +44,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.RdfTestUtils.*;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
@@ -202,6 +203,7 @@ import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -4526,6 +4528,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
+
+    // Verify entity is removed from RDF if enabled
+    // Note: Some entities like DataProduct don't support soft delete and are always hard deleted
+    boolean actuallyHardDeleted = hardDelete || !supportsSoftDelete;
+
+    if (!actuallyHardDeleted) {
+      // For soft delete, entity should still exist but marked as deleted
+      verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+    } else {
+      // For hard delete, entity should not exist in RDF
+      verifyEntityNotInRdf(entity.getFullyQualifiedName());
+    }
+
     return entity;
   }
 
@@ -4617,6 +4632,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Validate that change event was created
     validateChangeEvents(
         entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+
+    // Verify entity in RDF if enabled
+    verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+
     return entity;
   }
 
@@ -4771,6 +4790,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 
@@ -4811,6 +4848,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 

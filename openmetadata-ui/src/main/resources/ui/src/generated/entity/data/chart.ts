@@ -312,6 +312,7 @@ export enum ChartType {
     Map = "Map",
     Other = "Other",
     Pie = "Pie",
+    SANKey = "SanKey",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",

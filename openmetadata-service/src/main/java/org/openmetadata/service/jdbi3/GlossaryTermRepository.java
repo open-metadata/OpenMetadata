@@ -648,7 +648,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  protected void postDelete(GlossaryTerm entity) {
+  protected void postDelete(GlossaryTerm entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this glossary term
     daoCollection
         .tagUsageDAO()

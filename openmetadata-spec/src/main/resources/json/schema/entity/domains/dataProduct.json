@@ -7,6 +7,100 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "lifecycleStage": {
+      "description": "Lifecycle stage of the data product",
+      "type": "string",
+      "enum": ["IDEATION", "DESIGN", "DEVELOPMENT", "TESTING", "PRODUCTION", "DEPRECATED", "RETIRED"],
+      "default": "DEVELOPMENT"
+    },
+    "portType": {
+      "description": "Type of the data product port",
+      "type": "string",
+      "enum": ["INPUT", "OUTPUT"]
+    },
+    "portProtocol": {
+      "description": "Protocol used by the port for data access",
+      "type": "string",
+      "enum": ["REST", "GRPC", "GRAPHQL", "JDBC", "KAFKA", "FILE", "S3", "AZURE_BLOB", "GCS", "WEBHOOK", "CUSTOM"],
+      "default": "REST"
+    },
+    "portFormat": {
+      "description": "Data format supported by the port",
+      "type": "string",
+      "enum": ["JSON", "CSV", "PARQUET", "AVRO", "ORC", "XML", "PROTOBUF", "DELTA", "ICEBERG", "CUSTOM"],
+      "default": "JSON"
+    },
+    "dataProductPort": {
+      "description": "Port definition for data product input/output",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the port",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the port",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the port",
+          "type": "string"
+        },
+        "portType": {
+          "$ref": "#/definitions/portType"
+        },
+        "protocol": {
+          "$ref": "#/definitions/portProtocol"
+        },
+        "format": {
+          "$ref": "#/definitions/portFormat"
+        },
+        "endpoint": {
+          "description": "Endpoint URL or connection string",
+          "type": "string"
+        },
+        "dataAsset": {
+          "description": "Reference to the data asset exposed through this port",
+          "$ref": "../../type/entityReference.json"
+        }
+      },
+      "required": ["name", "portType"],
+      "additionalProperties": false
+    },
+    "slaDefinition": {
+      "description": "Service Level Agreement definition",
+      "type": "object",
+      "properties": {
+        "tier": {
+          "description": "SLA tier (e.g., GOLD, SILVER, BRONZE)",
+          "type": "string",
+          "enum": ["GOLD", "SILVER", "BRONZE", "CUSTOM"]
+        },
+        "availability": {
+          "description": "Expected availability percentage (e.g., 99.9)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "responseTime": {
+          "description": "Expected response time in milliseconds",
+          "type": "integer"
+        },
+        "dataFreshness": {
+          "description": "Maximum data staleness in minutes",
+          "type": "integer"
+        },
+        "dataQuality": {
+          "description": "Minimum data quality score",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique ID of the Data Product",
@@ -67,6 +161,40 @@
     "assets": {
       "description": "Data assets collection that is part of this data product.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "inputPorts": {
+      "description": "Input ports for consuming data into this data product",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataProductPort"
+      },
+      "default": []
+    },
+    "outputPorts": {
+      "description": "Output ports for exposing data from this data product",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataProductPort"
+      },
+      "default": []
+    },
+    "lifecycleStage": {
+      "description": "Current lifecycle stage of the data product",
+      "$ref": "#/definitions/lifecycleStage"
+    },
+    "sla": {
+      "description": "Service Level Agreement for this data product",
+      "$ref": "#/definitions/slaDefinition"
+    },
+    "consumesFrom": {
+      "description": "Other data products that this product consumes data from",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": []
+    },
+    "providesTo": {
+      "description": "Other data products that consume data from this product",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": []
     },
     "tags": {
       "description": "Tags associated with the Data Product.",

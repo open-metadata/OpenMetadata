@@ -175,8 +175,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  protected void postDelete(DataContract dataContract) {
-    super.postDelete(dataContract);
+  protected void postDelete(DataContract dataContract, boolean hardDelete) {
+    super.postDelete(dataContract, hardDelete);
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       deleteTestSuite(dataContract);
     }

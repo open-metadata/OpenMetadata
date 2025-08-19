@@ -318,7 +318,8 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  protected void postDelete(Tag entity) {
+  protected void postDelete(Tag entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this tag
     daoCollection
         .tagUsageDAO()
