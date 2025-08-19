@@ -138,7 +138,7 @@
   }
 }
 
-.ant-select.custom-control-search-box-edit-mode {
+.lineage-header-edit-mode {
   margin-left: @lineage-sidebar-width;
 }
 
@@ -278,7 +278,7 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
-  height: calc(100vh - @om-navbar-height - @lineage-card-header-height);
+  height: calc(100vh - @om-navbar-height);
 
   &.sidebar-collapsed {
     left: calc(72px + @padding-md);
@@ -297,10 +297,6 @@
       ); // 120px for card header and breadcrumb
     }
     overflow-y: scroll;
-  }
-
-  .entity-lineage.sidebar {
-    top: @lineage-breadcrumb-panel;
   }
 
   .entity-panel-container {
