@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Cube:cube xmlns:Cube="http://www.sap.com/ndb/BiModelCube.ecore" schemaVersion="1.5" id="AN_ORDERS" applyPrivilegeType="ANALYTIC_PRIVILEGE" checkAnalyticPrivileges="true" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled">
+  <origin/>
+  <descriptions defaultDescription="AN_ORDERS_label"/>
+  <metadata changedAt="2025-08-16 15:45:36.965"/>
+  <localVariables>
+    <variable id="TOTAL_AN_COLUMN" parameter="true">
+      <descriptions defaultDescription="TOTAL_AN_COLUMN"/>
+      <variableProperties datatype="DECIMAL" defaultExpressionLanguage="COLUMN_ENGINE" mandatory="false">
+        <valueDomain type="UnitOfMeasure"/>
+        <selection multiLine="false" type="SingleValue"/>
+        <defaultExpression>PRICE * QUANTITY</defaultExpression>
+      </variableProperties>
+    </variable>
+  </localVariables>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <privateMeasureGroup id="MeasureGroup">
+    <attributes>
+      <attribute id="CUSTOMER_ID_1" order="6" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="CUSTOMER_ID_1"/>
+        <keyMapping schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA" columnName="CUSTOMER_ID"/>
+      </attribute>
+      <attribute id="NAME" order="7" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="NAME"/>
+        <keyMapping schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA" columnName="NAME"/>
+      </attribute>
+      <attribute id="EMAIL" order="8" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="EMAIL"/>
+        <keyMapping schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA" columnName="EMAIL"/>
+      </attribute>
+      <attribute id="IS_ACTIVE" order="9" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="IS_ACTIVE"/>
+        <keyMapping schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA" columnName="IS_ACTIVE"/>
+      </attribute>
+      <attribute id="SIGNUP_DATE" order="10" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="SIGNUP_DATE"/>
+        <keyMapping schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA" columnName="SIGNUP_DATE"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes/>
+    <privateDataFoundation>
+      <tableProxies>
+        <tableProxy centralTable="true">
+          <table schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS"/>
+        </tableProxy>
+        <tableProxy>
+          <table schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA"/>
+        </tableProxy>
+      </tableProxies>
+      <joins>
+        <join>
+          <leftTable schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS"/>
+          <rightTable schemaName="SOURCE_SCHEMA" columnObjectName="CUSTOMER_DATA"/>
+          <leftColumns>
+            <columnName>CUSTOMER_ID</columnName>
+          </leftColumns>
+          <rightColumns>
+            <columnName>CUSTOMER_ID</columnName>
+          </rightColumns>
+          <properties joinOperator="Equal" joinType="referential"/>
+        </join>
+      </joins>
+      <layout>
+        <shapes>
+          <shape modelObjectName="ORDERS" modelObjectNameSpace="SOURCE_SCHEMA" modelObjectType="catalog">
+            <upperLeftCorner x="70" y="30"/>
+          </shape>
+          <shape modelObjectName="CUSTOMER_DATA" modelObjectNameSpace="SOURCE_SCHEMA" modelObjectType="catalog">
+            <upperLeftCorner x="330" y="30"/>
+          </shape>
+        </shapes>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="ORDER_DATE" order="1" aggregationType="count" engineAggregation="count" measureType="simple">
+        <descriptions defaultDescription="ORDER_DATE"/>
+        <measureMapping schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS" columnName="ORDER_DATE"/>
+      </measure>
+      <measure id="PRICE" order="2" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS" columnName="PRICE"/>
+      </measure>
+      <measure id="QUANTITY" order="3" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="QUANTITY"/>
+        <measureMapping schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS" columnName="QUANTITY"/>
+      </measure>
+      <measure id="CUSTOMER_ID" order="4" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS" columnName="CUSTOMER_ID"/>
+      </measure>
+      <measure id="ORDER_ID" order="5" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <measureMapping schemaName="SOURCE_SCHEMA" columnObjectName="ORDERS" columnName="ORDER_ID"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <sharedDimensions/>
+    <layout>
+      <shapes>
+        <shape modelObjectName="MEASURE_GROUP" modelObjectType="repository">
+          <upperLeftCorner x="176" y="132"/>
+        </shape>
+        <shape modelObjectName="LogicalView" modelObjectNameSpace="MeasureGroup" modelObjectType="repository">
+          <upperLeftCorner x="40" y="85"/>
+          <rectangleSize/>
+        </shape>
+      </shapes>
+    </layout>
+  </privateMeasureGroup>
+</Cube:cube>
