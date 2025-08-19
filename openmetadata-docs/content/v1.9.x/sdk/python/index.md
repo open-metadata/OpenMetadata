@@ -13,10 +13,10 @@ We are now going to present a high-level Python API as a type-safe and gentle wr
 The Python SDK is part of the `openmetadata-ingestion` base package. You can install it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
 Make sure to use the same `openmetadata-ingestion` version as your server version. For example, if you have the OpenMetadata
-server at version 1.9.0, you will need to install:
+server at version 1.9.1, you will need to install:
 
 ```python
-pip install "openmetadata-ingestion~=1.9.0.0"
+pip install "openmetadata-ingestion~=1.9.1.0"
 ```
 
 {% /note %}
@@ -278,6 +278,16 @@ Executing the actual creation is easy! As our `create_service` variable already 
 ```python
 service_entity = metadata.create_or_update(data=create_service)
 ```
+
+{% note %}
+
+**Important:** The `create_or_update()` method uses PUT operations with server-side business rules that may prevent certain field overwrites for data integrity reasons. This applies to various entities where certain fields are protected for business or data integrity purposes.
+
+If you need to override existing metadata fields, consider using patch methods instead:
+- For descriptions: Use `patch_description(force=True)`
+- For general metadata: Use `patch(override_metadata=True)`
+
+{% /note %}
 
 Moreover, running a `create_or_update` will return us the Entity type, so we can explore its attributes easily:
 
