@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -2929,6 +2930,72 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertNull(columnProfile.getMin());
     }
     assertEquals(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
+  }
+
+  @Test
+  void test_sensitivePIIColumnProfile_byGetColumns(TestInfo test) throws Exception {
+    // Arrange: create 2 profiled tables owned by USER1
+    Table table =
+        createEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table1 =
+        createEntity(
+            createRequest(test, 1).withOwners(List.of(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    // Seed table/column profiles (C1, C2, C3)
+    putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
+
+    // Tag C3 as PII.Sensitive and persist
+    Column c3 =
+        table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().orElseThrow();
+    String c3FQN = c3.getFullyQualifiedName();
+    List<TagLabel> c3Tags = new ArrayList<>(listOrEmpty(c3.getTags()));
+    c3Tags.add(
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION));
+    c3.setTags(c3Tags);
+    patchEntity(table.getId(), JsonUtils.pojoToJson(table), table, ADMIN_AUTH_HEADERS);
+
+    // Build the base target to fetch columns (requesting tags + profile fields)
+    WebTarget baseColumnsTarget =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "1000")
+            .queryParam("offset", "0")
+            .queryParam("fields", "tags,profile")
+            .queryParam("include", "non-deleted");
+
+    // --- Owner call: USER1 should see C3 profile values
+    TableResource.TableColumnList ownerResp =
+        TestUtils.get(
+            baseColumnsTarget, TableResource.TableColumnList.class, authHeaders(USER1.getName()));
+
+    Column ownerC3 =
+        ownerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for owner in /{id}/columns"));
+
+    assertNotNull(ownerC3.getProfile(), "Owner should see a column profile object for C3");
+    assertNotNull(ownerC3.getProfile().getMin(), "Owner should see min for PII column");
+    assertNotNull(ownerC3.getProfile().getMax(), "Owner should see max for PII column");
+
+    // --- Non-owner call: USER2 should get masked stats for C3
+    TableResource.TableColumnList nonOwnerResp =
+        TestUtils.get(
+            baseColumnsTarget,
+            TableResource.TableColumnList.class,
+            authHeaders(USER2_REF.getName()));
+
+    Column nonOwnerC3 =
+        nonOwnerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for non-owner in /{id}/columns"));
+
+    assertNull(
+        nonOwnerC3.getProfile(),
+        "Non-owner should NOT receive a profile object for PII-sensitive column");
   }
 
   @Test
