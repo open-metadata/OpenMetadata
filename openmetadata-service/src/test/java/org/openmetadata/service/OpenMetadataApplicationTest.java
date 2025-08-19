@@ -507,12 +507,9 @@ public abstract class OpenMetadataApplicationTest {
   private static void setupRdfIfEnabled() {
     String enableRdf = System.getProperty("enableRdf");
     String rdfContainerImage = System.getProperty("rdfContainerImage");
-    enableRdf = "true";
     if ("true".equals(enableRdf)) {
       LOG.info("RDF is enabled for tests. Starting Fuseki container...");
-
       if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
-        // Using the same image as in docker-compose
         rdfContainerImage = "stain/jena-fuseki:latest";
       }
 

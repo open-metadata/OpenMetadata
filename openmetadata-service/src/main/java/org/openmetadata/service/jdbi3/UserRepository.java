@@ -1154,12 +1154,30 @@ public class UserRepository extends EntityRepository<User> {
       // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
       EntityReference originalDefaultPersona =
           getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
-      if (originalDefaultPersona != null) {
-        // Delete the relationship: persona --DEFAULTS_TO--> user
-        deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+
+      EntityReference updatedDefaultPersona = updated.getDefaultPersona();
+      PersonaRepository personaRepository =
+          (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+      Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
+
+      // Only process defaultPersona changes if it's not just the system providing a default value
+      // If the updated default persona is the system default and the original had no explicit
+      // default,
+      // then this is not an actual change - it's just the system providing a default value
+      boolean isSystemDefaultBeingApplied =
+          updatedDefaultPersona != null
+              && systemDefaultPersona != null
+              && updatedDefaultPersona.getId().equals(systemDefaultPersona.getId())
+              && originalDefaultPersona == null;
+
+      if (!isSystemDefaultBeingApplied) {
+        if (originalDefaultPersona != null) {
+          // Delete the relationship: persona --DEFAULTS_TO--> user
+          deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+        }
+        assignDefaultPersona(updated, updatedDefaultPersona);
+        recordChange("defaultPersona", originalDefaultPersona, updatedDefaultPersona, true);
       }
-      assignDefaultPersona(updated, updated.getDefaultPersona());
-      recordChange("defaultPersona", originalDefaultPersona, updated.getDefaultPersona(), true);
     }
 
     private void updatePersonaPreferences(User original, User updated) {
@@ -1176,15 +1194,17 @@ public class UserRepository extends EntityRepository<User> {
         PersonaRepository personaRepository =
             (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
         Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
-        UUID systemDefaultPersonaId = systemDefaultPersona != null ? systemDefaultPersona.getId() : null;
+        UUID systemDefaultPersonaId =
+            systemDefaultPersona != null ? systemDefaultPersona.getId() : null;
 
         for (var pref : updatedPreferences) {
           // Allow preferences for assigned personas OR system default persona
           boolean isAssignedPersona = assignedPersonaIds.contains(pref.getPersonaId());
-          boolean isSystemDefaultPersona = systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
-          
+          boolean isSystemDefaultPersona =
+              systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
+
           if (!isAssignedPersona && !isSystemDefaultPersona) {
-            throw new BadRequestException(
+            LOG.warn(
                 "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
           }
           if (pref.getLandingPageSettings() != null) {
