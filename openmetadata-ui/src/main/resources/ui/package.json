@@ -131,6 +131,8 @@
     "tinycolor2": "^1.6.0",
     "turndown": "^7.1.2",
     "use-analytics": "1.1.0",
+    "vis-data": "^7.1.4",
+    "vis-network": "^9.1.6",
     "zustand": "^4.5.0"
   },
   "browserslist": {
@@ -152,7 +154,7 @@
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-react": "^7.10.4",
     "@estruyf/github-actions-reporter": "^1.7.0",
-    "@playwright/test": "1.48.2",
+    "@playwright/test": "1.51.1",
     "@svgr/webpack": "^6.5.0",
     "@testing-library/jest-dom": "^5.11.10",
     "@testing-library/react": "^14.2.1",
