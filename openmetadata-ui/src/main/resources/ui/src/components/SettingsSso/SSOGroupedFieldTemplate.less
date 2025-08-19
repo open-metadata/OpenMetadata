@@ -10,40 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../styles/variables.less';
 
 .sso-field-group-box {
-  background: #f8f9fc;
-  border: 1px solid #e8eaed;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
+  background: @grey-9;
+  border: 1px solid @grey-200;
+  border-radius: @border-rad-xs;
+  padding: @size-mlg;
+  margin-bottom: @size-md;
 
-  // Hide the box if it has the hidden class
   &.hidden {
     display: none !important;
   }
 
-  // Hide any nested hidden elements
   .hidden {
     display: none !important;
   }
 
   .group-title-header {
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e8eaed;
+    margin-bottom: @size-md;
+    padding-bottom: @size-xs;
+    border-bottom: 1px solid @grey-200;
 
     .group-title-label {
-      font-size: 14px;
+      font-size: @font-size-base;
       font-weight: 600;
-      color: #202124;
+      color: @grey-900;
       margin: 0;
       text-transform: none;
     }
   }
 
   .property-wrapper {
-    margin-bottom: 20px;
+    margin-bottom: @size-mlg;
 
     .form-group {
       margin-bottom: 0;
@@ -54,66 +53,55 @@
     }
   }
 
-  // Add spacing between field group boxes
   &.sso-field-group-spaced {
-    margin-top: 16px; // Reduced spacing to minimize empty spaces
+    margin-top: @size-md;
   }
 
-  // Remove bottom margin from the last group box
   &:last-child {
     margin-bottom: 0;
   }
 
-  // Subtle hover effect for better interactivity
-  &:hover {
-    border-color: #dadce0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
-
-  // Ensure form fields have white background on the light gray box background
   .form-control,
   .ant-select-selector,
   .ant-input {
-    background-color: #ffffff;
-    border: 1px solid #dadce0;
+    background-color: @background-color;
+    border: 1px solid @grey-300;
 
     &:hover {
-      border-color: #4096ff;
+      border-color: @primary-color;
     }
 
     &:focus {
-      border-color: #4096ff;
-      box-shadow: 0 0 0 2px rgba(64, 150, 255, 0.2);
+      border-color: @primary-color;
+      box-shadow: 0 0 0 @size-xxs @primary-1;
     }
   }
 
-  // Radio button styling on light background
   .ant-radio-wrapper {
     .ant-radio {
       .ant-radio-inner {
-        background-color: #ffffff;
-        border-color: #dadce0;
+        background-color: @background-color;
+        border-color: @grey-300;
       }
 
       &.ant-radio-checked {
         .ant-radio-inner {
-          background-color: #4096ff;
-          border-color: #4096ff;
+          background-color: @primary-color;
+          border-color: @primary-color;
         }
       }
 
       &:hover .ant-radio-inner {
-        border-color: #4096ff;
+        border-color: @primary-color;
       }
     }
   }
 
-  // Special styling for LDAP/SAML groups - keeps background but removes border to avoid nested box effect
   &.ldap-saml-group {
     border: none;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: @border-rad-xs;
+    padding: @size-mlg;
+    margin-bottom: @size-md;
     box-shadow: none;
 
     &:hover {
@@ -124,7 +112,6 @@
 }
 
 .default-object-field {
-  // No background for nested objects - use default transparent styling
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -132,7 +119,7 @@
   box-shadow: none !important;
 
   .property-wrapper {
-    margin-bottom: 16px;
+    margin-bottom: @size-md;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
@@ -148,11 +135,10 @@
     }
   }
 
-  // Ensure no nested backgrounds appear
   .sso-field-group-box {
-    background: #f8f9fc;
+    background: @grey-9;
     border: none;
-
-    padding: 16px;
+    border-radius: @border-rad-sm;
+    padding: @size-md;
   }
 }

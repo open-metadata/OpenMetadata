@@ -19,9 +19,9 @@
 
   &-divider {
     position: absolute;
-    right: 36px;
+    right: @size-xl;
     top: 0;
-    min-height: 32px;
+    min-height: @size-2xl;
     height: 100%;
     border-left: 1px solid @grey-22;
     margin-top: @size-xxs;
@@ -31,7 +31,7 @@
     position: absolute;
     right: 0;
     &.ant-btn-icon-only.ant-btn-sm {
-      padding: 10px 0px;
+      padding: @size-xs 0px;
       text-align: center;
       &:hover,
       &:focus,
@@ -61,7 +61,7 @@
     border: 1px solid @blue-30;
     border-radius: @border-rad-xs;
     margin: 0px;
-    height: 30px;
+    height: @size-xl;
     color: @grey-900;
     font-size: @size-sm;
     font-weight: @font-medium;
@@ -89,6 +89,16 @@
   }
 
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
-    border-radius: 8px;
+    border-radius: @border-rad-xs;
+  }
+}
+.array-field-label {
+  color: @grey-700;
+  font-weight: 500;
+  font-size: @font-size-base;
+
+  .required {
+    color: @red-21;
+    margin-left: @size-xxs;
   }
 }

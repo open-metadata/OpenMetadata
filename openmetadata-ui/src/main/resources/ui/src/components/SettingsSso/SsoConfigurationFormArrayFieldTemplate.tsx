@@ -116,7 +116,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   return (
     <Row>
       <Col span={24}>
-        <Typography>{startCase(props.name)}</Typography>
+        <Typography className="array-field-label">
+          {startCase(props.name)}
+        </Typography>
       </Col>
       <Col className="sso-select-container" span={24}>
         <Select

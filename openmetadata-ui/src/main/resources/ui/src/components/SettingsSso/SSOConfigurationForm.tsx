@@ -835,57 +835,59 @@ const SSOConfigurationFormRJSF = ({
       className="content-height-with-resizable-panel"
       firstPanel={{
         children: (
-          <Card
-            className="sso-configuration-form-card flex-col p-0"
-            data-testid="sso-configuration-form-card">
-            {/* SSO Provider Header */}
-            {currentProvider && (
-              <div className="sso-provider-form-header flex items-center">
-                <div className="flex align-items-center gap-2 flex items-center">
-                  <div className="provider-icon-container">
-                    {getProviderIcon(currentProvider) && (
-                      <img
-                        alt={getProviderDisplayName(currentProvider)}
-                        height="32"
-                        src={getProviderIcon(currentProvider)}
-                        width="32"
-                      />
-                    )}
+          <>
+            <Card
+              className="sso-configuration-form-card flex-col p-0"
+              data-testid="sso-configuration-form-card">
+              {/* SSO Provider Header */}
+              {currentProvider && (
+                <div className="sso-provider-form-header flex items-center">
+                  <div className="flex align-items-center gap-2 flex items-center">
+                    <div className="provider-icon-container">
+                      {getProviderIcon(currentProvider) && (
+                        <img
+                          alt={getProviderDisplayName(currentProvider)}
+                          height="32"
+                          src={getProviderIcon(currentProvider)}
+                          width="32"
+                        />
+                      )}
+                    </div>
+                    <Typography.Title className="m-0 text-md" level={4}>
+                      {getProviderDisplayName(currentProvider)}
+                    </Typography.Title>
                   </div>
-                  <Typography.Title className="m-0 text-md" level={4}>
-                    {getProviderDisplayName(currentProvider)}
-                  </Typography.Title>
                 </div>
-              </div>
-            )}
-            {isEditMode && showForm && (
-              <Form
-                focusOnFirstError
-                noHtml5Validate
-                className="rjsf no-header"
-                fields={customFields}
-                formData={internalData}
-                idSeparator="/"
-                schema={schema}
-                showErrorList={false}
-                templates={{
-                  DescriptionFieldTemplate: DescriptionFieldTemplate,
-                  FieldErrorTemplate: FieldErrorTemplate,
-                  ObjectFieldTemplate: SSOGroupedFieldTemplate,
-                }}
-                transformErrors={transformErrors}
-                uiSchema={{
-                  ...uiSchema,
-                  'ui:submitButtonOptions': {
-                    submitText: '',
-                    norender: true,
-                  },
-                }}
-                validator={validator}
-                widgets={widgets}
-                onChange={handleOnChange}
-              />
-            )}
+              )}
+              {isEditMode && showForm && (
+                <Form
+                  focusOnFirstError
+                  noHtml5Validate
+                  className="rjsf no-header"
+                  fields={customFields}
+                  formData={internalData}
+                  idSeparator="/"
+                  schema={schema}
+                  showErrorList={false}
+                  templates={{
+                    DescriptionFieldTemplate: DescriptionFieldTemplate,
+                    FieldErrorTemplate: FieldErrorTemplate,
+                    ObjectFieldTemplate: SSOGroupedFieldTemplate,
+                  }}
+                  transformErrors={transformErrors}
+                  uiSchema={{
+                    ...uiSchema,
+                    'ui:submitButtonOptions': {
+                      submitText: '',
+                      norender: true,
+                    },
+                  }}
+                  validator={validator}
+                  widgets={widgets}
+                  onChange={handleOnChange}
+                />
+              )}
+            </Card>
             {isEditMode && (
               <div className="form-actions-bottom">
                 <Button
@@ -898,7 +900,7 @@ const SSOConfigurationFormRJSF = ({
                 </Button>
               </div>
             )}
-          </Card>
+          </>
         ),
         minWidth: 700,
         flex: 0.7,

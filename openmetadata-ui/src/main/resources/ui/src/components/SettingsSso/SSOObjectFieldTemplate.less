@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 @import (reference) '../../styles/variables.less';
 
 .sso-field-group {
@@ -51,6 +50,11 @@
         color: @grey-900;
         margin-bottom: @padding-xs;
         display: block;
+
+        .required {
+          color: @red-21;
+          margin-left: @size-xxs;
+        }
       }
 
       .form-control {
@@ -58,12 +62,12 @@
         border-radius: @border-rad-xs;
         padding: @padding-mlg @padding-md;
         font-size: @font-size-base;
-        line-height: 20px;
+        line-height: @size-mlg;
         transition: border-color 0.2s ease;
 
         &:focus {
           border-color: @primary-color;
-          box-shadow: 0 0 0 1px @primary-color;
+          box-shadow: 0 0 0 @size-xxs @primary-color;
           outline: none;
         }
 
@@ -112,28 +116,45 @@
           }
 
           .ant-select-selection-search-input {
-            height: 20px;
+            height: @size-mlg;
           }
         }
 
         &.ant-select-focused {
           .ant-select-selector {
             border-color: @primary-color !important;
-            box-shadow: 0 0 0 1px @primary-color !important;
+            box-shadow: 0 0 0 @size-xxs @primary-color !important;
           }
         }
       }
     }
   }
 
-  // Special styling for the first group (remove top margin)
   &:first-of-type {
     margin-top: 0;
   }
 
-  // Hover effect for better interactivity
   &:hover {
     border-color: @grey-300;
     box-shadow: @box-shadow-base;
+  }
+
+  .required,
+  .field-required {
+    color: @red-21;
+  }
+
+  .array-item-label,
+  .field-array .control-label {
+    font-weight: 500;
+    font-size: @font-size-base;
+    color: @grey-900;
+    margin-bottom: @padding-xs;
+    display: block;
+
+    .required {
+      color: @red-21;
+      margin-left: @size-xxs;
+    }
   }
 }

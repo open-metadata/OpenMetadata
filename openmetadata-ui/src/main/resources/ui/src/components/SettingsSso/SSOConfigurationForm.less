@@ -13,7 +13,6 @@
 @import (reference) '../../styles/variables.less';
 
 .sso-configuration-form-card {
-  // Remove Card's default styling to prevent nested box appearance
   border: none;
   padding: @padding-lg @padding-mlg;
   box-shadow: none;
@@ -50,7 +49,7 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 2px @primary-1;
+      box-shadow: 0 0 0 @size-xxs @primary-1;
     }
   }
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
@@ -64,13 +63,13 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 2px @primary-1;
+      box-shadow: 0 0 0 @size-xxs @primary-1;
     }
   }
 
   .ant-select-focused .ant-select-selector {
     border-color: @primary-color;
-    box-shadow: 0 0 0 2px @primary-1;
+    box-shadow: 0 0 0 @size-xxs @primary-1;
   }
 
   .ant-select:hover .ant-select-selector {
@@ -96,8 +95,7 @@
   }
 
   .sso-provider-form-header {
-    margin-bottom: @size-xs;
-
+    margin-bottom: @size-sm;
     gap: @size-xs;
 
     .ant-typography {
@@ -116,50 +114,235 @@
     border-top: 1px solid @grey-200;
     background-color: @grey-9;
     box-shadow: @box-shadow-base;
+    width: 100%;
+  }
+}
+
+.content-resizable-panel-container {
+  .ant-card-body {
+    padding-bottom: 0 !important;
   }
 
-  // Radio button styling on light background
-  .rjsf .ant-radio-wrapper {
-    color: @grey-800;
-    font-weight: 400;
+  .form-actions-bottom {
+    position: sticky;
+    bottom: 0;
+    width: calc(100% + @size-2xl);
+    margin-left: -@size-lg;
+    margin-right: -@size-lg;
+    z-index: 10;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: @size-lg;
+    margin-bottom: 0;
+    padding: @size-md @size-lg;
+    border-top: 1px solid @grey-200;
+    background-color: @grey-9;
+    box-shadow: @box-shadow-base;
+    box-sizing: border-box;
+  }
+}
 
-    .ant-radio {
+.rjsf .ant-radio-wrapper {
+  color: @grey-700 !important;
+  font-weight: 500 !important;
+  font-size: @font-size-base !important;
+  display: flex;
+  align-items: center;
+
+  .ant-radio {
+    .ant-radio-inner {
+      background-color: @background-color;
+      border-color: @grey-300;
+      width: @size-md !important;
+      height: @size-md !important;
+    }
+
+    &.ant-radio-checked {
       .ant-radio-inner {
-        background-color: @background-color;
-        border-color: @grey-300;
+        background-color: @primary-color;
+        border-color: @primary-color;
       }
 
-      &.ant-radio-checked {
-        .ant-radio-inner {
-          background-color: @primary-color;
-          border-color: @primary-color;
-        }
+      &::after {
+        width: @size-md !important;
+        height: @size-md !important;
+      }
+    }
+
+    &:hover .ant-radio-inner {
+      border-color: @primary-6;
+    }
+  }
+}
+
+.rjsf .ant-radio-group {
+  display: flex;
+  gap: @size-lg;
+
+  .ant-radio-wrapper {
+    margin-right: 0;
+  }
+}
+
+.rjsf .field-radio-group {
+  display: flex;
+  gap: @size-lg;
+}
+
+.rjsf .form-group {
+  margin-bottom: @size-md;
+
+  .control-label {
+    color: @grey-700;
+    font-weight: 500;
+    font-size: @font-size-base;
+    margin-bottom: @size-xs;
+
+    .required {
+      color: @red-21;
+      margin-left: @size-xxs;
+    }
+  }
+}
+
+.rjsf .form-group.field {
+  margin: 0px;
+}
+
+.rjsf .required,
+.rjsf .field-required {
+  color: @red-21;
+}
+
+.rjsf .array-item-label,
+.rjsf .field-array .control-label {
+  font-weight: 500;
+  font-size: @font-size-base;
+  color: @grey-900;
+  margin-bottom: @padding-xs;
+  display: block;
+
+  .required {
+    color: @red-21;
+    margin-left: @size-xxs;
+  }
+}
+
+.rjsf .checkbox {
+  display: flex;
+  align-items: flex-start;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+    cursor: pointer;
+    margin: 0;
+
+    input[type='checkbox'] {
+      appearance: none;
+      width: @size-mlg;
+      height: @size-mlg;
+      border: 1px solid @grey-300;
+      border-radius: 6px;
+      background-color: @background-color;
+      cursor: pointer;
+      position: relative;
+      margin: 0;
+      flex-shrink: 0;
+
+      &:checked {
+        background-color: @primary-color;
+        border-color: @primary-color;
       }
 
-      &:hover .ant-radio-inner {
+      &:checked::after {
+        content: '';
+        position: absolute;
+        top: 45%;
+        left: 50%;
+        width: 6px;
+        height: 10px;
+        border: solid @white;
+        border-width: 0 @size-xxs @size-xxs 0;
+        transform: translate(-50%, -50%) rotate(45deg);
+      }
+
+      &:hover {
         border-color: @primary-6;
       }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 @size-xxs @primary-1;
+      }
     }
-  }
 
-  // Inline radio buttons for client type
-  .rjsf .ant-radio-group {
-    display: flex;
-    gap: @size-md;
-
-    .ant-radio-wrapper {
-      margin-right: 0;
-    }
-  }
-
-  // Form group spacing on light background
-  .rjsf .form-group {
-    margin-bottom: @size-md;
-
-    .control-label {
-      color: @grey-800;
+    span {
+      color: @grey-700;
       font-weight: 500;
-      margin-bottom: @size-xs;
+      font-size: @font-size-base;
+      line-height: 1.4;
+
+      .required {
+        color: @red-21;
+        margin-left: @size-xxs;
+      }
     }
+  }
+}
+
+.rjsf span {
+  display: inline-flex;
+  align-items: center;
+  gap: @size-xs;
+  color: @grey-700;
+  font-weight: 500;
+  font-size: @font-size-base;
+}
+
+.rjsf .radio-inline label span span {
+  color: @grey-700 !important;
+  font-weight: 500 !important;
+  font-size: @font-size-base !important;
+  margin-bottom: @size-xs;
+}
+
+.rjsf .radio-inline input[type='radio'] {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  width: @size-md;
+  height: @size-md;
+  border: 1px solid @grey-300;
+  border-radius: 50%;
+  background-color: @white;
+  cursor: pointer;
+  position: relative;
+
+  &:checked {
+    background-color: @primary-color;
+    border-color: @primary-color;
+  }
+
+  &:checked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    background: @white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  &:hover {
+    border-color: @primary-color;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 @size-xxs @primary-1;
   }
 }
