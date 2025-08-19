@@ -185,10 +185,11 @@ public class TableRepository extends EntityRepository<Table> {
           }
         }
       }
-      
+
       if (needsTagFetch) {
         // Fallback to DB query only if tags are missing from JSON
-        Map<String, List<TagLabel>> prefixTags = getTagsByPrefix(table.getFullyQualifiedName(), ".%");
+        Map<String, List<TagLabel>> prefixTags =
+            getTagsByPrefix(table.getFullyQualifiedName(), ".%");
         if (prefixTags != null && !prefixTags.isEmpty() && table.getColumns() != null) {
           applyTagsToColumns(table.getColumns(), prefixTags, table.getFullyQualifiedName());
         }
@@ -366,7 +367,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
-    
+
     // IMPORTANT: Columns are ALWAYS returned as they are a core part of table structure
     // Only clear column tags if tags are not requested
     if (table.getColumns() != null && !fields.contains(FIELD_TAGS)) {
@@ -377,7 +378,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     // Never clear columns themselves - they are always part of the table entity
   }
-  
+
   private void clearColumnTags(Column column) {
     column.setTags(null);
     // Recursively clear tags from nested columns if present
