@@ -1,0 +1,142 @@
+@prefix om: <https://open-metadata.org/ontology/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# OpenMetadata PROV-O Extension
+# Extends PROV-O for detailed data lineage tracking
+
+# Pipeline Execution as Activity
+om:PipelineExecution a rdfs:Class ;
+    rdfs:label "Pipeline Execution" ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "A specific run/execution of a data pipeline" .
+
+# Properties for Pipeline Execution
+om:executionId a rdf:Property ;
+    rdfs:label "execution ID" ;
+    rdfs:domain om:PipelineExecution ;
+    rdfs:range xsd:string .
+
+om:executionStatus a rdf:Property ;
+    rdfs:label "execution status" ;
+    rdfs:domain om:PipelineExecution ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Status: running, success, failed, cancelled" .
+
+om:rowsProcessed a rdf:Property ;
+    rdfs:label "rows processed" ;
+    rdfs:domain om:PipelineExecution ;
+    rdfs:range xsd:integer .
+
+om:bytesProcessed a rdf:Property ;
+    rdfs:label "bytes processed" ;
+    rdfs:domain om:PipelineExecution ;
+    rdfs:range xsd:long .
+
+# Data Transformation Details
+om:Transformation a rdfs:Class ;
+    rdfs:label "Transformation" ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "A specific data transformation within a pipeline" .
+
+om:transformationType a rdf:Property ;
+    rdfs:label "transformation type" ;
+    rdfs:domain om:Transformation ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Type: filter, aggregate, join, pivot, etc." .
+
+om:transformationLogic a rdf:Property ;
+    rdfs:label "transformation logic" ;
+    rdfs:domain om:Transformation ;
+    rdfs:range xsd:string ;
+    rdfs:comment "SQL query or transformation code" .
+
+# Version tracking
+om:DataVersion a rdfs:Class ;
+    rdfs:label "Data Version" ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment "A specific version of a data asset" .
+
+om:versionNumber a rdf:Property ;
+    rdfs:label "version number" ;
+    rdfs:domain om:DataVersion ;
+    rdfs:range xsd:string .
+
+om:checksum a rdf:Property ;
+    rdfs:label "checksum" ;
+    rdfs:domain om:DataVersion ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Hash of the data for integrity checking" .
+
+# Quality Assessment as Activity
+om:QualityAssessment a rdfs:Class ;
+    rdfs:label "Quality Assessment" ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "Data quality test execution" .
+
+om:testSuite a rdf:Property ;
+    rdfs:label "test suite" ;
+    rdfs:domain om:QualityAssessment ;
+    rdfs:range xsd:string .
+
+om:testsPassed a rdf:Property ;
+    rdfs:label "tests passed" ;
+    rdfs:domain om:QualityAssessment ;
+    rdfs:range xsd:integer .
+
+om:testsFailed a rdf:Property ;
+    rdfs:label "tests failed" ;
+    rdfs:domain om:QualityAssessment ;
+    rdfs:range xsd:integer .
+
+# Detailed Usage Relationships
+om:ColumnLineage a rdfs:Class ;
+    rdfs:label "Column Lineage" ;
+    rdfs:subClassOf prov:Usage ;
+    rdfs:comment "Column-level lineage tracking" .
+
+om:sourceColumn a rdf:Property ;
+    rdfs:label "source column" ;
+    rdfs:domain om:ColumnLineage ;
+    rdfs:range om:Column .
+
+om:targetColumn a rdf:Property ;
+    rdfs:label "target column" ;
+    rdfs:domain om:ColumnLineage ;
+    rdfs:range om:Column .
+
+om:transformationExpression a rdf:Property ;
+    rdfs:label "transformation expression" ;
+    rdfs:domain om:ColumnLineage ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Expression used to transform source to target" .
+
+# Example Usage:
+# :PipelineRun123 a om:PipelineExecution ;
+#     prov:startedAtTime "2024-01-15T10:00:00Z"^^xsd:dateTime ;
+#     prov:endedAtTime "2024-01-15T10:15:00Z"^^xsd:dateTime ;
+#     prov:wasAssociatedWith :AirflowService ;
+#     prov:wasAssociatedWith :DataEngTeam ;
+#     om:executionId "airflow-run-123" ;
+#     om:executionStatus "success" ;
+#     om:rowsProcessed 1234567 ;
+#     prov:used :CustomerTableV1 ;
+#     prov:used :TransformScriptV2 ;
+#     prov:generated :CustomerTableV2 ;
+#     prov:hadActivity :FilterTransform1 ;
+#     prov:hadActivity :AggregateTransform2 .
+
+# :FilterTransform1 a om:Transformation ;
+#     om:transformationType "filter" ;
+#     om:transformationLogic "WHERE created_date > '2024-01-01'" ;
+#     prov:used :CustomerTableV1 ;
+#     prov:generated :TempTable1 .
+
+# :CustomerTableV2 a om:DataVersion ;
+#     prov:wasGeneratedBy :PipelineRun123 ;
+#     prov:wasDerivedFrom :CustomerTableV1 ;
+#     om:versionNumber "2.0" ;
+#     om:checksum "sha256:abcd1234..." ;
+#     prov:generatedAtTime "2024-01-15T10:15:00Z"^^xsd:dateTime .

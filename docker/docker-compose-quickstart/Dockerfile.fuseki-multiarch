@@ -1,0 +1,35 @@
+# Multi-architecture Fuseki build
+FROM --platform=$TARGETPLATFORM openjdk:17-jdk-slim
+
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set Fuseki version and paths
+ENV FUSEKI_VERSION=4.10.0
+ENV FUSEKI_HOME=/fuseki
+ENV FUSEKI_BASE=/fuseki
+
+# Download and install Fuseki
+WORKDIR /tmp
+RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    mv apache-jena-fuseki-${FUSEKI_VERSION}/* ${FUSEKI_HOME}/ && \
+    rm -rf /tmp/*
+
+# Create necessary directories
+RUN mkdir -p ${FUSEKI_HOME}/run ${FUSEKI_HOME}/databases
+
+WORKDIR ${FUSEKI_HOME}
+
+# JVM options
+ENV JVM_ARGS="-Xmx4g -Xms2g"
+
+# Expose port
+EXPOSE 3030
+
+# Start Fuseki with openmetadata dataset
+CMD ["sh", "-c", "mkdir -p ${FUSEKI_HOME}/databases/openmetadata && exec ${FUSEKI_HOME}/fuseki-server --update --loc=${FUSEKI_HOME}/databases/openmetadata /openmetadata"]

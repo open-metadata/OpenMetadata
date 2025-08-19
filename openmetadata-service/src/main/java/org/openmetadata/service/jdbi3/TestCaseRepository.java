@@ -649,8 +649,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void postDelete(TestCase testCase) {
-    super.postDelete(testCase);
+  protected void postDelete(TestCase testCase, boolean hardDelete) {
+    super.postDelete(testCase, hardDelete);
     updateTestSuite(testCase);
   }
 
