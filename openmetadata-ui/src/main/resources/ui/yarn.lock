@@ -4110,10 +4110,10 @@
     "@types/babel__core" "^7.20.5"
     react-refresh "^0.17.0"
 
-"@windmillcode/quill-emoji@^2.0.1000":
-  version "2.0.1000"
-  resolved "https://registry.npmjs.org/@windmillcode/quill-emoji/-/quill-emoji-2.0.1000.tgz"
-  integrity sha512-wM1ZnodNVEe/hSdVrWxxycIg4fs482Syst27brt8doIuEi9hriQNVtr3sSUBXDwm1SwojOeI2wwTHeu5c+infA==
+"@windmillcode/quill-emoji@2.0.3000":
+  version "2.0.3000"
+  resolved "https://registry.yarnpkg.com/@windmillcode/quill-emoji/-/quill-emoji-2.0.3000.tgz#bdfc0f8df303047584d1a34a7a82a5a2c73fcc29"
+  integrity sha512-aDZR550cRymbvEGw2rATMeA0a7VlkKFboOSXbvBSXO6adassDXCoJJ5zIkRt07Qxbg+fscp2uh0Ro1ULNf+jSg==
   dependencies:
     fuse.js "^7.0.0"
 
