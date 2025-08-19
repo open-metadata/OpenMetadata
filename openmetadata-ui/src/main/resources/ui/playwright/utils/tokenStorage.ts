@@ -88,7 +88,13 @@ const executeTokenOperation = async (
             const putRequest = store.put(value, key);
 
             putRequest.onsuccess = () => {
-              resolve();
+              transaction.oncomplete = () => {
+                resolve();
+              };
+
+              transaction.onerror = () => {
+                reject(transaction.error);
+              };
             };
 
             putRequest.onerror = () => {
