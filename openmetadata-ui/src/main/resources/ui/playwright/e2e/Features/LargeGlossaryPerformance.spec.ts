@@ -147,6 +147,8 @@ test.describe('Large Glossary Performance Tests', () => {
   });
 
   test('should expand and collapse all terms', async ({ page }) => {
+    test.setTimeout(8 * 60 * 1000);
+
     // Navigate to glossary
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await page

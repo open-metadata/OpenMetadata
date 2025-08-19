@@ -497,3 +497,26 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     />
   );
 };
+
+export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
+  const keys: string[] = [];
+
+  processTerms(terms, keys);
+
+  return keys;
+};
+
+const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
+  termList.forEach((term) => {
+    if (
+      term.childrenCount &&
+      term.childrenCount > 0 &&
+      term.fullyQualifiedName
+    ) {
+      keys.push(term.fullyQualifiedName);
+      if (term.children && term.children.length > 0) {
+        processTerms(term.children as ModifiedGlossary[], keys as string[]);
+      }
+    }
+  });
+};

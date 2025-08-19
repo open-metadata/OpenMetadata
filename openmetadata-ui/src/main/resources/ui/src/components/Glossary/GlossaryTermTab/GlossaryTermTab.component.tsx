@@ -94,6 +94,7 @@ import {
 import Fqn from '../../../utils/Fqn';
 import {
   findExpandableKeysForArray,
+  getAllExpandableKeys,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
   StatusClass,
@@ -820,83 +821,142 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } else {
       setIsExpandingAll(true);
 
-      // Load children for first-level terms only
-      const termsToLoad = glossaryTerms.filter(
-        (term) =>
-          term.childrenCount &&
-          term.childrenCount > 0 &&
-          (!term.children || term.children.length === 0)
-      );
-
-      // Batch loading with limit to avoid overloading
-      const BATCH_SIZE = 5; // Reduced batch size for better performance
-      const batches: typeof termsToLoad[] = [];
-
-      for (let i = 0; i < termsToLoad.length; i += BATCH_SIZE) {
-        batches.push(termsToLoad.slice(i, i + BATCH_SIZE));
-      }
-
       try {
-        // Collect all data first before updating state
-        const allChildData: Record<string, GlossaryTermWithChildren[]> = {};
-        for (const batch of batches) {
-          // Fetch batch of children data
-          await Promise.all(
-            batch.map(async (term) => {
-              if (term.fullyQualifiedName) {
-                setLoadingChildren((prev) => ({
-                  ...prev,
-                  [term.fullyQualifiedName as string]: true,
-                }));
-                try {
-                  const { data } = await getGlossaryTermChildrenLazy(
-                    term.fullyQualifiedName,
-                    50
-                  );
-                  allChildData[term.fullyQualifiedName] = data;
-                } catch (error) {
-                  showErrorToast(error as AxiosError);
-                } finally {
-                  setLoadingChildren((prev) => ({
-                    ...prev,
-                    [term.fullyQualifiedName as string]: false,
-                  }));
-                }
-              }
-            })
-          );
-
-          // Small delay between batches to keep UI responsive
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-
-        // Update all terms at once after all data is collected
-        if (Object.keys(allChildData).length > 0) {
-          const currentTerms = glossaryChildTerms;
-
-          if (!Array.isArray(currentTerms)) {
-            return;
+        // Recursive function to load all children at all levels
+        const loadAllChildrenRecursively = async (
+          terms: ModifiedGlossary[],
+          depth = 0,
+          maxDepth = 10
+        ): Promise<ModifiedGlossary[]> => {
+          if (depth >= maxDepth) {
+            return terms; // Prevent infinite recursion
           }
 
-          const updatedTerms = currentTerms.map((term) => {
+          const BATCH_SIZE = 5;
+          const termsToLoad = terms.filter(
+            (term) =>
+              term.childrenCount &&
+              term.childrenCount > 0 &&
+              (!term.children || term.children.length === 0)
+          );
+
+          if (termsToLoad.length === 0) {
+            // If no terms need loading at this level, check children
+            const updatedTerms = await Promise.all(
+              terms.map(async (term) => {
+                if (term.children && term.children.length > 0) {
+                  const updatedChildren = await loadAllChildrenRecursively(
+                    term.children as ModifiedGlossary[],
+                    depth + 1,
+                    maxDepth
+                  );
+
+                  return {
+                    ...term,
+                    children: updatedChildren as ModifiedGlossaryTerm[],
+                  };
+                }
+
+                return term;
+              })
+            );
+
+            return updatedTerms;
+          }
+
+          // Load data for terms at this level
+          const batches: typeof termsToLoad[] = [];
+          for (let i = 0; i < termsToLoad.length; i += BATCH_SIZE) {
+            batches.push(termsToLoad.slice(i, i + BATCH_SIZE));
+          }
+
+          const childDataMap: Record<string, GlossaryTermWithChildren[]> = {};
+
+          for (const batch of batches) {
+            await Promise.all(
+              batch.map(async (term) => {
+                if (term.fullyQualifiedName) {
+                  setLoadingChildren((prev) => ({
+                    ...prev,
+                    [term.fullyQualifiedName as string]: true,
+                  }));
+                  try {
+                    const { data } = await getGlossaryTermChildrenLazy(
+                      term.fullyQualifiedName,
+                      1000 // Get all children at once
+                    );
+                    childDataMap[term.fullyQualifiedName] = data;
+                  } catch (error) {
+                    showErrorToast(error as AxiosError);
+                  } finally {
+                    setLoadingChildren((prev) => ({
+                      ...prev,
+                      [term.fullyQualifiedName as string]: false,
+                    }));
+                  }
+                }
+              })
+            );
+            // Small delay between batches to keep UI responsive
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+
+          // Update terms with loaded children
+          const termsWithChildren = terms.map((term) => {
             const termFQN = term.fullyQualifiedName;
-            if (termFQN && allChildData[termFQN]) {
+            if (termFQN && childDataMap[termFQN]) {
               return {
                 ...term,
-                children: allChildData[termFQN] as GlossaryTermWithChildren[],
+                children: childDataMap[termFQN] as ModifiedGlossaryTerm[],
               };
             }
 
             return term;
           });
 
-          setGlossaryChildTerms(updatedTerms);
-          const firstLevelExpandableKeys = updatedTerms
-            .filter((term) => term.childrenCount && term.childrenCount > 0)
-            .map((term) => term.fullyQualifiedName || term.name)
-            .filter(Boolean) as string[];
-          setExpandedRowKeys(firstLevelExpandableKeys);
+          // Recursively load children for the newly loaded terms
+          const fullyLoadedTerms = await Promise.all(
+            termsWithChildren.map(async (term) => {
+              if (term.children && term.children.length > 0) {
+                const updatedChildren = await loadAllChildrenRecursively(
+                  term.children as ModifiedGlossary[],
+                  depth + 1,
+                  maxDepth
+                );
+
+                return {
+                  ...term,
+                  children: updatedChildren as ModifiedGlossaryTerm[],
+                };
+              }
+
+              return term;
+            })
+          );
+
+          return fullyLoadedTerms;
+        };
+
+        // Load all children recursively starting from current terms
+        const currentTerms = glossaryChildTerms;
+        if (!Array.isArray(currentTerms)) {
+          setIsExpandingAll(false);
+
+          return;
         }
+
+        const fullyExpandedTerms = await loadAllChildrenRecursively(
+          currentTerms
+        );
+
+        // Update the glossary child terms with fully expanded tree
+        setGlossaryChildTerms(fullyExpandedTerms);
+
+        // Get all expandable keys from the fully loaded tree
+        const allExpandableKeys = getAllExpandableKeys(fullyExpandedTerms);
+
+        // Set all keys as expanded
+        setExpandedRowKeys(allExpandableKeys);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
