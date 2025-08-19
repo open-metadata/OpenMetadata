@@ -236,9 +236,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
-    ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
+    EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
+
+    ingestionPipeline
+        .withService(null)
+        .withOpenMetadataServerConnection(null)
+        .withProcessingEngine(null);
     store(ingestionPipeline, update);
-    ingestionPipeline.withService(service).withOpenMetadataServerConnection(openmetadataConnection);
+    ingestionPipeline
+        .withService(service)
+        .withOpenMetadataServerConnection(openmetadataConnection)
+        .withProcessingEngine(processingEngine);
   }
 
   @Override
@@ -474,16 +482,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updateProcessingEngine(original, updated);
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
-      updateProcessingEngine(original, updated);
     }
 
-    private void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
+    protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
       String entityType =
           original.getProcessingEngine() != null
               ? original.getProcessingEngine().getType()
