@@ -57,6 +57,7 @@ public class ConfigResource {
   }
 
   @GET
+  @Path(("/rdf"))
   @Produces(MediaType.APPLICATION_JSON)
   public Map<String, Object> getConfig() {
     Map<String, Object> config = new HashMap<>();
