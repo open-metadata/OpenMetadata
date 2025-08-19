@@ -1,3 +1,0 @@
--- Entity status field migration placeholder
--- The actual migration is handled in Java code for batch processing
--- See org.openmetadata.service.migration.mysql.v1100.Migration
