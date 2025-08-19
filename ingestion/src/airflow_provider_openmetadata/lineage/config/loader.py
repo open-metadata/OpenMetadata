@@ -37,6 +37,7 @@ class AirflowLineageConfig(BaseModel):
     timeout: Optional[int] = None
     retry: Optional[int] = None
     retry_wait: Optional[int] = None
+    retry_codes: Optional[list[int]] = None
 
 
 def parse_airflow_config(
@@ -58,6 +59,7 @@ def parse_airflow_config(
         timeout=int(conf.get(LINEAGE, "timeout", fallback=0)) or None,
         retry=int(conf.get(LINEAGE, "retry", fallback=0)) or None,
         retry_wait=int(conf.get(LINEAGE, "retry_wait", fallback=0)) or None,
+        retry_codes=[int(code) for code in conf.get(LINEAGE, "retry_codes", fallback=None).split(",")] or None,  # input e.g. 503,504
         metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
