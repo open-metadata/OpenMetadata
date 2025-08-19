@@ -83,6 +83,8 @@ OpenMetadata provides a comprehensive health check endpoint to validate the depl
 
 ### GET `/api/v1/system/status`
 
+> **Note**: This endpoint is sometimes referred to as the "health status" endpoint in discussions, but the actual path is `/api/v1/system/status`.
+
 **Description**: Validates the OpenMetadata deployment by checking connectivity against your database, search instance (Elasticsearch/OpenSearch), pipeline service client, JWT configuration, and database migrations.
 
 **Request**:
