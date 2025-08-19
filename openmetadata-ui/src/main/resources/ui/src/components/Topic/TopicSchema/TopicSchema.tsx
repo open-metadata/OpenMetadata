@@ -235,7 +235,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   }, [messageSchema?.schemaFields]);
 
   const renderDescription = useCallback(
-    (_: any, record: Field, index: number) => (
+    (_: string, record: Field, index: number) => (
       <TableDescription
         columnData={{
           fqn: record.fullyQualifiedName ?? '',
