@@ -22,6 +22,12 @@
         "Scatter",
         "Text",
         "BoxPlot",
+        "SanKey",
+        "Gauge",
+        "Map",
+        "Graph",
+        "Heatmap",
+        "Timeline",
         "Other"
       ],
       "javaEnums": [
@@ -51,6 +57,24 @@
         },
         {
           "name": "BoxPlot"
+        },
+        {
+          "name": "SanKey"
+        },
+        {
+          "name": "Gauge"
+        },
+        {
+          "name": "Map"
+        },
+        {
+          "name": "Graph"
+        },
+        {
+          "name": "Heatmap"
+        },
+        {
+          "name": "Timeline"
         },
         {
           "name": "Other"
