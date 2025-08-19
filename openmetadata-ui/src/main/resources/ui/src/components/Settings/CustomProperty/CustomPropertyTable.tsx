@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -25,6 +24,7 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
@@ -32,8 +32,9 @@ import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal'
 import './custom-property-table.less';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
 import EditCustomPropertyModal, {
-  FormData,
+    FormData
 } from './EditCustomPropertyModal/EditCustomPropertyModal';
+;
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,

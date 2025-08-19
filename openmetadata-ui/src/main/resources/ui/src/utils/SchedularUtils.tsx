@@ -11,31 +11,32 @@
  *  limitations under the License.
  */
 
-import { Select } from '../components/common/AntdCompat';;
 import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
 import { RuleObject } from 'rc-field-form/es/interface';
+import { Select } from '../components/common/AntdCompat';
 import {
-  Combination,
-  CronOption,
-  StateValue,
-  WorkflowExtraConfig,
+    Combination,
+    CronOption,
+    StateValue,
+    WorkflowExtraConfig
 } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import {
-  CRON_COMBINATIONS,
-  DAY_OF_MONTH_PATTERN,
-  DAY_OF_WEEK_PATTERN,
-  DEFAULT_SCHEDULE_CRON_DAILY,
-  DEFAULT_SCHEDULE_CRON_HOURLY,
-  DEFAULT_SCHEDULE_CRON_MONTHLY,
-  DEFAULT_SCHEDULE_CRON_WEEKLY,
-  HOUR_PATTERN,
-  MINUTE_PATTERN,
-  MONTH_PATTERN,
+    CRON_COMBINATIONS,
+    DAY_OF_MONTH_PATTERN,
+    DAY_OF_WEEK_PATTERN,
+    DEFAULT_SCHEDULE_CRON_DAILY,
+    DEFAULT_SCHEDULE_CRON_HOURLY,
+    DEFAULT_SCHEDULE_CRON_MONTHLY,
+    DEFAULT_SCHEDULE_CRON_WEEKLY,
+    HOUR_PATTERN,
+    MINUTE_PATTERN,
+    MONTH_PATTERN
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
 import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
+;
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]

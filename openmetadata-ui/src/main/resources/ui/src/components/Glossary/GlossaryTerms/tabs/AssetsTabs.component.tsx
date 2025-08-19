@@ -13,21 +13,20 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Checkbox, Col, Dropdown, MenuProps, notification, Row, Skeleton, Space, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Button, Checkbox, Col, Dropdown, MenuProps, notification, Row, Skeleton, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import {
-  forwardRef,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
+    forwardRef,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
@@ -50,16 +49,16 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
-  getDataProductByName,
-  removeAssetsFromDataProduct,
+    getDataProductByName,
+    removeAssetsFromDataProduct
 } from '../../../../rest/dataProductAPI';
 import {
-  getDomainByName,
-  removeAssetsFromDomain,
+    getDomainByName,
+    removeAssetsFromDomain
 } from '../../../../rest/domainAPI';
 import {
-  getGlossaryTermByFQN,
-  removeAssetsFromGlossaryTerm,
+    getGlossaryTermByFQN,
+    removeAssetsFromGlossaryTerm
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
@@ -67,20 +66,21 @@ import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
-  getAggregations,
-  getQuickFilterQuery,
+    getAggregations,
+    getQuickFilterQuery
 } from '../../../../utils/ExploreUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -91,11 +91,12 @@ import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
-  SearchedDataProps,
-  SourceType,
+    SearchedDataProps,
+    SourceType
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+;
 
 export interface AssetsTabRef {
   refreshAssets: () => void;

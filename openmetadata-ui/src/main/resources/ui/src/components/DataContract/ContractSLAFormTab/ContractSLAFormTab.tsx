@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Form, Input, Row, TimePicker, Typography,  } from 'antd';
-import { Select } from '../../common/AntdCompat';;
+import { Card, Col, Form, Input, Row, TimePicker, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../common/AntdCompat';
+;
 
 export const ContractSLAFormTab: React.FC = () => {
   const { t } = useTranslation();

@@ -13,21 +13,22 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Switch, Typography } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import {
-  CreateEventSubscription,
-  Effect,
+    CreateEventSubscription,
+    Effect
 } from '../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import {
-  getConditionalField,
-  getSupportedFilterOptions,
+    getConditionalField,
+    getSupportedFilterOptions
 } from '../../../utils/Alerts/AlertsUtil';
+import { Select } from '../../common/AntdCompat';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
+;
 
 function ObservabilityFormFiltersItem({
   supportedFilters,

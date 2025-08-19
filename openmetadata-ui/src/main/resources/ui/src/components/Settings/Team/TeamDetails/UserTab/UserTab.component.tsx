@@ -12,7 +12,6 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Modal, Space } from 'antd';
-import { Tooltip } from '../../../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
@@ -26,14 +25,14 @@ import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remov
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
-  EntityAction,
-  EntityType,
-  TabSpecificField,
+    EntityAction,
+    EntityType,
+    TabSpecificField
 } from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { TeamType } from '../../../../../generated/entity/teams/team';
@@ -48,11 +47,12 @@ import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
+import { Tooltip } from '../../../../common/AntdCompat';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -62,6 +62,7 @@ import Table from '../../../../common/Table/Table';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { UserTabProps } from './UserTab.interface';
+;
 
 export const UserTab = ({
   permission,

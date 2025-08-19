@@ -12,7 +12,6 @@
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, ButtonProps } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -20,6 +19,8 @@ import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
+import { Tooltip } from '../AntdCompat';
+;
 
 type IconButtonPropsInternal = ButtonProps & {
   newLook?: boolean;

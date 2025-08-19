@@ -13,10 +13,11 @@
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { Dropdown } from '../../../../common/AntdCompat';;
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useState } from 'react';
+import { Dropdown } from '../../../../common/AntdCompat';
 import './widget-sort-filter.less';
+;
 
 export interface SortOption {
   key: string;

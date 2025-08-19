@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.svg';
+import { Tooltip } from '../../../components/common/AntdCompat';
+;
 
 import SectionLine from '../../../assets/svg/section-line-medium.svg';
 

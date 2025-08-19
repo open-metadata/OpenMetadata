@@ -12,17 +12,16 @@
  */
 
 import { Button, Col, Row } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
-  FC,
-  HTMLAttributes,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    HTMLAttributes,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -36,9 +35,11 @@ import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select } from '../../common/AntdCompat';
 import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './node-suggestion.less';
+;
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;

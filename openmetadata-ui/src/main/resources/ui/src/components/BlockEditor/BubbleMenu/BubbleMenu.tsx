@@ -12,11 +12,10 @@
  */
 import { Editor, isNodeSelection } from '@tiptap/core';
 import {
-  BubbleMenu as CoreBubbleMenu,
-  BubbleMenuProps as CoreBubbleMenuProps,
+    BubbleMenu as CoreBubbleMenu,
+    BubbleMenuProps as CoreBubbleMenuProps
 } from '@tiptap/react';
 import { Button, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, useMemo } from 'react';
@@ -25,6 +24,8 @@ import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-f
 import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
 import { ReactComponent as FormatLinkIcon } from '../../../assets/svg/ic-format-link.svg';
 import { ReactComponent as FormatStrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
+import { Tooltip } from '../../common/AntdCompat';
+;
 
 interface BubbleMenuProps {
   editor: Editor;

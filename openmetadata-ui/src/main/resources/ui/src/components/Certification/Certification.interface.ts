@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from '../common/AntdCompat';;
 import { ReactNode } from 'react';
 import { Tag } from '../../generated/entity/classification/tag';
+import { PopoverProps } from '../common/AntdCompat';
+;
 
 export interface CertificationProps {
   permission: boolean;

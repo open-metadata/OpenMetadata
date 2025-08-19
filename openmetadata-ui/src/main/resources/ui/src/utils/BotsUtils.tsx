@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Select } from '../components/common/AntdCompat';;
+import { Select } from '../components/common/AntdCompat';
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
-  DATE_TIME_WEEKDAY_WITH_ORDINAL,
-  formatDateTimeLong,
+    DATE_TIME_WEEKDAY_WITH_ORDINAL,
+    formatDateTimeLong
 } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
+;
 
 const { Option } = Select;
 

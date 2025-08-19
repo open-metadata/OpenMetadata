@@ -12,24 +12,25 @@
  */
 
 import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
+    ArrowLeftOutlined,
+    ArrowRightOutlined,
+    DownOutlined
 } from '@ant-design/icons';
 import { Button } from 'antd';
-import { Dropdown } from '../AntdCompat';;
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
+import { Dropdown } from '../AntdCompat';
 import {
-  NextPreviousWithOffsetProps,
-  PagingProps,
+    NextPreviousWithOffsetProps,
+    PagingProps
 } from './NextPreviousWithOffset.interface';
+;
 
 const NextPreviousWithOffset = ({
   paging,

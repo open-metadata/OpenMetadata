@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import {
-  ClockCircleOutlined,
-  LeftOutlined,
-  StopOutlined,
-  UserOutlined,
+    ClockCircleOutlined,
+    LeftOutlined,
+    StopOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Col, Dropdown, Row, Space, Tabs, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Dropdown, Row, Space, Tabs, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -37,26 +36,27 @@ import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.const
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import {
-  App,
-  ScheduleTimeline,
-  ScheduleType,
+    App,
+    ScheduleTimeline,
+    ScheduleType
 } from '../../../../generated/entity/applications/app';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
-  configureApp,
-  deployApp,
-  getApplicationByName,
-  patchApplication,
-  restoreApp,
-  triggerOnDemandApp,
-  uninstallApp,
+    configureApp,
+    deployApp,
+    getApplicationByName,
+    patchApplication,
+    restoreApp,
+    triggerOnDemandApp,
+    uninstallApp
 } from '../../../../rest/applicationAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -71,6 +71,7 @@ import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
+;
 
 const AppDetails = () => {
   const { t } = useTranslation();

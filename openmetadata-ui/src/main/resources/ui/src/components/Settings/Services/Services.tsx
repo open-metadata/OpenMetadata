@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -21,16 +20,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  DISABLED,
-  INITIAL_PAGING_VALUE,
-  pagingObject,
+    DISABLED,
+    INITIAL_PAGING_VALUE,
+    pagingObject
 } from '../../../constants/constants';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  OPEN_METADATA,
-  servicesDisplayName,
+    OPEN_METADATA,
+    servicesDisplayName
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -49,20 +48,21 @@ import { getServiceLogo } from '../../../utils/CommonUtils';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-  getAddServicePath,
-  getServiceDetailsPath,
+    getAddServicePath,
+    getServiceDetailsPath
 } from '../../../utils/RouterUtils';
 import {
-  getOptionalFields,
-  getResourceEntityFromServiceCategory,
-  getServiceTypesFromServiceCategory,
+    getOptionalFields,
+    getResourceEntityFromServiceCategory,
+    getServiceTypesFromServiceCategory
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
-  columnFilterIcon,
-  ownerTableObject,
+    columnFilterIcon,
+    ownerTableObject
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -71,6 +71,7 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+;
 
 interface ServicesProps {
   serviceName: ServiceCategory;

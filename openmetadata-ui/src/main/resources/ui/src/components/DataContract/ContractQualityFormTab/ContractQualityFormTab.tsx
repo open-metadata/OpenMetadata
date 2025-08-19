@@ -13,7 +13,6 @@
 
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
-import { Dropdown } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
@@ -31,12 +30,13 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
-  getListTestCaseBySearch,
-  ListTestCaseParamsBySearch,
+    getListTestCaseBySearch,
+    ListTestCaseParamsBySearch
 } from '../../../rest/testAPI';
 import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Dropdown } from '../../common/AntdCompat';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -45,6 +45,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import TestCaseFormV1 from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
+;
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];

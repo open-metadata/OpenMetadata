@@ -12,12 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
-import { Switch } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '../../components/common/AntdCompat';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -29,11 +28,12 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import {
-  getSettingsByType,
-  updateSettingsConfig,
+    getSettingsByType,
+    updateSettingsConfig
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+;
 
 const SearchRBACSettingsPage = () => {
   const { t } = useTranslation();

@@ -12,45 +12,46 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, FormProps, Input, Radio, Row, Space, Typography,  } from 'antd';
-import { Select } from '../../../../common/AntdCompat';;
+import { Button, Card, Col, Form, FormProps, Input, Radio, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DAY_IN_MONTH_OPTIONS,
-  DAY_OPTIONS,
-  PERIOD_OPTIONS,
-  SCHEDULAR_OPTIONS,
+    DAY_IN_MONTH_OPTIONS,
+    DAY_OPTIONS,
+    PERIOD_OPTIONS,
+    SCHEDULAR_OPTIONS
 } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
 import {
-  CronTypes,
-  SchedularOptions,
+    CronTypes,
+    SchedularOptions
 } from '../../../../../enums/Schedular.enum';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout
 } from '../../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
-  cronValidator,
-  getCron,
-  getDefaultScheduleValue,
-  getHourMinuteSelect,
-  getStateValue,
-  getUpdatedStateFromFormState,
+    cronValidator,
+    getCron,
+    getDefaultScheduleValue,
+    getHourMinuteSelect,
+    getStateValue,
+    getUpdatedStateFromFormState
 } from '../../../../../utils/SchedularUtils';
+import { Select } from '../../../../common/AntdCompat';
 import './schedule-interval.less';
 import {
-  ScheduleIntervalProps,
-  StateValue,
-  WorkflowExtraConfig,
+    ScheduleIntervalProps,
+    StateValue,
+    WorkflowExtraConfig
 } from './ScheduleInterval.interface';
+;
 
 const ScheduleInterval = <T,>({
   disabled,

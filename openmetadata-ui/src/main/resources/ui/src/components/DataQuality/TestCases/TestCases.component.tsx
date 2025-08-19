@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, FormProps, Row, Space, Typography,  } from 'antd';
-import { Select } from '../../common/AntdCompat';;
+import { Button, Col, Dropdown, Form, FormProps, Row, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {
-  debounce,
-  entries,
-  isEmpty,
-  isUndefined,
-  startCase,
-  uniq,
+    debounce,
+    entries,
+    isEmpty,
+    isUndefined,
+    startCase,
+    uniq
 } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,18 +30,18 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  TIER_CATEGORY,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    TIER_CATEGORY
 } from '../../../constants/constants';
 import {
-  DEFAULT_SORT_ORDER,
-  TEST_CASE_DIMENSIONS_OPTION,
-  TEST_CASE_FILTERS,
-  TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
-  TEST_CASE_TYPE_OPTION,
+    DEFAULT_SORT_ORDER,
+    TEST_CASE_DIMENSIONS_OPTION,
+    TEST_CASE_FILTERS,
+    TEST_CASE_PLATFORM_OPTION,
+    TEST_CASE_STATUS_OPTION,
+    TEST_CASE_TYPE_OPTION
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -58,8 +57,8 @@ import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityPr
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import {
-  getListTestCaseBySearch,
-  ListTestCaseParamsBySearch,
+    getListTestCaseBySearch,
+    ListTestCaseParamsBySearch
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -68,6 +67,7 @@ import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select } from '../../common/AntdCompat';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -76,6 +76,7 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import PageHeader from '../../PageHeader/PageHeader.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
+;
 
 export const TestCases = () => {
   const [form] = useForm();

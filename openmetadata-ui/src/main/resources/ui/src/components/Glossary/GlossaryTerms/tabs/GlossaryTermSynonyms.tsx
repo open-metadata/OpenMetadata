@@ -13,7 +13,6 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,17 +21,19 @@ import { EntityField } from '../../../../constants/Feeds.constants';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
+    getChangedEntityNewValue,
+    getChangedEntityOldValue,
+    getDiffByFieldName
 } from '../../../../utils/EntityVersionUtils';
+import { Select } from '../../../common/AntdCompat';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
+    EditIconButton,
+    PlusIconButton
 } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+;
 
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);

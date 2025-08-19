@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -25,23 +24,25 @@ import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopO
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import {
-  Post,
-  Thread,
-  ThreadTaskStatus,
+    Post,
+    Thread,
+    ThreadTaskStatus
 } from '../../../generated/entity/feed/thread';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
+;
 
 interface TaskFeedCardProps {
   post: Post;

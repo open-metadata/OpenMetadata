@@ -13,8 +13,7 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Checkbox, Col, Dropdown, MenuProps, Modal, Row, Space, TableProps,  } from 'antd';
-import { Popover, Tooltip } from '../../common/AntdCompat';;
+import { Button, Checkbox, Col, Dropdown, MenuProps, Modal, Row, Space, TableProps } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -36,60 +35,61 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-  TEXT_BODY_COLOR,
+    API_RES_MAX_SIZE,
+    DE_ACTIVE_COLOR,
+    NO_DATA_PLACEHOLDER,
+    TEXT_BODY_COLOR
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
-  DEFAULT_VISIBLE_COLUMNS,
-  GLOSSARY_TERM_STATUS_OPTIONS,
-  GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
-  STATIC_VISIBLE_COLUMNS,
+    DEFAULT_VISIBLE_COLUMNS,
+    GLOSSARY_TERM_STATUS_OPTIONS,
+    GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
+    STATIC_VISIBLE_COLUMNS
 } from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
-  EntityReference,
-  GlossaryTerm,
-  Status,
+    EntityReference,
+    GlossaryTerm,
+    Status
 } from '../../../generated/entity/data/glossaryTerm';
 import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
+    Thread,
+    ThreadTaskStatus,
+    ThreadType
 } from '../../../generated/entity/feed/thread';
 import { User } from '../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
-  getFirstLevelGlossaryTerms,
-  getGlossaryTerms,
-  GlossaryTermWithChildren,
-  patchGlossaryTerm,
+    getFirstLevelGlossaryTerms,
+    getGlossaryTerms,
+    GlossaryTermWithChildren,
+    patchGlossaryTerm
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getEntityBulkEditPath,
-  getEntityName,
+    getEntityBulkEditPath,
+    getEntityName
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  buildTree,
-  findExpandableKeysForArray,
-  findItemByFqn,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-  StatusClass,
+    buildTree,
+    findExpandableKeysForArray,
+    findItemByFqn,
+    glossaryTermTableColumnsWidth,
+    permissionForApproveOrReject,
+    StatusClass
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { Popover, Tooltip } from '../../common/AntdCompat';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -100,10 +100,11 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import WorkflowHistory from '../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
-  GlossaryTermTabProps,
-  ModifiedGlossaryTerm,
-  MoveGlossaryTermType,
+    GlossaryTermTabProps,
+    ModifiedGlossaryTerm,
+    MoveGlossaryTermType
 } from './GlossaryTermTab.interface';
+;
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Alert, Button, Carousel, Col, Row, Space, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Alert, Button, Carousel, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,12 +29,14 @@ import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
+;
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();

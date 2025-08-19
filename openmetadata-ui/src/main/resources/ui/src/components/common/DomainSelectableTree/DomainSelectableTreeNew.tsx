@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Empty, Space, Tree } from 'antd';
-import { Select } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,23 +25,25 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
 import {
-  convertDomainsToTreeOptions,
-  isDomainExist,
+    convertDomainsToTreeOptions,
+    isDomainExist
 } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import { TagRenderer } from '../TagRenderer/TagRenderer';
 import './domain-selectable.less';
 import {
-  DomainSelectableTreeProps,
-  TreeListItem,
+    DomainSelectableTreeProps,
+    TreeListItem
 } from './DomainSelectableTree.interface';
+;
 
 const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   onSubmit,

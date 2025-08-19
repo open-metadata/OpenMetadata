@@ -13,11 +13,12 @@
 
 import { MoreOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { Dropdown } from '../../../../common/AntdCompat';;
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
+import { Dropdown } from '../../../../common/AntdCompat';
 import './widget-more-options.less';
+;
 
 export interface MoreOption {
   key: string;

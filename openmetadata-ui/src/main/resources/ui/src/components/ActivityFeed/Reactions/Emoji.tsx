@@ -13,7 +13,6 @@
 
 import '@github/g-emoji-element';
 import { Button } from 'antd';
-import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { createElement, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,8 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
+import { Popover } from '../../common/AntdCompat';
+;
 
 interface EmojiProps {
   reaction: ReactionType;

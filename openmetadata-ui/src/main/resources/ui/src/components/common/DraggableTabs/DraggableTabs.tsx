@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  MoreOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    EditOutlined,
+    MoreOutlined
 } from '@ant-design/icons';
 import { Button, MenuProps, Space } from 'antd';
-import { Dropdown } from '../AntdCompat';;
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Dropdown } from '../AntdCompat';
 import './draggable-tabs.less';
+;
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 

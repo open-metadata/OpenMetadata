@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Form, Row, Typography } from 'antd';
-import { Select, Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -24,28 +23,28 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
+    DE_ACTIVE_COLOR,
+    ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER,
+    PAGE_SIZE_LARGE
 } from '../../../constants/constants';
 import {
-  COLUMN_CONSTRAINT_TYPE_OPTIONS,
-  TABLE_SCROLL_VALUE,
+    COLUMN_CONSTRAINT_TYPE_OPTIONS,
+    TABLE_SCROLL_VALUE
 } from '../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
-  Column,
-  Table as TableType,
+    Column,
+    Table as TableType
 } from '../../../generated/entity/data/table';
 import {
-  Suggestion,
-  SuggestionType,
+    Suggestion,
+    SuggestionType
 } from '../../../generated/entity/feed/suggestion';
 import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
@@ -54,36 +53,37 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useSub } from '../../../hooks/usePubSub';
 import {
-  getTableColumnsByFQN,
-  searchTableColumnsByFQN,
-  updateTableColumn,
+    getTableColumnsByFQN,
+    searchTableColumnsByFQN,
+    updateTableColumn
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getColumnSorter,
-  getEntityBulkEditPath,
-  getEntityName,
-  getFrequentlyJoinedColumns,
-  highlightSearchArrayElement,
-  highlightSearchText,
+    getColumnSorter,
+    getEntityBulkEditPath,
+    getEntityName,
+    getFrequentlyJoinedColumns,
+    highlightSearchArrayElement,
+    highlightSearchText
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
+    getAllTags,
+    searchTagInData
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  findColumnByEntityLink,
-  getAllRowKeysByKeyName,
-  getTableExpandableConfig,
-  prepareConstraintIcon,
-  pruneEmptyChildren,
-  updateColumnInNestedStructure,
+    findColumnByEntityLink,
+    getAllRowKeysByKeyName,
+    getTableExpandableConfig,
+    prepareConstraintIcon,
+    pruneEmptyChildren,
+    updateColumnInNestedStructure
 } from '../../../utils/TableUtils';
+import { Select, Tooltip } from '../../common/AntdCompat';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -92,14 +92,15 @@ import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIn
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
-  EntityName,
-  EntityNameWithAdditionFields,
+    EntityName,
+    EntityNameWithAdditionFields
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
 import { TableCellRendered } from './SchemaTable.interface';
+;
 
 const SchemaTable = () => {
   const { t } = useTranslation();

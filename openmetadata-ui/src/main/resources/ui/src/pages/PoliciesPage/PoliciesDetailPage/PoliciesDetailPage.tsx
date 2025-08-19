@@ -13,8 +13,7 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Dropdown, Modal, Row, Space, Tabs, Typography,  } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
+import { Button, Card, Col, Dropdown, Modal, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -24,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -34,13 +34,13 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
@@ -48,20 +48,21 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  getPolicyByName,
-  getRoleByName,
-  patchPolicy,
-  patchRole,
+    getPolicyByName,
+    getRoleByName,
+    patchPolicy,
+    patchRole
 } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getAddPolicyRulePath,
-  getEditPolicyRulePath,
-  getSettingPath,
+    getAddPolicyRulePath,
+    getEditPolicyRulePath,
+    getSettingPath
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
+;
 
 type Attribute = 'roles' | 'teams';
 

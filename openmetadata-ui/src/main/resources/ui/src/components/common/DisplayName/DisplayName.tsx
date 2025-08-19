@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
@@ -22,7 +21,9 @@ import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import { Tooltip } from '../AntdCompat';
 import { DisplayNameProps } from './DisplayName.interface';
+;
 
 const DisplayName: React.FC<DisplayNameProps> = ({
   id,

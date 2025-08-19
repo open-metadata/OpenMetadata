@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, MenuProps, Space, Tag } from 'antd';;
-import { Dropdown, Tooltip } from '../../../common/AntdCompat';;
+import { Button, MenuProps, Space, Tag } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -31,10 +30,13 @@ import { pluralize } from '../../../../utils/CommonUtils';
 import queryClassBase from '../../../../utils/QueryClassBase';
 import { getQueryPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Dropdown, Tooltip } from '../../../common/AntdCompat';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
+;
+;
 
 const QueryCardExtraOption = ({
   permission,

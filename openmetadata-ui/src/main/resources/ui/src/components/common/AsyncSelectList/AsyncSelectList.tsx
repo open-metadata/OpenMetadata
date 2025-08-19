@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Empty, Form, Space, TagProps, Typography,  } from 'antd';
-import { Select, SelectProps, Tooltip } from '../AntdCompat';;
+import { Button, Empty, Form, Space, TagProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
@@ -29,12 +28,14 @@ import Fqn from '../../../utils/Fqn';
 import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { Select, SelectProps, Tooltip } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-  AsyncSelectListProps,
-  SelectOption,
+    AsyncSelectListProps,
+    SelectOption
 } from './AsyncSelectList.interface';
+;
 
 const AsyncSelectList: FC<
   AsyncSelectListProps &

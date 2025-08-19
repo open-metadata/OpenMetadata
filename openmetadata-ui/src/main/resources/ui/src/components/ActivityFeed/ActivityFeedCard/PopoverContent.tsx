@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import { Space } from 'antd';
-import { Popover } from '../../common/AntdCompat';;
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -25,8 +24,10 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { Popover } from '../../common/AntdCompat';
 import Reaction from '../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
+;
 
 interface Props {
   isAuthor: boolean;

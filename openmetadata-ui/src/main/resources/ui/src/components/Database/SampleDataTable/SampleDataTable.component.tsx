@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../common/AntdCompat';;
+import { Button, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { Dropdown, Tooltip } from '../../common/AntdCompat';
+;
+;
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,12 +32,12 @@ import { Table } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  deleteSampleDataByTableId,
-  getSampleDataByTableId,
+    deleteSampleDataByTableId,
+    getSampleDataByTableId
 } from '../../../rest/tableAPI';
 import {
-  getEntityDeleteMessage,
-  Transi18next,
+    getEntityDeleteMessage,
+    Transi18next
 } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -46,9 +48,9 @@ import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal'
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
-  SampleData,
-  SampleDataProps,
-  SampleDataType,
+    SampleData,
+    SampleDataProps,
+    SampleDataType
 } from './SampleData.interface';
 
 const SampleDataTable: FC<SampleDataProps> = ({

@@ -13,11 +13,11 @@
 
 import Icon from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
@@ -25,18 +25,18 @@ import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/Glo
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  ICON_DIMENSION,
-  SUCCESS_COLOR,
-  TEXT_BODY_COLOR,
-  TEXT_GREY_MUTED,
+    ICON_DIMENSION,
+    SUCCESS_COLOR,
+    TEXT_BODY_COLOR,
+    TEXT_GREY_MUTED
 } from '../constants/constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import {
-  GlossaryTerm,
-  Status,
-  TermReference,
+    GlossaryTerm,
+    Status,
+    TermReference
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
@@ -46,6 +46,7 @@ import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
+;
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};

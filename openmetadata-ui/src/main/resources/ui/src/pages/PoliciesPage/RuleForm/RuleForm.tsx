@@ -13,32 +13,33 @@
  */
 
 import { Form, Input, TreeSelect } from 'antd';
-import { AutoComplete, Select } from '../../../components/common/AntdCompat';;
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AutoComplete, Select } from '../../../components/common/AntdCompat';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  Effect,
-  Operation,
-  Rule,
+    Effect,
+    Operation,
+    Rule
 } from '../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../generated/type/function';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
-  getPolicyFunctions,
-  getPolicyResources,
-  validateRuleCondition,
+    getPolicyFunctions,
+    getPolicyResources,
+    validateRuleCondition
 } from '../../../rest/rolesAPIV1';
 import { getField } from '../../../utils/formUtils';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+;
 
 const { Option } = Select;
 

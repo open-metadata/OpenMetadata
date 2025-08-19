@@ -12,9 +12,10 @@
  */
 
 import { Space, Typography } from 'antd';
-import { Dropdown } from '../common/AntdCompat';;
 import React from 'react';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
+import { Dropdown } from '../common/AntdCompat';
+;
 
 export interface SortingField {
   name: string;

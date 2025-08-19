@@ -13,11 +13,12 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
-import { Select } from '../AntdCompat';;
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
+import { Select } from '../AntdCompat';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
+;
 
 function TeamTypeSelect({
   handleShowTypeSelector,

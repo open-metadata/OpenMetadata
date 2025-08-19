@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Modal, Row, Space, Tabs, Typography,  } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
+import { Button, Col, Dropdown, Modal, Row, Space, Tabs, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -39,8 +38,8 @@ import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -60,34 +59,35 @@ import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
-  getQueryFilterForDomain,
-  getQueryFilterToExcludeDomainTerms,
+    getQueryFilterForDomain,
+    getQueryFilterToExcludeDomainTerms
 } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission
 } from '../../../utils/PermissionsUtils';
 import {
-  getDomainDetailsPath,
-  getDomainPath,
-  getDomainVersionsPath,
-  getEntityDetailsPath,
+    getDomainDetailsPath,
+    getDomainPath,
+    getDomainVersionsPath,
+    getEntityDetailsPath
 } from '../../../utils/RouterUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Tooltip } from '../../common/AntdCompat';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -101,6 +101,7 @@ import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
+;
 
 const DomainDetailsPage = ({
   domain,

@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Rectangle,
-  ResponsiveContainer,
-  XAxis,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Legend,
+    Rectangle,
+    ResponsiveContainer,
+    XAxis
 } from 'recharts';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../../constants/Color.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
@@ -33,15 +32,17 @@ import { DataContractResult } from '../../../generated/entity/datacontract/dataC
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
 import {
-  formatDateTime,
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    formatDateTime,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import Loader from '../../common/Loader/Loader';
 import './contract-execution-chart.less';
+;
 
 const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   const { t } = useTranslation();

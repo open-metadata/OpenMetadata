@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Divider, Skeleton, Space, Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
@@ -24,29 +23,29 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
-  Thread,
-  ThreadTaskStatus,
+    Thread,
+    ThreadTaskStatus
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-  ChangeDescription,
-  EntityReference,
+    ChangeDescription,
+    EntityReference
 } from '../../../../generated/tests/testCase';
 import {
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    Severities,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
-  getListTestCaseIncidentByStateId,
-  postTestCaseIncidentStatus,
-  updateTestCaseIncidentById,
+    getListTestCaseIncidentByStateId,
+    postTestCaseIncidentStatus,
+    updateTestCaseIncidentById
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
-  getColumnNameFromEntityLink,
-  getEntityName,
+    getColumnNameFromEntityLink,
+    getEntityName
 } from '../../../../utils/EntityUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
@@ -57,12 +56,14 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { Tooltip } from '../../../common/AntdCompat';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
+;
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,

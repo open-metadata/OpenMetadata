@@ -12,11 +12,11 @@
  */
 
 import { Badge, Button, Space, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -31,6 +31,7 @@ import { getEntityVersionByField } from './EntityVersionUtils';
 import { t } from './i18next/LocalUtil';
 import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
+;
 
 export const getDeleteButtonData = (
   record: Tag,

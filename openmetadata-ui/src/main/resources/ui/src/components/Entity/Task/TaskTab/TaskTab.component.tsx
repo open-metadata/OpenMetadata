@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, MenuProps, Row, Space, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Dropdown, Form, MenuProps, Row, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
@@ -20,12 +19,12 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  last,
-  startCase,
-  unionBy,
+    isEmpty,
+    isEqual,
+    isUndefined,
+    last,
+    startCase,
+    unionBy
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,8 +35,8 @@ import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
+    DE_ACTIVE_COLOR,
+    PAGE_SIZE_MEDIUM
 } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
@@ -48,29 +47,29 @@ import { TaskType } from '../../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
-  TaskDetails,
-  ThreadTaskStatus,
+    TaskDetails,
+    ThreadTaskStatus
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import {
-  TestCaseFailureReasonType,
-  TestCaseResolutionStatusTypes,
+    TestCaseFailureReasonType,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
-  FieldProp,
-  FieldTypes,
+    FieldProp,
+    FieldTypes
 } from '../../../../interface/FormUtils.interface';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
 import {
-  Option,
-  TaskAction,
-  TaskActionMode,
+    Option,
+    TaskAction,
+    TaskActionMode
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
@@ -83,20 +82,21 @@ import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
-  fetchOptions,
-  generateOptions,
-  getTaskDetailPath,
-  GLOSSARY_TASK_ACTION_LIST,
-  INCIDENT_TASK_ACTION_LIST,
-  isDescriptionTask,
-  isTagsTask,
-  TASK_ACTION_COMMON_ITEM,
-  TASK_ACTION_LIST,
+    fetchOptions,
+    generateOptions,
+    getTaskDetailPath,
+    GLOSSARY_TASK_ACTION_LIST,
+    INCIDENT_TASK_ACTION_LIST,
+    isDescriptionTask,
+    isTagsTask,
+    TASK_ACTION_COMMON_ITEM,
+    TASK_ACTION_LIST
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
 import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { Select, Tooltip } from '../../../common/AntdCompat';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
@@ -104,6 +104,7 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
+;
 
 export const TaskTab = ({
   taskThread,

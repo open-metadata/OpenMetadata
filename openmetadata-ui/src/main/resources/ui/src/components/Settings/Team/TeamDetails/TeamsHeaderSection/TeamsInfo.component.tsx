@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
+    CheckOutlined,
+    CloseOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import { Button, Divider, Form, Input, Space, Typography } from 'antd';
-import { Tooltip } from '../../../../common/AntdCompat';;
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    GRAYED_OUT_COLOR,
+    ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -33,12 +32,14 @@ import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { Tooltip } from '../../../../common/AntdCompat';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
+;
 const TeamsInfo = ({
   parentTeams,
   isGroupType,

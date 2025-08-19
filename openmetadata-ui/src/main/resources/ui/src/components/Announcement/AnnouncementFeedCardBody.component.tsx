@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Avatar, Button, Col, Row } from 'antd';
-import { Popover } from '../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -21,25 +20,27 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import {
-  AnnouncementDetails,
-  ThreadType,
+    AnnouncementDetails,
+    ThreadType
 } from '../../generated/api/feed/createThread';
 import { Post } from '../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
+    getEntityField,
+    getEntityFQN,
+    getEntityType
 } from '../../utils/FeedUtils';
 import FeedCardBody from '../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBody';
 import FeedCardHeader from '../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeader';
 import PopoverContent from '../ActivityFeed/ActivityFeedCard/PopoverContent';
+import { Popover } from '../common/AntdCompat';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
 import './announcement.less';
+;
 
 const AnnouncementFeedCardBody = ({
   feed,

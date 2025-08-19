@@ -13,8 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Input, InputNumber, Modal, Space, Switch, TreeSelect, Typography,  } from 'antd';
-import { Select } from '../../../../common/AntdCompat';;
+import { Button, Input, InputNumber, Modal, Space, Switch, TreeSelect, Typography } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -23,49 +22,51 @@ import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
-  Reducer,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
+    Reducer,
+    useCallback,
+    useEffect,
+    useMemo,
+    useReducer,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
-  DEFAULT_INCLUDE_PROFILE,
-  INTERVAL_TYPE_OPTIONS,
-  INTERVAL_UNIT_OPTIONS,
-  PROFILER_METRIC,
-  PROFILER_MODAL_LABEL_STYLE,
-  PROFILE_SAMPLE_OPTIONS,
-  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
-  TIME_BASED_PARTITION,
+    DEFAULT_INCLUDE_PROFILE,
+    INTERVAL_TYPE_OPTIONS,
+    INTERVAL_UNIT_OPTIONS,
+    PROFILER_METRIC,
+    PROFILER_MODAL_LABEL_STYLE,
+    PROFILE_SAMPLE_OPTIONS,
+    SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
+    TIME_BASED_PARTITION
 } from '../../../../../constants/profiler.constant';
 import { CSMode } from '../../../../../enums/codemirror.enum';
 import {
-  PartitionIntervalTypes,
-  ProfileSampleType,
-  TableProfilerConfig,
+    PartitionIntervalTypes,
+    ProfileSampleType,
+    TableProfilerConfig
 } from '../../../../../generated/entity/data/table';
 import {
-  getTableProfilerConfig,
-  putTableProfileConfig,
+    getTableProfilerConfig,
+    putTableProfileConfig
 } from '../../../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../../../utils/CommonUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../utils/ToastUtils';
+import { Select } from '../../../../common/AntdCompat';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
 import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import '../table-profiler.less';
 import {
-  ProfilerForm,
-  ProfilerSettingModalState,
-  ProfilerSettingsModalProps,
+    ProfilerForm,
+    ProfilerSettingModalState,
+    ProfilerSettingsModalProps
 } from '../TableProfiler.interface';
+;
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,

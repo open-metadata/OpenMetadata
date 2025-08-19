@@ -12,7 +12,6 @@
  */
 
 import { Space } from 'antd';
-import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -23,10 +22,11 @@ import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
+    getEntityField,
+    getEntityFQN,
+    getEntityType
 } from '../../../utils/FeedUtils';
+import { Popover } from '../../common/AntdCompat';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
@@ -34,6 +34,7 @@ import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 import PopoverContent from './PopoverContent';
+;
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,

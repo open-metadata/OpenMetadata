@@ -12,13 +12,14 @@
  */
 
 import { Button, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
+import { Tooltip } from '../../common/AntdCompat';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
+;
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
   const { t } = useTranslation();

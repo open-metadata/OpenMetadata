@@ -13,7 +13,6 @@
 import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, List, Space } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -21,18 +20,20 @@ import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
-  ADD_USER_CONTAINER_HEIGHT,
-  pagingObject,
+    ADD_USER_CONTAINER_HEIGHT,
+    pagingObject
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Tooltip } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';
+;
 
 const RemoveIcon = ({
   removeOwner,

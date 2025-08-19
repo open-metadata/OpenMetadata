@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps } from '../AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, isObject } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select, SelectProps } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import { AsyncSelectListProps } from './AsyncSelectList.interface';
+;
 
 // Interface for paginated API response
 export interface PagingResponse<T> {

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Space, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../common/AntdCompat';;
+import { Button, Space, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -44,32 +43,33 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
-  GlossaryTerm,
-  Status,
+    GlossaryTerm,
+    Status
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  exportGlossaryInCSVFormat,
-  getGlossariesById,
-  getGlossaryTermsById,
+    exportGlossaryInCSVFormat,
+    getGlossariesById,
+    getGlossaryTermsById
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import {
-  getEntityImportPath,
-  getEntityVoteStatus,
+    getEntityImportPath,
+    getEntityVoteStatus
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-  getGlossaryPath,
-  getGlossaryTermsVersionsPath,
-  getGlossaryVersionsPath,
+    getGlossaryPath,
+    getGlossaryTermsVersionsPath,
+    getGlossaryVersionsPath
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Dropdown, Tooltip } from '../../common/AntdCompat';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -78,6 +78,8 @@ import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
+;
+;
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,

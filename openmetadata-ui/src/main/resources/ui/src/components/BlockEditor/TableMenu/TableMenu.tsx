@@ -12,7 +12,6 @@
  */
 import { Editor } from '@tiptap/react';
 import { Button, Space } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
@@ -20,6 +19,8 @@ import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-for
 import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
 import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
 import { ReactComponent as IconDeleteRow } from '../../../assets/svg/ic-format-delete-row.svg';
+import { Tooltip } from '../../common/AntdCompat';
+;
 
 interface TableMenuProps {
   editor: Editor;

@@ -18,8 +18,8 @@ import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  MISC_FIELDS,
-  OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
+    MISC_FIELDS,
+    OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
 } from '../../constants/AdvancedSearch.constants';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
@@ -30,8 +30,8 @@ import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getCombinedQueryFilterObject,
-  getQuickFilterWithDeletedFlag,
+    getCombinedQueryFilterObject,
+    getQuickFilterWithDeletedFlag
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
 import { removeFieldFromFilter } from '../../utils/QueryFilterUtils';

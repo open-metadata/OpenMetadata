@@ -12,43 +12,44 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Empty, Form, Modal, Space, Typography } from 'antd';
-import { Select } from '../../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import { Select } from '../../../../components/common/AntdCompat';
 import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import {
-  RELATIONSHIP_TYPE_OPTION,
-  TABLE_CONSTRAINTS_TYPE_OPTIONS,
+    RELATIONSHIP_TYPE_OPTION,
+    TABLE_CONSTRAINTS_TYPE_OPTIONS
 } from '../../../../constants/Table.constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
-  ConstraintType,
-  Table,
-  TableConstraint,
+    ConstraintType,
+    Table,
+    TableConstraint
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../../../utils/StringsUtils';
 import {
-  createTableConstraintObject,
-  getColumnOptionsFromTableColumn,
+    createTableConstraintObject,
+    getColumnOptionsFromTableColumn
 } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './table-constraint.style.less';
 import {
-  SelectOptions,
-  TableConstraintForm,
-  TableConstraintModalProps,
+    SelectOptions,
+    TableConstraintForm,
+    TableConstraintModalProps
 } from './TableConstraintsModal.interface';
+;
 
 const TableConstraintsModal = ({
   tableDetails,

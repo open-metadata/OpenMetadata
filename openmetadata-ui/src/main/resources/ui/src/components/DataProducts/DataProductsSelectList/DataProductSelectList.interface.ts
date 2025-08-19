@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SelectProps } from '../../common/AntdCompat';;
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
+import { SelectProps } from '../../common/AntdCompat';
+;
 
 export type DataProductSelectOption = {
   label: string;

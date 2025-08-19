@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Row, Space, Tag } from 'antd';
-import { Popover, Tooltip } from '../../../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -20,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { Popover, Tooltip } from '../../../components/common/AntdCompat';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -32,8 +32,8 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
+    NO_PERMISSION_FOR_ACTION,
+    NO_PERMISSION_TO_VIEW
 } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -47,16 +47,17 @@ import { getPolicies } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
-  checkPermission,
-  LIST_CAP,
-  userPermissions,
+    checkPermission,
+    LIST_CAP,
+    userPermissions
 } from '../../../utils/PermissionsUtils';
 import {
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-list.less';
+;
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();

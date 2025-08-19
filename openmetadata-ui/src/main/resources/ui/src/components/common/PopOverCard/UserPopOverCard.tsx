@@ -12,17 +12,16 @@
  */
 
 import { Button, Space } from 'antd';
-import { Popover } from '../AntdCompat';;
 import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
 import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useState,
+    FC,
+    Fragment,
+    HTMLAttributes,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,12 +37,14 @@ import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../utils/RouterUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
+import { Popover } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
+;
 
 export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();

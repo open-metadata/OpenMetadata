@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '../components/common/AntdCompat';;
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+;
 
 export const getFieldThreadElement = (
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,

@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleFilled,
+    CheckOutlined,
+    CloseOutlined,
+    ExclamationCircleFilled
 } from '@ant-design/icons';
 import { Button, Input, Space, Typography } from 'antd';
-import { Tooltip } from '../../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +27,9 @@ import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { hasEditAccess } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { Tooltip } from '../../../../common/AntdCompat';
 import { TeamsHeadingLabelProps } from '../team.interface';
+;
 
 const TeamsHeadingLabel = ({
   currentTeam,

@@ -12,24 +12,25 @@
  */
 
 import { Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  entityDisplayName,
-  getEntityFQN,
-  getEntityType,
-  getFeedHeaderTextFromCardStyle,
+    entityDisplayName,
+    getEntityFQN,
+    getEntityType,
+    getFeedHeaderTextFromCardStyle
 } from '../../../../utils/FeedUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
+;
 
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';

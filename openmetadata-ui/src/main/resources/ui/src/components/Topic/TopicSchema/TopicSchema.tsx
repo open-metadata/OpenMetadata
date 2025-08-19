@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Segmented, Tag, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -22,17 +21,17 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_TOPIC_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_TOPIC_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  DataTypeTopic,
-  Field,
-  MessageSchemaObject,
-  Topic,
+    DataTypeTopic,
+    Field,
+    MessageSchemaObject,
+    Topic
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
@@ -40,15 +39,16 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
+    getAllTags,
+    searchTagInData
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getAllRowKeysByKeyName,
-  getTableExpandableConfig,
-  updateFieldDescription,
-  updateFieldTags,
+    getAllRowKeysByKeyName,
+    getTableExpandableConfig,
+    updateFieldDescription,
+    updateFieldTags
 } from '../../../utils/TableUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -61,9 +61,10 @@ import TableDescription from '../../Database/TableDescription/TableDescription.c
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
-  SchemaViewType,
-  TopicSchemaFieldsProps,
+    SchemaViewType,
+    TopicSchemaFieldsProps
 } from './TopicSchema.interface';
+;
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   className,

@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,11 +23,13 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath
 } from '../../../../utils/RouterUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
+;
 
 const ListEntities = ({
   list,

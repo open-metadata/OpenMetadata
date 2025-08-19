@@ -12,11 +12,12 @@
  */
 
 import { Skeleton } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { cloneElement, ReactElement, useEffect, useState } from 'react';
+import { Tooltip } from '../components/common/AntdCompat';
 import { useLimitStore } from '../context/LimitsProvider/useLimitsStore';
+;
 
 interface LimitWrapperProps {
   children: ReactElement;

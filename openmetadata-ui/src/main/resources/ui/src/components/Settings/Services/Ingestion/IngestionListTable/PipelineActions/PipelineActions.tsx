@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Row } from 'antd';
-import { Tooltip } from '../../../../../common/AntdCompat';;
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -23,9 +22,11 @@ import { Operation } from '../../../../../../generated/entity/policies/accessCon
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
+import { Tooltip } from '../../../../../common/AntdCompat';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
+;
 
 function PipelineActions({
   pipeline,

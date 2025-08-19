@@ -11,42 +11,42 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import {
-  cloneDeep,
-  groupBy,
-  isEmpty,
-  isUndefined,
-  toLower,
-  uniqBy,
+    cloneDeep,
+    groupBy,
+    isEmpty,
+    isUndefined,
+    toLower,
+    uniqBy
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
+    updateContainerColumnDescription,
+    updateContainerColumnTags
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
+    getAllTags,
+    searchTagInData
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
+    getTableExpandableConfig,
+    pruneEmptyChildren
 } from '../../../utils/TableUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
@@ -55,6 +55,7 @@ import TableDescription from '../../Database/TableDescription/TableDescription.c
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
+;
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,

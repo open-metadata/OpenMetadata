@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,10 +24,12 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { Tooltip } from '../../common/AntdCompat';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import './data-asset-version-header.less';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
+;
 
 function DataAssetsVersionHeader({
   breadcrumbLinks,

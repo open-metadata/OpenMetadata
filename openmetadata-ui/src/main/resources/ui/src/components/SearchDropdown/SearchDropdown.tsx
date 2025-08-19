@@ -12,42 +12,42 @@
  */
 
 import {
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Divider,
-  Input,
-  MenuItemProps,
-  MenuProps,
-  Row,
-  Space,
-  Typography,
+    Button,
+    Card,
+    Checkbox,
+    Col,
+    Divider,
+    Input,
+    MenuItemProps,
+    MenuProps,
+    Row,
+    Space,
+    Typography
 } from 'antd';
-import { Dropdown, Tooltip } from '../common/AntdCompat';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    FC,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
-  generateSearchDropdownLabel,
-  getSearchDropdownLabels,
-  getSelectedOptionLabelString,
+    generateSearchDropdownLabel,
+    getSearchDropdownLabels,
+    getSelectedOptionLabelString
 } from '../../utils/AdvancedSearchUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { Dropdown, Tooltip } from '../common/AntdCompat';
 import Loader from '../common/Loader/Loader';
 import './search-dropdown.less';
 import {
-  SearchDropdownOption,
-  SearchDropdownProps,
+    SearchDropdownOption,
+    SearchDropdownProps
 } from './SearchDropdown.interface';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({

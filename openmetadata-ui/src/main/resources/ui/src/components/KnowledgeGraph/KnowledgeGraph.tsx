@@ -12,43 +12,44 @@
  */
 
 import {
-  AimOutlined,
-  FullscreenOutlined,
-  NodeCollapseOutlined,
-  PartitionOutlined,
-  ReloadOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
+    AimOutlined,
+    FullscreenOutlined,
+    NodeCollapseOutlined,
+    PartitionOutlined,
+    ReloadOutlined,
+    ZoomInOutlined,
+    ZoomOutOutlined
 } from '@ant-design/icons';
-import { Button, Card, Empty, Slider, Space, Spin,  } from 'antd';
-import { Select, Tooltip } from '../common/AntdCompat';;
+import { Button, Card, Empty, Slider, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataSet } from 'vis-data';
 import {
-  ChosenNodeValues,
-  Edge,
-  IdType,
-  Network,
-  NodeChosenNodeFunction,
-  Options,
+    ChosenNodeValues,
+    Edge,
+    IdType,
+    Network,
+    NodeChosenNodeFunction,
+    Options
 } from 'vis-network';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Select, Tooltip } from '../common/AntdCompat';
 import {
-  GraphData,
-  GraphNode,
-  KnowledgeGraphProps,
+    GraphData,
+    GraphNode,
+    KnowledgeGraphProps
 } from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
 import KnowledgeGraphNodeDetails from './KnowledgeGraphNodeDetails';
+;
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,

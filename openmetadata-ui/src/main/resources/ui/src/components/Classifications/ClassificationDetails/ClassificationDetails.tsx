@@ -12,19 +12,18 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
+    forwardRef,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -45,18 +44,19 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTags } from '../../../rest/tagAPI';
 import {
-  getClassificationExtraDropdownContent,
-  getClassificationInfo,
-  getTagsTableColumn,
+    getClassificationExtraDropdownContent,
+    getClassificationInfo,
+    getTagsTableColumn
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-  getClassificationDetailsPath,
-  getClassificationVersionsPath,
+    getClassificationDetailsPath,
+    getClassificationVersionsPath
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -69,6 +69,7 @@ import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
+;
 
 const ClassificationDetails = forwardRef(
   (

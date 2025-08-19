@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from '../../../common/AntdCompat';;
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../../generated/entity/type';
+import { PopoverProps } from '../../../common/AntdCompat';
+;
 
 export type PersonaSelectableListProps = {
   hasPermission: boolean;

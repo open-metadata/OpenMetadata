@@ -12,8 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Avatar, Button, Col, Modal, Row, Space, Switch, Tabs, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Avatar, Button, Col, Modal, Row, Space, Switch, Tabs, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,14 +30,14 @@ import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
-  GLOSSARIES_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
+    GLOSSARIES_DOCS,
+    ROLE_DOCS,
+    TEAMS_DOCS
 } from '../../../../constants/docs.constants';
 import { ExportTypes } from '../../../../constants/Export.constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -49,8 +48,8 @@ import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  EntityReference as UserTeams,
-  User,
+    EntityReference as UserTeams,
+    User
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -65,14 +64,15 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
-  getSettingsPathWithFqn,
-  getTeamsWithFqnPath,
+    getSettingsPathWithFqn,
+    getTeamsWithFqnPath
 } from '../../../../utils/RouterUtils';
 import {
-  filterChildTeams,
-  getDeleteMessagePostFix,
+    filterChildTeams,
+    getDeleteMessagePostFix
 } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -89,9 +89,9 @@ import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import {
-  AddAttribute,
-  PlaceholderProps,
-  TeamDetailsProp,
+    AddAttribute,
+    PlaceholderProps,
+    TeamDetailsProp
 } from './TeamDetailsV1.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
@@ -99,6 +99,7 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+;
 
 const TeamDetailsV1 = ({
   assetsCount,

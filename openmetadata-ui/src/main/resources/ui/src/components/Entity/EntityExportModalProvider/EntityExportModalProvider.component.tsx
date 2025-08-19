@@ -11,37 +11,38 @@
  *  limitations under the License.
  */
 import { Badge, Form, Input, Modal } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, lowerCase } from 'lodash';
 import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    createContext,
+    ReactNode,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import {
-  BETA_EXPORT_TYPES,
-  ExportTypes,
+    BETA_EXPORT_TYPES,
+    ExportTypes
 } from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select } from '../../common/AntdCompat';
 import Banner from '../../common/Banner/Banner';
 import {
-  CSVExportJob,
-  CSVExportWebsocketResponse,
-  EntityExportModalContextProps,
-  ExportData,
+    CSVExportJob,
+    CSVExportWebsocketResponse,
+    EntityExportModalContextProps,
+    ExportData
 } from './EntityExportModalProvider.interface';
+;
 
 const EntityExportModalContext = createContext<EntityExportModalContextProps>(
   {} as EntityExportModalContextProps

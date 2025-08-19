@@ -12,7 +12,6 @@
  */
 
 import { Button } from 'antd';
-import { Dropdown } from '../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,12 +20,14 @@ import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
-  getIngestionTypes,
-  getMenuItems,
-  getSupportedPipelineTypes,
+    getIngestionTypes,
+    getMenuItems,
+    getSupportedPipelineTypes
 } from '../../../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../../../utils/RouterUtils';
+import { Dropdown } from '../../../common/AntdCompat';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
+;
 
 function AddIngestionButton({
   serviceDetails,

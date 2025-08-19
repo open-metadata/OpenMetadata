@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
 import 'codemirror/addon/edit/closebrackets.js';
@@ -36,8 +35,10 @@ import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
+import { Tooltip } from '../../common/AntdCompat';
 import './schema-editor.less';
 import { SchemaEditorProps } from './SchemaEditor.interface';
+;
 
 const SchemaEditor = ({
   value = '',

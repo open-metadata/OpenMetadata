@@ -12,7 +12,6 @@
  */
 import { RightOutlined } from '@ant-design/icons';
 import { Space, Typography } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
@@ -20,10 +19,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import {
-  DEBOUNCE_TIMEOUT,
-  INITIAL_NODE_ITEMS_LENGTH,
-  NODE_ITEMS_PAGE_SIZE,
-  ZOOM_TRANSITION_DURATION,
+    DEBOUNCE_TIMEOUT,
+    INITIAL_NODE_ITEMS_LENGTH,
+    NODE_ITEMS_PAGE_SIZE,
+    ZOOM_TRANSITION_DURATION
 } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
@@ -32,6 +31,8 @@ import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils'
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { Select } from '../../../common/AntdCompat';
+;
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();

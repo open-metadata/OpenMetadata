@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Space, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../../common/AntdCompat';;
+import { Button, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -26,26 +25,29 @@ import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg'
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import {
-  LIGHT_GREEN_COLOR,
-  TERM_ADMIN,
-  TERM_USER,
+    LIGHT_GREEN_COLOR,
+    TERM_ADMIN,
+    TERM_USER
 } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { updateUserDetail } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  getImageWithResolutionAndFallback,
-  ImageQuality,
+    getImageWithResolutionAndFallback,
+    ImageQuality
 } from '../../../../utils/ProfilerUtils';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
+import { Dropdown, Tooltip } from '../../../common/AntdCompat';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
+;
+;
 
 type ListMenuItemProps = {
   listItems: EntityReference[];

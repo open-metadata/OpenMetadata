@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Card, Space, Tag } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { split } from 'lodash';
 import { useMemo } from 'react';
@@ -20,7 +19,9 @@ import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import { Tooltip } from '../AntdCompat';
 import './query-viewer.style.less';
+;
 
 const QueryViewer = ({
   title,

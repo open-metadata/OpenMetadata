@@ -12,7 +12,6 @@
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -28,8 +27,10 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
+;
 
 const EntityHeaderTitle = ({
   icon,

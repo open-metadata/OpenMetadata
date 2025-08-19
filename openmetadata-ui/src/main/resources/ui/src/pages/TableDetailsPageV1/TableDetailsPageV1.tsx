@@ -13,7 +13,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -24,6 +23,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
+import { Tooltip } from '../../components/common/AntdCompat';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
@@ -39,24 +39,24 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-  EntityTabs,
-  EntityType,
-  FqnPart,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    FqnPart,
+    TabSpecificField
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DataContract } from '../../generated/entity/data/dataContract';
 import { Table, TableType } from '../../generated/entity/data/table';
 import {
-  Suggestion,
-  SuggestionType,
+    Suggestion,
+    SuggestionType
 } from '../../generated/entity/feed/suggestion';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
@@ -72,45 +72,46 @@ import { getContractByEntityId } from '../../rest/contractAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
-  addFollower,
-  getTableDetailsByFQN,
-  patchTableDetails,
-  removeFollower,
-  restoreTable,
-  updateTablesVotes,
+    addFollower,
+    getTableDetailsByFQN,
+    patchTableDetails,
+    removeFollower,
+    restoreTable,
+    updateTablesVotes
 } from '../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
-  addToRecentViewed,
-  getFeedCounts,
-  getPartialNameFromTableFQN,
+    addToRecentViewed,
+    getFeedCounts,
+    getPartialNameFromTableFQN
 } from '../../utils/CommonUtils';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission,
+    getPrioritizedViewPermission
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
-  findColumnByEntityLink,
-  getJoinsFromTableJoins,
-  getTagsWithoutTier,
-  getTierTags,
-  updateColumnInNestedStructure,
+    findColumnByEntityLink,
+    getJoinsFromTableJoins,
+    getTagsWithoutTier,
+    getTierTags,
+    updateColumnInNestedStructure
 } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+;
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =

@@ -13,10 +13,10 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  ListValues,
-  OldJsonTree,
-  RenderSettings,
-  Utils as QbUtils,
+    ListValues,
+    OldJsonTree,
+    RenderSettings,
+    Utils as QbUtils
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
@@ -27,28 +27,28 @@ import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/Ad
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
-  COMMON_DROPDOWN_ITEMS,
-  DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
-  GLOSSARY_ASSETS_DROPDOWN_ITEMS,
-  LINEAGE_DROPDOWN_ITEMS,
+    COMMON_DROPDOWN_ITEMS,
+    DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
+    GLOSSARY_ASSETS_DROPDOWN_ITEMS,
+    LINEAGE_DROPDOWN_ITEMS
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
-  EntityFields,
-  EntityReferenceFields,
+    EntityFields,
+    EntityReferenceFields
 } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
-  Bucket,
-  ContainerSearchSource,
-  DashboardSearchSource,
-  ExploreSearchSource,
-  MlmodelSearchSource,
-  PipelineSearchSource,
-  SuggestOption,
-  TableSearchSource,
-  TopicSearchSource,
+    Bucket,
+    ContainerSearchSource,
+    DashboardSearchSource,
+    ExploreSearchSource,
+    MlmodelSearchSource,
+    PipelineSearchSource,
+    SuggestOption,
+    TableSearchSource,
+    TopicSearchSource
 } from '../interface/search.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../AntdCompat';;
+import { Button, Modal, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,10 +32,13 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
+import { Dropdown, Tooltip } from '../../AntdCompat';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
+;
+;
 
 const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,

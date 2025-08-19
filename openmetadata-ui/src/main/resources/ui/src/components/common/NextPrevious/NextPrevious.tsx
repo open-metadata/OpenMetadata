@@ -13,21 +13,22 @@
 
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import { Dropdown } from '../AntdCompat';;
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
 import {
-  ICON_DIMENSION,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    ICON_DIMENSION,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
+import { Dropdown } from '../AntdCompat';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
+;
 
 const NextPrevious: FC<NextPreviousProps> = ({
   className,

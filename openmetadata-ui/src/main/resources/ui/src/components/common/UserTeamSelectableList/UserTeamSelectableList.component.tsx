@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Tabs, Typography } from 'antd';
-import { Popover } from '../AntdCompat';;
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,23 +19,24 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import {
-  ADD_USER_CONTAINER_HEIGHT,
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
+    ADD_USER_CONTAINER_HEIGHT,
+    DE_ACTIVE_COLOR,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { searchData } from '../../../rest/miscAPI';
 import {
-  formatTeamsResponse,
-  formatUsersResponse,
+    formatTeamsResponse,
+    formatUsersResponse
 } from '../../../utils/APIUtils';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
+    getEntityName,
+    getEntityReferenceListFromEntities
 } from '../../../utils/EntityUtils';
+import { Popover } from '../AntdCompat';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -44,6 +44,7 @@ import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
+;
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (

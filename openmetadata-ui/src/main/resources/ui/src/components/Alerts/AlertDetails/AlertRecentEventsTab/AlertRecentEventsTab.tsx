@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Collapse, Dropdown, Row, Skeleton, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Collapse, Dropdown, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -23,32 +22,34 @@ import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
-  Status,
-  TypedEvent,
+    Status,
+    TypedEvent
 } from '../../../../generated/events/api/typedEvent';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
 import {
-  getAlertEventsFilterLabels,
-  getAlertRecentEventsFilterOptions,
-  getAlertStatusIcon,
-  getChangeEventDataFromTypedEvent,
-  getLabelsForEventDetails,
+    getAlertEventsFilterLabels,
+    getAlertRecentEventsFilterOptions,
+    getAlertStatusIcon,
+    getChangeEventDataFromTypedEvent,
+    getLabelsForEventDetails
 } from '../../../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import './alert-recent-events-tab.less';
 import {
-  AlertEventDetailsToDisplay,
-  AlertRecentEventsTabProps,
+    AlertEventDetailsToDisplay,
+    AlertRecentEventsTabProps
 } from './AlertRecentEventsTab.interface';
+;
 
 const { Panel } = Collapse;
 

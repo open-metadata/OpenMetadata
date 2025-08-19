@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -23,18 +22,20 @@ import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.sv
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
+    getAPIfromSource,
+    getEntityAPIfromSource
 } from '../../../utils/Assets/AssetsUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
+;
 
 export const DomainLabelV2 = <
   T extends {

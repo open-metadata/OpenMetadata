@@ -12,21 +12,22 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
-  PersonalAccessToken,
-  TokenType,
+    PersonalAccessToken,
+    TokenType
 } from '../../../../generated/auth/personalAccessToken';
 import {
-  AuthenticationMechanism,
-  AuthType,
-  JWTTokenExpiry,
+    AuthenticationMechanism,
+    AuthType,
+    JWTTokenExpiry
 } from '../../../../generated/entity/teams/user';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
+import { Select } from '../../../common/AntdCompat';
+;
 
 const { Option } = Select;
 

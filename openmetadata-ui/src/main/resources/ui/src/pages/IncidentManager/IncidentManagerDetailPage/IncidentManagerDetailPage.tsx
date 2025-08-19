@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tabs, TabsProps, Typography } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -24,6 +23,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
@@ -43,24 +43,24 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
-  ChangeDescription,
-  EntityReference,
+    ChangeDescription,
+    EntityReference
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
-  getTestCaseByFqn,
-  getTestCaseVersionDetails,
-  getTestCaseVersionList,
-  updateTestCaseById,
+    getTestCaseByFqn,
+    getTestCaseVersionDetails,
+    getTestCaseVersionList,
+    updateTestCaseById
 } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
-  getTestCaseDetailPagePath,
-  getTestCaseVersionPath,
+    getTestCaseDetailPagePath,
+    getTestCaseVersionPath
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -68,6 +68,7 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
+;
 
 const IncidentManagerDetailPage = ({
   isVersionPage = false,

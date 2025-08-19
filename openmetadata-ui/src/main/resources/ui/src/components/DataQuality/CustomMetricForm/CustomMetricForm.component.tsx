@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Form, Input } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +20,11 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Select } from '../../common/AntdCompat';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { CustomMetricFormProps } from './CustomMetricForm.interface';
+;
 
 const CustomMetricForm = ({
   isColumnMetric,

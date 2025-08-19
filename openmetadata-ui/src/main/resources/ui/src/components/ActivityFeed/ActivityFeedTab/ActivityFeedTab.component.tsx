@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Menu, Segmented, Space, Typography } from 'antd';
-import { Dropdown } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -29,9 +28,9 @@ import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-co
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 import {
-  COMMON_ICON_STYLES,
-  ICON_DIMENSION,
-  ICON_DIMENSION_USER_PAGE,
+    COMMON_ICON_STYLES,
+    ICON_DIMENSION,
+    ICON_DIMENSION_USER_PAGE
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -39,9 +38,9 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
+    Thread,
+    ThreadTaskStatus,
+    ThreadType
 } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -52,11 +51,12 @@ import { getFeedCount } from '../../../rest/feedsAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityUserLink,
+    ENTITY_LINK_SEPARATOR,
+    getEntityUserLink
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Dropdown } from '../../common/AntdCompat';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
@@ -66,10 +66,11 @@ import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
 import {
-  ActivityFeedLayoutType,
-  ActivityFeedTabProps,
-  ActivityFeedTabs,
+    ActivityFeedLayoutType,
+    ActivityFeedTabProps,
+    ActivityFeedTabs
 } from './ActivityFeedTab.interface';
+;
 
 const componentsVisibility = {
   showThreadIcon: false,

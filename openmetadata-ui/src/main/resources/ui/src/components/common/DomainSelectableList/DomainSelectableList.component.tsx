@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import { Popover } from '../AntdCompat';;
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -23,11 +22,13 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { Popover } from '../AntdCompat';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
+;
 
 export const DomainListItemRenderer = (props: EntityReference) => {
   const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;

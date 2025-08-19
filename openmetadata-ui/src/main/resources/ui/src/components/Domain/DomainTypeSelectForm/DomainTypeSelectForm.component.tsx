@@ -12,11 +12,12 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { useState } from 'react';
 import { DomainType } from '../../../generated/api/domains/createDomain';
+import { Select } from '../../common/AntdCompat';
 import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
+;
 
 const DomainTypeSelectForm = ({
   defaultValue,

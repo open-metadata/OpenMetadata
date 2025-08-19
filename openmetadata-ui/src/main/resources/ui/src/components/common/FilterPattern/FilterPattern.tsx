@@ -12,7 +12,8 @@
  */
 
 import { Checkbox, Col, Divider, Row, Space, Typography } from 'antd';
-import { Select } from '../AntdCompat';;
+import { Select } from '../AntdCompat';
+;
 
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';

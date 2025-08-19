@@ -11,27 +11,26 @@
  *  limitations under the License.
  */
 import { Col, Row, Segmented, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {} from '../../../constants/constants';
+import { } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  APIEndpoint,
-  ChangeDescription,
-  DataTypeTopic as DataType,
-  Field,
-  TagSource,
+    APIEndpoint,
+    ChangeDescription,
+    DataTypeTopic as DataType,
+    Field,
+    TagSource
 } from '../../../generated/entity/data/apiEndpoint';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -40,15 +39,16 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
+    getAllTags,
+    searchTagInData
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getAllRowKeysByKeyName,
-  getTableExpandableConfig,
-  updateFieldDescription,
-  updateFieldTags,
+    getAllRowKeysByKeyName,
+    getTableExpandableConfig,
+    updateFieldDescription,
+    updateFieldTags
 } from '../../../utils/TableUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
@@ -58,6 +58,7 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+;
 
 interface APIEndpointSchemaProps {
   isVersionView?: boolean;

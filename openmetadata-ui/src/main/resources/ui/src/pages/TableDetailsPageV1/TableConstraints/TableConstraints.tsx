@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
+    EditIconButton,
+    PlusIconButton
 } from '../../../components/common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -32,6 +32,7 @@ import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
+;
 
 const TableConstraints = ({
   renderAsExpandableCard = true,

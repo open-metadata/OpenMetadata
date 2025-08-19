@@ -12,12 +12,12 @@
  */
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Spin, Tabs } from 'antd';
-import { Popover } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
+import { Popover } from '../../../common/AntdCompat';
 import Loader from '../../../common/Loader/Loader';
 import { FileType } from '../../BlockEditor.interface';
 import imageClassBase from '../image/ImageClassBase';
@@ -26,6 +26,7 @@ import AttachmentPlaceholder from './AttachmentComponents/AttachmentPlaceholder'
 import FileAttachment from './AttachmentComponents/FileAttachment';
 import ImageAttachment from './AttachmentComponents/ImageAttachment';
 import './file-node.less';
+;
 
 const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
   const tabs = useMemo(() => {

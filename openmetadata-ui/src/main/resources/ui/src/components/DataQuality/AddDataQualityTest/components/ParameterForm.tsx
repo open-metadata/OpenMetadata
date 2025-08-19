@@ -13,8 +13,7 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Form, FormItemProps, Input, InputNumber, Switch, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../../common/AntdCompat';;
+import { Button, Form, FormItemProps, Input, InputNumber, Switch, Typography } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
@@ -28,26 +27,28 @@ import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
-  Rule,
-  TestCaseParameterDefinition,
-  TestDataType,
+    Rule,
+    TestCaseParameterDefinition,
+    TestDataType
 } from '../../../../generated/tests/testDefinition';
 import {
-  SearchHitBody,
-  TableSearchSource,
+    SearchHitBody,
+    TableSearchSource
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import {
-  validateEquals,
-  validateGreaterThanOrEquals,
-  validateLessThanOrEquals,
-  validateNotEquals,
+    validateEquals,
+    validateGreaterThanOrEquals,
+    validateLessThanOrEquals,
+    validateNotEquals
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
+import { Select, Tooltip } from '../../../common/AntdCompat';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+;
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();

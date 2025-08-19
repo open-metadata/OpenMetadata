@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Space, Typography,  } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
+import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { Select } from '../../../common/AntdCompat';
+;
 
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
@@ -29,26 +30,26 @@ import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
-  EntityType,
-  TestDataType,
-  TestDefinition,
-  TestPlatform,
+    EntityType,
+    TestDataType,
+    TestDefinition,
+    TestPlatform
 } from '../../../../generated/tests/testDefinition';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout
 } from '../../../../interface/FormUtils.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
-  getListTestCaseBySearch,
-  getListTestDefinitions,
+    getListTestCaseBySearch,
+    getListTestDefinitions
 } from '../../../../rest/testAPI';
 import {
-  filterSelectOptions,
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
+    filterSelectOptions,
+    getNameFromFQN,
+    replaceAllSpacialCharWith_
 } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
@@ -56,8 +57,8 @@ import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import {
-  TestCaseFormProps,
-  TestCaseFormType,
+    TestCaseFormProps,
+    TestCaseFormType
 } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 

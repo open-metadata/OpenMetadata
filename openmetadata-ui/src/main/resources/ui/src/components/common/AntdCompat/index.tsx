@@ -18,14 +18,14 @@ import type { SelectProps } from 'antd/lib/select';
 import type { TooltipProps } from 'antd/lib/tooltip';
 import type { TreeSelectProps } from 'antd/lib/tree-select';
 import {
-  AutoComplete as AutoComplete5,
-  ConfigProvider,
-  Dropdown as Dropdown5,
-  Popover as Popover5,
-  Select as Select5,
-  theme,
-  Tooltip as Tooltip5,
-  TreeSelect as TreeSelect5,
+    AutoComplete as AutoComplete5,
+    ConfigProvider,
+    Dropdown as Dropdown5,
+    Popover as Popover5,
+    Select as Select5,
+    theme,
+    Tooltip as Tooltip5,
+    TreeSelect as TreeSelect5
 } from 'antd5';
 import React from 'react';
 

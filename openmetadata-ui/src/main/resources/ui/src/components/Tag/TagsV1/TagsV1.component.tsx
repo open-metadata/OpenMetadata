@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Tag, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -25,13 +24,15 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getClassificationTagPath,
-  getGlossaryPath,
+    getClassificationTagPath,
+    getGlossaryPath
 } from '../../../utils/RouterUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
+;
 
 const TagsV1 = ({
   tag,

@@ -13,17 +13,18 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
+import { Tooltip } from '../components/common/AntdCompat';
 import { MenuOptions } from '../constants/execution.constants';
 import {
-  PipelineStatus,
-  StatusType,
-  Task,
+    PipelineStatus,
+    StatusType,
+    Task
 } from '../generated/entity/data/pipeline';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
+;
 
 interface StatusIndicatorInterface {
   status: StatusType;

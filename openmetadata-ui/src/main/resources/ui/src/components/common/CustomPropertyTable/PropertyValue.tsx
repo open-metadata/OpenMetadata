@@ -12,18 +12,17 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Form, Input, Row, Tag, TimePicker, Typography,  } from 'antd';
-import { Select, Tooltip } from '../AntdCompat';;
+import { Button, Card, Col, Form, Input, Row, Tag, TimePicker, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-  isArray,
-  isEmpty,
-  isNil,
-  isUndefined,
-  noop,
-  omitBy,
-  toNumber,
+    isArray,
+    isEmpty,
+    isNil,
+    isUndefined,
+    noop,
+    omitBy,
+    toNumber
 } from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
@@ -36,9 +35,9 @@ import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time
 import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
 import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  VALIDATION_MESSAGES,
+    DE_ACTIVE_COLOR,
+    ICON_DIMENSION,
+    VALIDATION_MESSAGES
 } from '../../../constants/constants';
 import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
@@ -56,19 +55,21 @@ import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { Select, Tooltip } from '../AntdCompat';
 import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
-  PropertyValueProps,
-  PropertyValueType,
-  TimeIntervalType,
+    PropertyValueProps,
+    PropertyValueType,
+    TimeIntervalType
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+;
 
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,

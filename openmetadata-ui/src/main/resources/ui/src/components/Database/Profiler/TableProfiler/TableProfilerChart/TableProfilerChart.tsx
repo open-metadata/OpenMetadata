@@ -12,8 +12,7 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space } from 'antd';;
-import { Dropdown, Tooltip } from '../../../../common/AntdCompat';;
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, pick } from 'lodash';
@@ -24,9 +23,9 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
-  DEFAULT_RANGE_DATA,
-  INITIAL_OPERATION_METRIC_VALUE,
-  INITIAL_ROW_METRIC_VALUE,
+    DEFAULT_RANGE_DATA,
+    INITIAL_OPERATION_METRIC_VALUE,
+    INITIAL_ROW_METRIC_VALUE
 } from '../../../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
@@ -35,19 +34,20 @@ import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-  getSystemProfileList,
-  getTableProfilesList,
+    getSystemProfileList,
+    getTableProfilesList
 } from '../../../../../rest/tableAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
 import {
-  calculateCustomMetrics,
-  calculateRowCountMetrics,
-  calculateSystemMetrics,
+    calculateCustomMetrics,
+    calculateRowCountMetrics,
+    calculateSystemMetrics
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { Dropdown, Tooltip } from '../../../../common/AntdCompat';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
@@ -63,6 +63,8 @@ import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.compone
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
+;
+;
 
 const TableProfilerChart = ({
   entityFqn = '',

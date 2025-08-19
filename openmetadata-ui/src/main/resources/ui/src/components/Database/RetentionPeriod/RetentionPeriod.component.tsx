@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Button, Form, FormProps, Input, Modal, Space, Typography,  } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
+import { Alert, Button, Form, FormProps, Input, Modal, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { Duration } from 'luxon';
@@ -19,13 +18,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-  VALIDATION_MESSAGES,
+    DE_ACTIVE_COLOR,
+    NO_DATA_PLACEHOLDER,
+    VALIDATION_MESSAGES
 } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
+;
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {

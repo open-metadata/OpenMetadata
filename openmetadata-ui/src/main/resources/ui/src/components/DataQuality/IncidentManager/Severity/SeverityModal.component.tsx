@@ -12,13 +12,14 @@
  */
 
 import { Form, Modal } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { keys, startCase } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { Select } from '../../../common/AntdCompat';
 import { SeverityModalProps } from './Severity.interface';
+;
 
 const SeverityModal = ({
   initialSeverity,

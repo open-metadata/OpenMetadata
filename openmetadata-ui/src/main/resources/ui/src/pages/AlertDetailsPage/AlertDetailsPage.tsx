@@ -13,7 +13,6 @@
 
 import { SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Skeleton, Space, Tabs } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -25,6 +24,7 @@ import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import AlertDiagnosticInfoTab from '../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab';
 import AlertRecentEventsTab from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
+import { Tooltip } from '../../components/common/AntdCompat';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -37,40 +37,41 @@ import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
-  EntityReference,
-  EventSubscription,
-  ProviderType,
+    EntityReference,
+    EventSubscription,
+    ProviderType
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { updateNotificationAlert } from '../../rest/alertsAPI';
 import {
-  getAlertEventsDiagnosticsInfo,
-  getObservabilityAlertByFQN,
-  syncOffset,
-  updateObservabilityAlert,
+    getAlertEventsDiagnosticsInfo,
+    getObservabilityAlertByFQN,
+    syncOffset,
+    updateObservabilityAlert
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  getNotificationAlertDetailsPath,
-  getNotificationAlertsEditPath,
-  getObservabilityAlertDetailsPath,
-  getObservabilityAlertsEditPath,
-  getSettingPath,
+    getNotificationAlertDetailsPath,
+    getNotificationAlertsEditPath,
+    getObservabilityAlertDetailsPath,
+    getObservabilityAlertsEditPath,
+    getSettingPath
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
+;
 
 function AlertDetailsPage({
   isNotificationAlert = false,

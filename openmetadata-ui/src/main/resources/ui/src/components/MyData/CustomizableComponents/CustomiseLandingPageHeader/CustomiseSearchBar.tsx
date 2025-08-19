@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Input } from 'antd';
-import { Popover, Tooltip } from '../../../common/AntdCompat';
 import classNames from 'classnames';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -29,13 +28,14 @@ import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { getNLPEnabledStatus } from '../../../../rest/searchAPI';
 import { addToRecentSearched } from '../../../../utils/CommonUtils';
 import {
-  getExplorePath,
-  inPageSearchOptions,
-  isInPageSearchAllowed,
+    getExplorePath,
+    inPageSearchOptions,
+    isInPageSearchAllowed
 } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import SearchOptions from '../../../AppBar/SearchOptions';
 import Suggestions from '../../../AppBar/Suggestions';
+import { Popover, Tooltip } from '../../../common/AntdCompat';
 import './customise-search-bar.less';
 
 export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {

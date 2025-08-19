@@ -13,19 +13,20 @@
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Progress, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../common/AntdCompat';;
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  KPI_WIDGET_GRAPH_BG_COLORS,
-  KPI_WIDGET_GRAPH_COLORS,
+    KPI_WIDGET_GRAPH_BG_COLORS,
+    KPI_WIDGET_GRAPH_COLORS
 } from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
+import { Tooltip } from '../common/AntdCompat';
 import './kpi-latest-results.less';
+;
 
 interface Props {
   kpiLatestResultsRecord: Record<string, UIKpiResult>;

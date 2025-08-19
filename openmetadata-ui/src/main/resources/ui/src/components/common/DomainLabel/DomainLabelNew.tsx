@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Divider, Typography } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -20,12 +19,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import { Tooltip } from '../AntdCompat';
+;
 
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
+    getAPIfromSource,
+    getEntityAPIfromSource
 } from '../../../utils/Assets/AssetsUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

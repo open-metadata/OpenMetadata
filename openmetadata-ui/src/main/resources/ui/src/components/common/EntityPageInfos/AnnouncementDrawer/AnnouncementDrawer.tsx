@@ -13,7 +13,6 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Typography } from 'antd';
-import { Tooltip } from '../../AntdCompat';;
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
@@ -26,6 +25,8 @@ import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
+import { Tooltip } from '../../AntdCompat';
+;
 
 interface Props {
   open: boolean;

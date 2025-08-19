@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,7 +19,9 @@ import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
+import { Tooltip } from '../AntdCompat';
 import './certification-tag.less';
+;
 
 const CertificationTag = ({
   certification,

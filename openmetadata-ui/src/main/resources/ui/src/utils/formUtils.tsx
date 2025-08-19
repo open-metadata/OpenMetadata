@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { ErrorTransformer } from '@rjsf/utils';
-import { Alert, Checkbox, Divider, Form, FormItemProps, Input, InputNumber, Switch, Typography,  } from 'antd';
-import { Select, TooltipProps } from '../components/common/AntdCompat';;
+import { Alert, Checkbox, Divider, Form, FormItemProps, Input, InputNumber, Switch, Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compact, startCase, toString } from 'lodash';
 import { Fragment, ReactNode } from 'react';
+import { Select, TooltipProps } from '../components/common/AntdCompat';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -41,16 +41,17 @@ import { UserSelectDropdownProps } from '../components/common/UserTeamSelectable
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout,
+    HelperTextType
 } from '../interface/FormUtils.interface';
 import TagSuggestion, {
-  TagSuggestionProps,
+    TagSuggestionProps
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
+;
 
 export const getField = (field: FieldProp) => {
   const {

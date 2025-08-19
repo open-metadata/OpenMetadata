@@ -13,7 +13,6 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,14 +21,16 @@ import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  entityDisplayName,
-  getEntityField,
-  getEntityFieldDisplay,
-  getEntityFQN,
-  getEntityType,
-  getFeedPanelHeaderText,
+    entityDisplayName,
+    getEntityField,
+    getEntityFieldDisplay,
+    getEntityFQN,
+    getEntityType,
+    getFeedPanelHeaderText
 } from '../../../utils/FeedUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
+;
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,

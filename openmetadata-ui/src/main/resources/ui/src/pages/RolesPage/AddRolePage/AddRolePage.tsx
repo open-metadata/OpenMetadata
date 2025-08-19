@@ -12,12 +12,12 @@
  */
 
 import { Button, Form, Input, Space, Typography } from 'antd';
-import { Select } from '../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Select } from '../../../components/common/AntdCompat';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
@@ -33,6 +33,7 @@ import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+;
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Space, Typography } from 'antd';
-import { Popover, Select, Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,14 +18,16 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
+import { Popover, Select, Tooltip } from '../../../common/AntdCompat';
+;
 
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
+    getEntityName,
+    getEntityReferenceListFromEntities
 } from '../../../../utils/EntityUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';

@@ -13,14 +13,15 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Space, Typography } from 'antd';
-import { Select, Tooltip } from '../components/common/AntdCompat';;
 import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
 import { ReactNode } from 'react';
+import { Select, Tooltip } from '../components/common/AntdCompat';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
+;
 
 type KeyValuesProps = {
   obj: Record<string, any>;

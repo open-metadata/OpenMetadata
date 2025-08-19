@@ -12,25 +12,25 @@
  */
 
 import { Button, Col, Row, Space, Tabs, TabsProps } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
 import {
-  PagingWithoutTotal,
-  ServicesUpdateRequest,
-  ServiceTypes,
+    PagingWithoutTotal,
+    ServicesUpdateRequest,
+    ServiceTypes
 } from 'Models';
 import {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    FunctionComponent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
+import { Tooltip } from '../../components/common/AntdCompat';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -46,15 +46,15 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  INITIAL_PAGING_VALUE,
-  pagingObject,
-  ROUTES,
+    INITIAL_PAGING_VALUE,
+    pagingObject,
+    ROUTES
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
-  OPEN_METADATA,
-  SERVICE_INGESTION_PIPELINE_TYPES,
+    OPEN_METADATA,
+    SERVICE_INGESTION_PIPELINE_TYPES
 } from '../../constants/Services.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -62,9 +62,9 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
@@ -84,63 +84,63 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
 import {
-  getDashboards,
-  getDataModels,
-  ListDataModelParams,
+    getDashboards,
+    getDataModels,
+    ListDataModelParams
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import {
-  getIngestionPipelines,
-  getPipelineServiceHostIp,
+    getIngestionPipelines,
+    getPipelineServiceHostIp
 } from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
-  addServiceFollower,
-  getServiceByFQN,
-  patchService,
-  removeServiceFollower,
-  restoreService,
+    addServiceFollower,
+    getServiceByFQN,
+    patchService,
+    removeServiceFollower,
+    restoreService
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import {
-  getWorkflowInstancesForApplication,
-  getWorkflowInstanceStateById,
+    getWorkflowInstancesForApplication,
+    getWorkflowInstanceStateById
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
-  getCurrentMillis,
-  getDayAgoStartGMTinMillis,
+    getCurrentMillis,
+    getDayAgoStartGMTinMillis
 } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityFeedLink,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
-  getEditConnectionPath,
-  getServiceDetailsPath,
-  getServiceVersionPath,
-  getSettingPath,
+    getEditConnectionPath,
+    getServiceDetailsPath,
+    getServiceVersionPath,
+    getSettingPath
 } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getResourceEntityFromServiceCategory,
-  getServiceDisplayNameQueryFilter,
-  getServiceRouteFromServiceType,
-  shouldTestConnection,
+    getCountLabel,
+    getEntityTypeFromServiceCategory,
+    getResourceEntityFromServiceCategory,
+    getServiceDisplayNameQueryFilter,
+    getServiceRouteFromServiceType,
+    shouldTestConnection
 } from '../../utils/ServiceUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -148,6 +148,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
+;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();

@@ -13,8 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Form, FormProps, Input, Radio, Space, Switch,  } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
+import { Button, Form, FormProps, Input, Radio, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -23,24 +22,24 @@ import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
-  EMAIL_REG_EX,
-  passwordRegex,
+    EMAIL_REG_EX,
+    passwordRegex
 } from '../../../../constants/regex.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CreatePasswordGenerator } from '../../../../enums/user.enum';
 import {
-  AuthType,
-  CreatePasswordType,
-  CreateUser as CreateUserSchema,
+    AuthType,
+    CreatePasswordType,
+    CreateUser as CreateUserSchema
 } from '../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout
 } from '../../../../interface/FormUtils.interface';
 import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
@@ -48,12 +47,14 @@ import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Select } from '../../../common/AntdCompat';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
+;
 
 const CreateUser = ({
   roles,

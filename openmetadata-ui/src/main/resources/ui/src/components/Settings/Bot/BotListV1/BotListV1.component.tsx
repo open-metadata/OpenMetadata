@@ -12,9 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
-import { Switch } from 'antd';
+import { Button, Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, lowerCase } from 'lodash';
@@ -36,13 +34,14 @@ import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import {
-  getEntityName,
-  highlightSearchText,
+    getEntityName,
+    highlightSearchText
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -55,6 +54,7 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import PageHeader from '../../../PageHeader/PageHeader.component';
 import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
+;
 const BotListV1 = ({
   showDeleted,
   handleAddBotClick,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Tree, TreeProps, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -32,27 +31,29 @@ import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
-  getAggregations,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getSubLevelHierarchyKey,
-  updateTreeData,
-  updateTreeDataWithCounts,
+    getAggregations,
+    getQuickFilterObject,
+    getQuickFilterObjectForEntities,
+    getSubLevelHierarchyKey,
+    updateTreeData,
+    updateTreeDataWithCounts
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Tooltip } from '../../common/AntdCompat';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
 import {
-  ExploreTreeNode,
-  ExploreTreeProps,
-  TreeNodeData,
+    ExploreTreeNode,
+    ExploreTreeProps,
+    TreeNodeData
 } from './ExploreTree.interface';
+;
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   const tooltipText = node.tooltip ?? node.title;

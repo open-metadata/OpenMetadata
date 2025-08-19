@@ -12,33 +12,34 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, Space, Spin, Tabs, Typography } from 'antd';
-import { Select } from '../AntdCompat';;
 import { debounce, noop } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import {
-  ADD_USER_CONTAINER_HEIGHT,
-  PAGE_SIZE_MEDIUM,
+    ADD_USER_CONTAINER_HEIGHT,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { searchData } from '../../../rest/miscAPI';
 import {
-  formatTeamsResponse,
-  formatUsersResponse,
+    formatTeamsResponse,
+    formatUsersResponse
 } from '../../../utils/APIUtils';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
+    getEntityName,
+    getEntityReferenceListFromEntities
 } from '../../../utils/EntityUtils';
+import { Select } from '../AntdCompat';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import './user-team-select.less';
 import { UserTeamSelectProps } from './UserTeamSelect.interface';
+;
 
 export const TeamOptionRenderer = (props: EntityReference) => {
   return (

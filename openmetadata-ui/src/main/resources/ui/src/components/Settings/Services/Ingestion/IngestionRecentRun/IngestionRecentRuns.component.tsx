@@ -12,7 +12,6 @@
  */
 
 import { Skeleton, Space, Tag, Typography } from 'antd';
-import { Popover } from '../../../../common/AntdCompat';;
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -21,18 +20,20 @@ import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { App } from '../../../../../generated/entity/applications/app';
 import { AppRunRecord } from '../../../../../generated/entity/applications/appRunRecord';
 import {
-  IngestionPipeline,
-  PipelineStatus,
+    IngestionPipeline,
+    PipelineStatus
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
-  formatDateTimeLong,
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    formatDateTimeLong,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../../../utils/date-time/DateTimeUtils';
+import { Popover } from '../../../../common/AntdCompat';
 import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
 import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
+;
 
 export const IngestionRecentRuns = <
   T extends PipelineStatus | AppRunRecord,

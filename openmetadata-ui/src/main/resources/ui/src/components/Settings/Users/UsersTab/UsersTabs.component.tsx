@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Modal } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +21,10 @@ import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
+import { Tooltip } from '../../../common/AntdCompat';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
+;
 
 interface UsersTabProps {
   users: EntityReference[];

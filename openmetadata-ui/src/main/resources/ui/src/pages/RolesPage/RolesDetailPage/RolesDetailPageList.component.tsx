@@ -13,21 +13,22 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getPolicyWithFqnPath,
-  getTeamsWithFqnPath,
-  getUserPath,
+    getPolicyWithFqnPath,
+    getTeamsWithFqnPath,
+    getUserPath
 } from '../../../utils/RouterUtils';
+;
 
 const RolesDetailPageList = ({
   list,

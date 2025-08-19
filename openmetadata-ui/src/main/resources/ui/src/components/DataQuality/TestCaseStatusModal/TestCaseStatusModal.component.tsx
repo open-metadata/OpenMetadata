@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Form, Modal } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,15 +23,17 @@ import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import {
-  getEntityReferenceFromEntity,
-  getEntityReferenceListFromEntities,
+    getEntityReferenceFromEntity,
+    getEntityReferenceListFromEntities
 } from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select } from '../../common/AntdCompat';
+;
 
 import {
-  PAGE_SIZE_MEDIUM,
-  VALIDATION_MESSAGES,
+    PAGE_SIZE_MEDIUM,
+    VALIDATION_MESSAGES
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

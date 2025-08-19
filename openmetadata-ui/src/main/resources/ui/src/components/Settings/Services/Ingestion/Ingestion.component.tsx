@@ -12,8 +12,7 @@
  */
 
 import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Col, Radio, RadioChangeEvent, Row, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,8 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import {
-  ServiceAgentSubTabs,
-  ServiceCategory,
+    ServiceAgentSubTabs,
+    ServiceCategory
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCountBadge } from '../../../../utils/CommonUtils';
@@ -30,11 +29,13 @@ import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
+import { Tooltip } from '../../../common/AntdCompat';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import SearchDropdown from '../../../SearchDropdown/SearchDropdown';
 import { IngestionProps } from './ingestion.interface';
 import './ingestion.less';
+;
 
 const Ingestion: React.FC<IngestionProps> = ({
   serviceDetails,

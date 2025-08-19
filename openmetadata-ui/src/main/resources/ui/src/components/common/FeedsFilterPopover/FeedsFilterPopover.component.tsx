@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Space, Typography,  } from 'antd';
-import { Popover, Tooltip } from '../AntdCompat';;
+import { Button, Checkbox, List, Space, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { Popover, Tooltip } from '../AntdCompat';
+;
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getFeedFilterWidgets } from '../../../utils/LandingPageWidget/WidgetsUtils';

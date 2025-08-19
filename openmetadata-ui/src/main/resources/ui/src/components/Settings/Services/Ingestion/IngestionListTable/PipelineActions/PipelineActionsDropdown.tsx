@@ -12,7 +12,6 @@
  */
 
 import { Button } from 'antd';
-import { Dropdown, DropdownProps } from '../../../../../common/AntdCompat';;
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,19 +25,21 @@ import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reloa
 import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import {
-  IngestionPipeline,
-  PipelineType,
+    IngestionPipeline,
+    PipelineType
 } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../../utils/EntityUtils';
 import {
-  getEditIngestionPath,
-  getTestSuiteIngestionPath,
+    getEditIngestionPath,
+    getTestSuiteIngestionPath
 } from '../../../../../../utils/RouterUtils';
 import { getTestSuiteFQN } from '../../../../../../utils/TestSuiteUtils';
+import { Dropdown, DropdownProps } from '../../../../../common/AntdCompat';
 import KillIngestionModal from '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import './pipeline-actions-dropdown.less';
 import { PipelineActionsDropdownProps } from './PipelineActionsDropdown.interface';
+;
 
 function PipelineActionsDropdown({
   ingestion,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import { Popover, Tooltip } from '../AntdCompat';;
 import { RefSelectProps as BaseSelectRef } from 'antd/es/select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +20,11 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { Popover, Tooltip } from '../AntdCompat';
 import DomainSelectablTreeNew from '../DomainSelectableTree/DomainSelectableTreeNew';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
+;
 
 export const DomainListItemRenderer = (props: EntityReference) => {
   const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;

@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select } from '../AntdCompat';;
 import { noop } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
+import { Select } from '../AntdCompat';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../UserTeamSelectableList/UserTeamSelectableList.interface';
 import './user-team-selectable-list-search-input.less';
+;
 
 interface UserTeamSelectableListSearchProps extends UserSelectDropdownProps {
   disabled?: boolean;

@@ -13,14 +13,15 @@
 
 import Icon from '@ant-design/icons';
 import { Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { isEqual } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';
 import { ReactComponent as IconTaskOpen } from '../../../assets/svg/in-progress.svg';
 import { TEXT_BODY_COLOR } from '../../../constants/constants';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
+import { Tooltip } from '../../common/AntdCompat';
 import './task-badge.less';
+;
 
 const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
   const { t } = useTranslation();

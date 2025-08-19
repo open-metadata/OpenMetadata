@@ -12,16 +12,15 @@
  */
 
 import { Typography } from 'antd';
-import { Popover } from '../AntdCompat';;
 import { isUndefined } from 'lodash';
 import {
-  FC,
-  HTMLAttributes,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    FC,
+    HTMLAttributes,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -33,15 +32,15 @@ import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
+    getDatabaseDetailsByFQN,
+    getDatabaseSchemaDetailsByFQN
 } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import {
-  getGlossariesByName,
-  getGlossaryTermByFQN,
+    getGlossariesByName,
+    getGlossaryTermByFQN
 } from '../../../rest/glossaryAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
@@ -56,8 +55,10 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { Popover } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import './popover-card.less';
+;
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;

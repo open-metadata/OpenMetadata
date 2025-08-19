@@ -12,12 +12,12 @@
  */
 
 import { Space } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -25,13 +25,14 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
 import {
-  getEntityTaskDetails,
-  getRequestDescriptionPath,
-  getRequestTagsPath,
-  getUpdateDescriptionPath,
-  getUpdateTagsPath,
+    getEntityTaskDetails,
+    getRequestDescriptionPath,
+    getRequestTagsPath,
+    getUpdateDescriptionPath,
+    getUpdateTagsPath
 } from '../../../utils/TasksUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
+;
 
 const EntityTasks = ({
   data,

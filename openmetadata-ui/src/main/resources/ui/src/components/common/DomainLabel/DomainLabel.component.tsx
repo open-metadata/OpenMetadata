@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../AntdCompat';;
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -23,16 +22,19 @@ import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.sv
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
+    getAPIfromSource,
+    getEntityAPIfromSource
 } from '../../../utils/Assets/AssetsUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { Dropdown, Tooltip } from '../AntdCompat';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
+;
+;
 
 export const DomainLabel = ({
   afterDomainUpdateAction,

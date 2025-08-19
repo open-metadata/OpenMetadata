@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -21,8 +20,10 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+;
 
 const MetricExpression: FC = () => {
   const [form] = Form.useForm();

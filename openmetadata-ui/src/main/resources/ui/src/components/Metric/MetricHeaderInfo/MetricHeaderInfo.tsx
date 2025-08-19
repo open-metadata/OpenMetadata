@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Divider, List, Space, Typography,  } from 'antd';
-import { Popover, Tooltip } from '../../common/AntdCompat';;
+import { Button, Divider, List, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';
@@ -20,18 +19,20 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    NO_DATA_PLACEHOLDER
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-  Metric,
-  MetricGranularity,
-  MetricType,
-  UnitOfMeasurement,
+    Metric,
+    MetricGranularity,
+    MetricType,
+    UnitOfMeasurement
 } from '../../../generated/entity/data/metric';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { Popover, Tooltip } from '../../common/AntdCompat';
 import './metric-header-info.less';
+;
 
 interface MetricInfoItemOption {
   label: string;

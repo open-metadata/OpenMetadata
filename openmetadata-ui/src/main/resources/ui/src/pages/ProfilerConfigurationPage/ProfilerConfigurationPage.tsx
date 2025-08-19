@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Collapse, Form, Row, Switch, TreeSelect,  } from 'antd';
-import { Select } from '../../components/common/AntdCompat';;
+import { Button, Col, Collapse, Form, Row, Switch, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Select } from '../../components/common/AntdCompat';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -25,24 +25,25 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  DEFAULT_PROFILER_CONFIG_VALUE,
-  PROFILER_METRICS_TYPE_OPTIONS,
+    DEFAULT_PROFILER_CONFIG_VALUE,
+    PROFILER_METRICS_TYPE_OPTIONS
 } from '../../constants/profiler.constant';
 import {
-  DataType,
-  MetricConfigurationDefinition,
-  MetricType,
-  ProfilerConfiguration,
+    DataType,
+    MetricConfigurationDefinition,
+    MetricType,
+    ProfilerConfiguration
 } from '../../generated/configuration/profilerConfiguration';
 import { SettingType } from '../../generated/settings/settings';
 import {
-  getSettingsConfigFromConfigType,
-  updateSettingsConfig,
+    getSettingsConfigFromConfigType,
+    updateSettingsConfig
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
 import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
+;
 
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();

@@ -13,14 +13,15 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { Button, Col, Row, Typography } from 'antd';
-import { Select, Tooltip } from '../../../AntdCompat';;
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
+import { Select, Tooltip } from '../../../AntdCompat';
 import './workflow-array-field-template.less';
+;
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();

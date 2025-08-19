@@ -12,12 +12,12 @@
  */
 
 import { Skeleton, Space, Tag } from 'antd';
-import { Popover } from '../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
+import { Popover } from '../components/common/AntdCompat';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -28,6 +28,7 @@ import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
+;
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (

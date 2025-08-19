@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Typography } from 'antd';
-import { Popover } from '../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -27,12 +26,14 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { getEntityLabel, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { Popover } from '../../../common/AntdCompat';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import Loader from '../../../common/Loader/Loader';
 import {
-  QueryUsedByOtherTableProps,
-  QueryUsedByTable,
+    QueryUsedByOtherTableProps,
+    QueryUsedByTable
 } from '../TableQueries.interface';
+;
 
 const { Text } = Typography;
 

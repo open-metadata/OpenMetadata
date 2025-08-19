@@ -12,21 +12,21 @@
  */
 
 import { Space, Typography } from 'antd';
-import { Popover } from '../components/common/AntdCompat';;
 import i18next, { t } from 'i18next';
 import {
-  isEmpty,
-  isNil,
-  isObject,
-  isUndefined,
-  lowerCase,
-  startCase,
+    isEmpty,
+    isNil,
+    isObject,
+    isUndefined,
+    lowerCase,
+    startCase
 } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
+import { Popover } from '../components/common/AntdCompat';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
@@ -36,31 +36,31 @@ import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
-  EntityServiceUnion,
-  EntityWithServices,
+    EntityServiceUnion,
+    EntityWithServices
 } from '../components/Explore/ExplorePage.interface';
 import {
-  SearchedDataProps,
-  SourceType,
+    SearchedDataProps,
+    SourceType
 } from '../components/SearchedData/SearchedData.interface';
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  NO_DATA,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
-  PLACEHOLDER_ROUTE_FQN,
-  ROUTES,
+    NO_DATA,
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    PLACEHOLDER_ROUTE_FQN,
+    ROUTES
 } from '../constants/constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
 import {
-  EntityLineageNodeType,
-  EntityTabs,
-  EntityType,
-  FqnPart,
+    EntityLineageNodeType,
+    EntityTabs,
+    EntityType,
+    FqnPart
 } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -80,27 +80,27 @@ import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import {
-  SearchIndex as SearchIndexAsset,
-  SearchIndex as SearchIndexEntity,
-  SearchIndexField,
+    SearchIndex as SearchIndexAsset,
+    SearchIndex as SearchIndexEntity,
+    SearchIndexField
 } from '../generated/entity/data/searchIndex';
 import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
+    StoredProcedure,
+    StoredProcedureCodeObject
 } from '../generated/entity/data/storedProcedure';
 import {
-  Column,
-  ColumnJoins,
-  JoinedWith,
-  Table,
-  TableType,
+    Column,
+    ColumnJoins,
+    JoinedWith,
+    Table,
+    TableType
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Team } from '../generated/entity/teams/team';
 import {
-  AlertType,
-  EventSubscription,
+    AlertType,
+    EventSubscription
 } from '../generated/events/eventSubscription';
 import { TestCase, TestSuite } from '../generated/tests/testCase';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -111,45 +111,46 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
+    getPartialNameFromTableFQN,
+    getTableFQNFromColumnFQN
 } from './CommonUtils';
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
-  getApplicationDetailsPath,
-  getBotsPagePath,
-  getBotsPath,
-  getClassificationTagPath,
-  getDataQualityPagePath,
-  getDomainDetailsPath,
-  getDomainPath,
-  getEntityDetailsPath,
-  getGlossaryPath,
-  getGlossaryTermDetailsPath,
-  getKpiPath,
-  getNotificationAlertDetailsPath,
-  getObservabilityAlertDetailsPath,
-  getPersonaDetailsPath,
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-  getServiceDetailsPath,
-  getSettingPath,
-  getTagsDetailsPath,
-  getTeamsWithFqnPath,
-  getTestCaseDetailPagePath,
+    getApplicationDetailsPath,
+    getBotsPagePath,
+    getBotsPath,
+    getClassificationTagPath,
+    getDataQualityPagePath,
+    getDomainDetailsPath,
+    getDomainPath,
+    getEntityDetailsPath,
+    getGlossaryPath,
+    getGlossaryTermDetailsPath,
+    getKpiPath,
+    getNotificationAlertDetailsPath,
+    getObservabilityAlertDetailsPath,
+    getPersonaDetailsPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath,
+    getServiceDetailsPath,
+    getSettingPath,
+    getTagsDetailsPath,
+    getTeamsWithFqnPath,
+    getTestCaseDetailPagePath
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
-  getDataTypeString,
-  getTagsWithoutTier,
-  getTierTags,
-  getUsagePercentile,
+    getDataTypeString,
+    getTagsWithoutTier,
+    getTierTags,
+    getUsagePercentile
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+;
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',

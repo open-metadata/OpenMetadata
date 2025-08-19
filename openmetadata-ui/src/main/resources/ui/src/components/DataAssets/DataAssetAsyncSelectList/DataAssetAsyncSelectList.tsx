@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Space } from 'antd';
-import { Select, SelectProps } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
@@ -21,18 +20,20 @@ import { EntityReference } from '../../../generated/entity/type';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select, SelectProps } from '../../common/AntdCompat';
 import Loader from '../../common/Loader/Loader';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import {
-  DataAssetAsyncSelectListProps,
-  DataAssetOption,
-  FetchOptionsResponse,
+    DataAssetAsyncSelectListProps,
+    DataAssetOption,
+    FetchOptionsResponse
 } from './DataAssetAsyncSelectList.interface';
+;
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   mode,

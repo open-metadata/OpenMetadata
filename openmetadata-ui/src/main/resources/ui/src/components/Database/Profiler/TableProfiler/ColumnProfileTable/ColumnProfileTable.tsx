@@ -12,19 +12,18 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../../../common/AntdCompat';;
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {
-  filter,
-  find,
-  groupBy,
-  isEmpty,
-  isEqual,
-  isUndefined,
-  map,
-  toLower,
+    filter,
+    find,
+    groupBy,
+    isEmpty,
+    isEqual,
+    isUndefined,
+    map,
+    toLower
 } from 'lodash';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
@@ -39,37 +38,38 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
-  Column,
-  ColumnProfile,
-  Table as TableType,
+    Column,
+    ColumnProfile,
+    Table as TableType
 } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
-  TestCase,
-  TestCaseStatus,
+    TestCase,
+    TestCaseStatus
 } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-  getTableColumnsByFQN,
-  searchTableColumnsByFQN,
+    getTableColumnsByFQN,
+    searchTableColumnsByFQN
 } from '../../../../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import {
-  formatNumberWithComma,
-  getTableFQNFromColumnFQN,
+    formatNumberWithComma,
+    getTableFQNFromColumnFQN
 } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
 import {
-  generateEntityLink,
-  getTableExpandableConfig,
-  pruneEmptyChildren,
+    generateEntityLink,
+    getTableExpandableConfig,
+    pruneEmptyChildren
 } from '../../../../../utils/TableUtils';
+import { Dropdown, Tooltip } from '../../../../common/AntdCompat';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -89,6 +89,8 @@ import ProfilerProgressWidget from '../ProfilerProgressWidget/ProfilerProgressWi
 import SingleColumnProfile from '../SingleColumnProfile';
 import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
+;
+;
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();

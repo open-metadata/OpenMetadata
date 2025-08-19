@@ -12,12 +12,11 @@
  */
 
 import {
-  CloseCircleOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
+    CloseCircleOutlined,
+    SortAscendingOutlined,
+    SortDescendingOutlined
 } from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -27,21 +26,21 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE
 } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
-  QUERY_PAGE_DEFAULT_FILTER,
-  QUERY_PAGE_ERROR_STATE,
-  QUERY_PAGE_LOADING_STATE,
-  QUERY_SORT_OPTIONS,
+    QUERY_PAGE_DEFAULT_FILTER,
+    QUERY_PAGE_ERROR_STATE,
+    QUERY_PAGE_LOADING_STATE,
+    QUERY_SORT_OPTIONS
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -51,23 +50,24 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  getQueryById,
-  patchQueries,
-  updateQueryVote,
+    getQueryById,
+    patchQueries,
+    updateQueryVote
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
-  createQueryFilter,
-  fetchFilterOptions,
-  parseSearchParams,
-  stringifySearchParams,
+    createQueryFilter,
+    fetchFilterOptions,
+    parseSearchParams,
+    stringifySearchParams
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import DatePicker, {
-  RangePickerProps,
+    RangePickerProps
 } from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -78,12 +78,13 @@ import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
-  FetchFilteredQueriesType,
-  QueryFilterType,
-  QueryVote,
-  TableQueriesProp,
+    FetchFilteredQueriesType,
+    QueryFilterType,
+    QueryVote,
+    TableQueriesProp
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
+;
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,

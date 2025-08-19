@@ -12,7 +12,6 @@
  */
 
 import { Button, Divider, Typography } from 'antd';
-import { Popover, Select, Tooltip } from '../../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,10 +20,12 @@ import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.s
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
+import { Popover, Select, Tooltip } from '../../../../common/AntdCompat';
+;
 
 import {
-  PAGE_SIZE_LARGE,
-  TERM_ADMIN,
+    PAGE_SIZE_LARGE,
+    TERM_ADMIN
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';

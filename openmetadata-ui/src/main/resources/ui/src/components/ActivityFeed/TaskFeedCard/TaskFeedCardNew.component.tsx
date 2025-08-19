@@ -12,7 +12,8 @@
  */
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
+import { Tooltip } from '../../common/AntdCompat';
+;
 
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
@@ -25,14 +26,14 @@ import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg'
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
-  TaskDetails,
-  Thread,
-  ThreadTaskStatus,
+    TaskDetails,
+    Thread,
+    ThreadTaskStatus
 } from '../../../generated/entity/feed/thread';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
@@ -51,9 +52,9 @@ import { updateTask } from '../../../rest/feedsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import {
-  getTaskDetailPath,
-  isDescriptionTask,
-  isTagsTask,
+    getTaskDetailPath,
+    isDescriptionTask,
+    isTagsTask
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';

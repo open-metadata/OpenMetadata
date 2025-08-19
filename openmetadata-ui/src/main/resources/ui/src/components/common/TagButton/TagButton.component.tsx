@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import React from 'react';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
+import { Tooltip } from '../AntdCompat';
+;
 
 interface TagButtonProps {
   label: string;

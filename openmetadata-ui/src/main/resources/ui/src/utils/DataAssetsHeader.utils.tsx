@@ -14,21 +14,21 @@
 
 import Icon from '@ant-design/icons';
 import { Divider, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import {
-  DataAssetHeaderInfo,
-  DataAssetsHeaderProps,
-  DataAssetsType,
-  DataAssetsWithServiceField,
+    DataAssetHeaderInfo,
+    DataAssetsHeaderProps,
+    DataAssetsType,
+    DataAssetsWithServiceField
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import {
-  DATA_ASSET_ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
+    DATA_ASSET_ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
@@ -44,8 +44,8 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
+    StoredProcedure,
+    StoredProcedureCodeObject
 } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -60,14 +60,15 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import {
-  getBreadcrumbForContainer,
-  getBreadcrumbForEntitiesWithServiceOnly,
-  getBreadcrumbForTable,
-  getEntityBreadcrumbs,
+    getBreadcrumbForContainer,
+    getBreadcrumbForEntitiesWithServiceOnly,
+    getBreadcrumbForTable,
+    getEntityBreadcrumbs
 } from './EntityUtils';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
+;
 
 export const ExtraInfoLabel = ({
   label,

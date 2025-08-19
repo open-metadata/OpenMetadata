@@ -13,17 +13,16 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, Col, Row, Typography } from 'antd';
-import { Select } from '../../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {
-  BETA_SERVICES,
-  excludedService,
-  SERVICE_CATEGORY_OPTIONS,
-  SERVICE_TYPE_WITH_DISPLAY_NAME,
+    BETA_SERVICES,
+    excludedService,
+    SERVICE_CATEGORY_OPTIONS,
+    SERVICE_TYPE_WITH_DISPLAY_NAME
 } from '../../../../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
@@ -33,10 +32,12 @@ import { MlModelServiceType } from '../../../../../generated/entity/services/mlm
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
 import { errorMsg, getServiceLogo } from '../../../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
+import { Select } from '../../../../common/AntdCompat';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
+;
 
 const SelectServiceType = ({
   serviceCategory,

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, Row, Space, Tabs,  } from 'antd';
-import { Select, Tooltip } from '../../../../common/AntdCompat';;
+import { Button, Col, Dropdown, Form, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +20,9 @@ import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-sett
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
-  DEFAULT_SORT_ORDER,
-  TEST_CASE_STATUS_OPTION,
-  TEST_CASE_TYPE_OPTION,
+    DEFAULT_SORT_ORDER,
+    TEST_CASE_STATUS_OPTION,
+    TEST_CASE_TYPE_OPTION
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
@@ -38,11 +37,12 @@ import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomL
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
 import {
-  getBreadcrumbForTable,
-  getEntityName,
+    getBreadcrumbForTable,
+    getEntityName
 } from '../../../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { Select, Tooltip } from '../../../../common/AntdCompat';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
@@ -55,6 +55,7 @@ import PageHeader from '../../../../PageHeader/PageHeader.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
+;
 
 export const QualityTab = () => {
   const {

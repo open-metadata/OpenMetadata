@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { Button, Space, Typography } from 'antd';
-import { Dropdown } from '../../../common/AntdCompat';;
 import { find, map } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { FC, useMemo, useState } from 'react';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { Dropdown } from '../../../common/AntdCompat';
+;
 
 interface ColumnPickerMenuProps {
   activeColumnFqn: string;

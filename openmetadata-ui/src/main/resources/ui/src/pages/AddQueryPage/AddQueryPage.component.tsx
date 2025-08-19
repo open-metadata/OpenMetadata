@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Form, FormProps, Space, Typography } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip } from '../../components/common/AntdCompat';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -25,8 +25,8 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_MEDIUM
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -46,13 +46,14 @@ import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import {
-  getEntityBreadcrumbs,
-  getEntityLabel,
-  getEntityName,
+    getEntityBreadcrumbs,
+    getEntityLabel,
+    getEntityName
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+;
 
 const AddQueryPage = () => {
   const { currentUser } = useApplicationStore();

@@ -12,21 +12,21 @@
  */
 
 import { Typography } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
-  cloneDeep,
-  groupBy,
-  isEmpty,
-  isUndefined,
-  sortBy,
-  toLower,
-  uniqBy,
+    cloneDeep,
+    groupBy,
+    isEmpty,
+    isUndefined,
+    sortBy,
+    toLower,
+    uniqBy
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
@@ -38,36 +38,37 @@ import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMar
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
-  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-  DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
-  TABLE_COLUMNS_KEYS,
+    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+    DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
+    TABLE_COLUMNS_KEYS
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchArrayElement,
-  highlightSearchText,
+    getColumnSorter,
+    getEntityName,
+    highlightSearchArrayElement,
+    highlightSearchText
 } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
-  getAllTags,
-  searchTagInData,
+    getAllTags,
+    searchTagInData
 } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getTableExpandableConfig,
-  searchInFields,
-  updateFieldDescription,
-  updateFieldTags,
+    getTableExpandableConfig,
+    searchInFields,
+    updateFieldDescription,
+    updateFieldTags
 } from '../../../utils/TableUtils';
 import {
-  SearchIndexCellRendered,
-  SearchIndexFieldsTableProps,
+    SearchIndexCellRendered,
+    SearchIndexFieldsTableProps
 } from './SearchIndexFieldsTable.interface';
+;
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,

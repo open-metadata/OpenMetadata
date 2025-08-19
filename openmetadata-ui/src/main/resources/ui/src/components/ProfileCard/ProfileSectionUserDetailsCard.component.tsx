@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Badge, Button, Modal, Typography } from 'antd';
-import { Popover } from '../common/AntdCompat';;
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
@@ -20,14 +19,16 @@ import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
 import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
+import { Popover } from '../common/AntdCompat';
+;
 
 import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  ChangePasswordRequest,
-  RequestType,
+    ChangePasswordRequest,
+    RequestType
 } from '../../generated/auth/changePasswordRequest';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';

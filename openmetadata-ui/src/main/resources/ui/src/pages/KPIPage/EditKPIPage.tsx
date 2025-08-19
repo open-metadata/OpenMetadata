@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormProps, Input, InputNumber, Row, Slider, Space, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../components/common/AntdCompat';;
+import { Button, Col, Form, FormProps, Input, InputNumber, Row, Slider, Space, Typography } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,6 +20,7 @@ import { DateTime } from 'luxon';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Select, Tooltip } from '../../components/common/AntdCompat';
 import MyDatePicker from '../../components/common/DatePicker/DatePicker';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../components/common/Loader/Loader';
@@ -37,18 +37,19 @@ import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
+    getDataInsightPathWithFqn,
+    getDisabledDates
 } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
 import {
-  getKPIChartType,
-  KPIChartOptions,
-  KPIMetricTypeOptions,
+    getKPIChartType,
+    KPIChartOptions,
+    KPIMetricTypeOptions
 } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
+;
 
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();

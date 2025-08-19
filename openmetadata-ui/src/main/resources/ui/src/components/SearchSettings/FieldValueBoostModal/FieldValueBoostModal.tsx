@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { Form, Input, Modal, Slider, Typography } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  FieldValueBoost,
-  Modifier,
+    FieldValueBoost,
+    Modifier
 } from '../../../generated/configuration/searchSettings';
 import { modifierOptions } from '../../../utils/SearchSettingsUtils';
+import { Select } from '../../common/AntdCompat';
+;
 
 interface FieldValueBoostModalProps {
   open: boolean;

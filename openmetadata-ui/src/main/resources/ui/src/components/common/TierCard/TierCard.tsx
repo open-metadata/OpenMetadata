@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Collapse, Radio, RadioChangeEvent, Space, Spin, Typography,  } from 'antd';
-import { Popover } from '../AntdCompat';;
+import { Button, Card, Collapse, Radio, RadioChangeEvent, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { Popover } from '../AntdCompat';
+;
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';

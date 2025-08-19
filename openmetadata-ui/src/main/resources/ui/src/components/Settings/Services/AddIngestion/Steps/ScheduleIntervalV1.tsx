@@ -13,7 +13,6 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Input, Radio, Row, Typography } from 'antd';
-import { Select } from '../../../../common/AntdCompat';;
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,23 +20,25 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
 import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
-  DAY_IN_MONTH_OPTIONS,
-  DAY_OPTIONS,
-  PERIOD_OPTIONS,
+    DAY_IN_MONTH_OPTIONS,
+    DAY_OPTIONS,
+    PERIOD_OPTIONS
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import { getPopupContainer } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
-  getCron,
-  getDefaultScheduleValue,
-  getStateValue,
-  getUpdatedStateFromFormState,
+    getCron,
+    getDefaultScheduleValue,
+    getStateValue,
+    getUpdatedStateFromFormState
 } from '../../../../../utils/SchedularUtils';
+import { Select } from '../../../../common/AntdCompat';
 import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
+;
 
 export interface ScheduleIntervalV1Props {
   value?: string;

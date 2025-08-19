@@ -12,7 +12,6 @@
  */
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -25,12 +24,12 @@ import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import {
-  ONE_MINUTE_IN_MILLISECOND,
-  PIPE_SYMBOL,
+    ONE_MINUTE_IN_MILLISECOND,
+    PIPE_SYMBOL
 } from '../../../constants/constants';
 import {
-  QUERY_DATE_FORMAT,
-  QUERY_LINE_HEIGHT,
+    QUERY_DATE_FORMAT,
+    QUERY_LINE_HEIGHT
 } from '../../../constants/Query.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -41,11 +40,13 @@ import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
+;
 
 const { Text } = Typography;
 

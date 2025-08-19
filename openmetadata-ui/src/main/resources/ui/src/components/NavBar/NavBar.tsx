@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Alert, Badge, Button, Dropdown, InputRef, Typography,  } from 'antd';
-import { Tooltip } from '../common/AntdCompat';;
+import { Alert, Badge, Button, Dropdown, InputRef, Typography } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,12 +30,12 @@ import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
-  DEFAULT_DOMAIN_VALUE,
-  LAST_VERSION_FETCH_TIME_KEY,
-  NOTIFICATION_READ_TIMER,
-  ONE_HOUR_MS,
-  ROUTES,
-  SOCKET_EVENTS,
+    DEFAULT_DOMAIN_VALUE,
+    LAST_VERSION_FETCH_TIME_KEY,
+    NOTIFICATION_READ_TIMER,
+    ONE_HOUR_MS,
+    ROUTES,
+    SOCKET_EVENTS
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -46,9 +45,9 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import {
-  BackgroundJob,
-  EnumCleanupArgs,
-  JobType,
+    BackgroundJob,
+    EnumCleanupArgs,
+    JobType
 } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -58,16 +57,16 @@ import { getVersion } from '../../rest/miscAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
-  hasNotificationPermission,
-  shouldRequestPermission,
+    hasNotificationPermission,
+    shouldRequestPermission
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
+    getEntityFQN,
+    getEntityType,
+    prepareFeedLink
 } from '../../utils/FeedUtils';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
@@ -76,6 +75,7 @@ import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { Tooltip } from '../common/AntdCompat';
 import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -84,6 +84,7 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+;
 
 const cookieStorage = new CookieStorage();
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,21 +21,23 @@ import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import {
-  getFrequentlyJoinedColumns,
-  searchInColumns,
+    getFrequentlyJoinedColumns,
+    searchInColumns
 } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
-  getTableExpandableConfig,
-  makeData,
-  prepareConstraintIcon,
+    getTableExpandableConfig,
+    makeData,
+    prepareConstraintIcon
 } from '../../../utils/TableUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
+;
 
 function VersionTable<T extends Column | SearchIndexField>({
   columnName,

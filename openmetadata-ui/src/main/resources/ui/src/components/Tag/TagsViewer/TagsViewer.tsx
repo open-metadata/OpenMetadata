@@ -12,7 +12,6 @@
  */
 
 import { Button, Tag, Typography } from 'antd';
-import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
@@ -21,9 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { Popover } from '../../common/AntdCompat';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
+;
 
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,

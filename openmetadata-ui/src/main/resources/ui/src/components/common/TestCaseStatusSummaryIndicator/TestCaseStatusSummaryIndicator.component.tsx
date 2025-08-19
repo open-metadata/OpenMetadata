@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import { omit, startCase } from 'lodash';
 import Qs from 'qs';
 import { useMemo } from 'react';
@@ -21,8 +20,10 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { TableProfilerTab } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { Tooltip } from '../AntdCompat';
 import TestIndicator from '../TestIndicator/TestIndicator';
 import { TestCaseStatusSummaryIndicatorProps } from './TestCaseStatusSummaryIndicator.interface';
+;
 
 const TestCaseStatusSummaryIndicator = ({
   testCaseStatusCounts,

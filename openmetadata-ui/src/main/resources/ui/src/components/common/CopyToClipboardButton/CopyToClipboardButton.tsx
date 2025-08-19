@@ -12,11 +12,12 @@
  */
 
 import { Button } from 'antd';
-import { PopoverProps, Tooltip } from '../AntdCompat';;
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { PopoverProps, Tooltip } from '../AntdCompat';
+;
 
 interface Props {
   copyText: string;

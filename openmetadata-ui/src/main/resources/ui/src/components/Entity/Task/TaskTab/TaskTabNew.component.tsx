@@ -11,29 +11,28 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Dropdown, Form, Input, MenuProps, Row, Skeleton, Space, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Divider, Dropdown, Form, Input, MenuProps, Row, Skeleton, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  last,
-  orderBy,
-  startCase,
-  unionBy,
+    isEmpty,
+    isEqual,
+    isUndefined,
+    last,
+    orderBy,
+    startCase,
+    unionBy
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -51,29 +50,29 @@ import { TaskType } from '../../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
-  TaskDetails,
-  ThreadTaskStatus,
+    TaskDetails,
+    ThreadTaskStatus
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-  TestCaseFailureReasonType,
-  TestCaseResolutionStatusTypes,
+    TestCaseFailureReasonType,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
-  FieldProp,
-  FieldTypes,
+    FieldProp,
+    FieldTypes
 } from '../../../../interface/FormUtils.interface';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import DescriptionTaskNew from '../../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
 import {
-  Option,
-  TaskAction,
-  TaskActionMode,
+    Option,
+    TaskAction,
+    TaskActionMode
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
@@ -84,28 +83,30 @@ import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
-  fetchOptions,
-  generateOptions,
-  getTaskDetailPath,
-  GLOSSARY_TASK_ACTION_LIST,
-  INCIDENT_TASK_ACTION_LIST,
-  isDescriptionTask,
-  isTagsTask,
-  TASK_ACTION_COMMON_ITEM,
-  TASK_ACTION_LIST,
+    fetchOptions,
+    generateOptions,
+    getTaskDetailPath,
+    GLOSSARY_TASK_ACTION_LIST,
+    INCIDENT_TASK_ACTION_LIST,
+    isDescriptionTask,
+    isTagsTask,
+    TASK_ACTION_COMMON_ITEM,
+    TASK_ACTION_LIST
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { Select, Tooltip } from '../../../common/AntdCompat';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
+;
 
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import { getUsers } from '../../../../rest/userAPI';
 import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
+    getEntityName,
+    getEntityReferenceListFromEntities
 } from '../../../../utils/EntityUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';

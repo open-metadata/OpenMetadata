@@ -13,7 +13,6 @@
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, Col, MenuProps, Row, Segmented, Space } from 'antd';
-import { Dropdown } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -23,23 +22,25 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
 import {
-  EXECUTION_FILTER_RANGE,
-  MenuOptions,
+    EXECUTION_FILTER_RANGE,
+    MenuOptions
 } from '../../../constants/execution.constants';
 import { PIPELINE_EXECUTION_TABS } from '../../../constants/pipeline.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../../rest/pipelineAPI';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Dropdown } from '../../common/AntdCompat';
 import DatePicker, {
-  RangePickerProps,
+    RangePickerProps
 } from '../../common/DatePicker/DatePicker';
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
+;
 
 interface ExecutionProps {
   pipelineFQN: string;

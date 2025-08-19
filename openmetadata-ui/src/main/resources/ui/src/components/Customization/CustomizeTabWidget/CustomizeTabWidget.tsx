@@ -13,14 +13,13 @@
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Input, Modal, Space } from 'antd';
-import { Dropdown } from '../../common/AntdCompat';;
 import {
-  cloneDeep,
-  isEmpty,
-  isNil,
-  isUndefined,
-  toString,
-  uniqueId,
+    cloneDeep,
+    isEmpty,
+    isNil,
+    isUndefined,
+    toString,
+    uniqueId
 } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -28,8 +27,8 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
-  CommonWidgetType,
-  TAB_GRID_MAX_COLUMNS,
+    CommonWidgetType,
+    TAB_GRID_MAX_COLUMNS
 } from '../../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -38,26 +37,28 @@ import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
-  WidgetCommonProps,
-  WidgetConfig,
+    WidgetCommonProps,
+    WidgetConfig
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
-  getLayoutWithEmptyWidgetPlaceholder,
-  getUniqueFilteredLayout,
+    getLayoutWithEmptyWidgetPlaceholder,
+    getUniqueFilteredLayout
 } from '../../../utils/CustomizableLandingPageUtils';
 import {
-  getAddWidgetHandler,
-  getCustomizableWidgetByPage,
-  getDefaultTabs,
-  getDefaultWidgetForTab,
+    getAddWidgetHandler,
+    getCustomizableWidgetByPage,
+    getDefaultTabs,
+    getDefaultWidgetForTab
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Dropdown } from '../../common/AntdCompat';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
+;
 
 // Create a properly typed ReactGridLayout component
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<

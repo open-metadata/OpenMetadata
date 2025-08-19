@@ -13,7 +13,6 @@
  */
 
 import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { forwardRef, useEffect, useMemo } from 'react';
@@ -25,17 +24,19 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getSummary,
-  renderVersionButton,
+    getSummary,
+    renderVersionButton
 } from '../../../utils/EntityVersionUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
 import './entity-version-timeline.less';
 import {
-  EntityVersionButtonProps,
-  EntityVersionTimelineProps,
+    EntityVersionButtonProps,
+    EntityVersionTimelineProps
 } from './EntityVersionTimeline.interface';
+;
 
 export const VersionButton = forwardRef<
   HTMLDivElement,

@@ -13,7 +13,6 @@
 
 import { RightOutlined } from '@ant-design/icons';
 import { Button, Radio, Space } from 'antd';
-import { Dropdown } from '../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,18 +21,20 @@ import { ReactComponent as TableViewIcon } from '../../../assets/svg/ic-column.s
 import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-platform-lineage.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import {
-  LINEAGE_DEFAULT_QUICK_FILTERS,
-  LINEAGE_TAB_VIEW,
+    LINEAGE_DEFAULT_QUICK_FILTERS,
+    LINEAGE_TAB_VIEW
 } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
+import { Dropdown } from '../../common/AntdCompat';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
+;
 
 const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,

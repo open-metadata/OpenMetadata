@@ -12,7 +12,6 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Radio, Space, Spin, Typography } from 'antd';
-import { Popover } from '../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +22,12 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import { getTagImageSrc } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Popover } from '../common/AntdCompat';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
+;
 
 const Certification = ({
   currentCertificate = '',

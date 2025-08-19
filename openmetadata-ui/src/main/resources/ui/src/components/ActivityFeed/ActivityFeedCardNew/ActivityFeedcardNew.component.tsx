@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Col, Input, Skeleton, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -24,19 +23,20 @@ import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  entityDisplayName,
-  getEntityFQN,
-  getEntityType,
-  getFeedHeaderTextFromCardStyle,
+    entityDisplayName,
+    getEntityFQN,
+    getEntityType,
+    getFeedHeaderTextFromCardStyle
 } from '../../../utils/FeedUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { Tooltip } from '../../common/AntdCompat';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -46,6 +46,7 @@ import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import CommentCard from './CommentCard.component';
+;
 
 interface ActivityFeedCardNewProps {
   feed: Thread;

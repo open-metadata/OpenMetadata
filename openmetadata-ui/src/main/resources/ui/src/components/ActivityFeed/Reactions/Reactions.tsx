@@ -13,24 +13,25 @@
 
 import '@github/g-emoji-element';
 import { Button } from 'antd';
-import { Popover } from '../../common/AntdCompat';;
 import { groupBy, uniqueId } from 'lodash';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
-  REACTION_LIST,
-  REACTION_TYPE_LIST,
+    REACTION_LIST,
+    REACTION_TYPE_LIST
 } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
-  Reaction as ReactionProp,
-  ReactionType,
+    Reaction as ReactionProp,
+    ReactionType
 } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { Popover } from '../../common/AntdCompat';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 import './reactions.less';
+;
 
 interface ReactionsProps {
   reactions: ReactionProp[];

@@ -13,7 +13,6 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -22,6 +21,8 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Tooltip } from '../../../common/AntdCompat';
+;
 
 function AlertDiagnosticInfoTab() {
   const { Text } = Typography;

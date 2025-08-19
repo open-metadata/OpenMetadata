@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Skeleton, Space } from 'antd';
-import { Select } from '../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -31,45 +30,46 @@ import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
-  Assigned,
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    Assigned,
+    Severities,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../generated/tests/testCaseResolutionStatus';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
-  SearchHitBody,
-  TestCaseSearchSource,
+    SearchHitBody,
+    TestCaseSearchSource
 } from '../../interface/search.interface';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
-  getListTestCaseIncidentStatus,
-  TestCaseIncidentStatusParams,
-  updateTestCaseIncidentById,
+    getListTestCaseIncidentStatus,
+    TestCaseIncidentStatusParams,
+    updateTestCaseIncidentById
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-  getNameFromFQN,
-  getPartialNameFromTableFQN,
+    getNameFromFQN,
+    getPartialNameFromTableFQN
 } from '../../utils/CommonUtils';
 import {
-  formatDateTimeLong,
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
+    formatDateTimeLong,
+    getCurrentMillis,
+    getEndOfDayInMillis,
+    getEpochMillisForPastDays,
+    getStartOfDayInMillis
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
+    getEntityDetailsPath,
+    getTestCaseDetailPagePath
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Select } from '../common/AntdCompat';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -78,12 +78,13 @@ import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interfa
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
 import {
-  TableProfilerTab,
-  TestCasePermission,
+    TableProfilerTab,
+    TestCasePermission
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
+;
 
 const IncidentManager = ({
   isIncidentPage = true,

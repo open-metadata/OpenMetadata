@@ -12,7 +12,6 @@
  */
 
 import { Space } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -24,11 +23,13 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
+;
 
 const Severity = ({
   severity,

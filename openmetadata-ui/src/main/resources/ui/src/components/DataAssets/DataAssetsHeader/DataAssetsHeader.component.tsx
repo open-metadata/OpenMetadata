@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -34,15 +33,15 @@ import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import {
-  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-  SERVICE_TYPES,
+    EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+    SERVICE_TYPES
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
@@ -57,17 +56,17 @@ import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
-  getDataAssetsHeaderInfo,
-  getEntityExtraInfoLength,
-  isDataAssetsWithServiceField,
+    getDataAssetsHeaderInfo,
+    getEntityExtraInfoLength,
+    isDataAssetsWithServiceField
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
+    getEntityFeedLink,
+    getEntityName,
+    getEntityVoteStatus
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -77,6 +76,7 @@ import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
+import { Tooltip } from '../../common/AntdCompat';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -92,11 +92,12 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
-  DataAssetHeaderInfo,
-  DataAssetsHeaderProps,
-  DataAssetsWithFollowersField,
-  EntitiesWithDomainField,
+    DataAssetHeaderInfo,
+    DataAssetsHeaderProps,
+    DataAssetsWithFollowersField,
+    EntitiesWithDomainField
 } from './DataAssetsHeader.interface';
+;
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,

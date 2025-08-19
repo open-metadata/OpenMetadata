@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
-import { Switch } from 'antd';
+import { Button, Col, Form, Input, Row, Switch } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { TRANSPORTATION_STRATEGY_OPTIONS } from '../../../../constants/EmailConfig.constants';
 import { SMTPSettings } from '../../../../generated/email/smtpSettings';
+import { Select } from '../../../common/AntdCompat';
+;
 
 interface EmailConfigFormProps {
   isLoading: boolean;

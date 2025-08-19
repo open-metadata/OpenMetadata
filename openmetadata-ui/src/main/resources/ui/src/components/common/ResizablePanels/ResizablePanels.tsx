@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { Button, Card } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
+import { Tooltip } from '../AntdCompat';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
+;
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,

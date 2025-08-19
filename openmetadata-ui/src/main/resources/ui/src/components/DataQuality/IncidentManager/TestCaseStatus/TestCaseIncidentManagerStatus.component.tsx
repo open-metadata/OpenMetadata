@@ -12,7 +12,6 @@
  */
 
 import { Space, Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,11 +23,13 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import { TestCaseStatusModal } from '../../TestCaseStatusModal/TestCaseStatusModal.component';
 import '../incident-manager.style.less';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
+;
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,

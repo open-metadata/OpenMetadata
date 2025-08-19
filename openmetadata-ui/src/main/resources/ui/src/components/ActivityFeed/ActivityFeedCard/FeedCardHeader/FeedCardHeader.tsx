@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
@@ -20,21 +19,23 @@ import { Link } from 'react-router-dom';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  entityDisplayName,
-  getEntityFieldDisplay,
-  prepareFeedLink,
+    entityDisplayName,
+    getEntityFieldDisplay,
+    prepareFeedLink
 } from '../../../../utils/FeedUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
 import './feed-card-header-v1.style.less';
+;
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,

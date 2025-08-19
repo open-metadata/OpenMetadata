@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, InputNumber, Row, Typography } from 'antd';
-import { Select } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Select } from '../../components/common/AntdCompat';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -25,18 +25,19 @@ import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
-  LineageLayer,
-  LineageSettings,
+    LineageLayer,
+    LineageSettings
 } from '../../generated/configuration/lineageSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
-  getSettingsByType,
-  updateSettingsConfig,
+    getSettingsByType,
+    updateSettingsConfig
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+;
 
 const LineageConfigPage = () => {
   const { t } = useTranslation();

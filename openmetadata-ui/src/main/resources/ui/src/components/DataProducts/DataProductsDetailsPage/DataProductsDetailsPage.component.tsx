@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tabs, Typography } from 'antd';;
-import { Dropdown, Tooltip } from '../../common/AntdCompat';;
+import { Button, Col, Row, Tabs, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -32,14 +31,14 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
-  ChangeDescription,
-  DataProduct,
+    ChangeDescription,
+    DataProduct
 } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
@@ -51,20 +50,21 @@ import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission
 } from '../../../utils/PermissionsUtils';
 import {
-  getDomainPath,
-  getEntityDetailsPath,
-  getVersionPath,
+    getDomainPath,
+    getEntityDetailsPath,
+    getVersionPath
 } from '../../../utils/RouterUtils';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
+    escapeESReservedCharacters,
+    getEncodedFqn
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Dropdown, Tooltip } from '../../common/AntdCompat';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -78,7 +78,7 @@ import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs, {
-  AssetsTabRef,
+    AssetsTabRef
 } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -86,9 +86,11 @@ import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.compon
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import './data-products-details-page.less';
 import {
-  DataProductsDetailsPageProps,
-  DataProductTabs,
+    DataProductsDetailsPageProps,
+    DataProductTabs
 } from './DataProductsDetailsPage.interface';
+;
+;
 
 const DataProductsDetailsPage = ({
   dataProduct,

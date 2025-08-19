@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps, Typography,  } from 'antd';
-import { Select } from '../../common/AntdCompat';;
+import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps, Typography } from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useFqn } from '../../../hooks/useFqn';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
+import { Select } from '../../common/AntdCompat';
 import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
+;
 
 function AlertFormSourceItem({
   filterResources,

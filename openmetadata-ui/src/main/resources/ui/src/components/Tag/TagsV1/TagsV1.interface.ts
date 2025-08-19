@@ -12,10 +12,11 @@
  */
 
 import { TagProps } from 'antd';
-import { SelectProps } from '../../common/AntdCompat';;
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { SelectProps } from '../../common/AntdCompat';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+;
 
 export interface DataTestId {
   'data-testid'?: string;

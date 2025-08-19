@@ -13,11 +13,11 @@
 
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Tabs } from 'antd';
-import { Dropdown } from '../../components/common/AntdCompat';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Dropdown } from '../../components/common/AntdCompat';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
@@ -27,9 +27,9 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import {
-  getDataQualityPagePath,
-  getTestCaseDetailPagePath,
-  getTestSuitePath,
+    getDataQualityPagePath,
+    getTestCaseDetailPagePath,
+    getTestSuitePath
 } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-quality-page.less';

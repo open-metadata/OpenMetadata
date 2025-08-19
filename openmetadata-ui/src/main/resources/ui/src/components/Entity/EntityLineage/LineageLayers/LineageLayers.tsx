@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import { Popover } from '../../../common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -29,12 +28,14 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { Popover } from '../../../common/AntdCompat';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
 import {
-  LayerButtonProps,
-  LineageLayersProps,
+    LayerButtonProps,
+    LineageLayersProps
 } from './LineageLayers.interface';
+;
 
 const LayerButton: React.FC<LayerButtonProps> = React.memo(
   ({ isActive, onClick, icon, label, testId }) => (

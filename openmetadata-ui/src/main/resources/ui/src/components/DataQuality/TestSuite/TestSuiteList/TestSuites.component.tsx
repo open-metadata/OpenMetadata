@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Form, Radio, RadioChangeEvent, Row, Space, Typography,  } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
+import { Col, Form, Radio, RadioChangeEvent, Row, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -24,13 +23,13 @@ import { TEST_SUITE_DOCS } from '../../../../constants/docs.constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
+    ERROR_PLACEHOLDER_TYPE,
+    SORT_ORDER
 } from '../../../../enums/common.enum';
 import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    TabSpecificField
 } from '../../../../enums/entity.enum';
 import { TestSuiteType } from '../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -39,24 +38,25 @@ import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import {
-  DataQualityPageTabs,
-  DataQualitySubTabs,
+    DataQualityPageTabs,
+    DataQualitySubTabs
 } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import {
-  getListTestSuitesBySearch,
-  ListTestSuitePramsBySearch,
+    getListTestSuitesBySearch,
+    ListTestSuitePramsBySearch
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import {
-  getDataQualityPagePath,
-  getEntityDetailsPath,
-  getTestSuitePath,
+    getDataQualityPagePath,
+    getEntityDetailsPath,
+    getTestSuitePath
 } from '../../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { Select } from '../../../common/AntdCompat';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -68,6 +68,7 @@ import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/Pro
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
 import './test-suites.style.less';
+;
 
 export const TestSuites = () => {
   const { t } = useTranslation();

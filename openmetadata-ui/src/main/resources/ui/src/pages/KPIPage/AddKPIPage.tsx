@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormProps, Input, InputNumber, Row, Slider, Space, Typography,  } from 'antd';
-import { Select } from '../../components/common/AntdCompat';;
+import { Button, Col, Form, FormProps, Input, InputNumber, Row, Slider, Space, Typography } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Select } from '../../components/common/AntdCompat';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -27,8 +27,8 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import {
-  CreateKpiRequest,
-  KpiTargetType,
+    CreateKpiRequest,
+    KpiTargetType
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -37,13 +37,14 @@ import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
 import {
-  filterChartOptions,
-  getDataInsightChartForKPI,
-  KPIMetricTypeOptions,
+    filterChartOptions,
+    getDataInsightChartForKPI,
+    KPIMetricTypeOptions
 } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
+;
 
 const AddKPIPage = () => {
   const navigate = useNavigate();

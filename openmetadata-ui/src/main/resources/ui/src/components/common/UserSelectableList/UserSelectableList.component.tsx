@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 import { Button } from 'antd';
-import { Popover, Tooltip } from '../AntdCompat';;
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
+    DE_ACTIVE_COLOR,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
@@ -27,6 +26,8 @@ import { searchData } from '../../../rest/miscAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
+import { Popover, Tooltip } from '../AntdCompat';
+;
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SelectableList } from '../SelectableList/SelectableList.component';

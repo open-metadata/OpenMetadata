@@ -13,7 +13,6 @@
 
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, MenuProps, Space } from 'antd';
-import { Dropdown } from '../AntdCompat';;
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
@@ -23,20 +22,22 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
-  DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
+    DEFAULT_SELECTED_RANGE,
+    PROFILER_FILTER_RANGE
 } from '../../../constants/profiler.constant';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../utils/date-time/DateTimeUtils';
 import {
-  getDaysCount,
-  getTimestampLabel,
+    getDaysCount,
+    getTimestampLabel
 } from '../../../utils/DatePickerMenuUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
+import { Dropdown } from '../AntdCompat';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
+;
 
 interface DatePickerMenuProps {
   defaultDateRange?: Partial<DateRangeObject>;

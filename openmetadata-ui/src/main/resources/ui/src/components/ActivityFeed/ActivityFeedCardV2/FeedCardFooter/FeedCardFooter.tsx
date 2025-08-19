@@ -12,7 +12,6 @@
  */
 
 import { Avatar, Button, Col, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { min, noop, sortBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,13 +19,15 @@ import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import {
-  formatDateTime,
-  getRelativeTime,
+    formatDateTime,
+    getRelativeTime
 } from '../../../../utils/date-time/DateTimeUtils';
+import { Tooltip } from '../../../common/AntdCompat';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+;
 
 function FeedCardFooter({
   feed,

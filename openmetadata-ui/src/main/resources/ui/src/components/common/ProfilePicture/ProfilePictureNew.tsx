@@ -12,7 +12,6 @@
  */
 
 import { Avatar } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
@@ -25,8 +24,10 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { Tooltip } from '../AntdCompat';
 import Loader from '../Loader/Loader';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
+;
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 

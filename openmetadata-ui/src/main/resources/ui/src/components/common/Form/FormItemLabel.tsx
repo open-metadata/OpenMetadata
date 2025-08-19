@@ -13,12 +13,13 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
-import { Tooltip } from '../AntdCompat';;
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
+import { Tooltip } from '../AntdCompat';
 import { FormItemLabelProps } from './Form.interface';
+;
 
 const FormItemLabel = ({
   label,

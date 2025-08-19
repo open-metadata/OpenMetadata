@@ -13,16 +13,17 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
-import { Select } from '../AntdCompat';;
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { Select } from '../AntdCompat';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
+;
 
 const RolesCard = ({
   roles,

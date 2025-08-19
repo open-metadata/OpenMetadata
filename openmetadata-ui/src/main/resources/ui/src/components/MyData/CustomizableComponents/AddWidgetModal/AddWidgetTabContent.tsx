@@ -12,15 +12,16 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Image, Radio, RadioChangeEvent, Row, Space, Typography,  } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
+import { Button, Col, Image, Radio, RadioChangeEvent, Row, Space, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { Tooltip } from '../../../common/AntdCompat';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
+;
 
 function AddWidgetTabContent({
   getAddWidgetHandler,

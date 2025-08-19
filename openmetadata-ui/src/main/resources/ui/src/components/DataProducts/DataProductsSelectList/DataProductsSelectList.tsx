@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Space, Typography } from 'antd';
-import { Select, Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -22,11 +21,13 @@ import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Select, Tooltip } from '../../common/AntdCompat';
 import Loader from '../../common/Loader/Loader';
 import {
-  DataProductSelectOption,
-  DataProductsSelectListProps,
+    DataProductSelectOption,
+    DataProductsSelectListProps
 } from './DataProductSelectList.interface';
+;
 
 const DataProductsSelectList = ({
   mode,

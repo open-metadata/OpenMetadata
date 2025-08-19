@@ -12,9 +12,9 @@
  */
 
 import { Alert } from 'antd';
-import { TreeSelect } from '../../../common/AntdCompat';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
+import { TreeSelect } from '../../../common/AntdCompat';
 
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

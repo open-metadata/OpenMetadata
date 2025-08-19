@@ -13,7 +13,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Input, Space } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
@@ -21,7 +20,9 @@ import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { Tooltip } from '../../../common/AntdCompat';
 import './math-equation.less';
+;
 
 export const MathEquationComponent: FC<NodeViewProps> = ({
   node,

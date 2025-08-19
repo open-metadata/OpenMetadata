@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,17 +32,18 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
-  ActivityFeedLayoutType,
-  ActivityFeedTabs,
+    ActivityFeedLayoutType,
+    ActivityFeedTabs
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { Tooltip } from '../../common/AntdCompat';
 import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
-  AssetNoDataPlaceholderProps,
-  AssetsOfEntity,
+    AssetNoDataPlaceholderProps,
+    AssetsOfEntity
 } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
@@ -53,6 +53,7 @@ import './users.less';
 import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
+;
 
 const Users = ({
   afterDeleteAction,

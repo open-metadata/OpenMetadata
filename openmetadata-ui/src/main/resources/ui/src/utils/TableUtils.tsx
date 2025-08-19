@@ -13,19 +13,18 @@
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
 import { Space, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import {
-  get,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  omit,
-  toString,
-  uniqBy,
-  uniqueId,
-  upperCase,
+    get,
+    isEmpty,
+    isUndefined,
+    lowerCase,
+    omit,
+    toString,
+    uniqBy,
+    uniqueId,
+    upperCase
 } from 'lodash';
 import { EntityTags } from 'Models';
 import { CSSProperties, Fragment } from 'react';
@@ -121,6 +120,7 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { Tooltip } from '../components/common/AntdCompat';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -134,6 +134,7 @@ import SampleDataTableComponent from '../components/Database/SampleDataTable/Sam
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
+;
 // TODO: Fix export functionality - cannot use hooks in utility functions
 // import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
@@ -142,7 +143,6 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../constants/constants';
-import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
@@ -152,12 +152,12 @@ import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
-  Column,
-  ConstraintType,
-  DataType,
-  JoinedWith,
-  TableConstraint,
-  TableJoins,
+    Column,
+    ConstraintType,
+    DataType,
+    JoinedWith,
+    TableConstraint,
+    TableJoins
 } from '../generated/entity/data/table';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
@@ -166,16 +166,15 @@ import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
-  FrequentlyJoinedTables,
-  Joined,
+    FrequentlyJoinedTables,
+    Joined
 } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
-import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
+    getPartialNameFromTableFQN,
+    getTableFQNFromColumnFQN
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';

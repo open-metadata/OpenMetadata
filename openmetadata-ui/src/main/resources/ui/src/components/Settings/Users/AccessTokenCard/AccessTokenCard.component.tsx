@@ -12,9 +12,10 @@
  */
 
 import { Card } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { Tooltip } from '../../../common/AntdCompat';
+;
 
 import { noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,15 +23,15 @@ import { useTranslation } from 'react-i18next';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
-  AuthenticationMechanism,
-  AuthType,
+    AuthenticationMechanism,
+    AuthType
 } from '../../../../generated/entity/teams/user';
 import {
-  createUserWithPut,
-  getAuthMechanismForBotUser,
-  getUserAccessToken,
-  revokeAccessToken,
-  updateUserAccessToken,
+    createUserWithPut,
+    getAuthMechanismForBotUser,
+    getUserAccessToken,
+    revokeAccessToken,
+    updateUserAccessToken
 } from '../../../../rest/userAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';

@@ -12,7 +12,6 @@
  */
 
 import { Col, Form, Skeleton } from 'antd';
-import { Select } from '../../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,13 +19,15 @@ import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
 import {
-  AlertMessage,
-  CuratedAssetsFormSelectedAssetsInfo,
-  getExploreURLWithFilters,
+    AlertMessage,
+    CuratedAssetsFormSelectedAssetsInfo,
+    getExploreURLWithFilters
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import { Select } from '../../../../common/AntdCompat';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
+;
 
 export const SelectAssetTypeField = ({
   fetchEntityCount,

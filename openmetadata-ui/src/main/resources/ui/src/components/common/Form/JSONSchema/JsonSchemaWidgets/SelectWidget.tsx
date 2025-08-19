@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { Select } from '../../../AntdCompat';;
 import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { Select } from '../../../AntdCompat';
 import TreeSelectWidget from './TreeSelectWidget';
+;
 
 const SelectWidget: FC<WidgetProps> = (props) => {
   if (props.schema.uiFieldType === 'treeSelect') {

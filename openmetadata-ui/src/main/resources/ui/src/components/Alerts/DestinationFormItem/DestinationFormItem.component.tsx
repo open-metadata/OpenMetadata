@@ -12,7 +12,6 @@
  */
 
 import { Button, Col, Divider, Form, Row } from 'antd';
-import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';
@@ -20,21 +19,23 @@ import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
-  CreateEventSubscription,
-  SubscriptionCategory,
+    CreateEventSubscription,
+    SubscriptionCategory
 } from '../../../generated/events/api/createEventSubscription';
 import { Destination } from '../../../generated/events/eventSubscription';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
-  getConnectionTimeoutField,
-  getFormattedDestinations,
-  getReadTimeoutField,
-  listLengthValidator,
+    getConnectionTimeoutField,
+    getFormattedDestinations,
+    getReadTimeoutField,
+    listLengthValidator
 } from '../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { Tooltip } from '../../common/AntdCompat';
 import './destination-form-item.less';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
+;
 
 function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
   const { t } = useTranslation();

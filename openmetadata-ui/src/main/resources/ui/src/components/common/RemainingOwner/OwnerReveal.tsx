@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import { Dropdown } from '../AntdCompat';;
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { Dropdown } from '../AntdCompat';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerRevealProps } from './OwnerReveal.interface';
+;
 
 export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   isCompactView,

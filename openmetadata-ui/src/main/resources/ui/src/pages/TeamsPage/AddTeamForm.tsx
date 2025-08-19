@@ -13,32 +13,33 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal } from 'antd';
-import { Select } from '../../components/common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../components/common/AntdCompat';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  EntityReference,
-  Team,
-  TeamType,
+    EntityReference,
+    Team,
+    TeamType
 } from '../../generated/entity/teams/team';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout
 } from '../../interface/FormUtils.interface';
 import { getTeams } from '../../rest/teamsAPI';
 import { getField } from '../../utils/formUtils';
 import { getTeamOptionsFromType } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddTeamFormType } from './AddTeamForm.interface';
+;
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,

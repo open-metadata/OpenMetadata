@@ -15,8 +15,7 @@
 // IMPORTS
 // =============================================
 import { EditOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Drawer, Form, Row, Space, Switch, Typography,  } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
+import { Button, Card, Col, Drawer, Form, Row, Space, Switch, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,9 +27,9 @@ import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
-  MAX_NAME_LENGTH,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    MAX_NAME_LENGTH,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
@@ -41,47 +40,47 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  CreateIngestionPipeline,
-  FluffyType as ConfigType,
-  PipelineType,
+    CreateIngestionPipeline,
+    FluffyType as ConfigType,
+    PipelineType
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { Table } from '../../../../generated/entity/data/table';
 import { LogLevels } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  EntityType,
-  TestDefinition,
-  TestPlatform,
+    EntityType,
+    TestDefinition,
+    TestPlatform
 } from '../../../../generated/tests/testDefinition';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout
 } from '../../../../interface/FormUtils.interface';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  getIngestionPipelines,
+    addIngestionPipeline,
+    deployIngestionPipelineById,
+    getIngestionPipelines
 } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import {
-  createTestCase,
-  getListTestCaseBySearch,
-  getListTestDefinitions,
+    createTestCase,
+    getListTestCaseBySearch,
+    getListTestDefinitions
 } from '../../../../rest/testAPI';
 import {
-  filterSelectOptions,
-  replaceAllSpacialCharWith_,
-  Transi18next,
+    filterSelectOptions,
+    replaceAllSpacialCharWith_,
+    Transi18next
 } from '../../../../utils/CommonUtils';
 import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
-  generateFormFields,
-  getPopupContainer,
+    generateFormFields,
+    getPopupContainer
 } from '../../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
@@ -89,6 +88,7 @@ import { generateUUID } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import AlertBar from '../../../AlertBar/AlertBar';
+import { Select } from '../../../common/AntdCompat';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -97,12 +97,13 @@ import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 import {
-  FormValues,
-  TablesCache,
-  TestCaseFormV1Props,
-  TestLevel,
+    FormValues,
+    TablesCache,
+    TestCaseFormV1Props,
+    TestLevel
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
+;
 
 const TABLE_SEARCH_FIELDS: (keyof TableSearchSource)[] = [
   'name',

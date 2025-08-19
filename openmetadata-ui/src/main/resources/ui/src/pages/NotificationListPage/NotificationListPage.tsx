@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import { Tooltip } from '../../components/common/AntdCompat';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -29,27 +29,27 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    NO_DATA_PLACEHOLDER
 } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  AlertType,
-  EventSubscription,
-  ProviderType,
+    AlertType,
+    EventSubscription,
+    ProviderType
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -58,11 +58,12 @@ import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
-  getNotificationAlertDetailsPath,
-  getNotificationAlertsEditPath,
-  getSettingPath,
+    getNotificationAlertDetailsPath,
+    getNotificationAlertsEditPath,
+    getSettingPath
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+;
 
 const NotificationListPage = () => {
   const { t } = useTranslation();

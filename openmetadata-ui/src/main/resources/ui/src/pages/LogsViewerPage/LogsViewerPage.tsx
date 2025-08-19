@@ -14,19 +14,19 @@
 import { DownloadOutlined } from '@ant-design/icons';
 import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Typography } from 'antd';
-import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
 import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
+    Fragment,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tooltip } from '../../components/common/AntdCompat';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -37,27 +37,27 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
-  IngestionPipeline,
-  PipelineStatus,
+    IngestionPipeline,
+    PipelineStatus
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  getApplicationByName,
-  getExternalApplicationRuns,
-  getLatestApplicationRuns,
+    getApplicationByName,
+    getExternalApplicationRuns,
+    getLatestApplicationRuns
 } from '../../rest/applicationAPI';
 import {
-  getIngestionPipelineByFqn,
-  getIngestionPipelineLogById,
+    getIngestionPipelineByFqn,
+    getIngestionPipelineLogById
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
-  downloadAppLogs,
-  downloadIngestionLog,
+    downloadAppLogs,
+    downloadIngestionLog
 } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -65,6 +65,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
+;
 
 const LogsViewerPage = () => {
   const { logEntityType } = useRequiredParams<LogViewerParams>();

@@ -11,27 +11,25 @@
  *  limitations under the License.
  */
 import {
-  AntdConfig,
-  AsyncFetchListValuesResult,
-  Config,
-  FieldOrGroup,
-  Fields,
-  ListItem,
-  ListValues,
-  Operators,
-  SelectFieldSettings,
+    AntdConfig,
+    AsyncFetchListValuesResult,
+    Config, Fields,
+    ListItem,
+    ListValues,
+    Operators,
+    SelectFieldSettings
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
-  COMMON_ENTITY_FIELDS_KEYS,
-  GLOSSARY_ENTITY_FIELDS_KEYS,
-  TABLE_ENTITY_FIELDS_KEYS,
+    COMMON_ENTITY_FIELDS_KEYS,
+    GLOSSARY_ENTITY_FIELDS_KEYS,
+    TABLE_ENTITY_FIELDS_KEYS
 } from '../constants/JSONLogicSearch.constants';
 import {
-  EntityFields,
-  EntityReferenceFields,
+    EntityFields,
+    EntityReferenceFields
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
@@ -39,8 +37,8 @@ import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
 import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
+    getFieldsByKeys,
+    renderJSONLogicQueryBuilderButtons
 } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {

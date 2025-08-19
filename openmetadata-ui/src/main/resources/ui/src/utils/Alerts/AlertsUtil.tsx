@@ -12,26 +12,25 @@
  */
 
 import {
-  CheckCircleOutlined,
-  CloseOutlined,
-  ExclamationCircleOutlined,
-  PlusOutlined,
+    CheckCircleOutlined,
+    CloseOutlined,
+    ExclamationCircleOutlined,
+    PlusOutlined
 } from '@ant-design/icons';
-import { AlertProps, Button, Checkbox, Col, Collapse, Divider, Input, MenuProps, Radio, Row, Skeleton, Switch, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../components/common/AntdCompat';;
+import { AlertProps, Button, Checkbox, Col, Collapse, Divider, Input, MenuProps, Radio, Row, Skeleton, Switch, Typography } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
 import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  map,
-  omitBy,
-  startCase,
-  trim,
-  uniqBy,
+    isEmpty,
+    isEqual,
+    isUndefined,
+    map,
+    omitBy,
+    startCase,
+    trim,
+    uniqBy
 } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
@@ -45,15 +44,16 @@ import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
+import { Select, Tooltip } from '../../components/common/AntdCompat';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import {
-  DATA_CONTRACT_STATUS_OPTIONS,
-  DEFAULT_READ_TIMEOUT,
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  DESTINATION_TYPE_BASED_PLACEHOLDERS,
-  EXTERNAL_CATEGORY_OPTIONS,
+    DATA_CONTRACT_STATUS_OPTIONS,
+    DEFAULT_READ_TIMEOUT,
+    DESTINATION_DROPDOWN_TABS,
+    DESTINATION_SOURCE_ITEMS,
+    DESTINATION_TYPE_BASED_PLACEHOLDERS,
+    EXTERNAL_CATEGORY_OPTIONS
 } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
@@ -67,26 +67,26 @@ import { CreateEventSubscription } from '../../generated/events/api/createEventS
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
-  ChangeEvent,
-  Status,
-  TypedEvent,
+    ChangeEvent,
+    Status,
+    TypedEvent
 } from '../../generated/events/api/typedEvent';
 import {
-  EventFilterRule,
-  EventSubscription,
-  HTTPMethod,
-  InputType,
-  SubscriptionCategory,
-  SubscriptionType,
-  Webhook,
+    EventFilterRule,
+    EventSubscription,
+    HTTPMethod,
+    InputType,
+    SubscriptionCategory,
+    SubscriptionType,
+    Webhook
 } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
 import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-  ModifiedEventSubscription,
+    ModifiedCreateEventSubscription,
+    ModifiedDestination,
+    ModifiedEventSubscription
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
@@ -97,6 +97,7 @@ import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
+;
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {

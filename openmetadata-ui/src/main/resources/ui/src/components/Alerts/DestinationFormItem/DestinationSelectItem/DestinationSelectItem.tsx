@@ -12,34 +12,35 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Alert, Button, Col, Form, Row, Skeleton, Tabs, Typography,  } from 'antd';
-import { Select } from '../../../common/AntdCompat';;
+import { Alert, Button, Col, Form, Row, Skeleton, Tabs, Typography } from 'antd';
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
+    DESTINATION_DROPDOWN_TABS,
+    DESTINATION_SOURCE_ITEMS
 } from '../../../../constants/Alerts.constants';
 import { WHITE_COLOR } from '../../../../constants/constants';
 import { CreateEventSubscription } from '../../../../generated/events/api/createEventSubscription';
 import {
-  Destination,
-  SubscriptionCategory,
-  SubscriptionType,
+    Destination,
+    SubscriptionCategory,
+    SubscriptionType
 } from '../../../../generated/events/eventSubscription';
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
-  getConfigHeaderArrayFromObject,
-  getDestinationConfigField,
-  getDestinationStatusAlertData,
-  getFilteredDestinationOptions,
-  getSubscriptionTypeOptions,
+    getConfigHeaderArrayFromObject,
+    getDestinationConfigField,
+    getDestinationStatusAlertData,
+    getFilteredDestinationOptions,
+    getSubscriptionTypeOptions
 } from '../../../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
+import { Select } from '../../../common/AntdCompat';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
+;
 
 function DestinationSelectItem({
   selectorKey,

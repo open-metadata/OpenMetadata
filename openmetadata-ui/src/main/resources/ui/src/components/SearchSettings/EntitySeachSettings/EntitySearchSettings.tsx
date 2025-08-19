@@ -12,48 +12,48 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Collapse, Row, Typography } from 'antd';
-import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  AllowedFieldField,
-  AllowedSearchFields,
-  BoostMode,
-  FieldValueBoost,
-  ScoreMode,
-  SearchSettings,
-  TermBoost,
+    AllowedFieldField,
+    AllowedSearchFields,
+    BoostMode,
+    FieldValueBoost,
+    ScoreMode,
+    SearchSettings,
+    TermBoost
 } from '../../../generated/configuration/searchSettings';
 import {
-  MatchType,
-  Settings,
-  SettingType,
+    MatchType,
+    Settings,
+    SettingType
 } from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import {
-  getSettingsByType,
-  restoreSettingsConfig,
-  updateSettingsConfig,
+    getSettingsByType,
+    restoreSettingsConfig,
+    updateSettingsConfig
 } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
-  boostModeOptions,
-  getEntitySearchConfig,
-  getSearchSettingCategories,
-  scoreModeOptions,
+    boostModeOptions,
+    getEntitySearchConfig,
+    getSearchSettingCategories,
+    scoreModeOptions
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { Select } from '../../common/AntdCompat';
 import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -64,6 +64,7 @@ import FieldValueBoostModal from '../FieldValueBoostModal/FieldValueBoostModal';
 import SearchPreview from '../SearchPreview/SearchPreview';
 import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
+;
 
 const EntitySearchSettings = () => {
   const { t } = useTranslation();

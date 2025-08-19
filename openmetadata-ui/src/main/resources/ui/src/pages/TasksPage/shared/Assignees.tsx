@@ -12,8 +12,9 @@
  */
 
 import { Typography } from 'antd';
-import { Select, SelectProps } from '../../../components/common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
+import { Select, SelectProps } from '../../../components/common/AntdCompat';
+;
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
 import { FC, useMemo } from 'react';

@@ -13,7 +13,6 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { isString, omit } from 'lodash';
@@ -21,12 +20,13 @@ import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  ResourceEntity,
-  UIPermission,
+    ResourceEntity,
+    UIPermission
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { SettledStatus } from '../enums/Axios.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -36,23 +36,24 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
-  AssetCertification,
-  Column,
-  TagSource,
+    AssetCertification,
+    Column,
+    TagSource
 } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
 import {
-  getAllClassifications,
-  getClassificationByName,
-  getTags,
+    getAllClassifications,
+    getClassificationByName,
+    getTags
 } from '../rest/tagAPI';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import { getExplorePath } from './RouterUtils';
 import { getTagsWithoutTier } from './TableUtils';
+;
 
 export const getClassifications = async (
   fields?: Array<string> | string,

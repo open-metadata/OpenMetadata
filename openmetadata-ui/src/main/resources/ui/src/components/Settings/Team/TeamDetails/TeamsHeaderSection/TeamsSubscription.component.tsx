@@ -10,26 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Space, Typography,  } from 'antd';
-import { Select, Tooltip } from '../../../../common/AntdCompat';;
+import { Button, Form, Input, Modal, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER
 } from '../../../../../constants/constants';
 import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
+    SUBSCRIPTION_WEBHOOK,
+    SUBSCRIPTION_WEBHOOK_OPTIONS
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
+import { Select, Tooltip } from '../../../../common/AntdCompat';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
+;
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,

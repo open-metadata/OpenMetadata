@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Space, Spin, Typography,  } from 'antd';
-import { AutoComplete, Select } from '../../../common/AntdCompat';;
+import { Button, Card, Col, Form, Input, Row, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -21,23 +20,25 @@ import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
-  evaluatePermission,
-  getPermissionDebugInfo,
-  PermissionDebugInfo,
-  PermissionEvaluationDebugInfo,
+    evaluatePermission,
+    getPermissionDebugInfo,
+    PermissionDebugInfo,
+    PermissionEvaluationDebugInfo
 } from '../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { AutoComplete, Select } from '../../../common/AntdCompat';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import UserPermissions from '../UsersProfile/UserPermissions/UserPermissions.component';
 import {
-  PERMISSION_OPERATIONS,
-  PERMISSION_RESOURCES,
+    PERMISSION_OPERATIONS,
+    PERMISSION_RESOURCES
 } from './AdminPermissionDebugger.constants';
 import './AdminPermissionDebugger.style.less';
+;
 
 const { Title, Text } = Typography;
 const { Option } = Select;

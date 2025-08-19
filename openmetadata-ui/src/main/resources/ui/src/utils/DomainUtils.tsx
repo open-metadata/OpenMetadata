@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Divider, Space, Typography } from 'antd';
-import { Tooltip } from '../components/common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -19,6 +18,7 @@ import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { Tooltip } from '../components/common/AntdCompat';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -34,9 +34,9 @@ import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntityS
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
-  DEFAULT_DOMAIN_VALUE,
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
+    DEFAULT_DOMAIN_VALUE,
+    DE_ACTIVE_COLOR,
+    NO_DATA_PLACEHOLDER
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -47,14 +47,15 @@ import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
-  QueryFieldInterface,
-  QueryFilterInterface,
+    QueryFieldInterface,
+    QueryFilterInterface
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
+;
 
 export const getOwner = (
   hasPermission: boolean,

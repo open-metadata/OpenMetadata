@@ -13,7 +13,6 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Space } from 'antd';
-import { Tooltip } from '../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -28,12 +27,14 @@ import { SearchServiceType } from '../../../../generated/entity/services/searchS
 import { Type as SecurityServiceType } from '../../../../generated/entity/services/securityService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
 import {
-  ConfigData,
-  ExtraInfoType,
+    ConfigData,
+    ExtraInfoType
 } from '../../../../interface/service.interface';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { Tooltip } from '../../../common/AntdCompat';
 import './service-connection-details.less';
+;
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;

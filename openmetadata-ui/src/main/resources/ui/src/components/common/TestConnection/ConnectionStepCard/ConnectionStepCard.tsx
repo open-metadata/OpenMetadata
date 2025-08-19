@@ -14,7 +14,6 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Collapse, Divider, Space, Typography } from 'antd';
-import { Tooltip } from '../../AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -27,7 +26,9 @@ import { TestConnectionStepResult } from '../../../../generated/entity/automatio
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/CommonUtils';
+import { Tooltip } from '../../AntdCompat';
 import './connection-step-card.less';
+;
 
 const { Panel } = Collapse;
 

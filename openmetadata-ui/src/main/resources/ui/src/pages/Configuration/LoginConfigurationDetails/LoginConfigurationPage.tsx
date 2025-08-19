@@ -12,21 +12,21 @@
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
-import { Tooltip } from '../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { Tooltip } from '../../../components/common/AntdCompat';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
+    GRAYED_OUT_COLOR,
+    NO_DATA_PLACEHOLDER,
+    ROUTES
 } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -36,6 +36,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+;
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
