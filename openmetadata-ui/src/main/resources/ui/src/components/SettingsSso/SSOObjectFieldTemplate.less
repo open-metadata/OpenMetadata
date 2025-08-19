@@ -1,0 +1,139 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../styles/variables.less';
+
+.sso-field-group {
+  margin-bottom: @padding-lg;
+  border: 1px solid @border-color;
+  border-radius: @border-rad-xs;
+  overflow: hidden;
+  background: @background-color;
+
+  .sso-field-group-title {
+    background: @grey-9;
+    padding: @padding-md @padding-mlg;
+    font-weight: 600;
+    font-size: @font-size-base;
+    color: @grey-900;
+    border-bottom: 1px solid @border-color;
+    margin: 0;
+  }
+
+  .sso-field-group-content {
+    padding: @padding-mlg;
+    background: @background-color;
+
+    .property-wrapper {
+      margin-bottom: @padding-mlg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .form-group {
+        margin-bottom: 0;
+      }
+
+      .control-label {
+        font-weight: 500;
+        font-size: @font-size-base;
+        color: @grey-900;
+        margin-bottom: @padding-xs;
+        display: block;
+      }
+
+      .form-control {
+        border: 1px solid @grey-300;
+        border-radius: @border-rad-xs;
+        padding: @padding-mlg @padding-md;
+        font-size: @font-size-base;
+        line-height: 20px;
+        transition: border-color 0.2s ease;
+
+        &:focus {
+          border-color: @primary-color;
+          box-shadow: 0 0 0 1px @primary-color;
+          outline: none;
+        }
+
+        &::placeholder {
+          color: @grey-500;
+        }
+      }
+
+      .ant-radio-group {
+        display: flex;
+        gap: @padding-lg;
+
+        .ant-radio-wrapper {
+          font-size: @font-size-base;
+          color: @grey-900;
+
+          .ant-radio {
+            .ant-radio-inner {
+              border-color: @grey-300;
+
+              &:hover {
+                border-color: @primary-color;
+              }
+            }
+
+            &.ant-radio-checked {
+              .ant-radio-inner {
+                border-color: @primary-color;
+                background-color: @primary-color;
+              }
+            }
+          }
+        }
+      }
+
+      .ant-select {
+        .ant-select-selector {
+          border: 1px solid @grey-300 !important;
+          border-radius: @border-rad-xs;
+          padding: @padding-mlg @padding-md;
+          height: auto;
+          min-height: 44px;
+
+          &:hover {
+            border-color: @primary-color !important;
+          }
+
+          .ant-select-selection-search-input {
+            height: 20px;
+          }
+        }
+
+        &.ant-select-focused {
+          .ant-select-selector {
+            border-color: @primary-color !important;
+            box-shadow: 0 0 0 1px @primary-color !important;
+          }
+        }
+      }
+    }
+  }
+
+  // Special styling for the first group (remove top margin)
+  &:first-of-type {
+    margin-top: 0;
+  }
+
+  // Hover effect for better interactivity
+  &:hover {
+    border-color: @grey-300;
+    box-shadow: @box-shadow-base;
+  }
+}

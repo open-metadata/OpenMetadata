@@ -139,3 +139,23 @@
   border-radius: @size-md;
   border: 1px solid @grey-200;
 }
+
+.sso-provider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: @size-lg;
+  padding: @size-md 0;
+
+  .provider-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+
+    img {
+      border-radius: @size-xxs;
+    }
+  }
+}

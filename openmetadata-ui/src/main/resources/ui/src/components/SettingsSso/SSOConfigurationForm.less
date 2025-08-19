@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 .sso-configuration-form-card {
+  // Remove Card's default styling to prevent nested box appearance
+  border: none;
+  padding: @padding-lg @padding-mlg;
+  box-shadow: none;
   .ant-card-body {
-    padding: @size-lg;
+    padding: 0px;
   }
+
   .card-title {
     line-height: @size-lg;
     color: @grey-700;
-    font-weight: @font-semibold;
+    font-weight: 600;
   }
   .card-description {
-    font-weight: @font-regular;
+    font-weight: 400;
     color: @grey-700;
     margin-top: 0;
     line-height: @size-mlg;
@@ -37,6 +42,7 @@
   .rjsf .form-control {
     border-radius: @border-rad-xs;
     border: 1px solid @grey-200;
+    background-color: @background-color;
 
     &:hover {
       border-color: @primary-6;
@@ -44,12 +50,13 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+      box-shadow: 0 0 0 2px @primary-1;
     }
   }
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     border-radius: @border-rad-xs;
     border: 1px solid @grey-200;
+    background-color: @background-color;
 
     &:hover {
       border-color: @primary-6;
@@ -57,16 +64,102 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+      box-shadow: 0 0 0 2px @primary-1;
     }
   }
 
   .ant-select-focused .ant-select-selector {
     border-color: @primary-color;
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    box-shadow: 0 0 0 2px @primary-1;
   }
 
   .ant-select:hover .ant-select-selector {
     border-color: @primary-6;
+  }
+
+  .sso-action-buttons {
+    display: flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+
+  .provider-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+
+    img {
+      border-radius: @border-rad-xs;
+    }
+  }
+
+  .sso-provider-form-header {
+    margin-bottom: @size-xs;
+
+    gap: @size-xs;
+
+    .ant-typography {
+      font-weight: 600;
+    }
+  }
+
+  .form-actions-bottom {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: @size-lg;
+    padding: @size-md @size-lg;
+    border-top: 1px solid @grey-200;
+    background-color: @grey-9;
+    box-shadow: @box-shadow-base;
+  }
+
+  // Radio button styling on light background
+  .rjsf .ant-radio-wrapper {
+    color: @grey-800;
+    font-weight: 400;
+
+    .ant-radio {
+      .ant-radio-inner {
+        background-color: @background-color;
+        border-color: @grey-300;
+      }
+
+      &.ant-radio-checked {
+        .ant-radio-inner {
+          background-color: @primary-color;
+          border-color: @primary-color;
+        }
+      }
+
+      &:hover .ant-radio-inner {
+        border-color: @primary-6;
+      }
+    }
+  }
+
+  // Inline radio buttons for client type
+  .rjsf .ant-radio-group {
+    display: flex;
+    gap: @size-md;
+
+    .ant-radio-wrapper {
+      margin-right: 0;
+    }
+  }
+
+  // Form group spacing on light background
+  .rjsf .form-group {
+    margin-bottom: @size-md;
+
+    .control-label {
+      color: @grey-800;
+      font-weight: 500;
+      margin-bottom: @size-xs;
+    }
   }
 }

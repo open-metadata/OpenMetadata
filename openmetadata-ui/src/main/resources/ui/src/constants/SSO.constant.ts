@@ -208,7 +208,13 @@ export const COMMON_FIELD_TITLES = {
   tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
   jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
-  clientType: { 'ui:title': 'Client Type' },
+  clientType: {
+    'ui:title': 'Client Type',
+    'ui:widget': 'radio',
+    'ui:options': {
+      inline: true,
+    },
+  },
   secret: { 'ui:title': 'Client Secret', 'ui:widget': 'password' },
 };
 

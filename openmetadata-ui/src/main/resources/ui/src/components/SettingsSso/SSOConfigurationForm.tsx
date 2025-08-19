@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import { EditOutlined } from '@ant-design/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Card, Divider, Space, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import Auth0Icon from '../../assets/img/icon-auth0.png';
+import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
+import AzureIcon from '../../assets/img/icon-azure.png';
+import GoogleIcon from '../../assets/img/icon-google.png';
+import OktaIcon from '../../assets/img/icon-okta.png';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -42,6 +46,7 @@ import {
 } from '../../rest/miscAPI';
 import {
   applySecurityConfiguration,
+  getSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
   validateSecurityConfiguration,
@@ -52,10 +57,14 @@ import { transformErrors } from '../../utils/formUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import Loader from '../common/Loader/Loader';
+import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
+import ProviderSelector from './ProviderSelector';
 import './SSOConfigurationForm.less';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
+import SSODocPanel from './SSODocPanel';
+import { SSOGroupedFieldTemplate } from './SSOGroupedFieldTemplate';
 
 const widgets = {
   SelectWidget: SelectWidget,
@@ -78,19 +87,188 @@ interface FormData {
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
-const SSOConfigurationFormRJSF = () => {
+interface SSOConfigurationFormProps {
+  forceEditMode?: boolean;
+  onChangeProvider?: () => void;
+  selectedProvider?: string;
+}
+
+const SSOConfigurationFormRJSF = ({
+  forceEditMode = false,
+  onChangeProvider,
+  selectedProvider,
+}: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
-  const { setIsAuthenticated, setAuthConfig, setAuthorizerConfig } =
-    useApplicationStore();
+  const { setAuthConfig, setAuthorizerConfig } = useApplicationStore();
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [internalData, setInternalData] = useState<FormData | undefined>();
-  const [currentProvider, setCurrentProvider] = useState<string>(
-    AuthProvider.Google
-  );
+  const [savedData, setSavedData] = useState<FormData | undefined>();
+  const [currentProvider, setCurrentProvider] = useState<string | undefined>();
+  const [showProviderSelector, setShowProviderSelector] =
+    useState<boolean>(false);
+  const [hasExistingConfig, setHasExistingConfig] = useState<boolean>(false);
+  const [showForm, setShowForm] = useState<boolean>(false);
+  const [activeField, setActiveField] = useState<string>('');
 
   const navigate = useNavigate();
+
+  const getProviderDisplayName = (provider: string) => {
+    return provider === 'azure'
+      ? 'Azure AD'
+      : provider === 'google'
+      ? 'Google'
+      : provider === 'okta'
+      ? 'Okta'
+      : provider === 'auth0'
+      ? 'Auth0'
+      : provider === 'awsCognito'
+      ? 'AWS Cognito'
+      : provider?.charAt(0).toUpperCase() + provider?.slice(1);
+  };
+
+  const getProviderIcon = (provider: string) => {
+    switch (provider) {
+      case 'azure':
+        return AzureIcon;
+      case 'google':
+        return GoogleIcon;
+      case 'okta':
+        return OktaIcon;
+      case 'auth0':
+        return Auth0Icon;
+      case 'awsCognito':
+        return CognitoIcon;
+      default:
+        return null;
+    }
+  };
+
+  // Fetch existing configuration on mount (only if no selectedProvider is passed)
+  useEffect(() => {
+    const fetchExistingConfig = async () => {
+      try {
+        // If selectedProvider is passed, don't fetch existing config
+        if (selectedProvider) {
+          setIsInitializing(false);
+
+          return;
+        }
+
+        const response = await getSecurityConfiguration();
+        const config = response.data;
+
+        if (
+          config?.authenticationConfiguration?.provider &&
+          config.authenticationConfiguration.provider !== 'basic'
+        ) {
+          setHasExistingConfig(true);
+          setCurrentProvider(config.authenticationConfiguration.provider);
+          const configData = {
+            authenticationConfiguration: config.authenticationConfiguration,
+            authorizerConfiguration: config.authorizerConfiguration,
+          };
+          setSavedData(configData);
+          setInternalData(configData);
+          setShowForm(true);
+
+          // If forceEditMode is true, start in edit mode
+          if (forceEditMode) {
+            setIsEditMode(true);
+            setShowForm(true);
+          }
+        } else {
+          setShowProviderSelector(true);
+        }
+      } catch (error) {
+        // No existing configuration, show provider selector
+        setShowProviderSelector(true);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    fetchExistingConfig();
+  }, [selectedProvider]);
+
+  // Handle selectedProvider prop - initialize fresh form when provider is selected
+  useEffect(() => {
+    if (selectedProvider) {
+      // Clear all existing state first
+      setHasExistingConfig(false);
+      setSavedData(undefined);
+
+      // Initialize fresh form data for the selected provider
+      setCurrentProvider(selectedProvider);
+      setIsEditMode(true);
+      setShowForm(true);
+      setShowProviderSelector(false);
+      setIsInitializing(false);
+
+      // Create fresh form data for the new provider with all required fields
+      const isConfidentialClient = !(
+        selectedProvider === AuthProvider.Saml ||
+        selectedProvider === AuthProvider.LDAP
+      );
+
+      const freshFormData = {
+        authenticationConfiguration: {
+          provider: selectedProvider as AuthProvider,
+          providerName: selectedProvider,
+          enableSelfSignup: false,
+          clientType: isConfidentialClient
+            ? ClientType.Confidential
+            : ClientType.Public,
+          // For confidential clients (OAuth providers), fields go in oidcConfiguration
+          ...(isConfidentialClient
+            ? {
+                oidcConfiguration: {
+                  type: selectedProvider,
+                  id: '',
+                  secret: '',
+                  scope: 'openid email profile',
+                  discoveryUri: '',
+                  useNonce: false,
+                  preferredJwsAlgorithm: 'RS256',
+                  responseType: 'id_token',
+                  disablePkce: false,
+                  maxClockSkew: 0,
+                  clientAuthenticationMethod: 'client_secret_basic',
+                  tokenValidity: 0,
+                  customParams: {},
+                  tenant: '',
+                  serverUrl: '',
+                  callbackUrl: '',
+                  maxAge: 0,
+                  prompt: '',
+                  sessionExpiry: 0,
+                },
+              }
+            : {
+                // For public clients (SAML/LDAP), use root level fields
+                authority: '',
+                clientId: '',
+                callbackUrl: '',
+                publicKeyUrls: [],
+                tokenValidationAlgorithm: 'RS256',
+                jwtPrincipalClaims: [],
+              }),
+        } as AuthenticationConfiguration,
+        authorizerConfiguration: {
+          className: DEFAULT_AUTHORIZER_CLASS_NAME,
+          containerRequestFilter: DEFAULT_CONTAINER_REQUEST_FILTER,
+          enforcePrincipalDomain: false,
+          enableSecureSocketConnection: false,
+          adminPrincipals: [],
+          principalDomain: '',
+        } as AuthorizerConfiguration,
+      };
+
+      setInternalData(freshFormData);
+    }
+  }, [selectedProvider]);
 
   const handleValidationErrors = useCallback(
     (validationResult: SecurityValidationResponse) => {
@@ -339,24 +517,43 @@ const SSOConfigurationFormRJSF = () => {
 
   // Dynamic UI schema using the optimized constants
   const uiSchema = useMemo(() => {
+    if (!currentProvider) {
+      return {};
+    }
     const baseSchema = getSSOUISchema(currentProvider);
 
     // Get current client type from form data
     const currentClientType =
       internalData?.authenticationConfiguration?.clientType;
 
+    const authConfig = baseSchema.authenticationConfiguration as UISchemaObject;
+
+    // Always hide provider and providerName fields since we have separate provider selection screen
+    authConfig.provider = {
+      'ui:widget': 'hidden',
+      'ui:hideError': true,
+    };
+    authConfig.providerName = {
+      'ui:widget': 'hidden',
+      'ui:hideError': true,
+    };
+
+    // Make clientType non-editable for existing SSO configurations
+    if (hasExistingConfig && savedData) {
+      authConfig.clientType = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+    }
+
     // Show oidcConfiguration for confidential clients, hide for public clients
     if (currentClientType === ClientType.Public) {
-      (
-        baseSchema.authenticationConfiguration as UISchemaObject
-      ).oidcConfiguration = {
+      authConfig.oidcConfiguration = {
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
     } else if (currentClientType === ClientType.Confidential) {
       // The schema will be shown with OIDC prefixed labels from the constants
-      const authConfig =
-        baseSchema.authenticationConfiguration as UISchemaObject;
       if (!authConfig['oidcConfiguration']) {
         authConfig['oidcConfiguration'] = {
           'ui:title': 'OIDC Configuration',
@@ -365,7 +562,12 @@ const SSOConfigurationFormRJSF = () => {
     }
 
     return baseSchema;
-  }, [currentProvider, internalData?.authenticationConfiguration?.clientType]);
+  }, [
+    currentProvider,
+    internalData?.authenticationConfiguration?.clientType,
+    hasExistingConfig,
+    savedData,
+  ]);
 
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
@@ -379,6 +581,76 @@ const SSOConfigurationFormRJSF = () => {
       }
     }
   };
+
+  // Add DOM event listeners for field focus tracking
+  useEffect(() => {
+    const extractFieldName = (fieldId: string): string => {
+      // Extract meaningful field name from RJSF field ID
+      // Examples:
+      // "root/authenticationConfiguration/clientId" -> "clientId"
+      // "root/authenticationConfiguration/authority" -> "authority"
+      const parts = fieldId.split('/');
+      const lastPart = parts[parts.length - 1];
+
+      // Handle common field mappings for SSO documentation
+      const fieldMappings: Record<string, string> = {
+        clientSecret: 'clientSecret',
+        secret: 'clientSecret', // Map 'secret' to 'clientSecret' for documentation
+        authority: 'authority',
+        domain: 'authority', // Auth0 uses 'domain' but docs show 'authority'
+        callbackUrl: 'callbackUrl',
+        enableSelfSignup: 'enableSelfSignup',
+        scopes: 'scopes',
+        secretKey: 'clientSecret', // Auth0 secret key maps to clientSecret
+        oidcConfiguration: 'oidcConfiguration',
+        samlConfiguration: 'samlConfiguration',
+        ldapConfiguration: 'ldapConfiguration',
+      };
+
+      return fieldMappings[lastPart] || lastPart;
+    };
+
+    const handleDOMFocus = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      // Look for the closest field container with an id
+      let element = target;
+      while (element && element !== document.body) {
+        if (element.id && element.id.includes('root')) {
+          const fieldName = extractFieldName(element.id);
+          setActiveField(fieldName);
+
+          break;
+        }
+        element = element.parentElement as HTMLElement;
+      }
+    };
+
+    const handleDOMClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Look for the closest field container with an id
+      let element = target;
+      while (element && element !== document.body) {
+        if (element.id && element.id.includes('root')) {
+          const fieldName = extractFieldName(element.id);
+          setActiveField(fieldName);
+
+          break;
+        }
+        element = element.parentElement as HTMLElement;
+      }
+    };
+
+    // Add event listeners when form is shown
+    if (showForm) {
+      document.addEventListener('focusin', handleDOMFocus);
+      document.addEventListener('click', handleDOMClick);
+    }
+
+    return () => {
+      document.removeEventListener('focusin', handleDOMFocus);
+      document.removeEventListener('click', handleDOMClick);
+    };
+  }, [showForm]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -434,6 +706,10 @@ const SSOConfigurationFormRJSF = () => {
         const configWithScope = getAuthConfig(newAuthConfig);
         setAuthConfig(configWithScope);
         setAuthorizerConfig(newAuthorizerConfig);
+
+        // Update saved data with the new configuration
+        setSavedData(cleanedFormData);
+        setHasExistingConfig(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -456,84 +732,188 @@ const SSOConfigurationFormRJSF = () => {
     }
   };
 
-  const handleEditClick = () => {
+  const handleProviderSelect = (provider: AuthProvider) => {
+    // If selecting a new provider when one already exists, don't overwrite the saved data
+    setCurrentProvider(provider);
+    setShowProviderSelector(false);
+    setShowForm(true);
     setIsEditMode(true);
+
+    // Initialize form data with selected provider for new configuration with all required fields
+    const isConfidentialClient = !(
+      provider === AuthProvider.Saml || provider === AuthProvider.LDAP
+    );
+
+    setInternalData({
+      authenticationConfiguration: {
+        provider: provider,
+        providerName: provider,
+        enableSelfSignup: false,
+        clientType: isConfidentialClient
+          ? ClientType.Confidential
+          : ClientType.Public,
+        // For confidential clients (OAuth providers), fields go in oidcConfiguration
+        ...(isConfidentialClient
+          ? {
+              oidcConfiguration: {
+                type: provider,
+                id: '',
+                secret: '',
+                scope: 'openid email profile',
+                discoveryUri: '',
+                useNonce: false,
+                preferredJwsAlgorithm: 'RS256',
+                responseType: 'id_token',
+                disablePkce: false,
+                maxClockSkew: 0,
+                clientAuthenticationMethod: 'client_secret_basic',
+                tokenValidity: 0,
+                customParams: {},
+                tenant: '',
+                serverUrl: '',
+                callbackUrl: '',
+                maxAge: 0,
+                prompt: '',
+                sessionExpiry: 0,
+              },
+            }
+          : {
+              // For public clients (SAML/LDAP), use root level fields
+              authority: '',
+              clientId: '',
+              callbackUrl: '',
+              publicKeyUrls: [],
+              tokenValidationAlgorithm: 'RS256',
+              jwtPrincipalClaims: [],
+            }),
+      } as AuthenticationConfiguration,
+      authorizerConfiguration: {
+        className: DEFAULT_AUTHORIZER_CLASS_NAME,
+        containerRequestFilter: DEFAULT_CONTAINER_REQUEST_FILTER,
+        enforcePrincipalDomain: false,
+        enableSecureSocketConnection: false,
+        adminPrincipals: [],
+        principalDomain: '',
+      } as AuthorizerConfiguration,
+    });
   };
 
-  const handleCancelEdit = () => {
-    setIsEditMode(false);
+  const handleChangeProvider = () => {
+    if (onChangeProvider) {
+      onChangeProvider();
+    } else {
+      // When changing provider without parent callback, reset to provider selector
+      setShowForm(false);
+      setShowProviderSelector(true);
+      setIsEditMode(false);
+      setInternalData(undefined);
+      setCurrentProvider(undefined);
+    }
   };
+
+  if (isInitializing) {
+    return <Loader />;
+  }
+
+  // If we have an onChangeProvider callback, don't show internal provider selector
+  // The parent component (SettingsSso) will handle provider selection
+  if (showProviderSelector && !onChangeProvider) {
+    return (
+      <Card
+        className="sso-provider-selection flex-col"
+        data-testid="sso-configuration-form-card">
+        <ProviderSelector
+          selectedProvider={currentProvider as AuthProvider}
+          onProviderSelect={handleProviderSelect}
+        />
+      </Card>
+    );
+  }
 
   return (
-    <Card
-      className="sso-configuration-form-card flex-col"
-      data-testid="sso-configuration-form-card">
-      <div className="flex justify-between">
-        <div className="flex flex-col gap-2">
-          <Typography.Text className="card-title m-t-0 m-b-2 text-md">
-            {t('label.sso-configuration')}
-          </Typography.Text>
-          <Typography.Paragraph className="card-description m-b-0 m-t-4">
-            {t('message.sso-configuration-directly-from-the-ui')}
-          </Typography.Paragraph>
-        </div>
-        {!isEditMode ? (
-          <Button
-            data-testid="edit-sso-configuration"
-            icon={<EditOutlined />}
-            type="primary"
-            onClick={handleEditClick}>
-            {t('label.edit')}
-          </Button>
-        ) : (
-          <Space>
-            <Button
-              data-testid="save-sso-configuration"
-              disabled={isLoading}
-              loading={isLoading}
-              type="primary"
-              onClick={handleSave}>
-              {t('label.save')}
-            </Button>
-            <Button
-              data-testid="cancel-sso-configuration"
-              type="default"
-              onClick={handleCancelEdit}>
-              {t('label.cancel')}
-            </Button>
-          </Space>
-        )}
-      </div>
-      {isEditMode && <Divider />}
-      {isEditMode && (
-        <Form
-          focusOnFirstError
-          noHtml5Validate
-          className="rjsf no-header"
-          fields={customFields}
-          formData={internalData}
-          idSeparator="/"
-          schema={schema}
-          showErrorList={false}
-          templates={{
-            DescriptionFieldTemplate: DescriptionFieldTemplate,
-            FieldErrorTemplate: FieldErrorTemplate,
-            ObjectFieldTemplate: ObjectFieldTemplate,
-          }}
-          transformErrors={transformErrors}
-          uiSchema={{
-            ...uiSchema,
-            'ui:submitButtonOptions': {
-              submitText: '',
-              norender: true,
-            },
-          }}
-          validator={validator}
-          widgets={widgets}
-          onChange={handleOnChange}
-        />
-      )}
-    </Card>
+    <ResizablePanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: (
+          <Card
+            className="sso-configuration-form-card flex-col p-0"
+            data-testid="sso-configuration-form-card">
+            {/* SSO Provider Header */}
+            {currentProvider && (
+              <div className="sso-provider-form-header flex items-center">
+                <div className="flex align-items-center gap-2 flex items-center">
+                  <div className="provider-icon-container">
+                    {getProviderIcon(currentProvider) && (
+                      <img
+                        alt={getProviderDisplayName(currentProvider)}
+                        height="32"
+                        src={getProviderIcon(currentProvider)}
+                        width="32"
+                      />
+                    )}
+                  </div>
+                  <Typography.Title className="m-0 text-md" level={4}>
+                    {getProviderDisplayName(currentProvider)}
+                  </Typography.Title>
+                </div>
+              </div>
+            )}
+            {isEditMode && showForm && (
+              <Form
+                focusOnFirstError
+                noHtml5Validate
+                className="rjsf no-header"
+                fields={customFields}
+                formData={internalData}
+                idSeparator="/"
+                schema={schema}
+                showErrorList={false}
+                templates={{
+                  DescriptionFieldTemplate: DescriptionFieldTemplate,
+                  FieldErrorTemplate: FieldErrorTemplate,
+                  ObjectFieldTemplate: SSOGroupedFieldTemplate,
+                }}
+                transformErrors={transformErrors}
+                uiSchema={{
+                  ...uiSchema,
+                  'ui:submitButtonOptions': {
+                    submitText: '',
+                    norender: true,
+                  },
+                }}
+                validator={validator}
+                widgets={widgets}
+                onChange={handleOnChange}
+              />
+            )}
+            {isEditMode && (
+              <div className="form-actions-bottom">
+                <Button
+                  data-testid="save-sso-configuration"
+                  disabled={isLoading}
+                  loading={isLoading}
+                  type="primary"
+                  onClick={handleSave}>
+                  {t('label.save')}
+                </Button>
+              </div>
+            )}
+          </Card>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
+      secondPanel={{
+        children: (
+          <SSODocPanel
+            activeField={activeField}
+            serviceName={currentProvider || 'general'}
+          />
+        ),
+        minWidth: 400,
+      }}
+    />
   );
 };
 
