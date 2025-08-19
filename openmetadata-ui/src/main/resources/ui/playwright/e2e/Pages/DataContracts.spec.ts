@@ -54,6 +54,7 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
+  const table2 = new TableClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -67,6 +68,7 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await table2.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -109,6 +111,7 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.delete(apiContext);
+    await table2.delete(apiContext);
     await testClassification.delete(apiContext);
     await testTag.delete(apiContext);
     await testGlossary.delete(apiContext);
@@ -542,7 +545,7 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Create Data Contract in Table and validate it fails',
       async () => {
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
 
         // Open contract section and start adding contract
         await page.click('[data-testid="contract"]');
