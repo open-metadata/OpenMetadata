@@ -230,7 +230,7 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TagUsageDAO tagUsageDAO();
-  
+
   @CreateSqlObject
   EntityTagUpdateDAO entityTagUpdateDAO();
 
@@ -4292,7 +4292,7 @@ public interface CollectionDAO {
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
-    
+
     @SqlQuery("select DISTINCT targetFQN FROM tag_usage where tagFQN = :tagFQN")
     List<String> getTargetFQNsForTag(@Bind("tagFQN") String tagFQN);
 
@@ -4469,7 +4469,8 @@ public interface CollectionDAO {
         states.add(tagLabel.getState().ordinal());
       }
 
-      applyTagsBatchInternal(sources, tagFQNs, tagFQNHashes, targetFQNs, targetFQNHashes, labelTypes, states);
+      applyTagsBatchInternal(
+          sources, tagFQNs, tagFQNHashes, targetFQNs, targetFQNHashes, labelTypes, states);
     }
 
     @Transaction
@@ -4761,21 +4762,23 @@ public interface CollectionDAO {
       return "fqnHash";
     }
   }
-  
+
   interface EntityTagUpdateDAO {
     /**
      * Updates glossary term FQNs in entity JSONs when a glossary term is renamed or moved.
      * This method updates all occurrences of the old FQN with the new FQN in the JSON.
      */
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
-            + "WHERE <nameHashColumn> = :targetFqnHash "
-            + "AND json LIKE '%\"<oldFqn>\"%'",
+        value =
+            "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
+                + "WHERE <nameHashColumn> = :targetFqnHash "
+                + "AND json LIKE '%\"<oldFqn>\"%'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
-            + "WHERE <nameHashColumn> = :targetFqnHash "
-            + "AND json::text LIKE '%\"<oldFqn>\"%'",
+        value =
+            "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
+                + "WHERE <nameHashColumn> = :targetFqnHash "
+                + "AND json::text LIKE '%\"<oldFqn>\"%'",
         connectionType = POSTGRES)
     int updateTagFqnInEntityJson(
         @Define("table") String table,
@@ -4783,19 +4786,21 @@ public interface CollectionDAO {
         @Define("oldFqn") String oldFqn,
         @Define("newFqn") String newFqn,
         @BindFQN("targetFqnHash") String targetFqnHash);
-    
+
     /**
      * Updates glossary term FQNs in entity JSONs for multiple entities at once.
      */
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
-            + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
-            + "AND json LIKE '%\"<oldFqn>\"%'",
+        value =
+            "UPDATE <table> SET json = REPLACE(json, '\"<oldFqn>\"', '\"<newFqn>\"') "
+                + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
+                + "AND json LIKE '%\"<oldFqn>\"%'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
-            + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
-            + "AND json::text LIKE '%\"<oldFqn>\"%'",
+        value =
+            "UPDATE <table> SET json = REPLACE(json::text, '\"<oldFqn>\"', '\"<newFqn>\"')::jsonb "
+                + "WHERE <nameHashColumn> IN (<targetFqnHashes>) "
+                + "AND json::text LIKE '%\"<oldFqn>\"%'",
         connectionType = POSTGRES)
     int updateTagFqnInEntityJsonBatch(
         @Define("table") String table,

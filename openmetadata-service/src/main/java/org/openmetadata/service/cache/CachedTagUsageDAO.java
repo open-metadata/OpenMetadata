@@ -369,19 +369,20 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     try {
       // 1. Direct tag cache for this entity
       RelationshipCache.evict(TAG_CACHE_PREFIX + targetFQNHash);
-      
+
       // 2. Invalidate prefix caches that might include this entity
       // Since prefix queries use LIKE patterns, we need to invalidate all prefix caches
       // that could potentially match this entity
       // This is a trade-off between cache accuracy and performance
       String prefixPattern = TAG_PREFIX_CACHE_PREFIX + "*";
       RelationshipCache.evictPattern(prefixPattern);
-      
+
       // 3. Invalidate batch caches that might include this entity
       String batchPattern = TAG_BATCH_CACHE_PREFIX + "*";
       RelationshipCache.evictPattern(batchPattern);
-      
-      LOG.debug("Invalidated tag caches for entity: {} including prefix and batch caches", targetFQNHash);
+
+      LOG.debug(
+          "Invalidated tag caches for entity: {} including prefix and batch caches", targetFQNHash);
 
     } catch (Exception e) {
       LOG.warn("Error invalidating tag caches for entity {}: {}", targetFQNHash, e.getMessage());
@@ -402,35 +403,35 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       // to avoid stale cache issues
       return delegate.getTagsInternalByPrefix(targetFQNHash);
     }
-    
+
     // Create cache key from the concatenated hash values
     String cacheKey = TAG_PREFIX_CACHE_PREFIX + "internal:" + String.join(":", targetFQNHash);
-    
+
     try {
       Map<String, Object> cachedData = RelationshipCache.get(cacheKey);
       @SuppressWarnings("unchecked")
-      List<Pair<String, TagLabel>> cachedResult = 
+      List<Pair<String, TagLabel>> cachedResult =
           (List<Pair<String, TagLabel>>) cachedData.get("prefixTags");
       if (cachedResult != null) {
         LOG.debug("Redis cache hit for getTagsInternalByPrefix with pattern: {}", targetFQNHash[0]);
         return cachedResult;
       }
-      
+
       // Cache miss - fetch from database
       List<Pair<String, TagLabel>> result = delegate.getTagsInternalByPrefix(targetFQNHash);
-      
+
       if (result != null && !result.isEmpty()) {
         Map<String, Object> cacheData = new HashMap<>();
         cacheData.put("prefixTags", result);
         RelationshipCache.put(cacheKey, cacheData);
         LOG.debug(
-            "Cached getTagsInternalByPrefix result in Redis with {} entries for pattern: {}", 
-            result.size(), 
+            "Cached getTagsInternalByPrefix result in Redis with {} entries for pattern: {}",
+            result.size(),
             targetFQNHash[0]);
       }
-      
+
       return result;
-      
+
     } catch (Exception e) {
       LOG.error("Error with Redis cache for getTagsInternalByPrefix: {}", e.getMessage(), e);
       return delegate.getTagsInternalByPrefix(targetFQNHash);
@@ -612,7 +613,7 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
     // This is an internal method that delegates directly to the database
     delegate.deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
   }
-  
+
   @Override
   public List<String> getTargetFQNsForTag(String tagFQN) {
     return delegate.getTargetFQNsForTag(tagFQN);

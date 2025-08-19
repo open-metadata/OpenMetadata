@@ -178,7 +178,7 @@ public class CachedCollectionDAO implements CollectionDAO {
   public EntityTagUpdateDAO entityTagUpdateDAO() {
     return delegate.entityTagUpdateDAO();
   }
-  
+
   @Override
   public TagDAO tagDAO() {
     return delegate.tagDAO();

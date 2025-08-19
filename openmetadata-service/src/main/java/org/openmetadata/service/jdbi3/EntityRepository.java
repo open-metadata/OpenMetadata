@@ -70,9 +70,6 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
-
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
@@ -83,6 +80,8 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -181,8 +180,8 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.bundles.entityUpdate.EntityJsonUpdateJob;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.apps.bundles.entityUpdate.EntityJsonUpdateJob;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -1145,43 +1144,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Cache for deleted status to avoid repeated database queries
   // Key: entityType:entityId, Value: deleted status
   // This cache has a short TTL to ensure we get relatively fresh data
-  private static final Cache<String, Boolean> DELETED_STATUS_CACHE = 
-      Caffeine.newBuilder()
-          .maximumSize(10000)
-          .expireAfterWrite(5, TimeUnit.MINUTES)
-          .build();
-  
+  private static final Cache<String, Boolean> DELETED_STATUS_CACHE =
+      Caffeine.newBuilder().maximumSize(10000).expireAfterWrite(5, TimeUnit.MINUTES).build();
+
   // Entity status for batch checking
   private enum EntityStatus {
-    ACTIVE,        // Entity exists and is not deleted
-    SOFT_DELETED,  // Entity exists but is soft-deleted
-    NOT_FOUND      // Entity doesn't exist (hard deleted or never existed)
+    ACTIVE, // Entity exists and is not deleted
+    SOFT_DELETED, // Entity exists but is soft-deleted
+    NOT_FOUND // Entity doesn't exist (hard deleted or never existed)
   }
-  
+
   /**
    * Updates the deleted status of entity references loaded from JSON.
    * When entities are soft-deleted, their references in other entities' JSON
    * need to have the deleted flag updated.
    * If entities are hard-deleted (not found), they are removed from the list.
-   * 
+   *
    * Optimized to use batch queries grouped by entity type and caching.
    */
   private List<EntityReference> updateDeletedStatus(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
       return references;
     }
-    
+
     // Track references to remove (hard deleted entities)
     List<EntityReference> refsToRemove = new ArrayList<>();
-    
+
     // First, check cache and separate cached from uncached references
     Map<String, List<EntityReference>> refsByType = new HashMap<>();
-    
+
     for (EntityReference ref : references) {
       if (ref != null && ref.getId() != null && ref.getType() != null) {
         String cacheKey = ref.getType() + ":" + ref.getId();
         Boolean cachedStatus = DELETED_STATUS_CACHE.getIfPresent(cacheKey);
-        
+
         if (cachedStatus != null) {
           if (cachedStatus) {
             // Entity is deleted (soft-deleted)
@@ -1196,27 +1192,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     }
-    
+
     // Process uncached references in batch by entity type
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       String entityType = entry.getKey();
       List<EntityReference> refs = entry.getValue();
-      
+
       if (refs.isEmpty()) {
         continue;
       }
-      
+
       try {
         EntityRepository<?> refRepository = Entity.getEntityRepository(entityType);
         if (refRepository.supportsSoftDelete) {
           // Batch check deleted status for uncached references
-          List<UUID> ids = refs.stream()
-              .map(EntityReference::getId)
-              .collect(Collectors.toList());
-          
+          List<UUID> ids = refs.stream().map(EntityReference::getId).collect(Collectors.toList());
+
           // Get existence and deleted status for all entities of this type in one query
           Map<UUID, EntityStatus> statusMap = refRepository.getEntityStatusBatch(ids);
-          
+
           // Update references based on status and cache the results
           for (EntityReference ref : refs) {
             EntityStatus status = statusMap.get(ref.getId());
@@ -1238,23 +1232,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       } catch (Exception e) {
         // Log but don't fail - we'll use the existing deleted status
-        LOG.debug("Error checking deleted status for entity type {}: {}", entityType, e.getMessage());
+        LOG.debug(
+            "Error checking deleted status for entity type {}: {}", entityType, e.getMessage());
       }
     }
-    
+
     // Remove hard-deleted entities from the list
     if (!refsToRemove.isEmpty()) {
       references = new ArrayList<>(references);
       references.removeAll(refsToRemove);
     }
-    
+
     return references;
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
     // HYBRID STORAGE: Read from JSON first (already loaded), only query DB if null
     // This avoids expensive JOINs with tag_usage and entity_relationship tables
-    
+
     // Owners - use from JSON if available, else query DB
     if (fields.contains(FIELD_OWNERS)) {
       if (entity.getOwners() == null) {
@@ -1266,7 +1261,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       entity.setOwners(entity.getOwners());
     }
-    
+
     // Tags - use from JSON if available, else query DB
     if (fields.contains(FIELD_TAGS)) {
       if (entity.getTags() == null) {
@@ -1275,14 +1270,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       entity.setTags(entity.getTags());
     }
-    
+
     entity.setCertification(
         fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
             ? getCertification(entity)
             : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    
+
     // Domains - use from JSON if available, else query DB
     if (entity.getDomains() == null) {
       entity.setDomains(getDomains(entity));
@@ -1290,7 +1285,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Update deleted status for domains loaded from JSON
       entity.setDomains(updateDeletedStatus(entity.getDomains()));
     }
-    
+
     // DataProducts - use from JSON if available, else query DB
     if (fields.contains(FIELD_DATA_PRODUCTS)) {
       if (entity.getDataProducts() == null) {
@@ -1302,13 +1297,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       entity.setDataProducts(entity.getDataProducts());
     }
-    
+
     // These are not stored in JSON, always query DB
     entity.setFollowers(
         fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
     entity.setChildren(
         fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
-    
+
     // Experts - use from JSON if available, else query DB
     if (fields.contains(FIELD_EXPERTS)) {
       if (entity.getExperts() == null) {
@@ -1317,7 +1312,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       entity.setExperts(entity.getExperts());
     }
-    
+
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
@@ -1384,7 +1379,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
-    
+
     // HYBRID STORAGE: Check if FQN changed (entity renamed) and update referencing JSONs
     if (!original.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
       EntityJsonUpdateJob.getInstance().enqueueEntityRename(original, updated);
@@ -2221,7 +2216,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // HYBRID STORAGE: Keep tags, owners, domains in JSON for fast reads
     // Also store in relationship tables for referential integrity
     // This eliminates expensive JOINs during entity reads (2000ms -> 20ms)
-    
+
     // Save references - we'll restore these after DB write
     List<EntityReference> owners = entity.getOwners();
     List<EntityReference> children = entity.getChildren();
@@ -2230,10 +2225,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> dataProducts = entity.getDataProducts();
     List<EntityReference> followers = entity.getFollowers();
     List<EntityReference> experts = entity.getExperts();
-    
+
     // Only clear fields that should NEVER be stored in JSON
     entity.setHref(null);
-    entity.setChildren(null);  
+    entity.setChildren(null);
     entity.setFollowers(null);
     // IMPORTANT: We're keeping tags, owners, domains, dataProducts, experts in JSON
 
@@ -3168,7 +3163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final List<EntityReference> getOwners(EntityReference ref) {
     return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null) : null;
   }
-  
+
   /**
    * Batch method to get deleted status for multiple entities.
    * Returns a map of entity ID to deleted status.
@@ -3184,19 +3179,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       DELETED_STATUS_CACHE.invalidate(cacheKey);
     }
   }
-  
+
   public Map<UUID, EntityStatus> getEntityStatusBatch(List<UUID> ids) {
     if (nullOrEmpty(ids) || !supportsSoftDelete) {
       return Collections.emptyMap();
     }
-    
+
     Map<UUID, EntityStatus> statusMap = new HashMap<>();
-    
+
     try {
       // Use the DAO's find method to get entities in batch
       // This is more efficient and uses the existing infrastructure
       List<T> entities = find(ids, Include.ALL);
-      
+
       for (T entity : entities) {
         if (entity != null) {
           if (entity.getDeleted() != null && entity.getDeleted()) {
@@ -3206,7 +3201,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
         }
       }
-      
+
       // For any IDs not found, they're either hard deleted or don't exist
       for (UUID id : ids) {
         if (!statusMap.containsKey(id)) {
@@ -3214,7 +3209,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     } catch (Exception e) {
-      LOG.error("Error batch fetching entity status for {} entities: {}", entityType, e.getMessage());
+      LOG.error(
+          "Error batch fetching entity status for {} entities: {}", entityType, e.getMessage());
       // If batch fetch fails, fall back to individual checks (more expensive but correct)
       for (UUID id : ids) {
         try {
@@ -3229,7 +3225,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     }
-    
+
     return statusMap;
   }
 

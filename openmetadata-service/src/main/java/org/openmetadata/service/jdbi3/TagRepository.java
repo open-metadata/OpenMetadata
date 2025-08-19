@@ -320,7 +320,7 @@ public class TagRepository extends EntityRepository<Tag> {
     daoCollection
         .tagUsageDAO()
         .deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
-    
+
     // HYBRID STORAGE: Also update entity JSONs that reference this tag
     super.postDelete(entity);
   }

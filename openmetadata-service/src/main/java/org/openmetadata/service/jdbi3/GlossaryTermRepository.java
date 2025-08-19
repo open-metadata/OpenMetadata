@@ -75,8 +75,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
@@ -794,11 +792,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     searchRepository
         .getSearchClient()
         .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldParentFqn, newParentFqn, TAGS_FQN);
-    
+
     // Update entity JSON tags with new FQNs
     updateEntityJsonTags(oldParentFqn, newParentFqn);
   }
-  
+
   private void updateEntityJsonTags(String oldFqn, String newFqn) {
     // Update tags in all entity JSONs that reference this glossary term
     // We need to update tags in the JSON of all entities across all entity types
@@ -806,43 +804,49 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Get all target FQN hashes that have this glossary term as a tag
       String oldFqnHash = FullyQualifiedName.buildHash(oldFqn);
       List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(oldFqnHash);
-      
+
       if (targetFQNHashes.isEmpty()) {
         LOG.debug("No entities found with glossary term tag {}", oldFqn);
         return;
       }
-      
-      LOG.info("Updating {} entity references with glossary term tag from {} to {}", 
-               targetFQNHashes.size(), oldFqn, newFqn);
-      
+
+      LOG.info(
+          "Updating {} entity references with glossary term tag from {} to {}",
+          targetFQNHashes.size(),
+          oldFqn,
+          newFqn);
+
       // Group target FQN hashes by their entity type to update each table
       Map<String, List<String>> entityTypeToFQNHashes = groupFQNHashesByEntityType(targetFQNHashes);
-      
+
       // Update each entity type's table
       for (Map.Entry<String, List<String>> entry : entityTypeToFQNHashes.entrySet()) {
         String entityType = entry.getKey();
         List<String> fqnHashes = entry.getValue();
-        
+
         if (!fqnHashes.isEmpty()) {
           updateEntityTableTags(entityType, oldFqn, newFqn, fqnHashes);
         }
       }
     } catch (Exception e) {
-      LOG.error("Failed to update entity JSON tags when renaming glossary term from {} to {}", 
-                oldFqn, newFqn, e);
+      LOG.error(
+          "Failed to update entity JSON tags when renaming glossary term from {} to {}",
+          oldFqn,
+          newFqn,
+          e);
     }
   }
-  
+
   private Map<String, List<String>> groupFQNHashesByEntityType(List<String> targetFQNHashes) {
     Map<String, List<String>> entityTypeToFQNHashes = new HashMap<>();
-    
+
     // Query each entity repository to find which type each FQN hash belongs to
     for (String entityType : Entity.getEntityList()) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         EntityDAO<?> dao = repository.dao;
         String tableName = dao.getTableName();
-        
+
         // Check which FQN hashes exist in this table
         List<String> existingHashes = new ArrayList<>();
         for (String fqnHash : targetFQNHashes) {
@@ -850,7 +854,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             existingHashes.add(fqnHash);
           }
         }
-        
+
         if (!existingHashes.isEmpty()) {
           entityTypeToFQNHashes.put(entityType, existingHashes);
         }
@@ -859,29 +863,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         LOG.debug("Skipping entity type {} for tag update: {}", entityType, e.getMessage());
       }
     }
-    
+
     return entityTypeToFQNHashes;
   }
-  
-  private void updateEntityTableTags(String entityType, String oldFqn, String newFqn, 
-                                     List<String> targetFQNHashes) {
+
+  private void updateEntityTableTags(
+      String entityType, String oldFqn, String newFqn, List<String> targetFQNHashes) {
     try {
       EntityRepository<?> repository = Entity.getEntityRepository(entityType);
       String tableName = repository.dao.getTableName();
       String nameHashColumn = repository.dao.getNameHashColumn();
-      
+
       // Use the new EntityTagUpdateDAO to update tags in entity JSONs
-      int updated = daoCollection.entityTagUpdateDAO().updateTagFqnInEntityJsonBatch(
-          tableName,
-          nameHashColumn,
-          oldFqn,
-          newFqn,
-          targetFQNHashes
-      );
-      
+      int updated =
+          daoCollection
+              .entityTagUpdateDAO()
+              .updateTagFqnInEntityJsonBatch(
+                  tableName, nameHashColumn, oldFqn, newFqn, targetFQNHashes);
+
       if (updated > 0) {
-        LOG.info("Updated {} {} entities with new glossary term FQN from {} to {}", 
-                 updated, entityType, oldFqn, newFqn);
+        LOG.info(
+            "Updated {} {} entities with new glossary term FQN from {} to {}",
+            updated,
+            entityType,
+            oldFqn,
+            newFqn);
       }
     } catch (Exception e) {
       LOG.debug("Error updating tags for entity type {}: {}", entityType, e.getMessage());
@@ -1315,7 +1321,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 updated.getFullyQualifiedName());
 
         updateEntityLinks(original, updated);
-        
+
         // Update entity JSON tags with new FQNs
         updateEntityJsonTags(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       }

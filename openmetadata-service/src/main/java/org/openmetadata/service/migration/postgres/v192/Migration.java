@@ -23,20 +23,21 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     LOG.info("Starting hybrid storage migration for v1.9.2");
-    
+
     // The schema changes (adding targetFQN column) should have already been applied
     // by the schemaChanges.sql script before this data migration runs
-    
-    HybridStorageMigrationUtil migrationUtil = new HybridStorageMigrationUtil(collectionDAO, handle);
-    
+
+    HybridStorageMigrationUtil migrationUtil =
+        new HybridStorageMigrationUtil(collectionDAO, handle);
+
     // Step 1: Populate FQN columns in tag_usage table
     LOG.info("Step 1: Populating FQN columns in tag_usage table");
     migrationUtil.populateTagUsageFQNColumns();
-    
+
     // Step 2: Update entity JSONs to include relationships
     LOG.info("Step 2: Updating entity JSONs to include relationships");
     migrationUtil.updateEntityJsonsWithRelationships();
-    
+
     LOG.info("Completed hybrid storage migration for v1.9.2");
   }
 }
