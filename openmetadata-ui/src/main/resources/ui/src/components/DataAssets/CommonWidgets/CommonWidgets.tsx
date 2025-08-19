@@ -31,6 +31,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -47,6 +48,10 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -193,25 +198,39 @@ export const CommonWidgets = ({
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
       editTagsPermission:
-        (permissions.EditTags || permissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(permissions, Operation.EditTags) &&
+        !deleted,
       editDescriptionPermission:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(permissions, Operation.EditDescription) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editCustomAttributePermission:
-        (permissions.EditAll || permissions.EditCustomFields) && !deleted,
+        getPrioritizedEditPermission(permissions, Operation.EditCustomFields) &&
+        !deleted,
       editAllPermission: permissions.EditAll && !deleted,
       editLineagePermission:
-        (permissions.EditAll || permissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        permissions.ViewAll || permissions.ViewSampleData,
-      viewQueriesPermission: permissions.ViewAll || permissions.ViewQueries,
+        getPrioritizedEditPermission(permissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewSampleData
+      ),
+      viewQueriesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewQueries
+      ),
       viewProfilerPermission:
-        permissions.ViewAll ||
-        permissions.ViewDataProfile ||
-        permissions.ViewTests,
+        getPrioritizedViewPermission(permissions, Operation.ViewDataProfile) ||
+        getPrioritizedViewPermission(permissions, Operation.ViewTests),
       viewAllPermission: permissions.ViewAll,
-      viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewBasicPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewBasic
+      ),
     }),
     [permissions, deleted]
   );
