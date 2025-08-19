@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';;
+import { Dropdown, Tooltip } from '../../AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

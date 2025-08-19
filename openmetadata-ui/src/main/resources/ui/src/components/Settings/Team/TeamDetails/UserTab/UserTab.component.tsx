@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
+import { Button, Col, Modal, Space } from 'antd';
+import { Tooltip } from '../../../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';

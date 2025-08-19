@@ -13,19 +13,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Checkbox,
-  Col,
-  Dropdown,
-  MenuProps,
-  notification,
-  Row,
-  Skeleton,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Checkbox, Col, Dropdown, MenuProps, notification, Row, Skeleton, Space, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

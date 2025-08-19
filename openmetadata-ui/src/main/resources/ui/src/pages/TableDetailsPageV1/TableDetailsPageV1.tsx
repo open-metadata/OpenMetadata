@@ -12,7 +12,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Col, Row, Tabs } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -583,6 +584,7 @@ const TableDetailsPageV1: React.FC = () => {
     fetchTableDetails,
     testCaseSummary,
     isViewTableType,
+    customizedPage?.tabs,
   ]);
 
   const isExpandViewSupported = useMemo(

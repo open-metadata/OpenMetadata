@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Skeleton, Space, Tag } from 'antd';
+import { Popover } from '../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';

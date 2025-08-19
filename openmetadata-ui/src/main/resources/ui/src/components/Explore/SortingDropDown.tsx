@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Dropdown, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Dropdown } from '../common/AntdCompat';;
 import React from 'react';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 

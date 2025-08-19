@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Form, Input, Modal, Space, Typography,  } from 'antd';
+import { Select, Tooltip } from '../../../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

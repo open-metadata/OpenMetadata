@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Select, Space, Tree } from 'antd';
+import { Button, Empty, Space, Tree } from 'antd';
+import { Select } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';

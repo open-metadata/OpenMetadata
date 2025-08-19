@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

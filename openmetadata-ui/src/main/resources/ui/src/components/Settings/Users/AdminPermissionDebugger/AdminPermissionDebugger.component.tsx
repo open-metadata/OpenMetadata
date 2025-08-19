@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  AutoComplete,
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Form, Input, Row, Space, Spin, Typography,  } from 'antd';
+import { AutoComplete, Select } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';

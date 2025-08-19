@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Slider, Typography } from 'antd';
+import { Form, Input, Modal, Slider, Typography } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

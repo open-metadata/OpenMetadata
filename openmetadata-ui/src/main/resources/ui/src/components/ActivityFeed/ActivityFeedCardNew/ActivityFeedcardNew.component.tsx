@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Input, Skeleton, Space, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Space } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

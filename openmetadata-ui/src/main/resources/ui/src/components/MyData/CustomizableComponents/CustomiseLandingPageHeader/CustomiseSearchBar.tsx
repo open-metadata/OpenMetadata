@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import { Button, Input } from 'antd';
+import { Popover, Tooltip } from '../../../common/AntdCompat';
 import classNames from 'classnames';
-import { debounce, isEmpty, isString } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +45,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
-  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const location = useCustomLocation();
   const pathname = location.pathname;
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
@@ -72,17 +72,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     },
     [navigate]
   );
-
-  const debouncedOnChange = useCallback(
-    (text: string): void => {
-      setSuggestionSearch(text);
-    },
-    [setSuggestionSearch]
-  );
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
 
   const searchHandler = (value: string) => {
     if (!isTourOpen) {
@@ -127,22 +116,31 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   };
 
   const popoverContent = useMemo(() => {
-    return !isTourOpen &&
-      (searchValue || isNLPActive) &&
-      isInPageSearchAllowed(pathname) ? (
-      <SearchOptions
-        isOpen={isSearchBoxOpen}
-        options={inPageSearchOptions(pathname)}
-        searchText={searchValue}
-        selectOption={handleSelectOption}
-        setIsOpen={setIsSearchBoxOpen}
-      />
-    ) : (
+    // Don't show popover during tour or when search is empty (unless NLP is active)
+    if (isTourOpen || (!searchValue && !isNLPActive)) {
+      return null;
+    }
+
+    // Show SearchOptions for in-page search routes (like /database/)
+    if (isInPageSearchAllowed(pathname)) {
+      return (
+        <SearchOptions
+          isOpen={isSearchBoxOpen}
+          options={inPageSearchOptions(pathname)}
+          searchText={searchValue}
+          selectOption={handleSelectOption}
+          setIsOpen={setIsSearchBoxOpen}
+        />
+      );
+    }
+
+    // Show Suggestions for all other routes (including /my-data)
+    return (
       <Suggestions
         isNLPActive={isNLPActive}
         isOpen={isSearchBoxOpen}
         searchCriteria={searchCriteria === '' ? undefined : searchCriteria}
-        searchText={suggestionSearch}
+        searchText={searchValue}
         setIsOpen={setIsSearchBoxOpen}
         onSearchTextUpdate={handleSearchChange}
       />
@@ -154,7 +152,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     pathname,
     isNLPActive,
     searchCriteria,
-    suggestionSearch,
     handleSelectOption,
     handleSearchChange,
   ]);
@@ -210,9 +207,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
         placement="bottom"
         showArrow={false}
         trigger={['click']}
-        onOpenChange={(open) => {
-          setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);
-        }}>
+        onOpenChange={setIsSearchBoxOpen}>
         <Input
           autoComplete="off"
           bordered={false}
@@ -227,7 +222,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
           value={searchValue}
           onChange={(e) => {
             const { value } = e.target;
-            debounceOnSearch(value);
             handleSearchChange(value);
           }}
           onKeyDown={handleKeyDown}

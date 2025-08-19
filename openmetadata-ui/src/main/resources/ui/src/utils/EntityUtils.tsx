@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Popover } from '../components/common/AntdCompat';;
 import i18next, { t } from 'i18next';
 import {
   isEmpty,

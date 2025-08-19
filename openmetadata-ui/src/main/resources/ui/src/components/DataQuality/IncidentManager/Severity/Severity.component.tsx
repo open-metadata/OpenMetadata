@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Space } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';

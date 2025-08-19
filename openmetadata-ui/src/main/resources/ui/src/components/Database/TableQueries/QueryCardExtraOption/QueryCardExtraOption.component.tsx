@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Button, MenuProps, Space, Tag } from 'antd';;
+import { Dropdown, Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';

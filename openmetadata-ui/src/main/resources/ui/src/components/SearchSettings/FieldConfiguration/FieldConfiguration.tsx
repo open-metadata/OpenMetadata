@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Collapse,
-  Divider,
-  Select,
-  Slider,
-  Switch,
-  Typography,
-} from 'antd';
+import { Button, Collapse, Divider, Slider, Switch, Typography,  } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';

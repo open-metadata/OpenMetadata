@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tabs, TabsProps, Typography } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

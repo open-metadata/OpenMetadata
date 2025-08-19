@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space } from 'antd';
+import { Button, Card, Space } from 'antd';
+import { Select } from '../AntdCompat';;
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

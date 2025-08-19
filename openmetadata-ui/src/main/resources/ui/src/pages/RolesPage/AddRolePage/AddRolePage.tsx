@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Form, Input, Space, Typography } from 'antd';
+import { Select } from '../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

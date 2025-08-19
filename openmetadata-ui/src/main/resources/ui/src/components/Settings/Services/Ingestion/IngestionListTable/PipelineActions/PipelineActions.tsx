@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row } from 'antd';
+import { Tooltip } from '../../../../../common/AntdCompat';;
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

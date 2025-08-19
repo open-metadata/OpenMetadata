@@ -12,7 +12,8 @@
  */
 
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button } from 'antd';
+import { Dropdown } from '../../../../common/AntdCompat';;
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';

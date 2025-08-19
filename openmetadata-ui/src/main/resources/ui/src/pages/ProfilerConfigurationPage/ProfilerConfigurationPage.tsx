@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Collapse,
-  Form,
-  Row,
-  Select,
-  Switch,
-  TreeSelect,
-} from 'antd';
+import { Button, Col, Collapse, Form, Row, Switch, TreeSelect,  } from 'antd';
+import { Select } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';

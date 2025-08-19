@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';

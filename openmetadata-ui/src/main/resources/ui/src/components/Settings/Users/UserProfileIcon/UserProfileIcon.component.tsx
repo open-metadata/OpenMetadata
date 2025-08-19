@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';;
+import { Dropdown, Tooltip } from '../../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';

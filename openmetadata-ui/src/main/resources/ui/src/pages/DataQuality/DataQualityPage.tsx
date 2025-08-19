@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
+import { Dropdown } from '../../components/common/AntdCompat';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

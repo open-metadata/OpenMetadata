@@ -17,23 +17,8 @@ import {
   ExclamationCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import {
-  AlertProps,
-  Button,
-  Checkbox,
-  Col,
-  Collapse,
-  Divider,
-  Input,
-  MenuProps,
-  Radio,
-  Row,
-  Select,
-  Skeleton,
-  Switch,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { AlertProps, Button, Checkbox, Col, Collapse, Divider, Input, MenuProps, Radio, Row, Skeleton, Switch, Typography,  } from 'antd';
+import { Select, Tooltip } from '../../components/common/AntdCompat';;
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';

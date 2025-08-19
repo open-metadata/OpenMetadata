@@ -11,20 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Form,
-  FormProps,
-  Input,
-  InputNumber,
-  Row,
-  Select,
-  Slider,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Form, FormProps, Input, InputNumber, Row, Slider, Space, Typography,  } from 'antd';
+import { Select, Tooltip } from '../../components/common/AntdCompat';;
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

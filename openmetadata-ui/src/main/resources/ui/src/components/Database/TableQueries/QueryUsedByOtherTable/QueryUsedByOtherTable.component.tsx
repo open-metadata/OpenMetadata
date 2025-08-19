@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
+import { Popover } from '../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

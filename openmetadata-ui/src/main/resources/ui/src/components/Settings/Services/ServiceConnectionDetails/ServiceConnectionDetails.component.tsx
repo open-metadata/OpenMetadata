@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Space, Tooltip } from 'antd';
+import { Col, Input, Row, Space } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';

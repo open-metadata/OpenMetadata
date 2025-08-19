@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';

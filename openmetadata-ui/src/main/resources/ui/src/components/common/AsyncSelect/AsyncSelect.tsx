@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps } from 'antd';
+import { Select, SelectProps } from '../AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, isObject } from 'lodash';

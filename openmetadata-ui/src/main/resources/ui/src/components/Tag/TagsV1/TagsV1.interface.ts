@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { SelectProps, TagProps } from 'antd';
+import { TagProps } from 'antd';
+import { SelectProps } from '../../common/AntdCompat';;
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';

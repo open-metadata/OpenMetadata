@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Select } from '../components/common/AntdCompat';;
 import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';

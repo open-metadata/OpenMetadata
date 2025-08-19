@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space } from 'antd';;
+import { Dropdown, Tooltip } from '../../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, pick } from 'lodash';

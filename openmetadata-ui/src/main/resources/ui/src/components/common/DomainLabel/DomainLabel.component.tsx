@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';;
+import { Dropdown, Tooltip } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

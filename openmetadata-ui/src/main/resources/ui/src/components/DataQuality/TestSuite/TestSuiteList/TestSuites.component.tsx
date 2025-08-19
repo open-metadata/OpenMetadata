@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Col,
-  Form,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Col, Form, Radio, RadioChangeEvent, Row, Space, Typography,  } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';

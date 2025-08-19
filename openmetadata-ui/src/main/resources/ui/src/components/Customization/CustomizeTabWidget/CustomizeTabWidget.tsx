@@ -12,7 +12,8 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import { Button, Card, Col, Input, Modal, Space } from 'antd';
+import { Dropdown } from '../../common/AntdCompat';;
 import {
   cloneDeep,
   isEmpty,

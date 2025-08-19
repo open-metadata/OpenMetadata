@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { isEqual } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';

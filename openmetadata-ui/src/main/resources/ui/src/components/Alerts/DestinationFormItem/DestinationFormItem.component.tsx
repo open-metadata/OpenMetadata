@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
+import { Button, Col, Divider, Form, Row } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';

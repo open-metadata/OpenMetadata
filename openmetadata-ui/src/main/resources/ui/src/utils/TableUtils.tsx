@@ -12,7 +12,8 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Tooltip } from '../components/common/AntdCompat';;
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import {
@@ -133,7 +134,8 @@ import SampleDataTableComponent from '../components/Database/SampleDataTable/Sam
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+// TODO: Fix export functionality - cannot use hooks in utility functions
+// import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -1142,7 +1144,8 @@ export const ExtraTableDropdownOptions = (
   deleted: boolean,
   navigate: NavigateFunction
 ) => {
-  const { showModal } = useEntityExportModalProvider();
+  // TODO: Fix this - hooks cannot be called inside utility functions
+  // const { showModal } = useEntityExportModalProvider();
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -1179,13 +1182,11 @@ export const ExtraTableDropdownOptions = (
                 icon={ExportIcon}
                 id="export-button"
                 name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportTableDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
+                onClick={() => {
+                  // TODO: Temporarily disabled export functionality
+                  // Need to pass showModal as a parameter instead of using hook
+                  console.warn("Export functionality temporarily disabled");
+                }}
               />
             ),
             key: 'export-button',

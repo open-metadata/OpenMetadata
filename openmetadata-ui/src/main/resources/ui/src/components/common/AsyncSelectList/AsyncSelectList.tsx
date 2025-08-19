@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
-  TagProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Empty, Form, Space, TagProps, Typography,  } from 'antd';
+import { Select, SelectProps, Tooltip } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';

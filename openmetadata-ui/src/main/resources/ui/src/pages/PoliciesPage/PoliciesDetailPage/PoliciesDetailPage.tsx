@@ -13,18 +13,8 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Dropdown, Modal, Row, Space, Tabs, Typography,  } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';

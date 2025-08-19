@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button } from 'antd';
+import { Dropdown } from '../AntdCompat';;
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

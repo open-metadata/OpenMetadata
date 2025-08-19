@@ -20,16 +20,8 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Empty,
-  Select,
-  Slider,
-  Space,
-  Spin,
-  Tooltip,
-} from 'antd';
+import { Button, Card, Empty, Slider, Space, Spin,  } from 'antd';
+import { Select, Tooltip } from '../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import React, {
   useCallback,

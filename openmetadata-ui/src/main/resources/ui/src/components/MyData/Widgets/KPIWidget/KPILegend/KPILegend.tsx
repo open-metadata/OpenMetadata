@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Tooltip, Typography } from 'antd';
+import { Col, Progress, Row, Typography } from 'antd';
+import { Tooltip } from '../../../../common/AntdCompat';;
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';

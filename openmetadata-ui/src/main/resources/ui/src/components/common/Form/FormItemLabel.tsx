@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Badge, Tooltip } from 'antd';
+import { Badge } from 'antd';
+import { Tooltip } from '../AntdCompat';;
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

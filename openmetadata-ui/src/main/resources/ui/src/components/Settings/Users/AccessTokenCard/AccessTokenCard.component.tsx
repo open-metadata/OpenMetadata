@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip } from 'antd';
+import { Card } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 

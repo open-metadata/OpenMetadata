@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { debounce } from 'lodash';

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, TreeProps, Typography } from 'antd';
+import { Tree, TreeProps, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

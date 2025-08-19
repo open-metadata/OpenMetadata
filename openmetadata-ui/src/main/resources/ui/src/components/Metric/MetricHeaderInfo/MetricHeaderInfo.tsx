@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Divider,
-  List,
-  Popover,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Divider, List, Space, Typography,  } from 'antd';
+import { Popover, Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';

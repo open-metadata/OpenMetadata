@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-  Typography,
-} from 'antd';
+import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps, Typography,  } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

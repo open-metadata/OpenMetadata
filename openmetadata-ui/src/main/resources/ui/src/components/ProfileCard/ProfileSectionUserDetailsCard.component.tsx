@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import { Badge, Button, Modal, Typography } from 'antd';
+import { Popover } from '../common/AntdCompat';;
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';

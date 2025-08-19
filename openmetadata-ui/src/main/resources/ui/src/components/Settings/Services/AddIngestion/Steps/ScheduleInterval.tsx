@@ -12,19 +12,8 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Form, FormProps, Input, Radio, Row, Space, Typography,  } from 'antd';
+import { Select } from '../../../../common/AntdCompat';;
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';

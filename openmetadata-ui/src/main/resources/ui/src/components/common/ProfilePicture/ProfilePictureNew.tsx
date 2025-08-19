@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, Tooltip } from 'antd';
+import { Avatar } from 'antd';
+import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';

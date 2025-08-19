@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
+    "@ant-design/compatible": "^5.1.4",
     "@ant-design/icons": "^4.8.3",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
     "@auth0/auth0-react": "^1.9.0",

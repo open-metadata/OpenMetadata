@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag, Tooltip, Typography } from 'antd';
+import { Tag, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';

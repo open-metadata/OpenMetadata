@@ -12,7 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Space, Tabs } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';

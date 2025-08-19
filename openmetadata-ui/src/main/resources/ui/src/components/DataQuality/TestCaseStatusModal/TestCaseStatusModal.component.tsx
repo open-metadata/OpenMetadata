@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Modal, Select } from 'antd';
+import { Form, Modal } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Space, Typography } from 'antd';
+import { Select } from '../AntdCompat';;
 
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';

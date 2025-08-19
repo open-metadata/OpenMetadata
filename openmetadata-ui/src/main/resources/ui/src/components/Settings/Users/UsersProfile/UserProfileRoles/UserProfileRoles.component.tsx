@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { Button, Divider, Typography } from 'antd';
+import { Popover, Select, Tooltip } from '../../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

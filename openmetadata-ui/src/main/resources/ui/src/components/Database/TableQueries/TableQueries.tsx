@@ -16,7 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';

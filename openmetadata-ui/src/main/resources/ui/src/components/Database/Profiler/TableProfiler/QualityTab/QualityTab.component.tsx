@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  Row,
-  Select,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Button, Col, Dropdown, Form, Row, Space, Tabs,  } from 'antd';
+import { Select, Tooltip } from '../../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

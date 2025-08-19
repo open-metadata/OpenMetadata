@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
+import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';

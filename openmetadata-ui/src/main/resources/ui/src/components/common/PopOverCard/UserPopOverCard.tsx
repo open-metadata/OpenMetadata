@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space } from 'antd';
+import { Button, Space } from 'antd';
+import { Popover } from '../AntdCompat';;
 import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
 import React, {

@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Input, Radio, Row, Select, Typography } from 'antd';
+import { Card, Col, Input, Radio, Row, Typography } from 'antd';
+import { Select } from '../../../../common/AntdCompat';;
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

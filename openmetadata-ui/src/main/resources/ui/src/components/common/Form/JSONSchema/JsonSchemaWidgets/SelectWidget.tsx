@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { Select } from 'antd';
+import { Select } from '../../../AntdCompat';;
 import { capitalize } from 'lodash';
 import { FC } from 'react';
 import TreeSelectWidget from './TreeSelectWidget';

@@ -12,7 +12,8 @@
  *  limitations under the License.
  */
 
-import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
+import { Form, Input, TreeSelect } from 'antd';
+import { AutoComplete, Select } from '../../../components/common/AntdCompat';;
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';

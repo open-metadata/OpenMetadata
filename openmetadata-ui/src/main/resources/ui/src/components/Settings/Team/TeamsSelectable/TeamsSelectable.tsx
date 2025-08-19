@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Alert, TreeSelect } from 'antd';
+import { Alert } from 'antd';
+import { TreeSelect } from '../../../common/AntdCompat';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 

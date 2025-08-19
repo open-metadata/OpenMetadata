@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Form, FormProps, Input, Space, Typography,  } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';

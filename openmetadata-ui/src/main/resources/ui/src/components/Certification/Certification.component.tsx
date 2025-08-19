@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
+import { Button, Card, Radio, Space, Spin, Typography } from 'antd';
+import { Popover } from '../common/AntdCompat';;
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -35,13 +36,13 @@ const Certification = ({
   onClose,
 }: CertificationProps) => {
   const { t } = useTranslation();
-  const popoverRef = useRef<any>(null);
   const [isLoadingCertificationData, setIsLoadingCertificationData] =
     useState<boolean>(false);
   const [certifications, setCertifications] = useState<Array<Tag>>([]);
   const [selectedCertification, setSelectedCertification] = useState<string>(
     currentCertificate ?? ''
   );
+  const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
   const certificationCardData = useMemo(() => {
     return (
       <Radio.Group
@@ -96,7 +97,7 @@ const Certification = ({
     );
     await onCertificationUpdate?.(certification);
     setIsLoadingCertificationData(false);
-    popoverRef.current?.close();
+    setPopoverOpen(false);
   };
   const getCertificationData = async () => {
     setIsLoadingCertificationData(true);
@@ -136,30 +137,38 @@ const Certification = ({
     }
   };
 
-  const handleCloseCertification = async () => {
-    popoverRef.current?.close();
+  const handleCloseCertification = () => {
+    setPopoverOpen(false);
     onClose?.();
   };
 
   const onOpenChange = (visible: boolean) => {
+    setPopoverOpen(visible);
     if (visible) {
-      getCertificationData();
-      setSelectedCertification(currentCertificate);
-    } else {
-      setSelectedCertification('');
+      setSelectedCertification(currentCertificate ?? '');
+      if (certifications.length === 0) {
+        getCertificationData();
+      }
     }
   };
 
   useEffect(() => {
-    if (popoverProps?.open && certifications.length === 0) {
-      getCertificationData();
-    }
-  }, [popoverProps?.open]);
+    // Reset selected certification when currentCertificate changes
+    setSelectedCertification(currentCertificate ?? '');
+  }, [currentCertificate]);
 
   return (
     <Popover
+      open={popoverOpen}
+      onOpenChange={onOpenChange}
       content={
-        <FocusTrapWithContainer active={popoverProps?.open || false}>
+        <FocusTrapWithContainer 
+          active={popoverOpen}
+          options={{
+            clickOutsideDeactivates: true,
+            returnFocusOnDeactivate: false,
+            allowOutsideClick: true,
+          }}>
           <Card
             bordered={false}
             className="certification-card"
@@ -215,11 +224,8 @@ const Certification = ({
       }
       overlayClassName="certification-card-popover p-0"
       placement="bottomRight"
-      ref={popoverRef}
       showArrow={false}
-      trigger="click"
-      onOpenChange={onOpenChange}
-      {...popoverProps}>
+      trigger="click">
       {children}
     </Popover>
   );

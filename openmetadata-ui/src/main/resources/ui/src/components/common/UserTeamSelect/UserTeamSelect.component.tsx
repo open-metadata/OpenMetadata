@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, Select, Space, Spin, Tabs, Typography } from 'antd';
+import { Input, Space, Spin, Tabs, Typography } from 'antd';
+import { Select } from '../AntdCompat';;
 import { debounce, noop } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

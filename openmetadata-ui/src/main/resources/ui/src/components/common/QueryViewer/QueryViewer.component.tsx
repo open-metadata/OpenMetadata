@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag, Tooltip } from 'antd';
+import { Button, Card, Space, Tag } from 'antd';
+import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import { split } from 'lodash';
 import { useMemo } from 'react';

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';

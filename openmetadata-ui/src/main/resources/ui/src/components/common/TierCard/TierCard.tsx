@@ -11,21 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Collapse,
-  Popover,
-  Radio,
-  RadioChangeEvent,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Button, Card, Collapse, Radio, RadioChangeEvent, Space, Spin, Typography,  } from 'antd';
+import { Popover } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -46,13 +37,13 @@ const TierCard = ({
   popoverProps,
   onClose,
 }: TierCardProps) => {
-  const popoverRef = useRef<any>(null);
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []
   );
   const [selectedTier, setSelectedTier] = useState<string>(currentTier ?? '');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
   const { t } = useTranslation();
 
   const getTierData = async () => {
@@ -99,7 +90,7 @@ const TierCard = ({
     const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
     await updateTier?.(tier);
     setIsLoadingTierData(false);
-    popoverRef.current?.close();
+    setPopoverOpen(false);
   };
 
   const handleTierSelection = async ({
@@ -108,22 +99,42 @@ const TierCard = ({
     setSelectedTier(value);
   };
 
-  const handleCloseTier = async () => {
-    popoverRef.current?.close();
+  const handleCloseTier = () => {
+    setPopoverOpen(false);
     onClose?.();
   };
 
   useEffect(() => {
-    if (popoverProps?.open && tierCardData.length === 0) {
+    if (popoverOpen && tierCardData.length === 0) {
       getTierData();
     }
-  }, [popoverProps?.open]);
+  }, [popoverOpen]);
+
+  useEffect(() => {
+    // Reset selected tier when popover opens
+    if (popoverOpen) {
+      setSelectedTier(currentTier ?? '');
+    }
+  }, [popoverOpen, currentTier]);
 
   return (
     <Popover
       className="p-0"
+      open={popoverOpen}
+      onOpenChange={(visible) => {
+        setPopoverOpen(visible);
+        if (visible) {
+          setSelectedTier(currentTier ?? '');
+        }
+      }}
       content={
-        <FocusTrapWithContainer active={popoverProps?.open || false}>
+        <FocusTrapWithContainer 
+          active={popoverOpen}
+          options={{
+            clickOutsideDeactivates: true,
+            returnFocusOnDeactivate: false,
+            allowOutsideClick: true,
+          }}>
           <Card
             className="tier-card"
             data-testid="cards"
@@ -210,13 +221,8 @@ const TierCard = ({
       }
       overlayClassName="tier-card-popover"
       placement="bottomRight"
-      ref={popoverRef}
       showArrow={false}
-      trigger="click"
-      onOpenChange={(visible) =>
-        visible && !tierCardData.length && getTierData()
-      }
-      {...popoverProps}>
+      trigger="click">
       {children}
     </Popover>
   );

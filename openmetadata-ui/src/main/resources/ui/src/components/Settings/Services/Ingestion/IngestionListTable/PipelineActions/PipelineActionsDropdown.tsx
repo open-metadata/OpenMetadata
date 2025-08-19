@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, DropdownProps } from 'antd';
+import { Button } from 'antd';
+import { Dropdown, DropdownProps } from '../../../../../common/AntdCompat';;
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

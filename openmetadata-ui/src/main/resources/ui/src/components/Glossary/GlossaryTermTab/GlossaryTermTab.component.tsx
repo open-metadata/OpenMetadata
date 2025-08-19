@@ -13,19 +13,8 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Checkbox,
-  Col,
-  Dropdown,
-  MenuProps,
-  Modal,
-  Popover,
-  Row,
-  Space,
-  TableProps,
-  Tooltip,
-} from 'antd';
+import { Button, Checkbox, Col, Dropdown, MenuProps, Modal, Row, Space, TableProps,  } from 'antd';
+import { Popover, Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

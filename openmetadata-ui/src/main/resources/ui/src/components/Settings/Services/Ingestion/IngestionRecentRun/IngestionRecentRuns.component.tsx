@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
+import { Skeleton, Space, Tag, Typography } from 'antd';
+import { Popover } from '../../../../common/AntdCompat';;
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Form, Row, Typography } from 'antd';
+import { Select, Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';

@@ -13,7 +13,8 @@
 
 import { DownloadOutlined } from '@ant-design/icons';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Progress, Row, Space, Typography } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
 import {

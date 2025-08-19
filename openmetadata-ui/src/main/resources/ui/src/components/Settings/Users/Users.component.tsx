@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Col, Row, Tabs } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

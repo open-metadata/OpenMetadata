@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 import { ErrorTransformer } from '@rjsf/utils';
-import {
-  Alert,
-  Checkbox,
-  Divider,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  TooltipProps,
-  Typography,
-} from 'antd';
+import { Alert, Checkbox, Divider, Form, FormItemProps, Input, InputNumber, Switch, Typography,  } from 'antd';
+import { Select, TooltipProps } from '../components/common/AntdCompat';;
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';

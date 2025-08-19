@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tag } from 'antd';
+import { Popover, Tooltip } from '../../../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';

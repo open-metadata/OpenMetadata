@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Tag, Typography } from 'antd';
+import { Button, Tag, Typography } from 'antd';
+import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';

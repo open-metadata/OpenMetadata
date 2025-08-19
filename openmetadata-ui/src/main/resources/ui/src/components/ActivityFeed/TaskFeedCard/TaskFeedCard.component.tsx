@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';

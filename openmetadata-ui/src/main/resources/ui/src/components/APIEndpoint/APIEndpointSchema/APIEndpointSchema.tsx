@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';

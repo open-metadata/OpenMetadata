@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Space } from 'antd';
+import { Space } from 'antd';
+import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';

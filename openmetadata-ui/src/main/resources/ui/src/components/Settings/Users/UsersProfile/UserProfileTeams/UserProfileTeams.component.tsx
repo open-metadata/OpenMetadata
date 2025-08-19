@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
+import { Button, Divider, Typography } from 'antd';
+import { Popover, Tooltip } from '../../../../common/AntdCompat';;
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';

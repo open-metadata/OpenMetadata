@@ -12,7 +12,8 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Button, Input, Space } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';

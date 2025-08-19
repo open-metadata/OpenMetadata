@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Collapse,
-  Dropdown,
-  Row,
-  Skeleton,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Collapse, Dropdown, Row, Skeleton, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';

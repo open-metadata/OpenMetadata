@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Dropdown,
-  InputRef,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Badge, Button, Dropdown, InputRef, Typography,  } from 'antd';
+import { Tooltip } from '../common/AntdCompat';;
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

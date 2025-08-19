@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Avatar, Button, Col, Row, Space, Typography } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { min, noop, sortBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

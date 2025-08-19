@@ -12,19 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Tag,
-  TimePicker,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Form, Input, Row, Tag, TimePicker, Typography,  } from 'antd';
+import { Select, Tooltip } from '../AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {

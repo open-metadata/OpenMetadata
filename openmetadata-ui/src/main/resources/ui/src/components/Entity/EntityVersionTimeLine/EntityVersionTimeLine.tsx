@@ -12,7 +12,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { forwardRef, useEffect, useMemo } from 'react';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, PopoverProps, Tooltip } from 'antd';
+import { Button } from 'antd';
+import { PopoverProps, Tooltip } from '../AntdCompat';;
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';

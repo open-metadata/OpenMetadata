@@ -12,7 +12,8 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Radio, Space } from 'antd';
+import { Button, Radio, Space } from 'antd';
+import { Dropdown } from '../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';

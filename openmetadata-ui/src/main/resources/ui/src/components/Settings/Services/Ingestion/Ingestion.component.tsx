@@ -12,15 +12,8 @@
  */
 
 import { ReloadOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Radio, RadioChangeEvent, Row, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

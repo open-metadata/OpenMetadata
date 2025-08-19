@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
+import { Col, Input, Row, Space, Typography } from 'antd';
+import { Select, Tooltip } from '../components/common/AntdCompat';;
 import { get, isArray, isEmpty, isNull, isObject, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

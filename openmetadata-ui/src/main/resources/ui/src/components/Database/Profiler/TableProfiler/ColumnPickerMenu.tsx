@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Space, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
+import { Dropdown } from '../../../common/AntdCompat';;
 import { find, map } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { FC, useMemo, useState } from 'react';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Button, Form, FormProps, Space } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { isEmpty } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

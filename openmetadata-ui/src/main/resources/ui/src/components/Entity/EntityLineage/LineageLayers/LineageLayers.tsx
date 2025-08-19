@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { Popover } from '../../../common/AntdCompat';;
 import ButtonGroup from 'antd/lib/button/button-group';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';

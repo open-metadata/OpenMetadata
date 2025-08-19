@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Badge, Button, Space, Typography } from 'antd';
+import { Tooltip } from '../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';

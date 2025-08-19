@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Row, Tooltip, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';

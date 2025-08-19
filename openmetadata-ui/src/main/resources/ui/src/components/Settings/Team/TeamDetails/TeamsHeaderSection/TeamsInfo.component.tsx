@@ -15,7 +15,8 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
+import { Button, Divider, Form, Input, Space, Typography } from 'antd';
+import { Tooltip } from '../../../../common/AntdCompat';;
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

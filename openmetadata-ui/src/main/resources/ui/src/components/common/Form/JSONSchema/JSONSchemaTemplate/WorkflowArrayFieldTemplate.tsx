@@ -12,7 +12,8 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
+import { Select, Tooltip } from '../../../AntdCompat';;
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Popover } from '../AntdCompat';;
 import { isUndefined } from 'lodash';
 import {
   FC,

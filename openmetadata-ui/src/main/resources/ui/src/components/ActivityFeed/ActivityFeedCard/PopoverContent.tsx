@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Popover, Space } from 'antd';
+import { Space } from 'antd';
+import { Popover } from '../../common/AntdCompat';;
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Select, Skeleton } from 'antd';
+import { Col, Form, Skeleton } from 'antd';
+import { Select } from '../../../../common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

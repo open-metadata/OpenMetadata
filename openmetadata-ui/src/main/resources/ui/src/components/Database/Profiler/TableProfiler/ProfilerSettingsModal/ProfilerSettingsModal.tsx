@@ -13,17 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Space,
-  Switch,
-  TreeSelect,
-  Typography,
-} from 'antd';
+import { Button, Input, InputNumber, Modal, Space, Switch, TreeSelect, Typography,  } from 'antd';
+import { Select } from '../../../../common/AntdCompat';;
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';

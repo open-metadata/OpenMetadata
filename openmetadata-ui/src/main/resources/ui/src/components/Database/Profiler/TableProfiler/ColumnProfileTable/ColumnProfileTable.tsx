@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';;
+import { Dropdown, Tooltip } from '../../../../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {

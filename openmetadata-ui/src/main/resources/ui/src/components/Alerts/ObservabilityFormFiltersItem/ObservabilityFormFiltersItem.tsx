@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import { Button, Col, Form, Row, Switch, Typography } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

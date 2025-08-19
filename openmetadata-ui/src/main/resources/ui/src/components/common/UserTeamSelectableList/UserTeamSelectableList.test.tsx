@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Popover } from 'antd';
+import { Popover } from '../AntdCompat';;
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();

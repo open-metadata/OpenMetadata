@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

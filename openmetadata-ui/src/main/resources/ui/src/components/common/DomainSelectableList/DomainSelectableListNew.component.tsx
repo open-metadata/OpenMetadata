@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { Popover, Tooltip } from '../AntdCompat';;
 import { RefSelectProps as BaseSelectRef } from 'antd/es/select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

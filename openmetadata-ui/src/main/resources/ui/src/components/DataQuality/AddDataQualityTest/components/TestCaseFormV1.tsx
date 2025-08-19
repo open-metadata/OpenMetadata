@@ -15,18 +15,8 @@
 // IMPORTS
 // =============================================
 import { EditOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Drawer,
-  Form,
-  Row,
-  Select,
-  Space,
-  Switch,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Drawer, Form, Row, Space, Switch, Typography,  } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

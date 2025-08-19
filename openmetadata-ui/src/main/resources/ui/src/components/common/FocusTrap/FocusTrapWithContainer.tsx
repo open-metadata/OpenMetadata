@@ -33,17 +33,27 @@ export function useMultiContainerFocusTrap({
       return;
     }
     // If already active, deactivate before re-activating with new containers
-    trapRef.current?.deactivate();
+    if (trapRef.current) {
+      trapRef.current.deactivate();
+      trapRef.current = null;
+    }
     trapRef.current = createFocusTrap(validContainers, {
       fallbackFocus: validContainers[0],
+      clickOutsideDeactivates: true,
+      returnFocusOnDeactivate: false,
+      escapeDeactivates: false,
+      allowOutsideClick: true,
       ...options,
     });
     trapRef.current.activate();
   }, [options, ...containers]);
 
   const deactivateTrap = useCallback(() => {
-    trapRef.current?.deactivate();
-  }, [trapRef.current]);
+    if (trapRef.current) {
+      trapRef.current.deactivate();
+      trapRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (active) {
@@ -67,15 +77,18 @@ export function useMultiContainerFocusTrap({
 export const FocusTrapWithContainer = ({
   children,
   active = true,
+  options,
 }: {
   children: React.ReactNode;
   active?: boolean;
+  options?: Parameters<typeof createFocusTrap>[1];
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useMultiContainerFocusTrap({
     containers: [containerRef.current],
     active,
+    options,
   });
 
   return (

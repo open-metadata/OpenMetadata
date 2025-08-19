@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

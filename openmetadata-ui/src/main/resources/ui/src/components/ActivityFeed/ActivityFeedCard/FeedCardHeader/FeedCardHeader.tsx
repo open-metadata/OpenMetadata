@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';

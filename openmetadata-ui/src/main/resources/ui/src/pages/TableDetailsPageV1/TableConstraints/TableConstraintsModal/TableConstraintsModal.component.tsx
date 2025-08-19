@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
+import { Button, Empty, Form, Modal, Space, Typography } from 'antd';
+import { Select } from '../../../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';

@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Col, Row, Select, Typography } from 'antd';
+import { Badge, Button, Col, Row, Typography } from 'antd';
+import { Select } from '../../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

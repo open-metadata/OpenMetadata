@@ -155,8 +155,6 @@ class JSONLogicSearchClassBase {
     },
   };
 
-  mapFields: Record<string, FieldOrGroup>;
-
   defaultSelectOperators = [
     'select_equals',
     'select_not_equals',
@@ -166,8 +164,17 @@ class JSONLogicSearchClassBase {
     'is_not_null',
   ];
 
-  constructor() {
-    this.mapFields = {
+  private _mapFields: Fields | null = null;
+
+  get mapFields(): Fields {
+    if (!this._mapFields) {
+      this._mapFields = this.createMapFields();
+    }
+    return this._mapFields;
+  }
+
+  private createMapFields(): Fields {
+    return {
       [EntityReferenceFields.SERVICE]: {
         label: t('label.service'),
         type: 'select',

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Collapse, Row, Select, Typography } from 'antd';
+import { Col, Collapse, Row, Typography } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

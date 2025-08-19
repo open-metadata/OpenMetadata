@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Tooltip, Typography } from 'antd';
+import { Divider, Space, Typography } from 'antd';
+import { Tooltip } from '../components/common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';

@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Carousel,
-  Col,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Button, Carousel, Col, Row, Space, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

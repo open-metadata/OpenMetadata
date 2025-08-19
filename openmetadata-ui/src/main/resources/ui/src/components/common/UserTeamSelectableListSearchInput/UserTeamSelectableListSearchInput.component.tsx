@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select } from 'antd';
+import { Select } from '../AntdCompat';;
 import { noop } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

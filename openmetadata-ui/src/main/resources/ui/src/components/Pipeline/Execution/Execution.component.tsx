@@ -12,7 +12,8 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
+import { Button, Col, MenuProps, Row, Segmented, Space } from 'antd';
+import { Dropdown } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';

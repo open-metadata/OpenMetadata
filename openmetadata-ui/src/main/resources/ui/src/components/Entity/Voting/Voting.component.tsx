@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

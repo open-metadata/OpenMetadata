@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
+import { Tooltip } from '../AntdCompat';;
 import classNames from 'classnames';
 import React from 'react';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';

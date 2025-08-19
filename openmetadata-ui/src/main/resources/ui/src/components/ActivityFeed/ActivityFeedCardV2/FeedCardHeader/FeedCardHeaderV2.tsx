@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';

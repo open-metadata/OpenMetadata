@@ -16,7 +16,8 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button } from 'antd';
+import { Dropdown } from '../AntdCompat';;
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {

@@ -12,7 +12,8 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { Button } from 'antd';
+import { Popover } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { createElement, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

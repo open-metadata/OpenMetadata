@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  FormProps,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Form, FormProps, Row, Space, Typography,  } from 'antd';
+import { Select } from '../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';

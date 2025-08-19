@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+import { Button, Form, FormProps, Input, Radio, Space, Switch,  } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Tooltip } from '../../../components/common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {

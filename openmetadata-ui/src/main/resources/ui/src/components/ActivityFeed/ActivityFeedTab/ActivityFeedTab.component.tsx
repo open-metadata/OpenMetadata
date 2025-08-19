@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
+import { Button, Menu, Segmented, Space, Typography } from 'antd';
+import { Dropdown } from '../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';

@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Tag as AntdTag, Tooltip, Typography } from 'antd';
+import { Tag as AntdTag, Typography } from 'antd';
+import { Tooltip } from '../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { isString, omit } from 'lodash';

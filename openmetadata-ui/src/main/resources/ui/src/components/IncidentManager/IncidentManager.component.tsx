@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Skeleton, Space } from 'antd';
+import { Col, Row, Skeleton, Space } from 'antd';
+import { Select } from '../common/AntdCompat';;
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

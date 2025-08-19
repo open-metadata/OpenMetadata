@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Avatar, Button, Col, Popover, Row } from 'antd';
+import { Avatar, Button, Col, Row } from 'antd';
+import { Popover } from '../common/AntdCompat';;
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';

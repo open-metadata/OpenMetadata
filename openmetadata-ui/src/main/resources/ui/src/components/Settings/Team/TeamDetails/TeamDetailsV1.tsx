@@ -12,18 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Avatar, Button, Col, Modal, Row, Space, Switch, Tabs, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

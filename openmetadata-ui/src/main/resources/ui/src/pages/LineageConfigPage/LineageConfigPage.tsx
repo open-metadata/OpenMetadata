@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
+import { Button, Col, Form, InputNumber, Row, Typography } from 'antd';
+import { Select } from '../../components/common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

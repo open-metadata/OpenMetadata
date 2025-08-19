@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Select } from '../components/common/AntdCompat';;
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {

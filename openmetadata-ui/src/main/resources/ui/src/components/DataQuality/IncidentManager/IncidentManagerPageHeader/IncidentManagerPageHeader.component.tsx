@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Divider, Skeleton, Space, Typography } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';

@@ -10,17 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Button, Card, Col, Divider, Dropdown, Row, Space, Tabs,  } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Select } from 'antd';
+import { Form, Modal } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { keys, startCase } from 'lodash';
 import { useState } from 'react';

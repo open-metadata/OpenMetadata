@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Button, Drawer, Space, Typography } from 'antd';
+import { Tooltip } from '../../AntdCompat';;
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';

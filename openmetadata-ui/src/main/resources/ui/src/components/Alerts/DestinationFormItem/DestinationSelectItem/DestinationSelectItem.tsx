@@ -12,17 +12,8 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Col,
-  Form,
-  Row,
-  Select,
-  Skeleton,
-  Tabs,
-  Typography,
-} from 'antd';
+import { Alert, Button, Col, Form, Row, Skeleton, Tabs, Typography,  } from 'antd';
+import { Select } from '../../../common/AntdCompat';;
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

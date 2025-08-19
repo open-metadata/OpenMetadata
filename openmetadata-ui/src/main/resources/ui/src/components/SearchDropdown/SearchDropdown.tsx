@@ -22,15 +22,13 @@ import {
   MenuProps,
   Row,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
-import { Dropdown } from 'antd';
+import { Dropdown, Tooltip } from '../common/AntdCompat';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import {
   FC,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -86,11 +84,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Filtering out selected options
-    const selectedOptionsObj = independent
-      ? selectedOptions
-      : options.filter((option) =>
-          selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
-        );
+    const selectedOptionsObj = options.filter((option) =>
+      selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+    );
 
     if (fixedOrderOptions) {
       return options.map((item) => ({
@@ -169,6 +165,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // Handle dropdown close
   const handleDropdownClose = () => {
     setIsDropDownOpen(false);
+    setSearchText('');
   };
 
   // Handle update button click
@@ -203,45 +200,16 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     );
   }, [isDropDownOpen, selectedKeys]);
 
-  const getDropdownBody = useCallback(
-    (menuNode: ReactNode) => {
-      const entityLabel = index && tabsInfo[index]?.label;
-      const isDomainKey = searchKey.startsWith('domain');
-      if (isSuggestionsLoading) {
-        return (
-          <Row align="middle" className="p-y-sm" justify="center">
-            <Col>
-              <Loader size="small" />
-            </Col>
-          </Row>
-        );
-      }
-
-      return options.length > 0 || selectedOptions.length > 0 ? (
-        menuNode
-      ) : (
-        <Row align="middle" className="m-y-sm" justify="center">
-          <Col>
-            <Typography.Text className="m-x-sm">
-              {isDomainKey && entityLabel
-                ? t('message.no-domain-assigned-to-entity', {
-                    entity: entityLabel,
-                  })
-                : t('message.no-data-available')}
-            </Typography.Text>
-          </Col>
-        </Row>
-      );
-    },
-    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
-  );
-
   const dropdownCardComponent = useCallback(
-    (menuNode: ReactNode) => (
+    () => (
       <Card
         bodyStyle={{ padding: 0 }}
         className="custom-dropdown-render"
-        data-testid="drop-down-menu">
+        data-testid="drop-down-menu"
+        onClick={(e) => {
+          // Prevent dropdown from closing when clicking inside the card
+          e.stopPropagation();
+        }}>
         <Space className="w-full" direction="vertical" size={0}>
           <div className="p-t-sm p-x-sm">
             <Input
@@ -289,7 +257,40 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             </>
           )}
 
-          {getDropdownBody(menuNode)}
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            {isSuggestionsLoading ? (
+              <Row align="middle" className="p-y-sm" justify="center">
+                <Col>
+                  <Loader size="small" />
+                </Col>
+              </Row>
+            ) : menuOptions.length > 0 ? (
+              menuOptions.map((item: any) => (
+                <div
+                  key={item.key}
+                  className="ant-dropdown-menu-item"
+                  style={{ padding: '4px 0px', cursor: 'pointer' }}
+                  onClick={() => handleMenuItemClick({ key: item.key } as any)}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  {item.label}
+                </div>
+              ))
+            ) : (
+              <Row align="middle" className="m-y-sm" justify="center">
+                <Col>
+                  <Typography.Text className="m-x-sm">
+                    {searchKey.startsWith('domain') && index && tabsInfo[index]?.label
+                      ? t('message.no-domain-assigned-to-entity', {
+                          entity: tabsInfo[index].label,
+                        })
+                      : t('message.no-data-available')}
+                  </Typography.Text>
+                </Col>
+              </Row>
+            )}
+          </div>
           <Space className="p-sm p-t-xss">
             <Button
               className="update-btn"
@@ -316,7 +317,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       showClearAllBtn,
       nullOptionSelected,
       handleClear,
-      getDropdownBody,
+      isSuggestionsLoading,
+      menuOptions,
+      handleMenuItemClick,
+      searchKey,
+      index,
+      tabsInfo,
+      t,
       handleUpdate,
       handleDropdownClose,
     ]
@@ -327,17 +334,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={dropdownCardComponent}
-      key={searchKey}
-      menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
-      transitionName=""
       trigger={['click']}
       onOpenChange={(visible) => {
-        visible &&
-          !isUndefined(onGetInitialOptions) &&
-          onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
-        setSearchText('');
+        if (visible && !isUndefined(onGetInitialOptions)) {
+          onGetInitialOptions(searchKey);
+        }
       }}>
       <Tooltip
         mouseLeaveDelay={0}

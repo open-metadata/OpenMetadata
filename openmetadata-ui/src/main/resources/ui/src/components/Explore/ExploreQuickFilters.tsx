@@ -34,6 +34,7 @@ import {
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
+import { removeFieldFromFilter } from '../../utils/QueryFilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -51,7 +52,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   defaultQueryFilter,
 }) => {
   const location = useCustomLocation();
-  const [options, setOptions] = useState<SearchDropdownOption[]>();
+  // Store options per field to prevent cross-contamination
+  const [optionsMap, setOptionsMap] = useState<Record<string, SearchDropdownOption[]>>({});
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
@@ -88,12 +90,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
     } else {
+      // For independent filters, exclude the current field's filter to get all available options
+      const queryFilter = independent 
+        ? removeFieldFromFilter(combinedQueryFilter, key)
+        : combinedQueryFilter;
       const [res, tierTags] = await Promise.all([
         getAggregationOptions(
           index,
           key,
           '',
-          JSON.stringify(combinedQueryFilter),
+          JSON.stringify(queryFilter),
           independent
         ),
         key === TIER_FQN_KEY
@@ -115,25 +121,39 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             count: bucketItem?.doc_count ?? 0,
           };
         });
-        setTierOptions(uniqWith(options, isEqual));
-        setOptions(uniqWith(options, isEqual));
+        const uniqueOptions = uniqWith(options, isEqual);
+        setTierOptions(uniqueOptions);
+        setOptionsMap(prev => ({ ...prev, [key]: uniqueOptions }));
 
         return;
       }
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    const uniqueOptions = uniqWith(getOptionsFromAggregationBucket(buckets), isEqual);
+    setOptionsMap(prev => ({ ...prev, [key]: uniqueOptions }));
   };
 
   const getInitialOptions = async (key: string) => {
     setIsOptionsLoading(true);
-    setOptions([]);
     try {
       if (key === MISC_FIELDS[0]) {
-        await fetchDefaultOptions(
-          [SearchIndex.USER, SearchIndex.TEAM],
-          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
-        );
+        // Fetch with the backend key but store with the frontend key
+        // For independent filters, exclude the current field's filter to get all available options
+        const queryFilter = independent 
+          ? removeFieldFromFilter(combinedQueryFilter, OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY)
+          : combinedQueryFilter;
+        const [res] = await Promise.all([
+          getAggregationOptions(
+            [SearchIndex.USER, SearchIndex.TEAM],
+            OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
+            '',
+            JSON.stringify(queryFilter),
+            independent
+          ),
+        ]);
+        const buckets = res.data.aggregations[`sterms#${OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY}`].buckets;
+        const uniqueOptions = uniqWith(getOptionsFromAggregationBucket(buckets), isEqual);
+        setOptionsMap(prev => ({ ...prev, [key]: uniqueOptions }));
       } else {
         await fetchDefaultOptions(index, key);
       }
@@ -146,29 +166,49 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
   const getFilterOptions = async (value: string, key: string) => {
     setIsOptionsLoading(true);
-    setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key);
+        await getInitialOptions(key);
 
         return;
       }
-      if (key !== TIER_FQN_KEY) {
+      if (key === MISC_FIELDS[0]) {
+        // Handle owner field specially
+        // For independent filters, exclude the current field's filter when searching
+        const queryFilter = independent 
+          ? removeFieldFromFilter(combinedQueryFilter, OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY)
+          : combinedQueryFilter;
+        const res = await getAggregationOptions(
+          [SearchIndex.USER, SearchIndex.TEAM],
+          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
+          value,
+          JSON.stringify(queryFilter),
+          independent
+        );
+        const buckets = res.data.aggregations[`sterms#${OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY}`].buckets;
+        const uniqueOptions = uniqWith(getOptionsFromAggregationBucket(buckets), isEqual);
+        setOptionsMap(prev => ({ ...prev, [key]: uniqueOptions }));
+      } else if (key !== TIER_FQN_KEY) {
+        // For independent filters, exclude the current field's filter when searching
+        const queryFilter = independent 
+          ? removeFieldFromFilter(combinedQueryFilter, key)
+          : combinedQueryFilter;
         const res = await getAggregationOptions(
           index,
           key,
           value,
-          JSON.stringify(combinedQueryFilter),
+          JSON.stringify(queryFilter),
           independent
         );
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-        setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+        const uniqueOptions = uniqWith(getOptionsFromAggregationBucket(buckets), isEqual);
+        setOptionsMap(prev => ({ ...prev, [key]: uniqueOptions }));
       } else if (key === TIER_FQN_KEY) {
         const filteredOptions = tierOptions?.filter((option) => {
           return option.label.toLowerCase().includes(value.toLowerCase());
         });
-        setOptions(filteredOptions);
+        setOptionsMap(prev => ({ ...prev, [key]: filteredOptions || [] }));
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -190,11 +230,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
+        // Use field-specific options from the map
+        const fieldOptions = optionsMap[field.key] || [];
         const selectedKeys =
-          field.key === TIER_FQN_KEY && options?.length
+          field.key === TIER_FQN_KEY && fieldOptions.length
             ? field.value?.map((value) => {
                 return (
-                  options?.find((option) => option.key === value.key) ?? value
+                  fieldOptions.find((option) => option.key === value.key) ?? value
                 );
               })
             : field.value;
@@ -209,7 +251,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
             label={field.label}
-            options={options ?? []}
+            options={fieldOptions}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
             triggerButtonSize="middle"

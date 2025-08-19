@@ -155,13 +155,16 @@ export const generateSearchDropdownLabel = (
   hideCounts = false
 ) => {
   return (
-    <div className="d-flex justify-between">
+    <div className="d-flex justify-between" style={{ width: '100%' }}>
       <Space
         align="center"
         className="m-x-sm"
         data-testid={option.key}
         size={8}>
-        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+        <Checkbox 
+          checked={checked} 
+          data-testid={`${option.key}-checkbox`}
+        />
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}

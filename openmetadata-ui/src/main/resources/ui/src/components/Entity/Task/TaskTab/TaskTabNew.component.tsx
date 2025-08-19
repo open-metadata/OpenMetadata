@@ -11,21 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Form,
-  Input,
-  MenuProps,
-  Row,
-  Select,
-  Skeleton,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Divider, Dropdown, Form, Input, MenuProps, Row, Skeleton, Space, Typography,  } from 'antd';
+import { Select, Tooltip } from '../../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';

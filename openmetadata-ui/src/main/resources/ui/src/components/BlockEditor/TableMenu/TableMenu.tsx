@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Space } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';

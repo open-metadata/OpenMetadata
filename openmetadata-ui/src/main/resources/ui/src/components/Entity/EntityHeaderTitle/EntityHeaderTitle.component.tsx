@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Row, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';

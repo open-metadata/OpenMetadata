@@ -11,18 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  MenuProps,
-  Row,
-  Select,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Form, MenuProps, Row, Space, Typography,  } from 'antd';
+import { Select, Tooltip } from '../../../common/AntdCompat';;
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';

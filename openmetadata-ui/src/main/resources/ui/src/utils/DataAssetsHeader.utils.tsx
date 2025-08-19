@@ -13,7 +13,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from 'antd';
+import { Tooltip } from '../components/common/AntdCompat';;
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Popover } from 'antd';
+import { Button } from 'antd';
+import { Popover } from '../../../common/AntdCompat';;
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';

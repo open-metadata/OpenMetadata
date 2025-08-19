@@ -19,16 +19,8 @@ import {
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Row, Space, Tabs, Typography,  } from 'antd';
+import { Tooltip } from '../../../common/AntdCompat';;
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

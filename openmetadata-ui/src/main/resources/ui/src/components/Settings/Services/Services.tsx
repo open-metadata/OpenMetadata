@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
+import { Tooltip } from '../../common/AntdCompat';;
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps, Typography } from 'antd';
+import { Typography } from 'antd';
+import { Select, SelectProps } from '../../../components/common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';

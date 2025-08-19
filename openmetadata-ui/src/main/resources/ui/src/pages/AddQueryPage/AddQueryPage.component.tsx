@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
+import { Button, Form, FormProps, Space, Typography } from 'antd';
+import { Tooltip } from '../../components/common/AntdCompat';;
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';

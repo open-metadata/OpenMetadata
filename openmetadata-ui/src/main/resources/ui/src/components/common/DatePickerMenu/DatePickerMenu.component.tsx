@@ -12,7 +12,8 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button, MenuProps, Space } from 'antd';
+import { Dropdown } from '../AntdCompat';;
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
