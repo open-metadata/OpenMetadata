@@ -22,7 +22,7 @@ jobs:
   ui-coverage-tests:
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [22.x]
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
