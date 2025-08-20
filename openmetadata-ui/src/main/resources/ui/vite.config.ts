@@ -20,36 +20,6 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-// Custom plugin to transform ReactComponent SVG imports
-const svgReactComponentPlugin = (): Plugin => ({
-  name: 'svg-react-component',
-  transform(code, id) {
-    if (id.endsWith('.ts') || id.endsWith('.tsx')) {
-      // Handle imports with both default and ReactComponent
-      code = code.replace(
-        /import\s+(\w+)\s*,\s*{\s*ReactComponent\s+as\s+(\w+)\s*}\s+from\s+['"](.+?\.svg)['"]/g,
-        "import $1 from '$3';\nimport $2 from '$3?react'"
-      );
-
-      // Handle multiple ReactComponent imports from same file
-      code = code.replace(
-        /import\s*{\s*ReactComponent\s+as\s+(\w+)\s*,\s*ReactComponent\s+as\s+(\w+)\s*}\s+from\s+['"](.+?\.svg)['"]/g,
-        "import $1 from '$3?react';\nconst $2 = $1"
-      );
-
-      // Handle imports with only ReactComponent
-      code = code.replace(
-        /import\s+{\s*ReactComponent\s+as\s+(\w+)\s*}\s+from\s+['"](.+?\.svg)['"]/g,
-        "import $1 from '$2?react'"
-      );
-
-      return { code, map: null };
-    }
-
-    return null;
-  },
-});
-
 // Custom plugin to handle Less imports with url() syntax
 const lessImportResolver = (): Plugin => ({
   name: 'less-import-resolver',
@@ -131,13 +101,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       lessImportResolver(),
       react(),
-      svgr({
-        svgrOptions: {
-          icon: true,
-          dimensions: false,
-        },
-      }),
-      svgReactComponentPlugin(),
+      svgr(),
       tsconfigPaths(),
       nodePolyfills({
         include: ['process', 'buffer'],

@@ -223,7 +223,7 @@
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-style-import": "^2.0.0",
-    "vite-plugin-svgr": "^4.3.0",
+    "vite-plugin-svgr": "^3.3.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
   "resolutions": {
