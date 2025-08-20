@@ -86,7 +86,6 @@ jobs:
         run: |
           sudo make install_antlr_cli
       - name: Install Yarn Packages
-        if: steps.yarn-cache.outputs.exit-code == 0
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install
       - name: Run Coverage
