@@ -21,6 +21,7 @@ public class CacheConfiguration {
   }
 
   public enum AuthType {
+    NONE,
     PASSWORD,
     IAM,
     AZURE_MANAGED_IDENTITY
@@ -41,7 +42,7 @@ public class CacheConfiguration {
   private int port = 6379;
 
   @JsonProperty("authType")
-  private AuthType authType = AuthType.PASSWORD;
+  private AuthType authType = AuthType.NONE;
 
   @JsonProperty("password")
   private String password;
