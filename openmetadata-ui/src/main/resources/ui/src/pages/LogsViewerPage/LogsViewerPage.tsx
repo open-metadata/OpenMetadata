@@ -15,7 +15,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
+import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import {
   Fragment,
   useCallback,
@@ -296,32 +296,34 @@ const LogsViewerPage = () => {
   const handleIngestionDownloadClick = async () => {
     try {
       reset();
-      const progress = round(
-        (Number(paging?.after) * 100) / Number(paging?.total)
-      );
-
-      updateProgress(paging?.after ? progress : 1);
-      let logs = '';
+      updateProgress(1);
       let fileName = `${getEntityName(ingestionDetails)}-${
         ingestionDetails?.pipelineType
       }.log`;
+
       if (isApplicationType) {
-        logs = await downloadAppLogs(ingestionName);
+        const logs = await downloadAppLogs(ingestionName);
         fileName = `${ingestionName}.log`;
+        const element = document.createElement('a');
+        const file = new Blob([logs || ''], { type: 'text/plain' });
+        element.href = URL.createObjectURL(file);
+        element.download = fileName;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
       } else {
-        logs = await downloadIngestionLog(
+        const logsBlob = await downloadIngestionLog(
           ingestionDetails?.id,
           ingestionDetails?.pipelineType
         );
-      }
 
-      const element = document.createElement('a');
-      const file = new Blob([logs || ''], { type: 'text/plain' });
-      element.href = URL.createObjectURL(file);
-      element.download = fileName;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
+        const element = document.createElement('a');
+        element.href = URL.createObjectURL(logsBlob as Blob);
+        element.download = fileName;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {

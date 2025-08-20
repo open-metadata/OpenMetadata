@@ -16,7 +16,10 @@ import { PipelineType } from '../../generated/entity/services/ingestionPipelines
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
 import { getApplicationLogs } from '../../rest/applicationAPI';
-import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
+import {
+  downloadIngestionPipelineLogsById,
+  getIngestionPipelineLogById,
+} from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
 
 export const getLogsFromResponse = (
@@ -86,12 +89,14 @@ export const downloadIngestionLog = async (
   ingestionId?: string,
   pipelineType?: PipelineType
 ) => {
-  if (!ingestionId || !pipelineType) {
+  if (!ingestionId) {
     return '';
   }
 
   try {
-    return await fetchLogsRecursively(ingestionId, pipelineType);
+    const response = await downloadIngestionPipelineLogsById(ingestionId);
+
+    return response.data;
   } catch (err) {
     showErrorToast(err as AxiosError);
 

@@ -165,3 +165,12 @@ export const getRunHistoryForPipeline = async (
 
   return response.data;
 };
+
+export const downloadIngestionPipelineLogsById = (id: string) => {
+  return APIClient.get(
+    `/services/ingestionPipelines/logs/${id}/last/download`,
+    {
+      responseType: 'blob',
+    }
+  );
+};
