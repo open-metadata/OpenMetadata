@@ -326,7 +326,7 @@ elasticsearch:
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
 cacheConfiguration:
-  enabled: ${CACHE_ENABLED:-true}
+  enabled: ${CACHE_ENABLED:-false}
   provider: ${CACHE_PROVIDER:-ELASTICACHE_STANDALONE} # Possible values are "ELASTICACHE_STANDALONE", "ELASTICACHE_CLUSTER", "REDIS_STANDALONE", "REDIS_CLUSTER", "AZURE_REDIS"
   host: ${CACHE_HOST:-localhost}
   port: ${CACHE_PORT:-6379}
