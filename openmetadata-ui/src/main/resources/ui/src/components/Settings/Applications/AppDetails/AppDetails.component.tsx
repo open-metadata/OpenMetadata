@@ -325,15 +325,15 @@ const AppDetails = () => {
     }
   };
 
-  // Check if there's a plugin configuration component for this app
-  const pluginConfigComponent = useMemo(() => {
+  // Check if there's a plugin app details component for this app
+  const pluginAppDetailsComponent = useMemo(() => {
     if (!appData?.name || !plugins.length) {
       return null;
     }
 
     const plugin = plugins.find((p) => p.name === appData.name);
 
-    return plugin?.getConfigComponent?.(appData) || null;
+    return plugin?.getAppDetails?.(appData) || null;
   }, [appData?.name, plugins]);
 
   const tabs = useMemo(() => {
@@ -348,11 +348,7 @@ const AppDetails = () => {
                 />
               ),
               key: ApplicationTabs.CONFIGURATION,
-              children: pluginConfigComponent ? (
-                // Use plugin configuration component if available
-                React.createElement(pluginConfigComponent)
-              ) : (
-                // Fall back to default ApplicationConfiguration
+              children: (
                 <ApplicationConfiguration
                   appData={appData}
                   isLoading={loadingState.isSaveLoading}
@@ -535,12 +531,18 @@ const AppDetails = () => {
           </Space>
         </Col>
         <Col className="app-details-page-tabs" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            className="tabs-new"
-            data-testid="tabs"
-            items={tabs}
-          />
+          {pluginAppDetailsComponent ? (
+            // Render plugin's custom app details component
+            React.createElement(pluginAppDetailsComponent)
+          ) : (
+            // Render default tabs interface
+            <Tabs
+              destroyInactiveTabPane
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+            />
+          )}
         </Col>
       </Row>
 
