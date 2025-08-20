@@ -8,8 +8,8 @@ slug: /connectors/pipeline/nifi/yaml
 name="Nifi"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Usage", "Lineage"]
-unavailableFeatures=["Pipeline Status", "Owners", "Tags"]
+availableFeatures=["Pipelines", "Usage", "Lineage", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the NiFi connector.
