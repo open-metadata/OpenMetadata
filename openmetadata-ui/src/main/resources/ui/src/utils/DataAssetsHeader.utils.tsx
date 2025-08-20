@@ -51,6 +51,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { DriveService } from '../generated/entity/services/driveService';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
@@ -586,6 +587,16 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getEntityBreadcrumbs(
         securityServiceDetails,
         EntityType.SECURITY_SERVICE
+      );
+
+      break;
+
+    case EntityType.DRIVE_SERVICE:
+      const driveServiceDetails = dataAsset as DriveService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        driveServiceDetails,
+        EntityType.DRIVE_SERVICE
       );
 
       break;

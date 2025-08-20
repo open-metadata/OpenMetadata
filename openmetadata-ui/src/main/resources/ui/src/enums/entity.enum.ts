@@ -30,6 +30,7 @@ export enum EntityType {
   STORAGE_SERVICE = 'storageService',
   SEARCH_SERVICE = 'searchService',
   SECURITY_SERVICE = 'securityService',
+  DRIVE_SERVICE = 'driveService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -80,6 +81,10 @@ export enum EntityType {
   SERVICE = 'service',
   DATA_CONTRACT = 'dataContract',
   INGESTION_RUNNER = 'ingestionRunner',
+  DIRECTORY = 'directory',
+  FILE = 'file',
+  SPREADSHEET = 'spreadsheet',
+  WORKSHEET = 'worksheet',
 }
 
 export enum EntityLineageDirection {

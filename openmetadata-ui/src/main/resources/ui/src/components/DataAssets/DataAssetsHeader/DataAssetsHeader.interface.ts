@@ -24,17 +24,22 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { DriveService } from '../../../generated/entity/services/driveService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { MetadataService } from '../../../generated/entity/services/metadataService';
 import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
@@ -71,7 +76,12 @@ export type DataAssetsType =
   | APICollection
   | APIEndpoint
   | Metric
-  | Chart;
+  | Chart
+  | DriveService
+  | Directory
+  | File
+  | Spreadsheet
+  | Worksheet;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -83,7 +93,8 @@ export type DataAssetsWithoutServiceField =
   | StorageService
   | SearchService
   | APIService
-  | Metric;
+  | Metric
+  | DriveService;
 
 export type DataAssetsWithFollowersField =
   | Table
@@ -168,6 +179,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetSearchService
   | DataAssetApiService
   | DataAssetSecurityService
+  | DataAssetDriveService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
@@ -288,6 +300,10 @@ export interface DataAssetChart {
 export interface DataAssetSecurityService {
   dataAsset: ServicesType;
   entityType: EntityType.SECURITY_SERVICE;
+}
+export interface DataAssetDriveService {
+  dataAsset: ServicesType;
+  entityType: EntityType.DRIVE_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

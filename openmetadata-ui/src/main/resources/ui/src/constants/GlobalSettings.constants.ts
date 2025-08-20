@@ -90,4 +90,5 @@ export enum GlobalSettingOptions {
   DOMAINS = 'domains',
   CHARTS = 'charts',
   SECURITY = 'security',
+  DRIVES = 'drives',
 }

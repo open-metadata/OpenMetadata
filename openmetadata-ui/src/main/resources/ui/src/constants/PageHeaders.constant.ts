@@ -99,6 +99,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.security'),
     subHeader: i18n.t('message.page-sub-header-for-security'),
   },
+  DRIVE_SERVICES: {
+    header: i18n.t('label.drive'),
+    subHeader: i18n.t('message.page-sub-header-for-drive'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),

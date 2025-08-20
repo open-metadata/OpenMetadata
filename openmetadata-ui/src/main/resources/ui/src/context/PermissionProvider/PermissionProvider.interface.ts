@@ -84,6 +84,7 @@ export enum ResourceEntity {
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
   INGESTION_RUNNER = 'ingestionRunner',
+  DRIVE_SERVICE = 'driveService',
 }
 
 export interface PermissionContextType {

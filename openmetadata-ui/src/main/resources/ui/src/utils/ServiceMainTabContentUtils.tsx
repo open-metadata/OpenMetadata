@@ -27,6 +27,7 @@ import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchDirectoryDetails } from '../rest/driveAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
@@ -144,6 +145,8 @@ export const callServicePatchAPI = async (
       return await patchSearchIndexDetails(id, jsonPatch);
     case ServiceCategory.API_SERVICES:
       return await patchApiCollection(id, jsonPatch);
+    case ServiceCategory.DRIVE_SERVICES:
+      return await patchDirectoryDetails(id, jsonPatch);
     default:
       return;
   }

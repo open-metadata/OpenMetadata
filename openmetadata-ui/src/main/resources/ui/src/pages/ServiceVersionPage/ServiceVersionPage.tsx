@@ -42,6 +42,7 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
+import { getDirectories } from '../../rest/driveAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
@@ -52,6 +53,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
@@ -277,6 +279,20 @@ function ServiceVersionPage() {
     [decodedServiceFQN]
   );
 
+  const fetchDirectories = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getDirectories({
+        service: decodedServiceFQN,
+        fields: commonTableFields,
+        paging,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [decodedServiceFQN]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -319,6 +335,11 @@ function ServiceVersionPage() {
           }
           case ServiceCategory.API_SERVICES: {
             await fetchCollections(paging);
+
+            break;
+          }
+          case ServiceCategory.DRIVE_SERVICES: {
+            await fetchDirectories(paging);
 
             break;
           }

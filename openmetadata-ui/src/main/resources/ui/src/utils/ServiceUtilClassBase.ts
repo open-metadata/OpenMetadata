@@ -135,6 +135,7 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
@@ -143,6 +144,7 @@ import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
@@ -318,6 +320,9 @@ class ServiceUtilClassBase {
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
+      driveServices: this.filterUnsupportedServiceType(
+        Object.values(DriveServiceType) as string[]
+      ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
@@ -362,6 +367,10 @@ class ServiceUtilClassBase {
 
     if (serviceTypes.securityServices.includes(serviceType)) {
       return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    if (serviceTypes.driveServices.includes(serviceType)) {
+      return EntityType.DIRECTORY;
     }
 
     // Default fallback
@@ -786,6 +795,9 @@ class ServiceUtilClassBase {
 
   public getSecurityServiceConfig(type: SecurityServiceType) {
     return getSecurityConfig(type);
+  }
+  public getDriveServiceConfig(type: DriveServiceType) {
+    return getDriveConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {

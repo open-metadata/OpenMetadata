@@ -34,6 +34,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { DriveService } from '../../../generated/entity/services/driveService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
@@ -113,4 +114,5 @@ export type MapPatchAPIResponse = {
   [EntityType.CLASSIFICATION]: Classification;
   [EntityType.CHART]: Chart;
   [EntityType.SECURITY_SERVICE]: SecurityService;
+  [EntityType.DRIVE_SERVICE]: DriveService;
 };

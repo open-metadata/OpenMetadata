@@ -1582,6 +1582,11 @@ export const getEntityLinkFromType = (
         fullyQualifiedName,
         ServiceCategory.API_SERVICES
       );
+    case EntityType.DRIVE_SERVICE:
+      return getServiceDetailsPath(
+        fullyQualifiedName,
+        ServiceCategory.DRIVE_SERVICES
+      );
     case EntityType.BOT:
       return getBotsPath(fullyQualifiedName);
     case EntityType.TEAM:
@@ -2121,6 +2126,17 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.DRIVE_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.DRIVE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DRIVE_SERVICES)
+          ),
+        },
+      ];
+
     case EntityType.CONTAINER: {
       const data = entity as Container;
 
@@ -2432,6 +2448,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     metadataService: t('label.entity-service', {
       entity: t('label.metadata'),
     }),
+    driveService: t('label.entity-service', {
+      entity: t('label.drive'),
+    }),
     glossary: t('label.glossary'),
     glossaryTerm: t('label.glossary-term'),
     tag: t('label.tag'),
@@ -2588,6 +2607,9 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.DASHBOARD_SERVICE]: t('label.dashboard-service'),
   [EntityType.STORAGE_SERVICE]: t('label.storage-service'),
   [EntityType.SEARCH_SERVICE]: t('label.search-service'),
+  [EntityType.DRIVE_SERVICE]: t('label.entity-service', {
+    entity: t('label.drive'),
+  }),
   [EntityType.METRIC]: t('label.metric'),
   [EntityType.CONTAINER]: t('label.container'),
   [EntityType.DASHBOARD_DATA_MODEL]: t('label.dashboard-data-model'),
@@ -2656,4 +2678,8 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
   [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
+  [EntityType.DIRECTORY]: t('label.directory'),
+  [EntityType.FILE]: t('label.file'),
+  [EntityType.SPREADSHEET]: t('label.spreadsheet'),
+  [EntityType.WORKSHEET]: t('label.worksheet'),
 };

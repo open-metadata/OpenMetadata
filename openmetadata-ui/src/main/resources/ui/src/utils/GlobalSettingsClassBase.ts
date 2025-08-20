@@ -235,6 +235,16 @@ class GlobalSettingsClassBase {
             icon: MetadataIcon,
           },
           {
+            label: t('label.drive-plural'),
+            description: t('message.page-sub-header-for-drive'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.DRIVE_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
+            icon: MetadataIcon,
+          },
+          {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
             isProtected: true,

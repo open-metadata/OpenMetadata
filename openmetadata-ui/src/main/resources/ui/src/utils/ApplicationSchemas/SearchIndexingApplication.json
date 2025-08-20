@@ -95,6 +95,7 @@
           "dataProduct",
           "databaseService",
           "dashboardService",
+          "driveService",
           "query",
           "queryCostRecord",
           "apiService",

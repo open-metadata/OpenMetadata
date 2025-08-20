@@ -58,6 +58,7 @@ import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
   FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
   FormattedMessagingServiceType,
   FormattedMetadataServiceType,
   FormattedMlModelServiceType,
@@ -100,6 +101,7 @@ class EntityUtilClassBase {
       ...FormattedMessagingServiceType,
       ...FormattedAPIServiceType,
       ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
     });
   }
 
@@ -313,6 +315,34 @@ class EntityUtilClassBase {
       case EntityType.METRIC:
         return getEntityDetailsPath(
           EntityType.METRIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
           fullyQualifiedName,
           tab,
           subTab
