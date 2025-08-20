@@ -5140,4 +5140,76 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Verify table no longer exists in RDF after hard delete
     RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
   }
+
+  @Test
+  void test_getColumnsForSoftDeletedTable_200() throws IOException {
+    // Create database and schema with simple names for clean FQN
+    Database db =
+        dbTest.createEntity(
+            dbTest
+                .createRequest("test_soft_delete_db")
+                .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest("test_soft_delete_schema")
+                .withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a table with columns for testing soft-delete column retrieval
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      columns.add(getColumn("col" + i, STRING, null).withOrdinalPosition(i));
+    }
+
+    CreateTable create =
+        new CreateTable()
+            .withName("test_soft_delete_columns")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify columns can be retrieved for active table
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Soft delete the table
+    deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify columns can still be retrieved for soft-deleted table using include=all
+    target = getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Also test by FQN for soft-deleted table (now with clean FQN)
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Verify that without include=all parameter, it should fail
+    WebTarget targetWithoutInclude = getResource("tables/" + table.getId() + "/columns");
+    assertResponse(
+        () ->
+            TestUtils.get(
+                targetWithoutInclude, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", table.getId()));
+
+    // Cleanup: Hard delete the test entities we created to avoid affecting other tests
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+    schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
+    dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
 }
