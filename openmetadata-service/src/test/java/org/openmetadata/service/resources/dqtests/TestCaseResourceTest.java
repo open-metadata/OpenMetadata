@@ -532,6 +532,38 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void post_testWithInvalidColumnName_4xx(TestInfo test) {
+    String invalidColumnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>",
+            TEST_TABLE1.getFullyQualifiedName(), "nonExistentColumn");
+    CreateTestCase create =
+        createRequest(test)
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName())
+            .withEntityLink(invalidColumnLink);
+
+    assertResponseContains(
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name nonExistentColumn");
+  }
+
+  @Test
+  void post_testWithWrongCaseColumnName_4xx(TestInfo test) {
+    String wrongCaseColumnLink =
+        String.format("<#E::table::%s::columns::%s>", TEST_TABLE1.getFullyQualifiedName(), "C1");
+    CreateTestCase create =
+        createRequest(test)
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName())
+            .withEntityLink(wrongCaseColumnLink);
+
+    assertResponseContains(
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name C1");
+  }
+
+  @Test
   void createUpdateDelete_tests_200(TestInfo test) throws IOException {
     // Create a test case
     CreateTestCase create = createRequest(test);
