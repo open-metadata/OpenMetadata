@@ -135,6 +135,41 @@
     box-shadow: @box-shadow-base;
     box-sizing: border-box;
   }
+
+  &.sso-configured {
+    .ant-card {
+      border: none !important;
+    }
+
+    .ant-card-body {
+      padding: 0px !important;
+    }
+  }
+}
+
+.content-height-with-resizable-panel.sso-configured {
+  background-color: @white !important;
+  height: calc(100vh - var(--ant-navbar-height) - 150px);
+
+  .content-resizable-panel-container {
+    .form-actions-bottom {
+      position: sticky;
+      bottom: 0;
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: flex-end;
+      margin-top: @size-lg;
+      margin-bottom: 0;
+      padding: @size-md @size-lg;
+      border-top: 1px solid @grey-200;
+      background-color: @grey-9;
+      box-shadow: @box-shadow-base;
+      box-sizing: border-box;
+    }
+  }
 }
 
 .rjsf .ant-radio-wrapper {

@@ -91,12 +91,14 @@ interface SSOConfigurationFormProps {
   forceEditMode?: boolean;
   onChangeProvider?: () => void;
   selectedProvider?: string;
+  hideBorder?: boolean;
 }
 
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
   selectedProvider,
+  hideBorder = false,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const { setAuthConfig, setAuthorizerConfig } = useApplicationStore();
@@ -563,6 +565,7 @@ const SSOConfigurationFormRJSF = ({
     internalData?.authenticationConfiguration?.clientType,
     hasExistingConfig,
     savedData,
+    hideBorder,
   ]);
 
   // Handle form data changes
@@ -826,64 +829,114 @@ const SSOConfigurationFormRJSF = ({
     );
   }
 
+  const formContent = (
+    <>
+      {isEditMode && showForm && (
+        <Form
+          focusOnFirstError
+          noHtml5Validate
+          className="rjsf no-header"
+          fields={customFields}
+          formData={internalData}
+          idSeparator="/"
+          schema={schema}
+          showErrorList={false}
+          templates={{
+            DescriptionFieldTemplate: DescriptionFieldTemplate,
+            FieldErrorTemplate: FieldErrorTemplate,
+            ObjectFieldTemplate: SSOGroupedFieldTemplate,
+          }}
+          transformErrors={transformErrors}
+          uiSchema={{
+            ...uiSchema,
+            'ui:submitButtonOptions': {
+              submitText: '',
+              norender: true,
+            },
+          }}
+          validator={validator}
+          widgets={widgets}
+          onChange={handleOnChange}
+        />
+      )}
+    </>
+  );
+
+  // If hideBorder is true, render form with ResizablePanels but without Card wrapper and header
+  if (hideBorder) {
+    return (
+      <ResizablePanels
+        className="content-height-with-resizable-panel sso-configured"
+        firstPanel={{
+          children: (
+            <>
+              {formContent}
+              {isEditMode && (
+                <div className="form-actions-bottom">
+                  <Button
+                    data-testid="save-sso-configuration"
+                    disabled={isLoading}
+                    loading={isLoading}
+                    type="primary"
+                    onClick={handleSave}>
+                    {t('label.save')}
+                  </Button>
+                </div>
+              )}
+            </>
+          ),
+          minWidth: 700,
+          flex: 0.7,
+          className: 'content-resizable-panel-container sso-configured',
+        }}
+        secondPanel={{
+          children: (
+            <SSODocPanel
+              activeField={activeField}
+              serviceName={currentProvider || 'general'}
+            />
+          ),
+          minWidth: 400,
+        }}
+      />
+    );
+  }
+
+  const wrappedFormContent = (
+    <Card
+      className="sso-configuration-form-card flex-col p-0"
+      data-testid="sso-configuration-form-card">
+      {/* SSO Provider Header */}
+      {currentProvider && (
+        <div className="sso-provider-form-header flex items-center">
+          <div className="flex align-items-center gap-5 flex items-center">
+            <div className="provider-icon-container">
+              {getProviderIcon(currentProvider) && (
+                <img
+                  alt={getProviderDisplayName(currentProvider)}
+                  height={22}
+                  src={getProviderIcon(currentProvider)}
+                  width={22}
+                />
+              )}
+            </div>
+            <Typography.Title className="m-0 text-md" level={4}>
+              {getProviderDisplayName(currentProvider)}
+            </Typography.Title>
+          </div>
+        </div>
+      )}
+      {formContent}
+    </Card>
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
         children: (
           <>
-            <Card
-              className="sso-configuration-form-card flex-col p-0"
-              data-testid="sso-configuration-form-card">
-              {/* SSO Provider Header */}
-              {currentProvider && (
-                <div className="sso-provider-form-header flex items-center">
-                  <div className="flex align-items-center gap-5 flex items-center">
-                    <div className="provider-icon-container">
-                      {getProviderIcon(currentProvider) && (
-                        <img
-                          alt={getProviderDisplayName(currentProvider)}
-                          height={22}
-                          src={getProviderIcon(currentProvider)}
-                          width={22}
-                        />
-                      )}
-                    </div>
-                    <Typography.Title className="m-0 text-md" level={4}>
-                      {getProviderDisplayName(currentProvider)}
-                    </Typography.Title>
-                  </div>
-                </div>
-              )}
-              {isEditMode && showForm && (
-                <Form
-                  focusOnFirstError
-                  noHtml5Validate
-                  className="rjsf no-header"
-                  fields={customFields}
-                  formData={internalData}
-                  idSeparator="/"
-                  schema={schema}
-                  showErrorList={false}
-                  templates={{
-                    DescriptionFieldTemplate: DescriptionFieldTemplate,
-                    FieldErrorTemplate: FieldErrorTemplate,
-                    ObjectFieldTemplate: SSOGroupedFieldTemplate,
-                  }}
-                  transformErrors={transformErrors}
-                  uiSchema={{
-                    ...uiSchema,
-                    'ui:submitButtonOptions': {
-                      submitText: '',
-                      norender: true,
-                    },
-                  }}
-                  validator={validator}
-                  widgets={widgets}
-                  onChange={handleOnChange}
-                />
-              )}
-            </Card>
+            {wrappedFormContent}
             {isEditMode && (
               <div className="form-actions-bottom">
                 <Button

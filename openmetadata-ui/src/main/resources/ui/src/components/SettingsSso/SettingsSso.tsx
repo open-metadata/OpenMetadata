@@ -105,7 +105,9 @@ const SettingsSso = () => {
         ) {
           setHasExistingConfig(true);
           setCurrentProvider(config.authenticationConfiguration.provider);
-          setSsoEnabled(true);
+          setSsoEnabled(
+            config.authenticationConfiguration.enableSelfSignup || false
+          );
 
           // Set default tab based on provider - Overview for Google, Azure and Okta
           const provider =
@@ -160,10 +162,31 @@ const SettingsSso = () => {
     setHasExistingConfig(false);
   }, []);
 
-  const handleSSOToggle = useCallback((checked: boolean) => {
+  const handleSSOToggle = useCallback(async (checked: boolean) => {
     setSsoEnabled(checked);
-    // Here you would typically make an API call to update the SSO configuration
-    // For now, we'll just update the local state
+
+    try {
+      const response = await getSecurityConfiguration();
+      const config = response.data;
+
+      if (config?.authenticationConfiguration) {
+        const updatedConfig = {
+          ...config,
+          authenticationConfiguration: {
+            ...config.authenticationConfiguration,
+            enableSelfSignup: checked,
+          },
+        };
+
+        // Apply the updated configuration
+        const { applySecurityConfiguration } = await import(
+          '../../rest/securityConfigAPI'
+        );
+        await applySecurityConfiguration(updatedConfig);
+      }
+    } catch (error) {
+      setSsoEnabled(!checked);
+    }
   }, []);
 
   // If showing provider selector
@@ -288,7 +311,10 @@ const SettingsSso = () => {
     label: t('label.configure'),
     children: (
       <div>
-        <SSOConfigurationFormRJSF forceEditMode={activeTab === 'configure'} />
+        <SSOConfigurationFormRJSF
+          hideBorder
+          forceEditMode={activeTab === 'configure'}
+        />
       </div>
     ),
   });
