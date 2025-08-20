@@ -31,6 +31,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowIdEncoder;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -39,7 +40,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SignalBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
-import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class EventBasedEntityTrigger implements TriggerInterface {
@@ -135,16 +135,10 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
         signalEventDefinition.setSignalRef(signal.getId());
 
-        // Not to exceed the maximum length - hash with 32 chars, then if length exceeds 60,
-        // truncate
+        // Use safe ID encoding instead of truncation
         String startEventId =
-            "id_"
-                + getFlowableElementId(
-                    EntityUtil.hash(workflowTriggerId),
-                    String.format("%s-%s-start", entityType, eventId));
-        if (startEventId.length() > 60) {
-          startEventId = startEventId.substring(0, 60); // final safeguard
-        }
+            WorkflowIdEncoder.generateSafeFlowableId(
+                workflowTriggerId, entityType, eventId, "start");
 
         StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
 

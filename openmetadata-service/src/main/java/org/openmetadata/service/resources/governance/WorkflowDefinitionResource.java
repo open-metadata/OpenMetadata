@@ -30,16 +30,22 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
@@ -57,6 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "governanceWorkflows")
+@Slf4j
 public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
@@ -539,6 +546,146 @@ public class WorkflowDefinitionResource
       return Response.status(Response.Status.OK).entity("Workflow Triggered").build();
     } else {
       return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
+    }
+  }
+
+  // TEST API - REMOVE BEFORE PRODUCTION
+  @POST
+  @Path("/test/rollback/{entityType}/{entityId}")
+  @Operation(
+      operationId = "testRollbackEntity",
+      summary = "Test rollback entity to previous version",
+      description =
+          "Tests rolling back an entity to its previous approved version. REMOVE BEFORE PRODUCTION.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Rollback test result",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response testRollbackEntity(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type (e.g., table, dashboard)") @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Entity UUID") @PathParam("entityId") UUID entityId,
+      @Parameter(description = "Target version to rollback to (optional)")
+          @QueryParam("targetVersion")
+          String targetVersion) {
+    try {
+      EntityRepository<?> entityRepo = Entity.getEntityRepository(entityType);
+
+      EntityInterface currentEntity =
+          entityRepo.get(null, entityId, entityRepo.getFields("*"), Include.ALL, false);
+
+      if (currentEntity == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity(Map.of("error", "Entity not found", "entityId", entityId))
+            .build();
+      }
+      EntityHistory history = entityRepo.listVersions(entityId);
+
+      Double versionToRestore = null;
+      if (targetVersion != null && !targetVersion.isEmpty()) {
+        versionToRestore = Double.parseDouble(targetVersion);
+      } else {
+        // Find previous version automatically
+        Double currentVersion = currentEntity.getVersion();
+        for (Object versionObj : history.getVersions()) {
+          try {
+            // The versions list contains JSON strings, not Maps
+            String versionJson;
+            if (versionObj instanceof String) {
+              versionJson = (String) versionObj;
+            } else {
+              // Fallback: convert to JSON if it's not already a string
+              versionJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(versionObj);
+            }
+
+            // Parse the JSON to get the entity
+            EntityInterface versionEntity =
+                org.openmetadata.schema.utils.JsonUtils.readValue(
+                    versionJson, currentEntity.getClass());
+            Double versionNumber = versionEntity.getVersion();
+
+            if (versionNumber != null && versionNumber < currentVersion) {
+              versionToRestore = versionNumber;
+              break; // Get the most recent previous version
+            }
+          } catch (Exception e) {
+            // Skip this version if we can't parse it
+            LOG.warn("Could not parse version object: {}", e.getMessage());
+            continue;
+          }
+        }
+      }
+
+      if (versionToRestore == null) {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(
+                Map.of(
+                    "error", "No previous version found",
+                    "currentVersion", currentEntity.getVersion(),
+                    "availableVersions", history.getVersions()))
+            .build();
+      }
+
+      String userName = securityContext.getUserPrincipal().getName();
+      // Put
+      //      currentEntity = entityRepo.get(null, entityId, entityRepo.getFields("*"), Include.ALL,
+      // false);
+      //      EntityInterface previousEntity = entityRepo.getVersion(entityId,
+      // versionToRestore.toString());
+      //      @SuppressWarnings("unchecked")
+      //      EntityRepository<EntityInterface> typedRepo = (EntityRepository<EntityInterface>)
+      // entityRepo;
+      //      previousEntity.setUpdatedBy(userName);
+      //      previousEntity.setUpdatedAt(System.currentTimeMillis());
+      //      org.openmetadata.service.util.RestUtil.PutResponse<EntityInterface> putResponse =
+      //          typedRepo.update(null, currentEntity, previousEntity, userName);
+
+      // Get current entity using getVersion (not get with fields)
+      currentEntity = entityRepo.getVersion(entityId, currentEntity.getVersion().toString());
+
+      // Get previous entity using getVersion
+      EntityInterface previousEntity = entityRepo.getVersion(entityId, versionToRestore.toString());
+
+      // Now both loaded the same way - create PATCH
+      String currentJson = JsonUtils.pojoToJson(currentEntity);
+      String previousJson = JsonUtils.pojoToJson(previousEntity);
+      JsonPatch patch = JsonUtils.getJsonPatch(currentJson, previousJson);
+
+      // Apply PATCH
+      entityRepo.patch(null, currentEntity.getFullyQualifiedName(), userName, patch);
+
+      Map<String, Object> result = new HashMap<>();
+      result.put("status", "success");
+      result.put("entityId", entityId);
+      result.put("entityType", entityType);
+      result.put("rolledBackFrom", currentEntity.getVersion());
+      result.put("rolledBackTo", versionToRestore);
+      //      result.put("newVersion", patch.getEntity().getVersion());
+      result.put("entityName", currentEntity.getName());
+      result.put(
+          "message",
+          String.format(
+              "Successfully rolled back %s from version %.1f to %.1f",
+              currentEntity.getName(), currentEntity.getVersion(), versionToRestore));
+
+      return Response.ok(result).build();
+
+    } catch (Exception e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              Map.of(
+                  "error",
+                  "Rollback failed",
+                  "message",
+                  e.getMessage(),
+                  "entityId",
+                  entityId,
+                  "entityType",
+                  entityType))
+          .build();
     }
   }
 }

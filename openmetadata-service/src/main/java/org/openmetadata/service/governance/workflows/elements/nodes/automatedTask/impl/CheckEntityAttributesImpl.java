@@ -52,12 +52,20 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   private Boolean checkAttributes(MessageParser.EntityLink entityLink, String rules) {
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    boolean result;
     try {
-      result = (boolean) RuleEngine.getInstance().apply(rules, JsonUtils.getMap(entity));
+      Object result = RuleEngine.getInstance().apply(rules, JsonUtils.getMap(entity));
+
+      // Handle both boolean and numeric results for scoring scenarios
+      if (result instanceof Number) {
+        double score = ((Number) result).doubleValue();
+        // For numeric results, consider >= 50 as success (configurable threshold)
+        return score >= 50.0;
+      }
+
+      // Default boolean handling
+      return Boolean.TRUE.equals(result);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    return result;
   }
 }

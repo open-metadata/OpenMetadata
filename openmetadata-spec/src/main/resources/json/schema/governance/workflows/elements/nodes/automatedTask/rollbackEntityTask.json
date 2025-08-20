@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/rollbackEntityTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RollbackEntityTaskDefinition",
+  "description": "Rolls back an entity to its previous approved version.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "rollbackEntityTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "rollbackToStatus": {
+          "title": "Rollback to Status",
+          "description": "The status to look for when finding the previous approved version",
+          "type": "string",
+          "default": "Approved"
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "output": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["rollbackVersion"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

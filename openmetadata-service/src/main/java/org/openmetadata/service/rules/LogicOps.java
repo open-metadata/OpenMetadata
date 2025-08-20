@@ -22,7 +22,10 @@ public class LogicOps {
   public enum CustomLogicOps {
     LENGTH("length"),
     IS_REVIEWER("isReviewer"),
-    IS_OWNER("isOwner");
+    IS_OWNER("isOwner"),
+    IS_UPDATED_BEFORE("isUpdatedBefore"),
+    IS_UPDATED_AFTER("isUpdatedAfter"),
+    FIELD_COMPLETENESS("fieldCompleteness");
 
     public final String key;
 
@@ -77,6 +80,54 @@ public class LogicOps {
               JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
             return evaluateUserInRole(evaluator, arguments, data, "owners");
+          }
+        });
+
+    // {"isUpdatedBefore": 1609459200000} - Check if entity was updated before timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_BEFORE.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedBefore(evaluator, arguments, data);
+          }
+        });
+
+    // {"isUpdatedAfter": 1609459200000} - Check if entity was updated after timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_AFTER.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
+          }
+        });
+
+    // {"fieldCompleteness": ["field1", "field2", "field3"]} - Returns % of non-empty fields
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.FIELD_COMPLETENESS.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateFieldCompleteness(evaluator, arguments, data);
           }
         });
   }

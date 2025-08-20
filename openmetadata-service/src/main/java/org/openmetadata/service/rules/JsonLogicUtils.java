@@ -3,6 +3,7 @@ package org.openmetadata.service.rules;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -58,5 +59,99 @@ public class JsonLogicUtils {
     }
 
     return false;
+  }
+
+  public static @NotNull Object evaluateIsUpdatedBefore(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.size() != 1) return false;
+
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
+    if (timestampObj == null) return false;
+
+    // Get updatedAt from entity data
+    if (!(data instanceof Map<?, ?> entityMap)) return false;
+    Object updatedAtObj = entityMap.get("updatedAt");
+    if (updatedAtObj == null) return false;
+
+    long updatedAt;
+    if (updatedAtObj instanceof Long) {
+      updatedAt = (Long) updatedAtObj;
+    } else if (updatedAtObj instanceof Number) {
+      updatedAt = ((Number) updatedAtObj).longValue();
+    } else {
+      return false;
+    }
+
+    long timestamp = ((Number) timestampObj).longValue();
+    return updatedAt < timestamp;
+  }
+
+  public static @NotNull Object evaluateIsUpdatedAfter(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.size() != 1) return false;
+
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
+    if (timestampObj == null) return false;
+
+    // Get updatedAt from entity data
+    if (!(data instanceof Map<?, ?> entityMap)) return false;
+    Object updatedAtObj = entityMap.get("updatedAt");
+    if (updatedAtObj == null) return false;
+
+    long updatedAt;
+    if (updatedAtObj instanceof Long) {
+      updatedAt = (Long) updatedAtObj;
+    } else if (updatedAtObj instanceof Number) {
+      updatedAt = ((Number) updatedAtObj).longValue();
+    } else {
+      return false;
+    }
+
+    long timestamp = ((Number) timestampObj).longValue();
+    return updatedAt > timestamp;
+  }
+
+  public static @NotNull Object evaluateFieldCompleteness(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.isEmpty()) return 0.0;
+
+    // Get the list of field names to check
+    List<String> fields = new ArrayList<>();
+    for (int i = 0; i < arguments.size(); i++) {
+      Object arg = evaluator.evaluate(arguments.get(i), data);
+      if (arg instanceof String) {
+        fields.add((String) arg);
+      }
+    }
+
+    if (fields.isEmpty()) return 0.0;
+
+    // Check if data is a Map (entity)
+    if (!(data instanceof Map<?, ?> entityMap)) return 0.0;
+
+    // Count non-empty fields
+    long filledCount = 0;
+    for (String field : fields) {
+      Object value = entityMap.get(field);
+      if (value != null) {
+        // Check if the value is non-empty based on its type
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+          filledCount++;
+        } else if (value instanceof List && !((List<?>) value).isEmpty()) {
+          filledCount++;
+        } else if (value instanceof Map && !((Map<?, ?>) value).isEmpty()) {
+          filledCount++;
+        } else if (!(value instanceof String || value instanceof List || value instanceof Map)) {
+          // For other types (numbers, booleans), non-null means filled
+          filledCount++;
+        }
+      }
+    }
+
+    // Return percentage as a number (0-100)
+    return (filledCount * 100.0) / fields.size();
   }
 }

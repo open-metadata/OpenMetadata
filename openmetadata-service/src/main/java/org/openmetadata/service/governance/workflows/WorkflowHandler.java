@@ -25,6 +25,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -276,6 +277,25 @@ public class WorkflowHandler {
         .createTaskQuery()
         .processVariableValueEquals("customTaskId", customTaskId.toString())
         .singleResult();
+  }
+
+  public boolean validateWorkflowDefinition(String workflowDefinition) {
+    try {
+      RepositoryService repositoryService = processEngine.getRepositoryService();
+
+      Deployment deployment =
+          repositoryService
+              .createDeployment()
+              .addString("test-workflow.bpmn20.xml", workflowDefinition)
+              .name("validation-test-" + System.currentTimeMillis())
+              .deploy();
+
+      repositoryService.deleteDeployment(deployment.getId(), true);
+      return true;
+    } catch (Exception e) {
+      LOG.error("Workflow definition validation failed: {}", e.getMessage());
+      return false;
+    }
   }
 
   public Map<String, Object> transformToNodeVariables(

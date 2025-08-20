@@ -12,10 +12,11 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -39,12 +40,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void postCreate(WorkflowDefinition entity) {
-    WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // Handled in storeEntity via WorkflowTransactionManager
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
-    WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    // Handled in storeEntity via WorkflowTransactionManager
   }
 
   @Override
@@ -133,8 +134,26 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   @Transaction
   public void storeEntity(WorkflowDefinition entity, boolean update) {
+    // Properly use WorkflowTransactionManager for atomic operations
+    WorkflowTransactionManager transactionManager = new WorkflowTransactionManager();
+
+    if (update) {
+      // For updates, find the original to pass to transaction manager
+      WorkflowDefinition original = find(entity.getId(), Include.ALL);
+      transactionManager.updateAndRedeployWorkflowDefinition(original, entity);
+    } else {
+      // For new workflows
+      transactionManager.storeAndDeployWorkflowDefinition(entity, false);
+    }
+  }
+
+  /**
+   * Internal method to store entity without triggering workflow deployment.
+   * This is called from WorkflowTransactionManager to avoid circular dependency.
+   */
+  public void storeEntityInternal(WorkflowDefinition entity, boolean update) {
+    // Store the entity directly without triggering workflow deployment
     store(entity, update);
-    WorkflowHandler.getInstance().deploy(new Workflow(entity));
   }
 
   @Override

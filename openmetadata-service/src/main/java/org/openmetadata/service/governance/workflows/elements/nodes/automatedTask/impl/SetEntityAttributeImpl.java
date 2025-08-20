@@ -197,7 +197,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
    * @param fieldValue The value to set in the specified field
    *
    * @throws RuntimeException if JSON processing fails or entity repository is not found
-   * @see #setNestedField(Map, String, String) for nested field handling details
+   * @see #setNestedField(Map, String, Object) for nested field handling details
    */
   private void setEntityField(
       EntityInterface entity, String entityType, String user, String fieldName, String fieldValue) {
@@ -210,22 +210,66 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     // Step 3: Convert copy to map for generic field manipulation
     Map<String, Object> entityMap = JsonUtils.getMap(entityCopy);
 
-    // Step 4: Set the field value in the map - supports nested fields with dot notation
-    setNestedField(entityMap, fieldName, fieldValue);
+    // Step 4: Parse field value - could be JSON object/array or simple string
+    Object parsedValue = parseFieldValue(fieldValue);
 
-    // Step 5: Convert the modified map back to entity
+    // Step 5: Set the field value in the map - supports nested fields with dot notation
+    setNestedField(entityMap, fieldName, parsedValue);
+
+    // Step 6: Convert the modified map back to entity
     String modifiedJson = JsonUtils.pojoToJson(entityMap);
     EntityInterface modifiedEntity = JsonUtils.readValue(modifiedJson, entity.getClass());
 
-    // Step 6: Get the updated JSON from the modified entity
+    // Step 7: Get the updated JSON from the modified entity
     String updatedJson = JsonUtils.pojoToJson(modifiedEntity);
 
-    // Step 7: Create patch from original to updated
+    // Step 8: Create patch from original to updated
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
-    // Step 8: Apply patch using the non-deprecated repository method
+    // Step 9: Apply patch using the non-deprecated repository method
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     entityRepository.patch(null, entity.getId(), user, patch, null);
+  }
+
+  /**
+   * Parses field value from string to appropriate object type.
+   * Handles JSON objects, arrays, booleans, numbers, and plain strings.
+   *
+   * @param fieldValue The string value to parse
+   * @return Parsed object (Map, List, Boolean, Number, or String)
+   */
+  private Object parseFieldValue(String fieldValue) {
+    if (fieldValue == null || fieldValue.isEmpty()) {
+      return null;
+    }
+
+    // Try to parse as JSON object or array
+    if ((fieldValue.startsWith("{") && fieldValue.endsWith("}"))
+        || (fieldValue.startsWith("[") && fieldValue.endsWith("]"))) {
+      try {
+        return JsonUtils.readValue(fieldValue, Object.class);
+      } catch (Exception e) {
+        // Not valid JSON, treat as string
+      }
+    }
+
+    // Try to parse as boolean
+    if ("true".equalsIgnoreCase(fieldValue) || "false".equalsIgnoreCase(fieldValue)) {
+      return Boolean.parseBoolean(fieldValue);
+    }
+
+    // Try to parse as number
+    try {
+      if (fieldValue.contains(".")) {
+        return Double.parseDouble(fieldValue);
+      } else {
+        return Long.parseLong(fieldValue);
+      }
+    } catch (NumberFormatException e) {
+      // Not a number, return as string
+    }
+
+    return fieldValue;
   }
 
   /**
@@ -297,10 +341,21 @@ public class SetEntityAttributeImpl implements JavaDelegate {
    * @throws ClassCastException if an intermediate value is not a Map when expected
    */
   @SuppressWarnings("unchecked")
-  private void setNestedField(Map<String, Object> map, String fieldName, String fieldValue) {
+  private void setNestedField(Map<String, Object> map, String fieldName, Object fieldValue) {
     // Handle special array patterns intelligently
-    if (isSmartArrayPattern(fieldName)) {
-      handleSmartArrayField(map, fieldName, fieldValue);
+    if (isSmartArrayPattern(fieldName) && fieldValue instanceof String) {
+      handleSmartArrayField(map, fieldName, (String) fieldValue);
+      return;
+    }
+
+    // Direct array replacement (when fieldValue is already a List)
+    if ((fieldName.equals("tags") || fieldName.equals("owners") || fieldName.equals("reviewers"))
+        && (fieldValue instanceof List || fieldValue == null)) {
+      if (fieldValue == null) {
+        map.remove(fieldName);
+      } else {
+        map.put(fieldName, fieldValue);
+      }
       return;
     }
 
@@ -322,9 +377,9 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       }
     }
 
-    // Set the final value or remove if null/empty
+    // Set the final value or remove if null
     String finalKey = parts[parts.length - 1];
-    if (fieldValue == null || fieldValue.isEmpty()) {
+    if (fieldValue == null || (fieldValue instanceof String && ((String) fieldValue).isEmpty())) {
       currentMap.remove(finalKey);
     } else {
       currentMap.put(finalKey, fieldValue);
