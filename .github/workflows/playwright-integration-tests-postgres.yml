@@ -16,8 +16,6 @@ name: Postgres Playwright Integration Tests
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "openmetadata-docs/**"
 
 jobs:
   playwright-postgresql:
