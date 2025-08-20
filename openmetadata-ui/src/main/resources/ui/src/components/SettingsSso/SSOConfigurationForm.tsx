@@ -842,14 +842,14 @@ const SSOConfigurationFormRJSF = ({
               {/* SSO Provider Header */}
               {currentProvider && (
                 <div className="sso-provider-form-header flex items-center">
-                  <div className="flex align-items-center gap-2 flex items-center">
+                  <div className="flex align-items-center gap-5 flex items-center">
                     <div className="provider-icon-container">
                       {getProviderIcon(currentProvider) && (
                         <img
                           alt={getProviderDisplayName(currentProvider)}
-                          height="32"
+                          height={22}
                           src={getProviderIcon(currentProvider)}
-                          width="32"
+                          width={22}
                         />
                       )}
                     </div>

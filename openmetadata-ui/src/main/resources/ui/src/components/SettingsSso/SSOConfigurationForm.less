@@ -17,7 +17,7 @@
   padding: @padding-lg @padding-mlg;
   box-shadow: none;
   .ant-card-body {
-    padding: 0px;
+    padding: 0;
   }
 
   .card-title {
@@ -86,17 +86,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-
-    img {
-      border-radius: @border-rad-xs;
-    }
+    width: @size-mlg + @size-xxs;
+    height: @size-mlg + @size-xxs;
   }
 
   .sso-provider-form-header {
     margin-bottom: @size-sm;
-    gap: @size-xs;
 
     .ant-typography {
       font-weight: 600;
@@ -206,7 +201,7 @@
 }
 
 .rjsf .form-group.field {
-  margin: 0px;
+  margin: 0;
 }
 
 .rjsf .required,
@@ -261,10 +256,10 @@
         position: absolute;
         top: 45%;
         left: 50%;
-        width: 6px;
-        height: 10px;
+        width: 5px;
+        height: 9px;
         border: solid @white;
-        border-width: 0 @size-xxs @size-xxs 0;
+        border-width: 0 2px 2px 0;
         transform: translate(-50%, -50%) rotate(45deg);
       }
 

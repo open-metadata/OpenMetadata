@@ -31,7 +31,7 @@
     position: absolute;
     right: 0;
     &.ant-btn-icon-only.ant-btn-sm {
-      padding: @size-xs 0px;
+      padding: @size-xs 0;
       text-align: center;
       &:hover,
       &:focus,
@@ -60,7 +60,7 @@
     background: @blue-29;
     border: 1px solid @blue-30;
     border-radius: @border-rad-xs;
-    margin: 0px;
+    margin: 0;
     height: @size-xl;
     color: @grey-900;
     font-size: @size-sm;
@@ -86,6 +86,13 @@
     border: 1px solid @grey-200;
     border-radius: @border-rad-xs;
     padding: @size-xxs;
+
+    .ant-select-selection-placeholder {
+      color: @grey-500;
+      font-size: @font-size-base;
+      font-weight: 400;
+      line-height: @size-mlg;
+    }
   }
 
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {

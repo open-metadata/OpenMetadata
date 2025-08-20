@@ -26,7 +26,7 @@ import {
 import { fetchMarkdownFile } from '../../rest/miscAPI';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import Loader from '../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import './SSODocPanel.less';
 
 interface SSODocPanelProp {
@@ -288,9 +288,9 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             <div className="sso-provider-icon">
               <img
                 alt={`${serviceName} icon`}
-                height={32}
+                height={22}
                 src={providerIconMap[serviceName]}
-                width={32}
+                width={22}
               />
             </div>
           )}
@@ -298,7 +298,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             {providerTitleMap[serviceName] || 'SSO Configuration'}
           </Typography.Title>
         </div>
-        <RichTextEditorPreviewerV1
+        <RichTextEditorPreviewer
           enableSeeMoreVariant={false}
           markdown={markdownContent}
         />
