@@ -3072,21 +3072,21 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(json, '$.customUnitOfMeasurement')) AS customUnit "
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
                 + "FROM metric_entity "
-                + "WHERE JSON_EXTRACT(json, '$.customUnitOfMeasurement') IS NOT NULL "
-                + "AND JSON_EXTRACT(json, '$.customUnitOfMeasurement') != '' "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
                 + "AND deleted = false "
-                + "ORDER BY customUnit",
+                + "ORDER BY customUnitOfMeasurement",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT DISTINCT json->>'customUnitOfMeasurement' AS customUnit "
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
                 + "FROM metric_entity "
-                + "WHERE json->>'customUnitOfMeasurement' IS NOT NULL "
-                + "AND json->>'customUnitOfMeasurement' != '' "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
                 + "AND deleted = false "
-                + "ORDER BY customUnit",
+                + "ORDER BY customUnitOfMeasurement",
         connectionType = POSTGRES)
     List<String> getDistinctCustomUnitsOfMeasurement();
   }
