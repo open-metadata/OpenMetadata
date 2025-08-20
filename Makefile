@@ -65,20 +65,6 @@ install_antlr_cli:  ## Install antlr CLI locally
 	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
 
-.PHONY: docker-docs-local
-docker-docs-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local yarn dev
-
-.PHONY: docker-docs
-docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs-v1 as volume for content and images
-	docker pull openmetadata/docs:latest
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest yarn dev
-
-.PHONY: docker-docs-validate
-docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker pull openmetadata/docs-v1:latest
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'yarn build'
-
 ## SNYK
 SNYK_ARGS := --severity-threshold=high
 
@@ -155,13 +141,6 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base-slim:local --build-arg INGESTION_DEPENDENCY=slim
-
-.PHONY: generate-schema-docs
-generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
-	@echo "Generating Schema docs"
-# Installing "0.4.0" version for simpler formatting
-	python3 -m pip install "jsonschema2md==0.4.0"
-	python3 scripts/generate_docs_schemas.py
 
 #Upgrade release automation scripts below
 .PHONY: update_all
