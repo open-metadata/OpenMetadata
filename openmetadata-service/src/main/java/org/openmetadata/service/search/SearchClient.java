@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
@@ -32,6 +31,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ExecutorManager;
 import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -41,7 +41,9 @@ public interface SearchClient<T> {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
-  ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
+  ExecutorService asyncExecutor =
+      ExecutorManager.getInstance().getVirtualThreadExecutor("search-client-async", 1);
+  ;
   String UPDATE = "update";
 
   String ADD = "add";

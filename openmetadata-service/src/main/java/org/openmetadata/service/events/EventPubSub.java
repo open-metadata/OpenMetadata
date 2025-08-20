@@ -20,13 +20,13 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.EventPubSub.ChangeEventHolder;
+import org.openmetadata.service.util.AsyncService;
 
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
@@ -40,7 +40,7 @@ public class EventPubSub {
     if (!started) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
       // disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
-      executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
+      executor = AsyncService.getInstance().getExecutorService();
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
       started = true;

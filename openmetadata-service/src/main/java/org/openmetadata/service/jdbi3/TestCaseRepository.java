@@ -28,8 +28,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -87,7 +86,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
-  private final ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
   public TestCaseRepository() {
     super(
@@ -701,14 +699,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
+    AsyncService.getInstance()
+        .getExecutorService()
+        .submit(
+            () -> {
+              try {
+                testCaseResultRepository.deleteAllTestCaseResults(fqn);
+              } catch (Exception e) {
+                LOG.error("Error deleting test case results for test case {}", fqn, e);
+              }
+            });
   }
 
   @SneakyThrows

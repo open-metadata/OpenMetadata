@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
@@ -29,6 +28,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.ExecutorManager;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -100,7 +100,9 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService threadScheduler =
+        ExecutorManager.getInstance()
+            .getScheduledVirtualThreadExecutor("app-scheduler-trigger-reset", 1);
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
 
     // Start Scheduler
