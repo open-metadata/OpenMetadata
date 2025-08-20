@@ -63,6 +63,10 @@ export interface EdgeDefinition {
 /**
  * Checks if an Entity attributes fit given rules.
  *
+ * Sets any Entity attribute field to the configured value.
+ *
+ * Sets Entity attribute field based on conditional input from previous nodes.
+ *
  * Sets the GlossaryTerm Status to the configured value.
  *
  * Sets the Entity Certification to the configured value.
@@ -104,6 +108,26 @@ export interface NodeConfiguration {
      */
     rules?: string;
     /**
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
+     */
+    fieldName?: string;
+    /**
+     * Value to set for the field
+     */
+    fieldValue?: string;
+    /**
+     * Name of the variable to check for true/false condition
+     */
+    conditionVariableName?: string;
+    /**
+     * Value to set if condition is false
+     */
+    falseValue?: string;
+    /**
+     * Value to set if condition is true
+     */
+    trueValue?: string;
+    /**
      * Choose which Status to apply to the Glossary Term
      */
     glossaryTermStatus?: Status;
@@ -125,7 +149,32 @@ export interface Assignees {
      * Add the Reviewers to the assignees List.
      */
     addReviewers?: boolean;
-    [property: string]: any;
+    /**
+     * Additional assignees with optional users and teams.
+     */
+    extraAssignees?: ExtraAssignees;
+    /**
+     * List of team names to assign the task to.
+     */
+    teams?: string[];
+    /**
+     * List of user names to assign the task to.
+     */
+    users?: string[];
+}
+
+/**
+ * Additional assignees with optional users and teams.
+ */
+export interface ExtraAssignees {
+    /**
+     * List of additional team names to assign the task to.
+     */
+    teams?: string[];
+    /**
+     * List of additional user names to assign the task to.
+     */
+    users?: string[];
 }
 
 /**
@@ -152,6 +201,10 @@ export enum Status {
 export interface InputNamespaceMap {
     relatedEntity: string;
     updatedBy?:    string;
+    /**
+     * Name of the node that provides the condition result
+     */
+    result?: string;
 }
 
 /**
@@ -226,10 +279,16 @@ export interface EntityTriggerDefinition {
  */
 export interface TriggerConfiguration {
     /**
-     * Entity Type for which it should be triggered.
+     * [DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for
+     * multiple types.
      */
-    entityType: string;
-    events?:    Event[];
+    entityType?: string;
+    /**
+     * Array of Entity Types for which this workflow should be triggered. Supports multiple
+     * entity types in one workflow.
+     */
+    entityTypes?: string[];
+    events?:      Event[];
     /**
      * Select fields that should not trigger the workflow if only them are modified.
      */

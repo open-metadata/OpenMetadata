@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Defines a Task for a given User to approve.
+ * Sets any Entity attribute field to the configured value.
  */
-export interface UserApprovalTask {
-    branches?: string[];
-    config?:   NodeConfiguration;
+export interface SetEntityAttributeTask {
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -38,47 +37,16 @@ export interface UserApprovalTask {
 
 export interface NodeConfiguration {
     /**
-     * People/Teams assigned to the Task.
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
      */
-    assignees: Assignees;
-}
-
-/**
- * People/Teams assigned to the Task.
- */
-export interface Assignees {
+    fieldName: string;
     /**
-     * Add the Reviewers to the assignees List.
+     * Value to set for the field
      */
-    addReviewers?: boolean;
-    /**
-     * Additional assignees with optional users and teams.
-     */
-    extraAssignees?: ExtraAssignees;
-    /**
-     * List of team names to assign the task to.
-     */
-    teams?: string[];
-    /**
-     * List of user names to assign the task to.
-     */
-    users?: string[];
-}
-
-/**
- * Additional assignees with optional users and teams.
- */
-export interface ExtraAssignees {
-    /**
-     * List of additional team names to assign the task to.
-     */
-    teams?: string[];
-    /**
-     * List of additional user names to assign the task to.
-     */
-    users?: string[];
+    fieldValue: string;
 }
 
 export interface InputNamespaceMap {
     relatedEntity: string;
+    updatedBy?:    string;
 }

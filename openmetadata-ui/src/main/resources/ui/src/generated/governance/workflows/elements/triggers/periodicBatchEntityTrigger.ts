@@ -28,9 +28,15 @@ export interface TriggerConfiguration {
      */
     batchSize?: number;
     /**
-     * Entity Type for which it should be triggered.
+     * [DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for
+     * multiple types.
      */
-    entityType: string;
+    entityType?: string;
+    /**
+     * Array of Entity Types for which this workflow should be triggered. Supports multiple
+     * entity types in one workflow.
+     */
+    entityTypes?: string[];
     /**
      * Select the Search Filters to filter down the entities fetched.
      */

@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Defines a Task for a given User to approve.
+ * Sets Entity attribute field based on conditional input from previous nodes.
  */
-export interface UserApprovalTask {
-    branches?: string[];
-    config?:   NodeConfiguration;
+export interface ConditionalSetEntityAttributeTask {
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -38,47 +37,28 @@ export interface UserApprovalTask {
 
 export interface NodeConfiguration {
     /**
-     * People/Teams assigned to the Task.
+     * Name of the variable to check for true/false condition
      */
-    assignees: Assignees;
-}
-
-/**
- * People/Teams assigned to the Task.
- */
-export interface Assignees {
+    conditionVariableName?: string;
     /**
-     * Add the Reviewers to the assignees List.
+     * Value to set if condition is false
      */
-    addReviewers?: boolean;
+    falseValue: string;
     /**
-     * Additional assignees with optional users and teams.
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
      */
-    extraAssignees?: ExtraAssignees;
+    fieldName: string;
     /**
-     * List of team names to assign the task to.
+     * Value to set if condition is true
      */
-    teams?: string[];
-    /**
-     * List of user names to assign the task to.
-     */
-    users?: string[];
-}
-
-/**
- * Additional assignees with optional users and teams.
- */
-export interface ExtraAssignees {
-    /**
-     * List of additional team names to assign the task to.
-     */
-    teams?: string[];
-    /**
-     * List of additional user names to assign the task to.
-     */
-    users?: string[];
+    trueValue: string;
 }
 
 export interface InputNamespaceMap {
     relatedEntity: string;
+    /**
+     * Name of the node that provides the condition result
+     */
+    result:     string;
+    updatedBy?: string;
 }
