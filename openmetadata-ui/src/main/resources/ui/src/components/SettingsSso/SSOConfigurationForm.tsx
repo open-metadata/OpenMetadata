@@ -528,12 +528,8 @@ const SSOConfigurationFormRJSF = ({
 
     const authConfig = baseSchema.authenticationConfiguration as UISchemaObject;
 
-    // Always hide provider and providerName fields since we have separate provider selection screen
+    // Always hide provider field since we have separate provider selection screen
     authConfig.provider = {
-      'ui:widget': 'hidden',
-      'ui:hideError': true,
-    };
-    authConfig.providerName = {
       'ui:widget': 'hidden',
       'ui:hideError': true,
     };
