@@ -139,6 +139,58 @@
   border-radius: @size-sm;
   margin: @size-xs 0px @size-lg 0px;
   border: 1px solid @grey-15;
+
+  // Custom toggle styling to match design
+  .ant-switch {
+    width: 36px;
+    height: 20px;
+    border-radius: 20px;
+    background-color: @grey-300;
+    border: none;
+    position: relative;
+
+    .ant-switch-handle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: @white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      top: 2px;
+      left: 2px;
+      border: none;
+      position: absolute;
+      transition: all 0.2s ease;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    &.ant-switch-checked {
+      background-color: @primary-6;
+
+      .ant-switch-handle {
+        left: calc(100% - 18px);
+        background-color: @white;
+      }
+    }
+
+    &:hover:not(.ant-switch-disabled) {
+      background-color: @grey-400;
+
+      &.ant-switch-checked {
+        background-color: @primary-7;
+      }
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 2px rgba(21, 112, 239, 0.2);
+    }
+
+    .ant-switch-inner {
+      display: none;
+    }
+  }
 }
 .settings-sso {
   border: 1px solid @grey-15;
