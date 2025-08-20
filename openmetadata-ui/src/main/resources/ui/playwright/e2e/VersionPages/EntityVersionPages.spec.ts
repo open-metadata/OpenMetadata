@@ -210,13 +210,8 @@ test.describe('Entity Version pages', () => {
           type: 'Users',
         });
 
-        await page.waitForLoadState('networkidle');
-        const versionDetailResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/versions/') && response.status() === 200
-        );
         await page.locator('[data-testid="version-button"]').click();
-        await versionDetailResponse;
+        await page.waitForLoadState('networkidle');
 
         await expect(
           page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
@@ -266,13 +261,8 @@ test.describe('Entity Version pages', () => {
 
         await assignTier(page, 'Tier1', entity.endpoint);
 
-        await page.waitForLoadState('networkidle');
-        const versionDetailResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/versions/') && response.status() === 200
-        );
         await page.locator('[data-testid="version-button"]').click();
-        await versionDetailResponse;
+        await page.waitForLoadState('networkidle');
 
         await expect(
           page.locator('[data-testid="Tier"] > [data-testid="diff-added"]')
@@ -311,13 +301,8 @@ test.describe('Entity Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          await page.waitForLoadState('networkidle');
-          const versionDetailResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/versions/') && response.status() === 200
-          );
           await page.locator('[data-testid="version-button"]').click();
-          await versionDetailResponse;
+          await page.waitForLoadState('networkidle');
 
           // Deleted badge should be visible
           await expect(
