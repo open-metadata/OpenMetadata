@@ -35,6 +35,8 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -423,5 +425,69 @@ public class DashboardDataModelResourceTest
       assertTrue(
           column3.getTags() == null || column3.getTags().isEmpty(), "column3 should not have tags");
     }
+  }
+
+  @Test
+  void test_getColumnsForSoftDeletedDataModel_200() throws IOException {
+    // Create a dashboard data model with columns for testing soft-delete column retrieval
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      columns.add(getColumn("datamodel_col" + i, INT, null));
+    }
+
+    CreateDashboardDataModel create =
+        createRequest("test_soft_delete_datamodel_columns").withColumns(columns);
+    DashboardDataModel dataModel = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify columns can be retrieved for active data model using the columns endpoint
+    WebTarget target =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns")
+            .queryParam("include", "all");
+    DashboardDataModelResource.DataModelColumnList response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Soft delete the data model
+    deleteEntity(dataModel.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify columns can still be retrieved for soft-deleted data model using include=all
+    target =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns")
+            .queryParam("include", "all");
+    response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Also test by FQN for soft-deleted data model
+    target =
+        getResource(
+                "dashboard/datamodels/name/"
+                    + URLEncoder.encode(dataModel.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("include", "all");
+    response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Verify that without include=all parameter, it should fail for soft-deleted data model
+    WebTarget targetWithoutInclude =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns");
+    assertResponse(
+        () ->
+            TestUtils.get(
+                targetWithoutInclude,
+                DashboardDataModelResource.DataModelColumnList.class,
+                ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound("dashboardDataModel", dataModel.getId()));
+
+    // Cleanup: Hard delete the test entity to avoid affecting other tests
+    deleteEntity(dataModel.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }
