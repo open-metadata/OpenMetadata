@@ -11,14 +11,20 @@
  *  limitations under the License.
  */
 import { Card, Col, Collapse, Row, Skeleton, Typography } from 'antd';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { ServiceTypes } from 'Models';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/ic-trend-up.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.constants';
+import { SystemChartType } from '../../../enums/DataInsight.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 
@@ -26,7 +32,27 @@ function PlatformInsightsWidget({
   chartsData,
   isLoading,
 }: Readonly<PlatformInsightsWidgetProps>) {
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const { t } = useTranslation();
+
+  const { filteredCharts, filteredChartsData, containerClassName } =
+    useMemo(() => {
+      const filteredCharts = PLATFORM_INSIGHTS_CHARTS.filter((chart) =>
+        chart === SystemChartType.HealthyDataAssets
+          ? serviceCategory === ServiceCategory.DATABASE_SERVICES
+          : true
+      );
+
+      return {
+        filteredCharts,
+        filteredChartsData: chartsData.filter((chart) =>
+          filteredCharts.includes(chart.chartType)
+        ),
+        containerClassName:
+          filteredCharts.length === 4 ? 'four-chart-container' : '',
+      };
+    }, [serviceCategory, chartsData]);
 
   return (
     <Collapse
@@ -57,9 +83,11 @@ function PlatformInsightsWidget({
         key="1">
         {/* Don't remove this class name, it is used for exporting the platform insights chart */}
         <Row className="export-platform-insights-chart" gutter={16}>
-          <Col className="other-charts-container" span={24}>
+          <Col
+            className={classNames('other-charts-container', containerClassName)}
+            span={24}>
             {isLoading
-              ? PLATFORM_INSIGHTS_CHARTS.map((chartType) => (
+              ? filteredCharts.map((chartType) => (
                   <Card
                     className="widget-info-card other-charts-card"
                     key={chartType}>
@@ -70,7 +98,7 @@ function PlatformInsightsWidget({
                     />
                   </Card>
                 ))
-              : chartsData.map((chart) => {
+              : filteredChartsData.map((chart) => {
                   const icon = chart.isIncreased ? (
                     <ArrowUp color={GREEN_1} height={11} width={11} />
                   ) : (
@@ -91,13 +119,13 @@ function PlatformInsightsWidget({
                       <Typography.Text className="font-semibold text-sm">
                         {getTitleByChartType(chart.chartType)}
                       </Typography.Text>
-                      <Row align="bottom" className="m-t-xs" gutter={8}>
+                      <Row align="top" className="m-t-xs" gutter={8}>
                         <Col span={12}>
-                          <Typography.Title level={3}>
+                          <Typography.Text className="current-percentage">
                             {`${getReadableCountString(
                               chart.currentPercentage
                             )}%`}
-                          </Typography.Title>
+                          </Typography.Text>
                         </Col>
                         {!isUndefined(chart.percentageChange) && (
                           <Col
@@ -106,7 +134,7 @@ function PlatformInsightsWidget({
                             <div className="percent-change-tag">
                               {showIcon && icon}
                               <Typography.Text
-                                className="font-medium text-sm"
+                                className="font-medium text-xs"
                                 style={{
                                   color: chart.isIncreased ? GREEN_1 : RED_1,
                                 }}>

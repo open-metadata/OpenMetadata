@@ -46,7 +46,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
-  protected shouldAddDefaultFilters: boolean;
+  public shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -104,6 +104,8 @@ class ServiceBaseClass {
     await this.fillConnectionDetails(page);
 
     if (this.shouldTestConnection) {
+      expect(page.getByTestId('next-button')).not.toBeVisible();
+
       await testConnection(page);
     }
 

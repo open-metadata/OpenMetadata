@@ -314,11 +314,13 @@ elasticsearch:
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
   naturalLanguageSearch:
     enabled: false
+    embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       region: ${AWS_BEDROCK_REGION:-""}
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
+      embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
@@ -445,7 +447,13 @@ web:
 
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
-  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-    
-    
-  
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}
+
+rdf:
+  enabled: ${RDF_ENABLED:-false}
+  baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
+  storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  username: ${RDF_REMOTE_USERNAME:-"admin"}
+  password: ${RDF_REMOTE_PASSWORD:-"admin"}
+  dataset: ${RDF_DATASET:-"openmetadata"}

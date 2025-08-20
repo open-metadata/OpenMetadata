@@ -156,6 +156,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return metricDetailsClassBase.getMetricDetailPageTabsIds();
     case PageType.MlModel:
       return mlModelClassBase.getMlModelDetailPageTabsIds();
+    case PageType.Chart:
+      return chartDetailsClassBase.getChartDetailPageTabsIds();
     default:
       return [
         {
@@ -275,6 +277,8 @@ export const getCustomizableWidgetByPage = (
       return dashboardDataModelClassBase.getCommonWidgetList();
     case PageType.StoredProcedure:
       return storedProcedureClassBase.getCommonWidgetList();
+    case PageType.Chart:
+      return chartDetailsClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -313,7 +317,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return metricDetailsClassBase.getDummyData();
     case PageType.MlModel:
       return mlModelClassBase.getDummyData();
-
+    case PageType.Chart:
+      return chartDetailsClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -519,9 +524,10 @@ export const getDetailsTabWithNewLabel = (
     NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
   >,
   customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW,
+  isVersionView = false
 ) => {
-  if (!customizedTabs) {
+  if (!customizedTabs || isVersionView) {
     return defaultTabs.filter((data) => !data.isHidden);
   }
   const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
@@ -566,9 +572,10 @@ export const asyncNoop = async () => {
 export const getLayoutFromCustomizedPage = (
   pageType: PageType,
   tab: EntityTabs,
-  customizedPage?: Page | null
+  customizedPage?: Page | null,
+  isVersionView = false
 ) => {
-  if (!customizedPage) {
+  if (!customizedPage || isVersionView) {
     return getDefaultWidgetForTab(pageType, tab);
   }
 

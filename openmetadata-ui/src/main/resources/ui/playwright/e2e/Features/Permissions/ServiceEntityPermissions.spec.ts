@@ -55,15 +55,21 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+    try {
+      await adminUser.login(adminPage);
+      await use(adminPage);
+    } finally {
+      await adminPage.close();
+    }
   },
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testUser.login(page);
-    await use(page);
-    await page.close();
+    try {
+      await testUser.login(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
   },
 });
 
@@ -84,6 +90,12 @@ serviceEntities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entity', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
       await afterAction();
     });
 
