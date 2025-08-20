@@ -3,16 +3,24 @@
 from typing import List, Optional, Set, Type, Union
 from urllib.parse import urlparse
 
+from sqlalchemy.engine import make_url
+
 from metadata.data_quality.validations.models import Column, TableParameter
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.connections import get_connection
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import Dialects, PythonDialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
 from metadata.utils.importer import get_module_dir, import_from_module
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 # TODO: Refactor to avoid the circular import that makes us unable to use the BaseSpec class and the helper methods.
@@ -68,7 +76,9 @@ class BaseTableParameter:
         """
         return TableParameter(
             database_service_type=service.serviceType,
-            path=self.get_data_diff_table_path(entity.fullyQualifiedName.root),
+            path=self.get_data_diff_table_path(
+                entity.fullyQualifiedName.root, service.serviceType
+            ),
             serviceUrl=self.get_data_diff_url(
                 service,
                 entity.fullyQualifiedName.root,
@@ -85,7 +95,9 @@ class BaseTableParameter:
         )
 
     @staticmethod
-    def get_data_diff_table_path(table_fqn: str) -> str:
+    def get_data_diff_table_path(
+        table_fqn: str, service_type: DatabaseServiceType
+    ) -> str:
         """Get the data diff table path.
 
         Args:
@@ -95,6 +107,17 @@ class BaseTableParameter:
             str
         """
         _, _, schema, table = fqn.split(table_fqn)
+        try:
+            dialect = PythonDialects[service_type.name].value
+            url = make_url(f"{dialect}://")
+            dialect_instance = url.get_dialect()()
+
+            table = dialect_instance.denormalize_name(name=table)
+            schema = dialect_instance.denormalize_name(name=schema)
+        except Exception as e:
+            logger.debug(
+                f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
+            )
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")

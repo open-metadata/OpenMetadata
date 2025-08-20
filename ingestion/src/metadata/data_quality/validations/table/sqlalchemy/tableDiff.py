@@ -192,6 +192,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result
         except UnsupportedDialectError as e:
+            logger.warning(f"[Data Diff]: Unsupported dialect: {e}")
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
