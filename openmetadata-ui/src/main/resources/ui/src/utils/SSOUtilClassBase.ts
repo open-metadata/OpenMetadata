@@ -20,6 +20,9 @@ class SSOUtilClassBase {
   public getAccessTokenCardComponent(): ComponentType<any> | null {
     return null;
   }
+  public getSCIMAccessTokenCardComponent(): ComponentType<any> | null {
+    return null;
+  }
 }
 
 const ssoUtilClassBase = new SSOUtilClassBase();

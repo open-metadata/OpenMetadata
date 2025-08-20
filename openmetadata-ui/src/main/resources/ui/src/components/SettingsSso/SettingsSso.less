@@ -14,8 +14,8 @@
 .scim-token-card {
   background-color: @white;
   padding: @size-lg;
-  border-radius: @size-md;
-  border: 1px solid @grey-200;
+  border-radius: @size-sm;
+  border: 1px solid @grey-15;
   .ant-card-body {
     padding: 0px;
   }
@@ -133,19 +133,25 @@
     width: 170px;
   }
 }
-.card-container {
+.enable-sso-card-container {
   background-color: @white;
+  padding: @size-md;
+  border-radius: @size-sm;
+  margin: @size-xs 0px @size-lg 0px;
+  border: 1px solid @grey-15;
+}
+.settings-sso {
+  border: 1px solid @grey-15;
+  border-radius: @size-sm;
   padding: @size-lg;
-  border-radius: @size-md;
-  border: 1px solid @grey-200;
+  height: calc(100vh - (@om-navbar-height + 40px));
 }
 
 .sso-provider-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: @size-lg;
-  padding: @size-md 0;
+  margin-bottom: @size-lg;
 
   .provider-icon-container {
     display: flex;

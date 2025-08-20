@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs, Typography } from 'antd';
+import { Switch, Tabs, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Auth0Icon from '../../assets/img/icon-auth0.png';
@@ -38,6 +38,7 @@ const SettingsSso = () => {
   const [currentProvider, setCurrentProvider] = useState<string>('');
   const [showProviderSelector, setShowProviderSelector] =
     useState<boolean>(false);
+  const [ssoEnabled, setSsoEnabled] = useState<boolean>(true);
 
   const getProviderDisplayName = (provider: string) => {
     return provider === 'azure'
@@ -104,11 +105,16 @@ const SettingsSso = () => {
         ) {
           setHasExistingConfig(true);
           setCurrentProvider(config.authenticationConfiguration.provider);
+          setSsoEnabled(true);
 
-          // Set default tab based on provider - Overview only for Azure and Okta
+          // Set default tab based on provider - Overview for Google, Azure and Okta
           const provider =
             config.authenticationConfiguration.provider.toLowerCase();
-          if (provider === 'azure' || provider === 'okta') {
+          if (
+            provider === 'azure' ||
+            provider === 'okta' ||
+            provider === 'google'
+          ) {
             setActiveTab('overview');
           } else {
             setActiveTab('configure');
@@ -152,6 +158,12 @@ const SettingsSso = () => {
 
     // Clear existing configuration state since we're changing providers
     setHasExistingConfig(false);
+  }, []);
+
+  const handleSSOToggle = useCallback((checked: boolean) => {
+    setSsoEnabled(checked);
+    // Here you would typically make an API call to update the SSO configuration
+    // For now, we'll just update the local state
   }, []);
 
   // If showing provider selector
@@ -222,18 +234,51 @@ const SettingsSso = () => {
   // If existing configuration, show tabs
   const tabItems = [];
 
-  // Overview tab only for Azure and Okta providers
+  // Overview tab for Google, Azure and Okta providers
   const providerLower = currentProvider.toLowerCase();
-  if (providerLower === 'azure' || providerLower === 'okta') {
+  if (
+    providerLower === 'azure' ||
+    providerLower === 'okta' ||
+    providerLower === 'google'
+  ) {
+    const renderOverviewContent = () => {
+      // Get the SCIM access token card component
+      const SCIMAccessTokenCard =
+        ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
+
+      return (
+        <div>
+          {/* Enable SSO section */}
+          <div className="enable-sso-card-container">
+            <div className="flex justify-between items-center">
+              <div>
+                <Typography.Title className="m-b-xs" level={5}>
+                  {t('label.enable-sso')}
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  {t('message.allow-user-to-login-via-sso')}
+                </Typography.Text>
+              </div>
+              <Switch
+                checked={ssoEnabled}
+                size="default"
+                onChange={handleSSOToggle}
+              />
+            </div>
+          </div>
+
+          {/* SCIM Provisioning section */}
+
+          {/* SCIM Access Token Card - only show if available */}
+          {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
+        </div>
+      );
+    };
+
     tabItems.push({
       key: 'overview',
       label: t('label.overview'),
-      children: (
-        <div className="p-md">
-          {/* Overview content for Azure/Okta - SCIM settings, etc. */}
-          {/* This should contain the SCIM-related content shown in the screenshots */}
-        </div>
-      ),
+      children: renderOverviewContent(),
     });
   }
 
@@ -248,15 +293,21 @@ const SettingsSso = () => {
     ),
   });
 
-  // Group Mapping tab only for Azure and Okta providers
-  if (providerLower === 'azure' || providerLower === 'okta') {
+  // Group Mapping tab for Google, Azure and Okta providers
+  if (
+    providerLower === 'azure' ||
+    providerLower === 'okta' ||
+    providerLower === 'google'
+  ) {
     tabItems.push({
       key: 'group-mapping',
       label: t('label.group-mapping'),
       children: (
         <div className="p-md">
-          {/* Group mapping content for Azure/Okta - SCIM-related group mappings */}
-          {/* This should contain the group mapping functionality */}
+          <div className="card-container">
+            {/* Group mapping content for Google/Azure/Okta - SCIM-related group mappings */}
+            {/* This should contain the group mapping functionality */}
+          </div>
         </div>
       ),
     });
@@ -266,30 +317,29 @@ const SettingsSso = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.sso')}>
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {renderAccessTokenCard()}
 
-      {/* Provider Header - Outside tabs */}
-      {hasExistingConfig && currentProvider && (
-        <div className="sso-provider-header">
-          <div className="flex align-items-center gap-3">
-            <div className="provider-icon-container">
-              {getProviderIcon(currentProvider) && (
-                <img
-                  alt={getProviderDisplayName(currentProvider)}
-                  height="32"
-                  src={getProviderIcon(currentProvider)}
-                  width="32"
-                />
-              )}
+      <div className="settings-sso" style={{ background: 'white' }}>
+        {/* Provider Header - Outside tabs */}
+        {!hasExistingConfig && !currentProvider && (
+          <div className="sso-provider-header">
+            <div className="flex align-items-center gap-3">
+              <div className="provider-icon-container">
+                {getProviderIcon(currentProvider) && (
+                  <img
+                    alt={getProviderDisplayName(currentProvider)}
+                    height="32"
+                    src={getProviderIcon(currentProvider)}
+                    width="32"
+                  />
+                )}
+              </div>
+              <Typography.Title className="m-0" level={4}>
+                {getProviderDisplayName(currentProvider)}
+              </Typography.Title>
             </div>
-            <Typography.Title className="m-0" level={4}>
-              {getProviderDisplayName(currentProvider)}
-            </Typography.Title>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="m-t-lg">
         <Tabs
           activeKey={activeTab}
           items={tabItems}
