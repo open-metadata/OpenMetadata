@@ -59,7 +59,12 @@ def parse_airflow_config(
         timeout=int(conf.get(LINEAGE, "timeout", fallback=0)) or None,
         retry=int(conf.get(LINEAGE, "retry", fallback=0)) or None,
         retry_wait=int(conf.get(LINEAGE, "retry_wait", fallback=0)) or None,
-        retry_codes=[int(code) for code in (conf.get(LINEAGE, "retry_codes", fallback="") or "").split(",") if code.strip()] or None,  # input e.g. 503,504
+        retry_codes=[
+            int(code)
+            for code in (conf.get(LINEAGE, "retry_codes", fallback="") or "").split(",")
+            if code.strip()
+        ]
+        or None,  # input e.g. 503,504
         metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
