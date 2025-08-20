@@ -145,12 +145,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps
       if (isAuthConfigRoot) {
         // Root authentication configuration grouping
         const basicConfigFields = visibleProperties.filter((prop) =>
-          [
-            'provider',
-            'providerName',
-            'clientType',
-            'enableSelfSignup',
-          ].includes(prop.name)
+          ['provider', 'providerName'].includes(prop.name)
         );
         if (basicConfigFields.length > 0) {
           groups.push({
@@ -161,7 +156,12 @@ export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps
         }
 
         const clientFields = visibleProperties.filter((prop) =>
-          ['clientId', 'callbackUrl'].includes(prop.name)
+          [
+            'clientType',
+            'enableSelfSignup',
+            'clientId',
+            'callbackUrl',
+          ].includes(prop.name)
         );
         if (clientFields.length > 0) {
           groups.push({
