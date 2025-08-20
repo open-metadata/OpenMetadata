@@ -441,7 +441,7 @@ def _traverse_ds(
         else:
             logger.info(
                 f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
-                f"We still have to implement `calculatedViewAttributes`."
+                f"This might be a constant or derived column."
             )
 
     return ds_origin_list
@@ -486,10 +486,9 @@ def _traverse_ds_with_columns(
                     datasource_map=datasource_map,
                 )
         else:
-            # Current column not in mapping. This can happen for calculated view attributes
             logger.info(
                 f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
-                f"We still have to implement `calculatedViewAttributes`."
+                f"This might be a constant or derived column."
             )
 
     return ds_origin_list
@@ -812,11 +811,13 @@ def _build_mappings(calculation_view: ET.Element, ns: dict) -> List[DataSourceMa
     """
 
     input_mappings = _build_input_mappings(calculation_view=calculation_view, ns=ns)
-    # calculated_view_attrs = _build_cv_attributes(
-    #     calculation_view=calculation_view, ns=ns, input_mappings=input_mappings
-    # )
+    calculated_view_attrs = _build_cv_attributes(
+        calculation_view=calculation_view, ns=ns, input_mappings=input_mappings
+    )
 
-    return input_mappings
+    # Combine input mappings and calculated view attributes
+    all_mappings = input_mappings + calculated_view_attrs
+    return all_mappings
 
 
 def _build_input_mappings(
@@ -875,6 +876,8 @@ def _build_cv_attributes(
     if view_attrs is None:
         return mappings
 
+    cv_id = calculation_view.get(CDATAKeys.ID.value)
+
     for view_attr in view_attrs.findall(CDATAKeys.CALCULATION_VIEW_ATTRIBUTE.value, ns):
         formula = (
             view_attr.find(CDATAKeys.FORMULA.value, ns).text
@@ -886,25 +889,27 @@ def _build_cv_attributes(
             continue
 
         involved_columns = FORMULA_PATTERN.findall(formula)
+        # For calculated columns, all source columns should come from the same calculation view
+        # where the formula is defined
+        parents = []
         for col in involved_columns:
-            # Find the mapping for the involved column
-            mapping = next(
-                (mapping for mapping in input_mappings if mapping.target == col), None
-            )
-            if not mapping:
-                logger.debug(
-                    f"Can't find mapping for column [{col}] in [{input_mappings}]"
+            # The source columns for the formula are in the same calculation view
+            parents.append(
+                ParentSource(
+                    source=col,
+                    parent=cv_id,  # The parent is the current calculation view
                 )
-                continue
+            )
 
+        if parents:
             mappings.append(
                 DataSourceMapping(
                     target=view_attr.get(CDATAKeys.ID.value),
-                    parents=mapping.parents,
+                    parents=parents,
                 )
             )
 
-    return _group_mappings(mappings)
+    return mappings
 
 
 def _group_mappings(mappings: List[DataSourceMapping]) -> List[DataSourceMapping]:

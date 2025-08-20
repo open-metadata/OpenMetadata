@@ -152,7 +152,8 @@ def test_parse_cv() -> None:
 
     assert parsed_lineage
     # Even though we have 9 unique columns, some come from 2 tables, so we have two mappings
-    assert len(parsed_lineage.mappings) == 13
+    # + 2 for the USAGE_PCT formula (SEATSOCC_ALL and SEATSMAX_ALL)
+    assert len(parsed_lineage.mappings) == 15
     assert parsed_lineage.sources == {ds_sbook, ds_sflight}
 
     # We can validate that MANDT comes from 2 sources
@@ -430,3 +431,127 @@ def test_analytic_view_formula_column_source_mapping() -> None:
         # CUSTOMER_ID_1 maps from CUSTOMER_ID in CUSTOMER_DATA table
         expected_source = "CUSTOMER_ID" if col_name == "CUSTOMER_ID_1" else col_name
         assert col_mappings[0].sources == [expected_source]
+
+
+def test_formula_columns_reference_correct_layer():
+    """Test that formula columns reference the correct calculation view layer"""
+    import xml.etree.ElementTree as ET
+
+    from metadata.ingestion.source.database.saphana.cdata_parser import (
+        _parse_cv_data_sources,
+    )
+
+    # Load the complex star join view XML
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        xml = file.read()
+
+    ns = {
+        "Calculation": "http://www.sap.com/ndb/BiModelCalculation.ecore",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    }
+
+    tree = ET.fromstring(xml)
+    datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
+
+    # Test Join_1 calculated attributes
+    join_1 = datasource_map.get("Join_1")
+    assert join_1 is not None
+    assert join_1.mapping is not None
+
+    # TOTAL_JOIN_1 should reference PRICE and QUANTITY from Join_1 itself
+    total_join_1 = join_1.mapping.get("TOTAL_JOIN_1")
+    assert total_join_1 is not None
+    assert len(total_join_1.parents) == 2
+
+    # Check that both source columns come from Join_1
+    for parent in total_join_1.parents:
+        assert parent.parent == "Join_1"
+
+    # Check the specific columns
+    source_columns = {parent.source for parent in total_join_1.parents}
+    assert source_columns == {"PRICE", "QUANTITY"}
+
+    # TOTAL2_JOIN_1 should reference AMOUNT and PRODUCT from Join_1
+    total2_join_1 = join_1.mapping.get("TOTAL2_JOIN_1")
+    assert total2_join_1 is not None
+    assert len(total2_join_1.parents) == 2
+
+    for parent in total2_join_1.parents:
+        assert parent.parent == "Join_1"
+
+    source_columns = {parent.source for parent in total2_join_1.parents}
+    assert source_columns == {"AMOUNT", "PRODUCT"}
+
+
+def test_projection_formula_columns():
+    """Test that projection view formula columns reference the correct layer"""
+    import xml.etree.ElementTree as ET
+
+    from metadata.ingestion.source.database.saphana.cdata_parser import (
+        _parse_cv_data_sources,
+    )
+
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        xml = file.read()
+
+    ns = {
+        "Calculation": "http://www.sap.com/ndb/BiModelCalculation.ecore",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    }
+
+    tree = ET.fromstring(xml)
+    datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
+
+    # Test Projection_1 calculated attributes
+    proj_1 = datasource_map.get("Projection_1")
+    assert proj_1 is not None
+    assert proj_1.mapping is not None
+
+    total_proj_1 = proj_1.mapping.get("TOTAL_PROJ_1")
+    assert total_proj_1 is not None
+    assert len(total_proj_1.parents) == 2
+
+    for parent in total_proj_1.parents:
+        assert parent.parent == "Projection_1"
+
+    source_columns = {parent.source for parent in total_proj_1.parents}
+    assert source_columns == {"PRICE", "QUANTITY"}
+
+    # Test Projection_3 with string concatenation formula
+    proj_3 = datasource_map.get("Projection_3")
+    assert proj_3 is not None
+    assert proj_3.mapping is not None
+
+    total_proj_3 = proj_3.mapping.get("TOTAL_PROJ_3")
+    assert total_proj_3 is not None
+    assert len(total_proj_3.parents) == 2
+
+    for parent in total_proj_3.parents:
+        assert parent.parent == "Projection_3"
+
+    source_columns = {parent.source for parent in total_proj_3.parents}
+    assert source_columns == {"AMOUNT", "PRODUCT"}
+
+
+def test_formula_columns_in_final_lineage():
+    """Test that formula columns are correctly resolved in the final lineage"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed = parse_fn(cdata)
+
+    # Find TOTAL_JOIN_1 mappings
+    total_join_1_mappings = [m for m in parsed.mappings if m.target == "TOTAL_JOIN_1"]
+
+    # Should have mappings from the ultimate source tables
+    assert len(total_join_1_mappings) > 0
+
+    # Check that we have mappings from actual source tables (not logical views)
+    source_types = {m.data_source.source_type for m in total_join_1_mappings}
+    assert ViewType.CALCULATION_VIEW in source_types
