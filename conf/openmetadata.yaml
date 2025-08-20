@@ -241,6 +241,16 @@ objectStorage:
   provider: NOOP
   maxFileSize: 5242880
 
+cacheConfiguration:
+  enabled: true
+  provider: ELASTICACHE_CLUSTER
+  host: rediss://master.saas-load-test.arnzmz.euc1.cache.amazonaws.com
+  port: 6379
+  ttlSeconds: 3600
+  authType: NONE
+  awsConfig:
+    region: eu-central-1
+
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
