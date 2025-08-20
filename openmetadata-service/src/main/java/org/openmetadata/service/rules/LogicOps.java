@@ -24,8 +24,7 @@ public class LogicOps {
     IS_REVIEWER("isReviewer"),
     IS_OWNER("isOwner"),
     IS_UPDATED_BEFORE("isUpdatedBefore"),
-    IS_UPDATED_AFTER("isUpdatedAfter"),
-    FIELD_COMPLETENESS("fieldCompleteness");
+    IS_UPDATED_AFTER("isUpdatedAfter");
 
     public final String key;
 
@@ -112,22 +111,6 @@ public class LogicOps {
               JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
             return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
-          }
-        });
-
-    // {"fieldCompleteness": ["field1", "field2", "field3"]} - Returns % of non-empty fields
-    jsonLogic.addOperation(
-        new JsonLogicExpression() {
-          @Override
-          public String key() {
-            return CustomLogicOps.FIELD_COMPLETENESS.key;
-          }
-
-          @Override
-          public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
-              throws JsonLogicEvaluationException {
-            return JsonLogicUtils.evaluateFieldCompleteness(evaluator, arguments, data);
           }
         });
   }

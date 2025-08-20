@@ -17,6 +17,7 @@
     "createAndRunIngestionPipelineTask",
     "runAppTask",
     "rollbackEntityTask",
+    "dataCompletenessTask",
     "parallelGateway"
   ]
 }

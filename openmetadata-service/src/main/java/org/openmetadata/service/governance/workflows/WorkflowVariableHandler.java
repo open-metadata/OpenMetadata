@@ -28,8 +28,20 @@ public class WorkflowVariableHandler {
   public Object getNamespacedVariable(String namespace, String varName) {
     String namespacedVarName = getNamespacedVariableName(namespace, varName);
     if (namespacedVarName != null) {
-      return varScope.getVariable(namespacedVarName);
+      Object value = varScope.getVariable(namespacedVarName);
+      LOG.debug(
+          "[WorkflowVariable] GET: namespace='{}' varName='{}' namespacedVar='{}' value='{}' type='{}'",
+          namespace,
+          varName,
+          namespacedVarName,
+          value,
+          value != null ? value.getClass().getSimpleName() : "null");
+      return value;
     } else {
+      LOG.debug(
+          "[WorkflowVariable] GET: namespace='{}' varName='{}' returned null (no namespace)",
+          namespace,
+          varName);
       return null;
     }
   }
@@ -43,8 +55,15 @@ public class WorkflowVariableHandler {
     String namespacedVarName = getNamespacedVariableName(namespace, varName);
     if (namespacedVarName != null) {
       varScope.setVariable(namespacedVarName, varValue);
-      LOG.debug(String.format("%s variable set to %s", namespacedVarName, varValue));
+      LOG.debug(
+          "[WorkflowVariable] SET: namespace='{}' varName='{}' namespacedVar='{}' value='{}' type='{}'",
+          namespace,
+          varName,
+          namespacedVarName,
+          varValue,
+          varValue != null ? varValue.getClass().getSimpleName() : "null");
     } else {
+      LOG.error("[WorkflowVariable] ERROR: Namespace is null when setting variable '{}'", varName);
       throw new RuntimeException("Namespace can't be null when setting a namespaced variable.");
     }
   }
@@ -54,20 +73,43 @@ public class WorkflowVariableHandler {
   }
 
   private String getNodeNamespace() {
+    String namespace;
     if (varScope instanceof DelegateExecution) {
-      return Optional.ofNullable(((DelegateExecution) varScope).getParent().getCurrentActivityId())
-          .orElseGet(() -> ((DelegateExecution) varScope).getCurrentActivityId().split("\\.")[0]);
+      DelegateExecution execution = (DelegateExecution) varScope;
+      namespace =
+          Optional.ofNullable(
+                  execution.getParent() != null
+                      ? execution.getParent().getCurrentActivityId()
+                      : null)
+              .orElseGet(() -> execution.getCurrentActivityId().split("\\.")[0]);
+      LOG.debug(
+          "[WorkflowVariable] getNodeNamespace: DelegateExecution activityId='{}' namespace='{}'",
+          execution.getCurrentActivityId(),
+          namespace);
     } else if (varScope instanceof DelegateTask) {
-      return WorkflowHandler.getInstance()
-          .getParentActivityId(((DelegateTask) varScope).getExecutionId());
+      DelegateTask task = (DelegateTask) varScope;
+      namespace = WorkflowHandler.getInstance().getParentActivityId(task.getExecutionId());
+      LOG.debug(
+          "[WorkflowVariable] getNodeNamespace: DelegateTask executionId='{}' namespace='{}'",
+          task.getExecutionId(),
+          namespace);
     } else {
+      LOG.error(
+          "[WorkflowVariable] ERROR: Invalid varScope type: {}",
+          varScope != null ? varScope.getClass().getName() : "null");
       throw new RuntimeException(
           "varScope must be either an instance of 'DelegateExecution' or 'DelegateTask'.");
     }
+    return namespace;
   }
 
   public void setNodeVariable(String varName, Object varValue) {
     String namespace = getNodeNamespace();
+    LOG.debug(
+        "[WorkflowVariable] setNodeVariable: varName='{}' value='{}' using namespace='{}'",
+        varName,
+        varValue,
+        namespace);
     setNamespacedVariable(namespace, varName, varValue);
   }
 

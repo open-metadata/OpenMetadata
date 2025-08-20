@@ -3,7 +3,6 @@ package org.openmetadata.service.rules;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -111,47 +110,5 @@ public class JsonLogicUtils {
 
     long timestamp = ((Number) timestampObj).longValue();
     return updatedAt > timestamp;
-  }
-
-  public static @NotNull Object evaluateFieldCompleteness(
-      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
-      throws JsonLogicEvaluationException {
-    if (arguments.isEmpty()) return 0.0;
-
-    // Get the list of field names to check
-    List<String> fields = new ArrayList<>();
-    for (int i = 0; i < arguments.size(); i++) {
-      Object arg = evaluator.evaluate(arguments.get(i), data);
-      if (arg instanceof String) {
-        fields.add((String) arg);
-      }
-    }
-
-    if (fields.isEmpty()) return 0.0;
-
-    // Check if data is a Map (entity)
-    if (!(data instanceof Map<?, ?> entityMap)) return 0.0;
-
-    // Count non-empty fields
-    long filledCount = 0;
-    for (String field : fields) {
-      Object value = entityMap.get(field);
-      if (value != null) {
-        // Check if the value is non-empty based on its type
-        if (value instanceof String && !((String) value).trim().isEmpty()) {
-          filledCount++;
-        } else if (value instanceof List && !((List<?>) value).isEmpty()) {
-          filledCount++;
-        } else if (value instanceof Map && !((Map<?, ?>) value).isEmpty()) {
-          filledCount++;
-        } else if (!(value instanceof String || value instanceof List || value instanceof Map)) {
-          // For other types (numbers, booleans), non-null means filled
-          filledCount++;
-        }
-      }
-    }
-
-    // Return percentage as a number (0-100)
-    return (filledCount * 100.0) / fields.size();
   }
 }

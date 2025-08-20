@@ -222,8 +222,29 @@ public class WorkflowHandler {
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    LOG.debug("[GovernanceWorkflows] '{}' triggered with '{}'", processDefinitionKey, variables);
-    return runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
+    LOG.info(
+        "[WorkflowTrigger] START: processKey='{}' businessKey='{}' variables={}",
+        processDefinitionKey,
+        businessKey,
+        variables);
+    try {
+      ProcessInstance instance =
+          runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
+      LOG.info(
+          "[WorkflowTrigger] SUCCESS: processKey='{}' instanceId='{}' businessKey='{}'",
+          processDefinitionKey,
+          instance.getId(),
+          businessKey);
+      return instance;
+    } catch (Exception e) {
+      LOG.error(
+          "[WorkflowTrigger] FAILED: processKey='{}' businessKey='{}' error='{}'",
+          processDefinitionKey,
+          businessKey,
+          e.getMessage(),
+          e);
+      throw e;
+    }
   }
 
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
@@ -300,19 +321,36 @@ public class WorkflowHandler {
 
   public Map<String, Object> transformToNodeVariables(
       UUID customTaskId, Map<String, Object> variables) {
+    LOG.debug(
+        "[WorkflowVariable] transformToNodeVariables: customTaskId='{}' inputVars={}",
+        customTaskId,
+        variables);
     Map<String, Object> namespacedVariables = null;
     Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
 
     if (oTask.isPresent()) {
       Task task = oTask.get();
       String namespace = getParentActivityId(task.getExecutionId());
+      LOG.debug(
+          "[WorkflowVariable] Found task namespace: taskId='{}' executionId='{}' namespace='{}'",
+          task.getId(),
+          task.getExecutionId(),
+          namespace);
       namespacedVariables = new HashMap<>();
       for (Map.Entry<String, Object> entry : variables.entrySet()) {
-        namespacedVariables.put(
-            getNamespacedVariableName(namespace, entry.getKey()), entry.getValue());
+        String namespacedVar = getNamespacedVariableName(namespace, entry.getKey());
+        namespacedVariables.put(namespacedVar, entry.getValue());
+        LOG.debug(
+            "[WorkflowVariable] Transformed: '{}' -> '{}' = '{}'",
+            entry.getKey(),
+            namespacedVar,
+            entry.getValue());
       }
+      LOG.debug(
+          "[WorkflowVariable] transformToNodeVariables complete: outputVars={}",
+          namespacedVariables);
     } else {
-      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+      LOG.warn("[WorkflowVariable] Task not found for customTaskId='{}'", customTaskId);
     }
     return namespacedVariables;
   }
@@ -323,19 +361,43 @@ public class WorkflowHandler {
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
+    LOG.info("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
       Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
         Task task = oTask.get();
+        LOG.info(
+            "[WorkflowTask] Found task: flowableTaskId='{}' processInstanceId='{}' name='{}'",
+            task.getId(),
+            task.getProcessInstanceId(),
+            task.getName());
         Optional.ofNullable(variables)
             .ifPresentOrElse(
-                variablesValue -> taskService.complete(task.getId(), variablesValue),
-                () -> taskService.complete(task.getId()));
+                variablesValue -> {
+                  LOG.info(
+                      "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
+                      task.getId(),
+                      variablesValue);
+                  taskService.complete(task.getId(), variablesValue);
+                },
+                () -> {
+                  LOG.info(
+                      "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
+                  taskService.complete(task.getId());
+                });
+        LOG.info("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
       } else {
-        LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+        LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
       }
     } catch (FlowableObjectNotFoundException ex) {
-      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+      LOG.error(
+          "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
+          customTaskId,
+          ex.getMessage());
+    } catch (Exception e) {
+      LOG.error(
+          "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
+      throw e;
     }
   }
 

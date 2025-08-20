@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
@@ -22,6 +23,7 @@ import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 
+@Slf4j
 @Getter
 public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
@@ -43,14 +45,27 @@ public class Workflow {
   public static final String GLOBAL_NAMESPACE = "global";
 
   public Workflow(WorkflowDefinition workflowDefinition) {
+    LOG.info(
+        "[WorkflowBuild] START: Creating workflow '{}' with {} nodes, {} edges",
+        workflowDefinition.getFullyQualifiedName(),
+        workflowDefinition.getNodes() != null ? workflowDefinition.getNodes().size() : 0,
+        workflowDefinition.getEdges() != null ? workflowDefinition.getEdges().size() : 0);
+
     // Build Trigger
+    LOG.debug(
+        "[WorkflowBuild] Creating trigger: type='{}'",
+        workflowDefinition.getTrigger() != null
+            ? workflowDefinition.getTrigger().getType()
+            : "none");
     this.triggerModel = new BpmnModel();
     triggerModel.setTargetNamespace("");
     TriggerInterface trigger = TriggerFactory.createTrigger(workflowDefinition);
     trigger.addToWorkflow(triggerModel);
     this.triggerWorkflowName = trigger.getTriggerWorkflowId();
+    LOG.debug("[WorkflowBuild] Trigger created: id='{}'", triggerWorkflowName);
 
     // Build Main Workflow
+    LOG.debug("[WorkflowBuild] Validating workflow graph");
     new WorkflowGraph(workflowDefinition).validate();
 
     this.mainModel = new BpmnModel();
@@ -67,30 +82,55 @@ public class Workflow {
 
     // Add Nodes
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
+      LOG.debug(
+          "[WorkflowBuild] Adding node: name='{}' type='{}' outputs={}",
+          nodeDefinitionObj.getName(),
+          nodeDefinitionObj.getType(),
+          nodeDefinitionObj.getOutput());
       NodeInterface node =
           NodeFactory.createNode(nodeDefinitionObj, workflowDefinition.getConfig());
       node.addToWorkflow(mainModel, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())
-          .ifPresent(runtimeExceptionBoundaryEvents::add);
+          .ifPresent(
+              event -> {
+                LOG.debug(
+                    "[WorkflowBuild] Added boundary event for node '{}'",
+                    nodeDefinitionObj.getName());
+                runtimeExceptionBoundaryEvents.add(event);
+              });
     }
 
     // Add Edges
     for (EdgeDefinition edgeDefinition : workflowDefinition.getEdges()) {
+      LOG.debug(
+          "[WorkflowBuild] Processing edge: from='{}' to='{}' condition='{}'",
+          edgeDefinition.getFrom(),
+          edgeDefinition.getTo(),
+          edgeDefinition.getCondition());
       Edge edge = new Edge(edgeDefinition);
       edge.addToWorkflow(mainModel, process);
     }
 
     // Configure Exception Flow
     configureRuntimeExceptionFlow(process, runtimeExceptionBoundaryEvents);
+
+    LOG.info(
+        "[WorkflowBuild] SUCCESS: Workflow '{}' built with trigger '{}'",
+        mainWorkflowName,
+        triggerWorkflowName);
   }
 
   private void configureRuntimeExceptionFlow(
       Process process, List<BoundaryEvent> runtimeExceptionBoundaryEvents) {
     EndEvent errorEndEvent = new EndEvent("Error");
     process.addFlowElement(errorEndEvent.getEndEvent());
+    LOG.debug(
+        "[WorkflowBuild] Configuring error flow for {} boundary events",
+        runtimeExceptionBoundaryEvents.size());
     for (BoundaryEvent event : runtimeExceptionBoundaryEvents) {
       process.addFlowElement(new SequenceFlow(event.getId(), errorEndEvent.getEndEvent().getId()));
+      LOG.debug("[WorkflowBuild] Added error flow: boundaryEvent='{}' -> errorEnd", event.getId());
     }
   }
 
