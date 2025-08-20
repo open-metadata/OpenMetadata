@@ -2,166 +2,165 @@ package org.openmetadata.service.governance.workflows;
 
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
+import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
+/**
+ * WorkflowTransactionManager provides atomic operations for workflow definitions
+ * across both OpenMetadata and Flowable databases.
+ *
+ * IMPORTANT DESIGN PRINCIPLES:
+ * 1. This should ONLY be used at the API/Resource layer, NOT in repository methods
+ * 2. This should NEVER be called during seed data initialization
+ * 3. This manages the TOP-LEVEL transaction for workflow operations
+ *
+ * The problem we're solving:
+ * - We need atomic operations across TWO databases (OpenMetadata and Flowable)
+ * - If either operation fails, both should rollback
+ * - But we must NOT interfere with seed data loading which has its own transaction management
+ */
 @Slf4j
 public class WorkflowTransactionManager {
 
   /**
-   * Atomically stores a workflow definition in OpenMetadata and deploys it to Flowable.
-   * If either operation fails, both are rolled back.
-   *
-   * @param entity The workflow definition to store and deploy
-   * @param update Whether this is an update operation
-   * @return The stored and deployed workflow definition
+   * Create a workflow definition with atomic transaction across both databases.
+   * This method should be called from WorkflowDefinitionResource, NOT from repository.
    */
-  public WorkflowDefinition storeAndDeployWorkflowDefinition(
-      WorkflowDefinition entity, boolean update) {
-
+  public static WorkflowDefinition createWorkflowDefinition(WorkflowDefinition entity) {
+    // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // First validate the workflow definition with Flowable before storing
+    // Validate the workflow BEFORE starting any transaction
     Workflow workflow = new Workflow(entity);
-    BpmnXMLConverter converter = new BpmnXMLConverter();
-    String mainBpmnXml = new String(converter.convertToXML(workflow.getMainModel()));
-    String triggerBpmnXml = new String(converter.convertToXML(workflow.getTriggerModel()));
+    validateWorkflow(workflow);
 
-    if (!WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
-        || !WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml)) {
-      throw new UnhandledServerException("Invalid workflow definition: Failed Flowable validation");
-    }
+    // Start a NEW transaction at the API level
+    // This is the TOP-LEVEL transaction for this operation
+    Jdbi jdbi = Entity.getJdbi();
 
-    // Use transaction to store the entity
-    Entity.getJdbi()
-        .useTransaction(
-            TransactionIsolationLevel.READ_COMMITTED,
-            handle -> {
-              try {
-                // Store the entity in OpenMetadata DB using the parent storeEntity method
-                repository.storeEntityInternal(entity, update);
+    return jdbi.inTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          try {
+            // Within this transaction, call the repository methods
+            // The repository's postCreate will deploy to Flowable
+            // Both operations happen within THIS transaction
+            WorkflowDefinition created = repository.create(null, entity);
 
-                // Delete any existing workflow with the same name for clean replacement
-                try {
-                  WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
-                } catch (Exception e) {
-                  // Ignore if doesn't exist
-                }
+            LOG.info("Successfully created workflow definition: {}", entity.getName());
+            return created;
 
-                // Deploy to Flowable
-                WorkflowHandler.getInstance().deploy(workflow);
-
-                LOG.info(
-                    "Successfully stored and deployed workflow definition: {}", entity.getName());
-              } catch (Exception e) {
-                LOG.error(
-                    "Failed to store and deploy workflow definition: {}", entity.getName(), e);
-                // Rollback will happen automatically due to exception in transaction
-                throw new UnhandledServerException(
-                    "Failed to store and deploy workflow definition: " + e.getMessage());
-              }
-            });
-
-    return entity;
+          } catch (Exception e) {
+            LOG.error("Failed to create workflow definition: {}", entity.getName(), e);
+            // The transaction will rollback automatically
+            throw new UnhandledServerException(
+                "Failed to create workflow definition: " + e.getMessage(), e);
+          }
+        });
   }
 
   /**
-   * Atomically updates a workflow definition in OpenMetadata and redeploys it to Flowable.
-   * If either operation fails, both are rolled back.
-   *
-   * @param original The original workflow definition
-   * @param updated The updated workflow definition
-   * @return The updated and redeployed workflow definition
+   * Update a workflow definition with atomic transaction across both databases.
+   * This method should be called from WorkflowDefinitionResource, NOT from repository.
    */
-  public WorkflowDefinition updateAndRedeployWorkflowDefinition(
-      WorkflowDefinition original, WorkflowDefinition updated) {
+  public static WorkflowDefinition updateWorkflowDefinition(
+      WorkflowDefinition original, WorkflowDefinition updated, String updatedBy) {
 
+    // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // First validate the updated workflow definition
+    // Validate the updated workflow BEFORE starting transaction
     Workflow updatedWorkflow = new Workflow(updated);
-    BpmnXMLConverter converter = new BpmnXMLConverter();
-    String mainBpmnXml = new String(converter.convertToXML(updatedWorkflow.getMainModel()));
-    String triggerBpmnXml = new String(converter.convertToXML(updatedWorkflow.getTriggerModel()));
+    validateWorkflow(updatedWorkflow);
 
-    if (!WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
-        || !WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml)) {
-      throw new UnhandledServerException(
-          "Invalid updated workflow definition: Failed Flowable validation");
-    }
+    // Start a NEW transaction at the API level
+    Jdbi jdbi = Entity.getJdbi();
 
-    // Use transaction to update the entity
-    Entity.getJdbi()
-        .useTransaction(
-            TransactionIsolationLevel.READ_COMMITTED,
-            handle -> {
-              try {
-                // Delete old deployment from Flowable first
-                WorkflowHandler.getInstance().deleteWorkflowDefinition(original);
+    return jdbi.inTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          try {
+            // The repository's postUpdate will handle Flowable operations
+            // Both DB operations happen within THIS transaction
+            PutResponse<WorkflowDefinition> response =
+                repository.update(null, original, updated, updatedBy);
+            WorkflowDefinition result = response.getEntity();
 
-                // Update the entity in OpenMetadata DB using the parent storeEntity method
-                repository.storeEntityInternal(updated, true);
+            LOG.info("Successfully updated workflow definition: {}", updated.getName());
+            return result;
 
-                // Deploy updated version to Flowable
-                WorkflowHandler.getInstance().deploy(updatedWorkflow);
-
-                LOG.info(
-                    "Successfully updated and redeployed workflow definition: {}",
-                    updated.getName());
-              } catch (Exception e) {
-                LOG.error(
-                    "Failed to update and redeploy workflow definition: {}", updated.getName(), e);
-
-                // Try to restore original deployment
-                try {
-                  WorkflowHandler.getInstance().deploy(new Workflow(original));
-                  LOG.info("Restored original workflow deployment for: {}", original.getName());
-                } catch (Exception restoreEx) {
-                  LOG.error(
-                      "Failed to restore original workflow deployment: {}",
-                      original.getName(),
-                      restoreEx);
-                }
-
-                throw new UnhandledServerException(
-                    "Failed to update and redeploy workflow definition: " + e.getMessage());
-              }
-            });
-
-    return updated;
+          } catch (Exception e) {
+            LOG.error("Failed to update workflow definition: {}", updated.getName(), e);
+            // The transaction will rollback automatically
+            throw new UnhandledServerException(
+                "Failed to update workflow definition: " + e.getMessage(), e);
+          }
+        });
   }
 
   /**
-   * Atomically deletes a workflow definition from OpenMetadata and undeploys it from Flowable.
-   *
-   * @param entity The workflow definition to delete
+   * Delete a workflow definition with atomic transaction across both databases.
+   * This method should be called from WorkflowDefinitionResource, NOT from repository.
    */
-  public void deleteWorkflowDefinition(WorkflowDefinition entity) {
+  public static void deleteWorkflowDefinition(WorkflowDefinition entity, boolean hardDelete) {
+    // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    Entity.getJdbi()
-        .useTransaction(
-            TransactionIsolationLevel.READ_COMMITTED,
-            handle -> {
-              try {
-                // Delete from Flowable first
-                WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    // Start a NEW transaction at the API level
+    Jdbi jdbi = Entity.getJdbi();
 
-                // Delete from OpenMetadata DB
-                repository.delete("admin", entity.getId(), false, false);
+    jdbi.useTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          try {
+            // The repository's postDelete will handle Flowable cleanup
+            // Both operations happen within THIS transaction
+            repository.delete("admin", entity.getId(), false, hardDelete);
 
-                LOG.info("Successfully deleted workflow definition: {}", entity.getName());
-              } catch (Exception e) {
-                LOG.error("Failed to delete workflow definition: {}", entity.getName(), e);
-                throw new UnhandledServerException(
-                    "Failed to delete workflow definition: " + e.getMessage());
-              }
-            });
+            LOG.info("Successfully deleted workflow definition: {}", entity.getName());
+
+          } catch (Exception e) {
+            LOG.error("Failed to delete workflow definition: {}", entity.getName(), e);
+            // The transaction will rollback automatically
+            throw new UnhandledServerException(
+                "Failed to delete workflow definition: " + e.getMessage(), e);
+          }
+        });
+  }
+
+  /**
+   * Validate a workflow definition with Flowable.
+   * This is done BEFORE starting any transaction.
+   */
+  private static void validateWorkflow(Workflow workflow) {
+    if (!WorkflowHandler.isInitialized()) {
+      throw new UnhandledServerException("WorkflowHandler is not initialized");
+    }
+
+    try {
+      BpmnXMLConverter converter = new BpmnXMLConverter();
+      String mainBpmnXml = new String(converter.convertToXML(workflow.getMainModel()));
+      String triggerBpmnXml = new String(converter.convertToXML(workflow.getTriggerModel()));
+
+      boolean valid =
+          WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
+              && WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml);
+
+      if (!valid) {
+        throw new UnhandledServerException(
+            "Invalid workflow definition: Failed Flowable validation");
+      }
+    } catch (Exception e) {
+      LOG.error("Error validating workflow", e);
+      throw new UnhandledServerException("Failed to validate workflow: " + e.getMessage(), e);
+    }
   }
 }

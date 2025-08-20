@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -321,7 +322,13 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, workflowDefinition);
+
+    // Use WorkflowTransactionManager for atomic operation across both databases
+    WorkflowDefinition created =
+        WorkflowTransactionManager.createWorkflowDefinition(workflowDefinition);
+    return Response.status(Response.Status.CREATED)
+        .entity(repository.withHref(uriInfo, created))
+        .build();
   }
 
   @PATCH
@@ -403,7 +410,29 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, workflowDefinition);
+
+    // Check if workflow already exists
+    WorkflowDefinition existing =
+        repository.findByNameOrNull(
+            workflowDefinition.getFullyQualifiedName(), Include.NON_DELETED);
+
+    WorkflowDefinition result;
+    Response.Status status;
+
+    if (existing == null) {
+      // Create new workflow with transaction manager
+      result = WorkflowTransactionManager.createWorkflowDefinition(workflowDefinition);
+      status = Response.Status.CREATED;
+    } else {
+      // Update existing workflow with transaction manager
+      String updatedBy = securityContext.getUserPrincipal().getName();
+      result =
+          WorkflowTransactionManager.updateWorkflowDefinition(
+              existing, workflowDefinition, updatedBy);
+      status = Response.Status.OK;
+    }
+
+    return Response.status(status).entity(repository.withHref(uriInfo, result)).build();
   }
 
   @DELETE
@@ -433,7 +462,14 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    // Get the workflow to delete
+    WorkflowDefinition workflow =
+        repository.get(uriInfo, id, new EntityUtil.Fields(repository.getAllowedFields()));
+
+    // Use WorkflowTransactionManager for atomic deletion
+    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+
+    return Response.ok().build();
   }
 
   @DELETE
@@ -495,7 +531,14 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    // Get the workflow to delete
+    WorkflowDefinition workflow =
+        repository.getByName(uriInfo, fqn, new EntityUtil.Fields(repository.getAllowedFields()));
+
+    // Use WorkflowTransactionManager for atomic deletion
+    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+
+    return Response.ok().build();
   }
 
   @PUT
