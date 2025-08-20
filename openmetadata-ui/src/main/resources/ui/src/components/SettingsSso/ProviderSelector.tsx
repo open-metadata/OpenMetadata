@@ -120,15 +120,12 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       </div>
 
       <div
-        className="provider-grid"
+        className="provider-selection-container d-flex flex-wrap"
         onMouseLeave={() => setHoveredProvider(undefined)}>
         {providers.map((provider) => (
           <div
             className={`provider-item ${
-              selectedProvider === provider.key &&
-              (!hoveredProvider || hoveredProvider === provider.key)
-                ? 'selected'
-                : ''
+              selectedProvider === provider.key ? 'selected' : ''
             }`}
             key={provider.key}
             onClick={() => handleCardClick(provider.key)}
