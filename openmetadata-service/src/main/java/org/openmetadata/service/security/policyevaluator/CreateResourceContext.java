@@ -81,7 +81,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
     List<EntityReference> domains = new ArrayList<>();
     for (EntityInterface parent : parentEntities) {
-      if (parent.getOwners() != null) {
+      if (parent.getDomains() != null) {
         domains = mergedInheritedEntityRefs(domains, parent.getDomains());
       }
     }

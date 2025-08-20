@@ -18,6 +18,7 @@ In this section, we provide guides and references to use the Tableau connector.
 Configure and schedule Tableau metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
+- [Entity Mapping](#entity-mapping)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
 - [Lineage](#lineage)
@@ -43,6 +44,41 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 - To connect to a non-default Tableau site, use the `siteName` field instead. The Tableau Python SDK does not require `siteUrl` for authentication.  
 - Ensure the `siteName` field is correctly populated (do not use `*`) to enable successful metadata ingestion for multi-site Tableau environments.
 {% /note %}
+
+## Entity Mapping
+
+The Tableau connector maps Tableau assets to OpenMetadata entities as follows:
+
+| Tableau Asset | OpenMetadata Entity | Description |
+|---|---|---|
+| **Dashboard Views** (sheetType="dashboard") | **Dashboard** | Tableau dashboard views are mapped to OpenMetadata Dashboard entities. These are the actual interactive dashboards in Tableau. |
+| **Sheet Views** (worksheets, stories, etc.) | **Chart** | Tableau worksheet views and other sheet types are mapped to OpenMetadata Chart entities. |
+| **Workbooks** | **Project Hierarchy** | Workbook information is preserved in the project field as `{ProjectName}/{WorkbookName}` to maintain the container relationship. |
+| **Data Sources** | **Data Models** | Tableau data sources are mapped to OpenMetadata Data Model entities. |
+
+### Example Structure
+
+**Tableau Structure:**
+```
+Project: Sales Team
+└── Workbook: Sales Analysis
+    ├── Dashboard: Revenue Overview (sheetType="dashboard")
+    ├── Worksheet: Monthly Sales (sheetType="worksheet") 
+    └── Story: Sales Story (sheetType="story")
+```
+
+**OpenMetadata Structure:**
+```
+Dashboard: "Revenue Overview" (Project: "Sales Team/Sales Analysis")
+├── Chart: "Monthly Sales"
+└── Chart: "Sales Story"
+```
+
+This mapping ensures that:
+- Tableau dashboards appear as OpenMetadata dashboards (not charts)
+- Workbook context is preserved in the project hierarchy
+- URLs point directly to the specific dashboard views
+- Chrome Extension compatibility is maintained
 
 ## Metadata Ingestion
 
