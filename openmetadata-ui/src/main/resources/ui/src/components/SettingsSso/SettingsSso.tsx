@@ -329,7 +329,7 @@ const SettingsSso = () => {
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {/* Provider Header - Outside tabs */}
-        {!hasExistingConfig && !currentProvider && (
+        {currentProvider && (
           <div className="sso-provider-header">
             <div className="flex align-items-center gap-3">
               <div className="provider-icon-container">
