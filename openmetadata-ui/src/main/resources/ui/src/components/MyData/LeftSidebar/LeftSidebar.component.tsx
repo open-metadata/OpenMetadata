@@ -30,8 +30,8 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './left-sidebar.less';
-import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 const { Sider } = Layout;
 
@@ -83,24 +83,45 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
+  const { plugins } = useApplicationsProvider();
+
+  const pluginSidebarActions = useMemo(() => {
+    return plugins
+      .flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
+      .sort((a, b) => (a.index ?? 999) - (b.index ?? 999));
+  }, [plugins]);
+
   const menuItems = useMemo(() => {
-    return [
-      ...sideBarItems.map((item) => {
-        return {
-          key: item.key,
-          icon: <Icon component={item.icon} />,
-          label: <LeftSidebarItem data={item} />,
-          children: item.children?.map((item: LeftSidebarItemType) => {
-            return {
-              key: item.key,
-              icon: <Icon component={item.icon} />,
-              label: <LeftSidebarItem data={item} />,
-            };
-          }),
-        };
-      }),
-    ];
-  }, [sideBarItems]);
+    const mergedItems = (() => {
+      const baseItems = [...sideBarItems];
+
+      pluginSidebarActions.forEach((pluginItem) => {
+        if (typeof pluginItem.index === 'number' && pluginItem.index >= 0) {
+          baseItems.splice(
+            Math.min(pluginItem.index, baseItems.length),
+            0,
+            pluginItem
+          );
+        } else {
+          baseItems.push(pluginItem);
+        }
+      });
+
+      return baseItems;
+    })();
+
+    // Map to menu structure
+    return mergedItems.map((item) => ({
+      key: item.key,
+      icon: <Icon component={item.icon} />,
+      label: <LeftSidebarItem data={item} />,
+      children: item.children?.map((child) => ({
+        key: child.key,
+        icon: <Icon component={child.icon} />,
+        label: <LeftSidebarItem data={child} />,
+      })),
+    }));
+  }, [sideBarItems, pluginSidebarActions]);
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
     setOpenKeys([]);

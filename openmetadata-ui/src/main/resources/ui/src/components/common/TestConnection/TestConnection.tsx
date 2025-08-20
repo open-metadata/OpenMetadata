@@ -70,6 +70,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  onTestConnection,
   hostIp,
 }) => {
   const { t } = useTranslation();
@@ -372,6 +373,8 @@ const TestConnection: FC<TestConnectionProps> = ({
       if (workflowId) {
         await handleDeleteWorkflow(workflowId);
       }
+    } finally {
+      onTestConnection?.();
     }
   };
 

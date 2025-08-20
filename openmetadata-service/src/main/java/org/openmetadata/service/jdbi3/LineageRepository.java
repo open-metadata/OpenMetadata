@@ -85,6 +85,7 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -100,6 +101,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -178,6 +180,18 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal(),
             detailsJson);
     addLineageToSearch(from, to, lineageDetails);
+
+    // Add lineage to RDF
+    if (RdfUpdater.isEnabled()) {
+      EntityRelationship lineageRelationship =
+          new EntityRelationship()
+              .withFromEntity(from.getType())
+              .withFromId(from.getId())
+              .withToEntity(to.getType())
+              .withToId(to.getId())
+              .withRelationshipType(Relationship.UPSTREAM);
+      RdfUpdater.addRelationship(lineageRelationship);
+    }
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
@@ -337,6 +351,18 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal(),
             JsonUtils.pojoToJson(lineageDetails));
     addLineageToSearch(from, to, lineageDetails);
+
+    // Add lineage to RDF
+    if (RdfUpdater.isEnabled()) {
+      EntityRelationship lineageRelationship =
+          new EntityRelationship()
+              .withFromEntity(from.getType())
+              .withFromId(from.getId())
+              .withToEntity(to.getType())
+              .withToId(to.getId())
+              .withRelationshipType(Relationship.UPSTREAM);
+      RdfUpdater.addRelationship(lineageRelationship);
+    }
   }
 
   private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {
@@ -936,6 +962,19 @@ public class LineageRepository {
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
+
+      // Remove lineage from RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(from.getType())
+                .withFromId(from.getId())
+                .withToEntity(to.getType())
+                .withToId(to.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.removeRelationship(lineageRelationship);
+      }
+
       return result;
     }
     return false;
@@ -989,6 +1028,19 @@ public class LineageRepository {
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
+
+      // Remove lineage from RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(from.getType())
+                .withFromId(from.getId())
+                .withToEntity(to.getType())
+                .withToId(to.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.removeRelationship(lineageRelationship);
+      }
+
       if (result) {
         cleanUpExtendedLineage(from, to);
       }
@@ -1102,6 +1154,18 @@ public class LineageRepository {
               Relationship.UPSTREAM.ordinal(),
               JsonUtils.pojoToJson(lineageDetails));
       addLineageToSearch(fromRef, toRef, lineageDetails);
+
+      // Add lineage to RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(fromRef.getType())
+                .withFromId(fromRef.getId())
+                .withToEntity(toRef.getType())
+                .withToId(toRef.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.addRelationship(lineageRelationship);
+      }
     }
   }
 

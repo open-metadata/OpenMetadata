@@ -96,4 +96,4 @@ We currently have 2 main categories of interfaces:
 
 These interfaces can easily be extended to support connector specificity (e.g. BigQuery Struct computation, etc.).
 
-<img src="../../../../openmetadata-docs/images/connectors/profiler/profilerUMLDiagram.png" width="100%">
+<img src="https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/connectors/profiler/profilerUMLDiagram.png" width="100%">

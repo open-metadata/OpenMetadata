@@ -99,6 +99,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -138,6 +139,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -149,6 +151,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PasswordUtil;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -1028,36 +1031,41 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         BAD_REQUEST,
         "Header image must be a valid HTTP or HTTPS URL");
 
-    // Test 7: User cannot set preferences for persona not assigned to them
-    CreatePersona createPersona2 =
-        personaResourceTest.createRequest(test, 2).withName("data-analyst-test");
-    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+    // Test 8: User with no personas can set preferences for system default persona
+    // First, create a system default persona
+    CreatePersona createSystemDefaultPersona =
+        personaResourceTest
+            .createRequest(test, 8)
+            .withName("system-default-test")
+            .withDefault(true);
+    Persona systemDefaultPersona =
+        personaResourceTest.createEntity(createSystemDefaultPersona, ADMIN_AUTH_HEADERS);
 
-    var unassignedPersonaPreferences =
-        new PersonaPreferences()
-            .withPersonaId(persona2.getId())
-            .withPersonaName(persona2.getName())
-            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
-
-    String json6 = JsonUtils.pojoToJson(user);
-    user.setPersonaPreferences(listOf(unassignedPersonaPreferences));
-
-    assertResponse(
-        () -> patchEntity(user.getId(), json6, user, authHeaders(user.getName())),
-        BAD_REQUEST,
-        "Persona with ID " + persona2.getId() + " is not assigned to this user");
-
-    // Test 8: User with no personas cannot set preferences
     CreateUser create3 = createRequest(test, 3);
     User user3 = createEntity(create3, ADMIN_AUTH_HEADERS);
 
-    String json7 = JsonUtils.pojoToJson(user3);
-    user3.setPersonaPreferences(listOf(preferencesWithoutImage));
+    // User should be able to set preferences for system default persona even with no assigned
+    // personas
+    PersonaPreferences systemDefaultPref =
+        new PersonaPreferences()
+            .withPersonaId(systemDefaultPersona.getId())
+            .withPersonaName(systemDefaultPersona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#BA24D5"));
 
-    assertResponse(
-        () -> patchEntity(user3.getId(), json7, user3, authHeaders(user3.getName())),
-        BAD_REQUEST,
-        "User has no personas assigned. Cannot set persona preferences.");
+    String json7 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(systemDefaultPref));
+
+    ChangeDescription change7 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change7, "personaPreferences", emptyList(), listOf(systemDefaultPref));
+    User user3Updated =
+        patchEntityAndCheck(user3, json7, authHeaders(user3.getName()), MINOR_UPDATE, change7);
+
+    // Verify preferences were saved for system default persona
+    assertNotNull(user3Updated.getPersonaPreferences());
+    assertEquals(1, user3Updated.getPersonaPreferences().size());
+    PersonaPreferences savedSystemPref = user3Updated.getPersonaPreferences().getFirst();
+    assertEquals(systemDefaultPersona.getId(), savedSystemPref.getPersonaId());
+    assertEquals("#BA24D5", savedSystemPref.getLandingPageSettings().getHeaderColor());
 
     // Test 9: Remove persona preferences for a specific persona
     // First, let's set up a user with multiple personas and preferences
@@ -2257,5 +2265,91 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(onlineUsers);
     assertNotNull(onlineUsers.getData());
+  }
+
+  @Test
+  void testUserRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create team first
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create user with team membership
+    CreateUser createUser =
+        createRequest(test)
+            .withTeams(listOf(team.getId()))
+            .withRoles(listOf(DATA_STEWARD_ROLE.getId()));
+
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists in RDF
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Verify team membership (user is member of team)
+    // Note: In RDF, this is usually stored as team HAS user, not user memberOf team
+    // But we can check if the relationship exists either way
+
+    // Users don't have owners or tags by default, but we can test if added
+    if (user.getOwners() != null && !user.getOwners().isEmpty()) {
+      RdfTestUtils.verifyOwnerInRdf(user.getFullyQualifiedName(), user.getOwners().get(0));
+    }
+
+    if (user.getTags() != null && !user.getTags().isEmpty()) {
+      RdfTestUtils.verifyTagsInRdf(user.getFullyQualifiedName(), user.getTags());
+    }
+  }
+
+  @Test
+  void testUserRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Soft delete the user
+    deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Restore the user
+    User restored =
+        restoreEntity(new RestoreEntity().withId(user.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("user"));
+  }
+
+  @Test
+  void testUserRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Hard delete the user
+    deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify user no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(user.getFullyQualifiedName());
   }
 }
