@@ -308,6 +308,50 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
   return data;
 };
 
+export const searchGlossaryTermsPaginated = async (
+  query?: string,
+  glossaryId?: string,
+  glossaryFqn?: string,
+  parentId?: string,
+  parentFqn?: string,
+  limit = 50,
+  offset = 0,
+  fields?: string
+) => {
+  const params: Record<string, any> = {
+    limit,
+    offset,
+  };
+
+  if (query) {
+    params.q = query;
+  }
+  if (glossaryId) {
+    params.glossary = glossaryId;
+  }
+  if (glossaryFqn) {
+    params.glossaryFqn = glossaryFqn;
+  }
+  if (parentId) {
+    params.parent = parentId;
+  }
+  if (parentFqn) {
+    params.parentFqn = parentFqn;
+  }
+  if (fields) {
+    params.fields = fields;
+  }
+
+  const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
+    '/glossaryTerms/search',
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
 };

@@ -2179,4 +2179,125 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
     TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_searchGlossaryTerms() throws IOException {
+    // Create a glossary for testing
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("searchTestGlossary"), ADMIN_AUTH_HEADERS);
+
+    // Create multiple glossary terms with different names
+    List<GlossaryTerm> terms = new ArrayList<>();
+    for (int i = 1; i <= 10; i++) {
+      CreateGlossaryTerm createTerm =
+          createRequest("SearchTerm" + i)
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("This is SearchTerm " + i + " for testing search functionality");
+      GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+      terms.add(term);
+    }
+
+    // Test 1: Search by exact term name
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("q", "SearchTerm5");
+    queryParams.put("glossaryFqn", glossary.getFullyQualifiedName());
+    queryParams.put("limit", "10");
+    queryParams.put("offset", "0");
+
+    ResultList<GlossaryTerm> searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, searchResults.getData().size());
+    assertEquals("SearchTerm5", searchResults.getData().get(0).getName());
+
+    // Test 2: Partial search
+    queryParams.put("q", "Term");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(10, searchResults.getData().size());
+
+    // Test 3: Search with pagination
+    queryParams.put("limit", "5");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, searchResults.getData().size());
+
+    // Test 4: Search with offset
+    queryParams.put("offset", "5");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, searchResults.getData().size());
+
+    // Test 5: Search with display name (if terms had display names)
+    // Skip this test since our test terms don't have display names set
+
+    // Test 6: Search with no results
+    queryParams.put("q", "NonExistentTerm");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(0, searchResults.getData().size());
+
+    // Clean up - hard delete terms first, then glossary
+    for (GlossaryTerm term : terms) {
+      deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_searchGlossaryTermsWithHierarchy() throws IOException {
+    // Create glossary
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("hierarchySearchGlossary"), ADMIN_AUTH_HEADERS);
+
+    // Create parent term
+    CreateGlossaryTerm parentRequest =
+        createRequest("ParentSearchTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Parent term for hierarchy search test");
+    GlossaryTerm parentTerm = createEntity(parentRequest, ADMIN_AUTH_HEADERS);
+
+    // Create child terms
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      CreateGlossaryTerm childRequest =
+          createRequest("ChildSearchTerm" + i)
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withParent(parentTerm.getFullyQualifiedName())
+              .withDescription("Child term " + i + " under parent");
+      GlossaryTerm childTerm = createEntity(childRequest, ADMIN_AUTH_HEADERS);
+      childTerms.add(childTerm);
+    }
+
+    // Test 1: Search within parent term
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("q", "Child");
+    queryParams.put("parentFqn", parentTerm.getFullyQualifiedName());
+
+    ResultList<GlossaryTerm> searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, searchResults.getData().size());
+    assertTrue(
+        searchResults.getData().stream().allMatch(t -> t.getName().startsWith("ChildSearchTerm")));
+
+    // Test 2: Search by parent ID
+    queryParams.clear();
+    queryParams.put("q", "term");
+    queryParams.put("parent", parentTerm.getId().toString());
+
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, searchResults.getData().size());
+
+    // Clean up - hard delete all terms first, then glossary
+    for (GlossaryTerm term : childTerms) {
+      deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  private ResultList<GlossaryTerm> searchGlossaryTerms(
+      Map<String, String> queryParams, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/search");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    return TestUtils.get(target, GlossaryTermResource.GlossaryTermList.class, authHeaders);
+  }
 }

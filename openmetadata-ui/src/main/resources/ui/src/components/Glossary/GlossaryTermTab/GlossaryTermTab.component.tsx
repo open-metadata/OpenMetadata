@@ -84,6 +84,7 @@ import {
   getGlossaryTermChildrenLazy,
   GlossaryTermWithChildren,
   patchGlossaryTerm,
+  searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
@@ -244,11 +245,33 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     try {
-      const { data, paging } = await getFirstLevelGlossaryTermsPaginated(
-        activeGlossary?.fullyQualifiedName || '',
-        pageSize,
-        loadMore ? afterCursor : undefined
-      );
+      let data, paging;
+
+      // Use search API if search term is present
+      if (searchTerm) {
+        const offset = loadMore && afterCursor ? parseInt(afterCursor) : 0;
+        const response = await searchGlossaryTermsPaginated(
+          searchTerm,
+          undefined,
+          activeGlossary?.fullyQualifiedName,
+          undefined,
+          undefined,
+          pageSize,
+          offset,
+          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
+        );
+        data = response.data;
+        paging = response.paging;
+      } else {
+        // Use regular listing API when no search term
+        const response = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          pageSize,
+          loadMore ? afterCursor : undefined
+        );
+        data = response.data;
+        paging = response.paging;
+      }
 
       if (!data || !Array.isArray(data)) {
         return;
@@ -1279,17 +1302,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return [];
     }
 
+    // Only filter by status on client side, search is handled server-side
     return glossaryTerms.filter((term) => {
       const matchesStatus = selectedStatus.includes(term.status as string);
-      const matchesSearch = searchTerm
-        ? term.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          term.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          term.description?.toLowerCase().includes(searchTerm.toLowerCase())
-        : true;
 
-      return matchesStatus && matchesSearch;
+      return matchesStatus;
     });
-  }, [glossaryTerms, selectedStatus, searchTerm]);
+  }, [glossaryTerms, selectedStatus]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -1298,9 +1317,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setContainerWidth(tableContainerRef.current.offsetWidth);
   }, []);
 
-  if (isEmpty(glossaryTerms)) {
+  // Trigger new fetch when search term changes
+  useEffect(() => {
+    if (activeGlossary) {
+      fetchAllTerms();
+    }
+  }, [searchTerm, activeGlossary]);
+
+  // Check if this is due to search returning no results
+  const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
+  const hasNoTerms = isEmpty(glossaryTerms);
+
+  // Special case: if there are truly no terms in the glossary at all (not just search results)
+  // and no search is active, show the full placeholder
+  if (hasNoTerms && !isSearchActive && !isTableLoading) {
     return (
-      // If there is no terms, the table container ref is not set, so we need to use a div to set the width
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
           className="p-md p-b-lg border-none"
@@ -1326,28 +1357,76 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     <Row className={className} gutter={[0, 16]}>
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
-        {glossaryTerms.length > 0 ? (
-          <div
-            className="glossary-terms-scroll-container"
-            style={{
-              height: 'calc(100vh - 300px)',
-              overflow: 'auto',
-              position: 'relative',
-            }}>
+        <div
+          className="glossary-terms-scroll-container"
+          style={{
+            height: 'calc(100vh - 300px)',
+            overflow: 'auto',
+            position: 'relative',
+          }}>
+          {glossaryTerms.length > 0 ? (
+            <>
+              <DndProvider backend={HTML5Backend}>
+                <Table
+                  resizableColumns
+                  className={classNames('drop-over-background', {
+                    'drop-over-table': isTableHovered,
+                  })}
+                  columns={columns}
+                  components={TABLE_CONSTANTS}
+                  data-testid="glossary-terms-table"
+                  dataSource={filteredGlossaryTerms}
+                  defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+                  expandable={expandableConfig}
+                  extraTableFilters={extraTableFilters}
+                  loading={isTableLoading || isExpandingAll}
+                  pagination={false}
+                  rowKey="fullyQualifiedName"
+                  size="small"
+                  staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+                  onHeaderRow={onTableHeader}
+                  onRow={onTableRow}
+                />
+              </DndProvider>
+              {hasMoreTerms && (
+                <div
+                  className="m-t-md m-b-md text-center p-y-lg"
+                  ref={infiniteScrollRef}
+                  style={{ minHeight: '80px', background: 'transparent' }}>
+                  {isLoadingMore && <Loader size="small" />}
+                </div>
+              )}
+            </>
+          ) : (
+            // Show empty state within the table container when search returns no results
+            // This keeps the search bar and filters visible
             <DndProvider backend={HTML5Backend}>
               <Table
                 resizableColumns
-                className={classNames('drop-over-background', {
-                  'drop-over-table': isTableHovered,
-                })}
+                className="glossary-terms-table"
                 columns={columns}
                 components={TABLE_CONSTANTS}
                 data-testid="glossary-terms-table"
-                dataSource={filteredGlossaryTerms}
+                dataSource={[]}
                 defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
                 expandable={expandableConfig}
                 extraTableFilters={extraTableFilters}
-                loading={isTableLoading || isExpandingAll}
+                loading={isTableLoading}
+                locale={{
+                  emptyText: (
+                    <ErrorPlaceHolder
+                      className="p-md"
+                      placeholderText={
+                        isSearchActive && searchTerm
+                          ? `No Glossary Term found for "${searchTerm}"`
+                          : isSearchActive
+                          ? 'No Glossary Term found'
+                          : 'No Glossary Terms'
+                      }
+                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+                    />
+                  ),
+                }}
                 pagination={false}
                 rowKey="fullyQualifiedName"
                 size="small"
@@ -1356,18 +1435,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 onRow={onTableRow}
               />
             </DndProvider>
-            {hasMoreTerms && (
-              <div
-                className="m-t-md m-b-md text-center p-y-lg"
-                ref={infiniteScrollRef}
-                style={{ minHeight: '80px', background: 'transparent' }}>
-                {isLoadingMore && <Loader size="small" />}
-              </div>
-            )}
-          </div>
-        ) : (
-          <ErrorPlaceHolder />
-        )}
+          )}
+        </div>
         <Modal
           centered
           destroyOnClose

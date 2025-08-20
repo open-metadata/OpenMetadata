@@ -171,3 +171,31 @@
   padding: 8px;
   color: #dc6803;
 }
+
+// Sticky table headers for glossary terms table
+.glossary-terms-scroll-container {
+  .glossary-terms-table {
+    .ant-table-thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: @white;
+
+      th {
+        background: @white !important;
+      }
+    }
+
+    // Ensure the table header shadow appears when scrolling
+    .ant-table-thead::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: @grey-3;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+  }
+}
