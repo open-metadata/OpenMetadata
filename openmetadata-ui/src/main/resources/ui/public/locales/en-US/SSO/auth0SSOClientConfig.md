@@ -10,6 +10,13 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 
 ## Authentication Configuration
 
+### <span data-id="providerName">Provider Name</span>
+
+- **Definition:** A human-readable name for this Auth0 SSO configuration instance.
+- **Example:** Auth0 SSO, Company Auth0, Custom Identity Provider
+- **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
+- **Note:** This is a display name and doesn't affect authentication functionality.
+
 ### <span data-id="clientType">Client Type</span>
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).

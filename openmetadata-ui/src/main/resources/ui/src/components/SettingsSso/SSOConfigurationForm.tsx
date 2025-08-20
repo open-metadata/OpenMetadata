@@ -604,6 +604,7 @@ const SSOConfigurationFormRJSF = ({
         oidcConfiguration: 'oidcConfiguration',
         samlConfiguration: 'samlConfiguration',
         ldapConfiguration: 'ldapConfiguration',
+        providerName: 'providerName',
       };
 
       return fieldMappings[lastPart] || lastPart;
@@ -885,8 +886,8 @@ const SSOConfigurationFormRJSF = ({
               )}
             </>
           ),
-          minWidth: 700,
-          flex: 0.7,
+          minWidth: 400,
+          flex: 0.5,
           className: 'content-resizable-panel-container sso-configured',
         }}
         secondPanel={{
@@ -897,6 +898,7 @@ const SSOConfigurationFormRJSF = ({
             />
           ),
           minWidth: 400,
+          flex: 0.5,
         }}
       />
     );

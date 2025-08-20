@@ -10,6 +10,13 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 
 ## Authentication Configuration
 
+### <span data-id="providerName">Provider Name</span>
+
+- **Definition:** A human-readable name for this Azure AD SSO configuration instance.
+- **Example:** Azure AD SSO, Company Azure AD, Microsoft Entra ID
+- **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
+- **Note:** This is a display name and doesn't affect authentication functionality.
+
 ### <span data-id="clientType">Client Type</span>
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).

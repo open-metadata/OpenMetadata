@@ -99,28 +99,31 @@ const SettingsSso = () => {
         const response = await getSecurityConfiguration();
         const config = response.data;
 
-        if (
-          config?.authenticationConfiguration?.provider &&
-          config.authenticationConfiguration.provider !== 'basic'
-        ) {
-          setHasExistingConfig(true);
-          setCurrentProvider(config.authenticationConfiguration.provider);
-          setSsoEnabled(
-            config.authenticationConfiguration.enableSelfSignup || false
-          );
+        if (config?.authenticationConfiguration?.provider) {
+          if (config.authenticationConfiguration.provider !== 'basic') {
+            setHasExistingConfig(true);
+            setSsoEnabled(
+              config.authenticationConfiguration.enableSelfSignup || false
+            );
 
-          // Set default tab based on provider - Overview for Google, Azure and Okta
-          const provider =
-            config.authenticationConfiguration.provider.toLowerCase();
-          if (
-            provider === 'azure' ||
-            provider === 'okta' ||
-            provider === 'google'
-          ) {
-            setActiveTab('overview');
+            // Set default tab based on provider - Overview for Google, Azure and Okta
+            const provider =
+              config.authenticationConfiguration.provider.toLowerCase();
+            if (
+              provider === 'azure' ||
+              provider === 'okta' ||
+              provider === 'google'
+            ) {
+              setActiveTab('overview');
+            } else {
+              setActiveTab('configure');
+            }
           } else {
+            setHasExistingConfig(false);
             setActiveTab('configure');
           }
+          // Always set current provider for breadcrumb display
+          setCurrentProvider(config.authenticationConfiguration.provider);
         } else {
           setHasExistingConfig(false);
           setActiveTab('configure');
@@ -318,26 +321,6 @@ const SettingsSso = () => {
       </div>
     ),
   });
-
-  // Group Mapping tab for Google, Azure and Okta providers
-  if (
-    providerLower === 'azure' ||
-    providerLower === 'okta' ||
-    providerLower === 'google'
-  ) {
-    tabItems.push({
-      key: 'group-mapping',
-      label: t('label.group-mapping'),
-      children: (
-        <div className="p-md">
-          <div className="card-container">
-            {/* Group mapping content for Google/Azure/Okta - SCIM-related group mappings */}
-            {/* This should contain the group mapping functionality */}
-          </div>
-        </div>
-      ),
-    });
-  }
 
   // For all configured SSO providers, show tabs
   return (

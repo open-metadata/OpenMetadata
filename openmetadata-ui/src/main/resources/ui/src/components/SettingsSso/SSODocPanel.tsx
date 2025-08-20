@@ -78,6 +78,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     clientSecret: 'clientSecret',
     secretKey: 'clientSecret',
     scopes: 'scopes',
+    providerName: 'providerName',
   };
 
   const getFieldGroup = (fieldName: string): string => {

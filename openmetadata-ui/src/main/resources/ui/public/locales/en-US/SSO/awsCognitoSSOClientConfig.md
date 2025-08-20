@@ -8,6 +8,13 @@ slug: /main-concepts/metadata-standard/schemas/security/client/aws-cognito-sso
 
 AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credentials using OAuth 2.0 and OpenID Connect (OIDC).
 
+## <span data-id="providerName">Provider Name</span>
+
+- **Definition:** A human-readable name for this AWS Cognito SSO configuration instance.
+- **Example:** AWS Cognito SSO, Company Cognito, User Pool Authentication
+- **Why it matters:** Helps identify this specific SSO configuration in logs and user interfaces.
+- **Note:** This is a display name and doesn't affect authentication functionality.
+
 ## <span data-id="clientType">Client Type</span>
 
 - **Definition:** Defines whether the application is public (no client secret) or confidential (requires client secret).
