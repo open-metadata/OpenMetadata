@@ -1290,3 +1290,103 @@ export const pruneEmptyChildren = (columns: Column[]): Column[] => {
     };
   });
 };
+
+export const getSchemaFieldCount = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  let count = 0;
+
+  const countFields = (items: T[]): void => {
+    items.forEach((item) => {
+      count++;
+      if (item.children && item.children.length > 0) {
+        countFields(item.children);
+      }
+    });
+  };
+
+  countFields(fields);
+
+  return count;
+};
+
+export const getSchemaDepth = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  if (!fields || fields.length === 0) {
+    return 0;
+  }
+
+  let maxDepth = 1;
+
+  const calculateDepth = (items: T[], currentDepth: number): void => {
+    items.forEach((item) => {
+      maxDepth = Math.max(maxDepth, currentDepth);
+      if (item.children && item.children.length > 0) {
+        calculateDepth(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  calculateDepth(fields, 1);
+
+  return maxDepth;
+};
+
+export const isLargeSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 500
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const shouldCollapseSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 50
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const getExpandAllKeysToDepth = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  maxDepth = 3
+): string[] => {
+  const keys: string[] = [];
+
+  const collectKeys = (items: T[], currentDepth = 0): void => {
+    if (currentDepth >= maxDepth) {
+      return;
+    }
+
+    items.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        if (item.name) {
+          keys.push(item.name);
+        }
+        // Continue collecting keys from children up to maxDepth
+        collectKeys(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  collectKeys(fields);
+
+  return keys;
+};
+
+export const getSafeExpandAllKeys = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  isLargeSchema: boolean,
+  allKeys: string[]
+): string[] => {
+  if (!isLargeSchema) {
+    return allKeys;
+  }
+
+  // For large schemas, expand to exactly 2 levels deep
+  return getExpandAllKeysToDepth(fields, 2);
+};
