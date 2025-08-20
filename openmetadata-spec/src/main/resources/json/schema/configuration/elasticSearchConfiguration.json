@@ -13,7 +13,8 @@
       "enum": [
         "EN",
         "JP",
-        "ZH"
+        "ZH",
+        "RU"
       ],
       "default": "EN"
     }
