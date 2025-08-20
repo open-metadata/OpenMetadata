@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -114,7 +113,8 @@ public class MigrationUtil {
 
                 if (ADD_TAGS_ACTION.equals(actionType) || REMOVE_TAGS_ACTION.equals(actionType)) {
                   // Process AddTagsAction or RemoveTagsAction
-                  boolean actionModified = processTagsAction(updatedActions, actionObj, actionType, objectMapper);
+                  boolean actionModified =
+                      processTagsAction(updatedActions, actionObj, actionType, objectMapper);
                   if (actionModified) {
                     hasChanges = true;
                   }
@@ -130,7 +130,7 @@ public class MigrationUtil {
               try {
                 // Update the actions array in the JSON structure
                 ((ObjectNode) appConfigNode).set("actions", updatedActions);
-                
+
                 String updatedJsonString = objectMapper.writeValueAsString(rootNode);
                 IngestionPipeline ingestionPipeline =
                     JsonUtils.readValue(updatedJsonString, IngestionPipeline.class);
@@ -179,7 +179,10 @@ public class MigrationUtil {
   }
 
   private boolean processTagsAction(
-      ArrayNode updatedActions, ObjectNode actionObj, String actionType, ObjectMapper objectMapper) {
+      ArrayNode updatedActions,
+      ObjectNode actionObj,
+      String actionType,
+      ObjectMapper objectMapper) {
     // Check if the action has tags array
     if (!actionObj.has(TAGS_KEY)) {
       updatedActions.add(actionObj);
@@ -214,7 +217,7 @@ public class MigrationUtil {
     // Check if we need to make changes (idempotent check)
     boolean hasGlossaryTerms = glossaryTerms.size() > 0;
     boolean hasClassificationTags = classificationTags.size() > 0;
-    
+
     if (!hasGlossaryTerms && hasClassificationTags) {
       // No glossary terms, only classification tags - no change needed
       updatedActions.add(actionObj);
