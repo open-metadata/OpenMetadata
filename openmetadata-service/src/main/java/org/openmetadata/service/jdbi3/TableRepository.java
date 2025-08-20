@@ -1820,7 +1820,8 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = find(tableId, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam, authorizer, securityContext);
+    return getTableColumnsInternal(
+        table, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
   public ResultList<Column> getTableColumnsByFQN(
@@ -1832,7 +1833,8 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = findByName(fqn, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam, authorizer, securityContext);
+    return getTableColumnsInternal(
+        table, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
   private org.openmetadata.service.util.ResultList<Column> getTableColumnsInternal(
@@ -1840,11 +1842,12 @@ public class TableRepository extends EntityRepository<Table> {
       int limit,
       int offset,
       String fieldsParam,
+      Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
     // For paginated column access, we need to load the table with columns
     // but we'll optimize the field loading to only process what we need
-    Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), NON_DELETED, false);
+    Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), include, false);
 
     List<Column> allColumns = fullTable.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
