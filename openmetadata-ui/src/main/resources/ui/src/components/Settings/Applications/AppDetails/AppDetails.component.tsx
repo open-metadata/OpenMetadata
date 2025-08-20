@@ -109,7 +109,7 @@ const AppDetails = () => {
 
       const schema = await applicationsClassBase.importSchema(fqn);
 
-      setJsonSchema(schema.default);
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

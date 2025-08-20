@@ -14,11 +14,20 @@
 import { FC } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { resolveJsonSchema } from '../../../../utils/SchemaUtils/schemaResolver';
 import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
-  public importSchema(fqn: string) {
-    return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
+  public async importSchema(fqn: string) {
+    const module = await import(
+      `../../../../utils/ApplicationSchemas/${fqn}.json`
+    );
+    const schema = module.default || module;
+
+    // Resolve all $ref references in the schema
+    const resolvedSchema = await resolveJsonSchema(schema);
+
+    return resolvedSchema;
   }
   public getJSONUISchema() {
     return {
