@@ -14,7 +14,7 @@
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import MetricIcon from '../assets/svg/metric.svg?react';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/no-data-icon.svg';
+import NoDataIcon from '../../../../../assets/svg/no-data-icon.svg?react';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 
 const NoProfilerBanner = () => {

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
+import ArrowSvg from '../../../assets/svg/ic-arrow-down.svg?react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   getAgentRunningStatusMessage,

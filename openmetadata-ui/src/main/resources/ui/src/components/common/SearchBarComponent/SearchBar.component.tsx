@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import { useCallback, useEffect, useState } from 'react';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import IconSearchV1 from '../../../assets/svg/search.svg?react';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
 import './search-bar.less';

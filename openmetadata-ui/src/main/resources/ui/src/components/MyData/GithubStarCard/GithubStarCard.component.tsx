@@ -16,9 +16,9 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
-import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
+import CloseIcon from '../../../assets/svg/close.svg?react';
+import StarGithubIcon from '../../../assets/svg/ic-star-github.svg?react';
+import StarIcon from '../../../assets/svg/ic-start-filled-github.svg?react';
 import {
   BLACK_COLOR,
   ROUTES,

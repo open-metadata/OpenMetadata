@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import IconExternalLink from '../../../assets/svg/external-links.svg?react';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';

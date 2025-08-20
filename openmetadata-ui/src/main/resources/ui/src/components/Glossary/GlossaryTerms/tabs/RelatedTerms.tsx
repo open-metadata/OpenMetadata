@@ -18,7 +18,7 @@ import { isArray, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
+import IconTerm from '../../../../assets/svg/book.svg?react';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';

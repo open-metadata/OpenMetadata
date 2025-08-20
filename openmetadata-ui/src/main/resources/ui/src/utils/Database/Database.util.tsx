@@ -13,8 +13,8 @@
 import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { Link, NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
+import ExportIcon from '../../assets/svg/ic-export.svg?react';
+import ImportIcon from '../../assets/svg/ic-import.svg?react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';

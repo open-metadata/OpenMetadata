@@ -18,12 +18,12 @@ import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
-import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
-import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
-import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
-import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
+import DropDownIcon from '../../../../assets/svg/drop-down.svg?react';
+import IconStruct from '../../../../assets/svg/ic-inherited-roles.svg?react';
+import PersonaIcon from '../../../../assets/svg/ic-persona.svg?react';
+import RoleIcon from '../../../../assets/svg/ic-roles.svg?react';
+import LogoutIcon from '../../../../assets/svg/logout.svg?react';
+import TeamIcon from '../../../../assets/svg/teams-grey.svg?react';
 import {
   LIGHT_GREEN_COLOR,
   TERM_ADMIN,

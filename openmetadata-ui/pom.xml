@@ -82,6 +82,7 @@
     <resources>
       <resource>
         <directory>src/main/resources/ui/dist</directory>
+        <targetPath>assets</targetPath>
       </resource>
       <resource>
         <directory>src/main/resources/json/data</directory>
@@ -172,7 +173,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${basedir}/target/classes</outputDirectory>
+              <outputDirectory>${basedir}/target/classes/assets</outputDirectory>
               <resources>
                 <resource>
                   <directory>src/main/resources/ui/dist</directory>

@@ -15,7 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import AddPlaceHolderIcon from '../../../assets/svg/add-placeholder.svg?react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';

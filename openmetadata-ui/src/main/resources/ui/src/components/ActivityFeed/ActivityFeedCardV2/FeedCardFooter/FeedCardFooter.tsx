@@ -15,7 +15,7 @@ import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { min, noop, sortBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
+import ThreadIcon from '../../../../assets/svg/thread-icon.svg?react';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import {

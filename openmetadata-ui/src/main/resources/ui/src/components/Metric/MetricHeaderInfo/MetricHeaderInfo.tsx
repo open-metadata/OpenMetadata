@@ -24,8 +24,8 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
+import IconRemoveColored from '../../../assets/svg/ic-remove-colored.svg?react';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,

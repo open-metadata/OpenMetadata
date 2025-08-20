@@ -13,7 +13,7 @@
 import { NodeViewProps } from '@tiptap/react';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
-import { ReactComponent as IconFormatImage } from '../../../../../assets/svg/ic-format-image.svg';
+import IconFormatImage from '../../../../../assets/svg/ic-format-image.svg?react';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 
 const ImageAttachment = ({

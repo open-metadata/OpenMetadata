@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
+import RightIcon from '../../../assets/svg/right-arrow.svg?react';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';

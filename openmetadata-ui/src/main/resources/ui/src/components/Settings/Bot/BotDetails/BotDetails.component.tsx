@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
+import IconBotProfile from '../../../../assets/svg/bot-profile.svg?react';
 import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';

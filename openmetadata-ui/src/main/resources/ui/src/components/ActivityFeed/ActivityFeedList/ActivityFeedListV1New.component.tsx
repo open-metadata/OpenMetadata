@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
+import FeedEmptyIcon from '../../../assets/svg/ic-task-empty.svg?react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';

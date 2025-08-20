@@ -16,7 +16,7 @@ import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
+import IconExternalLink from '../../../../assets/svg/external-links.svg?react';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 

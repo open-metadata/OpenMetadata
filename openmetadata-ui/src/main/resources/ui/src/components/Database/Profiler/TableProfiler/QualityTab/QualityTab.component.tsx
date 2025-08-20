@@ -26,7 +26,7 @@ import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import SettingIcon from '../../../../../assets/svg/ic-settings-primery.svg?react';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {

@@ -16,7 +16,7 @@ import i18next from 'i18next';
 import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash';
 import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
-import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
+import ArrowRightIcon from '../assets/svg/arrow-right.svg?react';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';

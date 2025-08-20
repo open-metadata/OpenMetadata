@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as IconAPI } from '../assets/svg/api.svg';
-import { ReactComponent as IconDoc } from '../assets/svg/doc.svg';
-import { ReactComponent as IconTour } from '../assets/svg/icon-tour.svg';
-import { ReactComponent as IconSlackGrey } from '../assets/svg/slack-grey.svg';
-import { ReactComponent as IconVersionBlack } from '../assets/svg/version-black.svg';
+import IconAPI from '../assets/svg/api.svg?react';
+import IconDoc from '../assets/svg/doc.svg?react';
+import IconTour from '../assets/svg/icon-tour.svg?react';
+import IconSlackGrey from '../assets/svg/slack-grey.svg?react';
+import IconVersionBlack from '../assets/svg/version-black.svg?react';
 import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
 import i18n from '../utils/i18next/LocalUtil';

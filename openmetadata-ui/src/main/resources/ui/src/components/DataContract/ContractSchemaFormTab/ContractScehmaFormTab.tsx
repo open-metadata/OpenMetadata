@@ -16,8 +16,8 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
+import LeftOutlined from '../../../assets/svg/left-arrow.svg?react';
+import RightIcon from '../../../assets/svg/right-arrow.svg?react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   NO_DATA_PLACEHOLDER,

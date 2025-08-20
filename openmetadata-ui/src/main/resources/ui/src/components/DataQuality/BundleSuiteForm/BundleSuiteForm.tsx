@@ -29,7 +29,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import CloseIcon from '../../../assets/svg/close.svg?react';
 import { MAX_NAME_LENGTH } from '../../../constants/constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';

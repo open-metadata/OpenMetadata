@@ -13,12 +13,12 @@
 import { Col, Row } from 'antd';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TestCaseAbortedIcon } from '../../../assets/svg/aborted-status.svg';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as TestCaseFailedIcon } from '../../../assets/svg/failed-status.svg';
-import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
-import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
-import { ReactComponent as TestCaseSuccessIcon } from '../../../assets/svg/success-colored.svg';
+import TestCaseAbortedIcon from '../../../assets/svg/aborted-status.svg?react';
+import TestCaseIcon from '../../../assets/svg/all-activity-v2.svg?react';
+import TestCaseFailedIcon from '../../../assets/svg/failed-status.svg?react';
+import DataAssetsCoverageIcon from '../../../assets/svg/ic-data-assets-coverage.svg?react';
+import HealthCheckIcon from '../../../assets/svg/ic-green-heart-border.svg?react';
+import TestCaseSuccessIcon from '../../../assets/svg/success-colored.svg?react';
 import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
 import { PRIMARY_COLOR, YELLOW_2 } from '../../../constants/Color.constants';
 import { SummaryPanelProps } from './SummaryPanel.interface';

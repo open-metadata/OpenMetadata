@@ -16,8 +16,8 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import IconDown from '../../../assets/svg/ic-arrow-down.svg?react';
+import IconRight from '../../../assets/svg/ic-arrow-right.svg?react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
@@ -41,7 +41,7 @@ import {
 } from './DomainSelectableTree.interface';
 
 import classNames from 'classnames';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import DomainIcon from '../../../assets/svg/ic-domain.svg?react';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({

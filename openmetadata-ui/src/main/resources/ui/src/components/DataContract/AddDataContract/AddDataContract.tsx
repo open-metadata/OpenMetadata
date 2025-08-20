@@ -16,10 +16,10 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
-import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
-import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
+import ContractIcon from '../../../assets/svg/ic-contract.svg?react';
+import QualityIcon from '../../../assets/svg/policies.svg?react';
+import SemanticsIcon from '../../../assets/svg/semantics.svg?react';
+import TableIcon from '../../../assets/svg/table-outline.svg?react';
 import {
   DataContractMode,
   EDataContractTab,

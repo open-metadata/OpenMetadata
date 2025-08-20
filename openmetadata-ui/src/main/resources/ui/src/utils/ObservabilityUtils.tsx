@@ -12,19 +12,19 @@
  */
 import { MailOutlined } from '@ant-design/icons';
 import { includes, isNil } from 'lodash';
-import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
-import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
-import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';
-import { ReactComponent as FollowingIcon } from '../assets/svg/ic-star.svg';
-import { ReactComponent as MSTeamsIcon } from '../assets/svg/ms-teams.svg';
-import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/team-colored-icon.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user-colored-icon.svg';
+import AdminIcon from '../assets/svg/admin-colored-icon.svg?react';
+import GChatIcon from '../assets/svg/gchat.svg?react';
+import MentionIcon from '../assets/svg/ic-mentions.svg?react';
+import FollowingIcon from '../assets/svg/ic-star.svg?react';
+import MSTeamsIcon from '../assets/svg/ms-teams.svg?react';
+import SlackIcon from '../assets/svg/slack.svg?react';
+import TeamIcon from '../assets/svg/team-colored-icon.svg?react';
+import UserIcon from '../assets/svg/user-colored-icon.svg?react';
 import {
-  ReactComponent as AssigneeIcon,
-  ReactComponent as OwnerIcon,
-} from '../assets/svg/user.svg';
-import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
+  default as AssigneeIcon,
+  default as OwnerIcon,
+} from '../assets/svg/user.svg?react';
+import GenericIcon from '../assets/svg/webhook.svg?react';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
 export const getAlertDestinationCategoryIcons = (type: string) => {

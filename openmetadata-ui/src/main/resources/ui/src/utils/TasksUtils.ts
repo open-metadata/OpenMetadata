@@ -14,10 +14,10 @@ import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
-import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
-import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
-import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
+import CancelColored from '../assets/svg/cancel-colored.svg?react';
+import EditSuggestionIcon from '../assets/svg/edit-new.svg?react';
+import CloseIcon from '../assets/svg/ic-close-circle.svg?react';
+import CheckIcon from '../assets/svg/ic-tick-circle.svg?react';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {

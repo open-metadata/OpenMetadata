@@ -16,8 +16,8 @@ import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import IconEdit from '../../../../assets/svg/edit-new.svg?react';
+import IconDelete from '../../../../assets/svg/ic-delete.svg?react';
 import {
   Effect,
   EventSubscription,

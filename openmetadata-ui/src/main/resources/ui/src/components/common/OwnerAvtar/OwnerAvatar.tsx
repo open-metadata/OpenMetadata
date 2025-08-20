@@ -13,8 +13,8 @@
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import React from 'react';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import AssigneesIcon from '../../../assets/svg/ic-assignees.svg?react';
+import IconTeamsGrey from '../../../assets/svg/teams-grey.svg?react';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';

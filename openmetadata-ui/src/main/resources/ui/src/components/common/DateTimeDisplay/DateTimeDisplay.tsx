@@ -12,7 +12,7 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { Fragment } from 'react';
-import { ReactComponent as TimeDateIcon } from '../../../assets/svg/time-date.svg';
+import TimeDateIcon from '../../../assets/svg/time-date.svg?react';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 
 const DateTimeDisplay = ({ timestamp }: { timestamp?: number }) => {

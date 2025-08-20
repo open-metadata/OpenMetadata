@@ -15,7 +15,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Space, Typography } from 'antd';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import IconExternalLink from '../assets/svg/external-links.svg?react';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';

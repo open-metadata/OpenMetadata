@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import CopyIcon from '../../../assets/svg/icon-copy.svg?react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';

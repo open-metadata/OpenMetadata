@@ -15,8 +15,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Space, Typography } from 'antd';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
+import IconSuccessBadge from '../../../assets/svg/success-badge.svg?react';
 import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {

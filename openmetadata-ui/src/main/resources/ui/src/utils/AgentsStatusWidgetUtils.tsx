@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
-import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
-import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
+import CheckIcon from '../assets/svg/ic-check-circle-new.svg?react';
+import ErrorIcon from '../assets/svg/ic-close-circle.svg?react';
+import UsageIcon from '../assets/svg/ic-database.svg?react';
+import LineageIcon from '../assets/svg/ic-inherited-roles.svg?react';
+import PendingIcon from '../assets/svg/ic-pending.svg?react';
+import RunningIcon from '../assets/svg/ic-running.svg?react';
 
-import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
-import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
-import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
-import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
+import AutoClassificationIcon from '../assets/svg/ic-auto-classification.svg?react';
+import AutoTieringIcon from '../assets/svg/ic-auto-tiering.svg?react';
+import MetadataIcon from '../assets/svg/ic-empty-doc.svg?react';
+import DataQualityIcon from '../assets/svg/ic-stack-quality.svg?react';
+import ProfilerIcon from '../assets/svg/ic-stack-search.svg?react';
 
 import { Skeleton, Typography } from 'antd';
 import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';

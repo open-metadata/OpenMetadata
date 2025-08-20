@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import IconSearchV1 from '../../../assets/svg/search.svg?react';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';

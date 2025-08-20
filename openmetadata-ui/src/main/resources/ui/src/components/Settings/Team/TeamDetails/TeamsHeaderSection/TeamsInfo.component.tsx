@@ -19,7 +19,7 @@ import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../../../assets/svg/edit-new.svg?react';
 import {
   DE_ACTIVE_COLOR,
   GRAYED_OUT_COLOR,

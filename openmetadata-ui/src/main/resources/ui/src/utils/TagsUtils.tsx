@@ -19,7 +19,7 @@ import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
-import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
+import DeleteIcon from '../assets/svg/ic-delete.svg?react';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';

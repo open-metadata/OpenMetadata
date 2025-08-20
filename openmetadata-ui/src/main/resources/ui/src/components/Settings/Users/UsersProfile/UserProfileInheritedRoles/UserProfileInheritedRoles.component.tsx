@@ -13,7 +13,7 @@
 
 import { Divider, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
+import InheritedRolesIcon from '../../../../../assets/svg/ic-inherited-roles.svg?react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';

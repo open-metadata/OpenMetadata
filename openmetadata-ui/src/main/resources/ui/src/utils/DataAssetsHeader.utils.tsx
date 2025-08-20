@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import IconExternalLink from '../assets/svg/external-links.svg?react';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,

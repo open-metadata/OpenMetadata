@@ -12,16 +12,16 @@
  */
 import { t } from 'i18next';
 import { isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
-import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
-import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
-import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
-import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
-import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
-import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
-import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
-import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
+import AccuracyIcon from '../../assets/svg/ic-accuracy.svg?react';
+import ColumnIcon from '../../assets/svg/ic-column.svg?react';
+import CompletenessIcon from '../../assets/svg/ic-completeness.svg?react';
+import ConsistencyIcon from '../../assets/svg/ic-consistency.svg?react';
+import IntegrityIcon from '../../assets/svg/ic-integrity.svg?react';
+import SqlIcon from '../../assets/svg/ic-sql.svg?react';
+import TableIcon from '../../assets/svg/ic-table-test.svg?react';
+import UniquenessIcon from '../../assets/svg/ic-uniqueness.svg?react';
+import ValidityIcon from '../../assets/svg/ic-validity.svg?react';
+import NoDimensionIcon from '../../assets/svg/no-dimension-icon.svg?react';
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';

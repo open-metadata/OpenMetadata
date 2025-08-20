@@ -14,7 +14,7 @@ import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
+import CertificationIcon from '../../../assets/svg/ic-certification.svg?react';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';

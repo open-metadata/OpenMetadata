@@ -12,7 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import NoAccessPlaceHolderIcon from '../../../assets/svg/add-placeholder.svg?react';
 import { SIZE } from '../../../enums/common.enum';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { PermissionPlaceholderProps } from './placeholder.interface';

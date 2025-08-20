@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
+import CloseOutlined from '../../../assets/svg/close.svg?react';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './user-tag.less';
 import { UserTags, UserTagSize } from './UserTag.interface';

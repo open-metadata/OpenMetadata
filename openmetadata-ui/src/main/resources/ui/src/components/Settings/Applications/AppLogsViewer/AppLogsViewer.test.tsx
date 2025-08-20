@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
+import IconSuccessBadge from '../../../../assets/svg/success-badge.svg?react';
 import {
   ErrorSource,
   ScheduleTimeline,

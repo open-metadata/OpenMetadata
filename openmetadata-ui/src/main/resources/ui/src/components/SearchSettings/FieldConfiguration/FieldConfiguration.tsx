@@ -22,8 +22,8 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
+import Delete from '../../../assets/svg/delete-colored.svg?react';
+import FilterIcon from '../../../assets/svg/setting-colored.svg?react';
 import { MatchType } from '../../../generated/settings/settings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';

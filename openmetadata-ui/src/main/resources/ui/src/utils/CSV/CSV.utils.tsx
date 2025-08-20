@@ -21,8 +21,8 @@ import {
 } from 'lodash';
 import { parse } from 'papaparse';
 import { Column } from 'react-data-grid';
-import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
-import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
+import SuccessBadgeIcon from '../..//assets/svg/success-badge.svg?react';
+import FailBadgeIcon from '../../assets/svg/fail-badge.svg?react';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {

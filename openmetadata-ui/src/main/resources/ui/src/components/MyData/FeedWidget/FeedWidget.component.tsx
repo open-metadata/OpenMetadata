@@ -14,8 +14,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
+import ActivityFeedIcon from '../../../assets/svg/ic-activity-feed.svg?react';
+import NoDataAssetsPlaceholder from '../../../assets/svg/no-conversations.svg?react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,

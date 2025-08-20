@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import InheritIcon from '../../../assets/svg/ic-inherit.svg?react';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';

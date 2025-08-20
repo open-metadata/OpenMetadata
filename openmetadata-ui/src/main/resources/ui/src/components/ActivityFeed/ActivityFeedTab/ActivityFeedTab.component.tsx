@@ -17,16 +17,16 @@ import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
-import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-conversations.svg';
-import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
+import AllActivityIcon from '../../../assets/svg/all-activity-v2.svg?react';
+import TaskCloseIcon from '../../../assets/svg/ic-check-circle-new.svg?react';
+import TaskCloseIconBlue from '../../../assets/svg/ic-close-task.svg?react';
+import FilterIcon from '../../../assets/svg/ic-feeds-filter.svg?react';
+import MentionIcon from '../../../assets/svg/ic-mention.svg?react';
+import TaskOpenIcon from '../../../assets/svg/ic-open-task.svg?react';
+import TaskIcon from '../../../assets/svg/ic-task-new.svg?react';
+import NoConversationsIcon from '../../../assets/svg/no-conversations.svg?react';
+import TaskListIcon from '../../../assets/svg/task-ic.svg?react';
+import MyTaskIcon from '../../../assets/svg/task.svg?react';
 import {
   COMMON_ICON_STYLES,
   ICON_DIMENSION,

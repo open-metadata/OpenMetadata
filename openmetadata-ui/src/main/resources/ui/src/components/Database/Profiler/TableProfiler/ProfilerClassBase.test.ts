@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as TableProfilerIcon } from '../../../../assets/svg/table-profile.svg';
+import ColumnProfileIcon from '../../../../assets/svg/column-profile.svg?react';
+import DataQualityIcon from '../../../../assets/svg/data-quality.svg?react';
+import IncidentIcon from '../../../../assets/svg/ic-incident-manager.svg?react';
+import TableProfilerIcon from '../../../../assets/svg/table-profile.svg?react';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
 import IncidentsTab from './IncidentsTab/IncidentsTab.component';

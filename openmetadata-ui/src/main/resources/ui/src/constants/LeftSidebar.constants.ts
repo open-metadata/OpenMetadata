@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
-import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
-import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
-import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
-import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
-import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import GovernIcon from '../assets/svg/bank.svg?react';
+import ClassificationIcon from '../assets/svg/classification.svg?react';
+import ExploreIcon from '../assets/svg/explore.svg?react';
+import GlossaryIcon from '../assets/svg/glossary.svg?react';
+import AlertIcon from '../assets/svg/ic-alert.svg?react';
+import DataQualityIcon from '../assets/svg/ic-data-contract.svg?react';
+import DomainsIcon from '../assets/svg/ic-domain.svg?react';
+import HomeIcon from '../assets/svg/ic-home.svg?react';
+import IncidentMangerIcon from '../assets/svg/ic-incident-manager.svg?react';
+import ObservabilityIcon from '../assets/svg/ic-observability.svg?react';
+import PlatformLineageIcon from '../assets/svg/ic-platform-lineage.svg?react';
+import SettingsIcon from '../assets/svg/ic-settings-v1.svg?react';
+import InsightsIcon from '../assets/svg/lamp-charge.svg?react';
+import LogoutIcon from '../assets/svg/logout.svg?react';
+import MetricIcon from '../assets/svg/metric.svg?react';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';

@@ -29,7 +29,7 @@ import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import IconDelete from '../../../../assets/svg/ic-delete.svg?react';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';

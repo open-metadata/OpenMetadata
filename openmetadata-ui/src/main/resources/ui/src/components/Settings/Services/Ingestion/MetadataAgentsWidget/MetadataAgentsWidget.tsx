@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
+import MetadataAgentIcon from '../../../../../assets/svg/application.svg?react';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';

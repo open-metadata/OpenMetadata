@@ -16,8 +16,8 @@ import { Button, Dropdown } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
-import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
+import ArrowRightOutlined from '../../../assets/svg/arrow-right.svg?react';
+import DownOutlined from '../../../assets/svg/ic-arrow-down.svg?react';
 import {
   ICON_DIMENSION,
   PAGE_SIZE_BASE,

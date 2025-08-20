@@ -14,8 +14,8 @@ import Icon from '@ant-design/icons';
 import { Button, Table } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import Delete from '../../../assets/svg/delete-colored.svg?react';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
 import {
   fieldValueBoostAdditionalColumns,
   fieldValueBoostBaseColumns,

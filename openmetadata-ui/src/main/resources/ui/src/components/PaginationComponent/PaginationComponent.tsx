@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Pagination, PaginationProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
+import ArrowRightOutlined from '../../assets/svg/arrow-right.svg?react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,

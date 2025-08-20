@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
+import IconUser from '../../../../assets/svg/user.svg?react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';

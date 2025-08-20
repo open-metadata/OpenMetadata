@@ -14,7 +14,7 @@
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
+import FilterPlaceHolderIcon from '../../../assets/svg/no-search-placeholder.svg?react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { FilterPlaceholderProps } from './placeholder.interface';

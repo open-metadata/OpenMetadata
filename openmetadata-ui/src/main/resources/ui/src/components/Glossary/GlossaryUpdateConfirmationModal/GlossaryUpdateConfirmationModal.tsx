@@ -15,7 +15,7 @@ import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExclamationIcon } from '../../../assets/svg/ic-exclamation-circle.svg';
+import ExclamationIcon from '../../../assets/svg/ic-exclamation-circle.svg?react';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';

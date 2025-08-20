@@ -23,8 +23,8 @@ import {
 import { startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter-primary.svg';
+import CloseIcon from '../../../assets/svg/close.svg?react';
+import FilterIcon from '../../../assets/svg/filter-primary.svg?react';
 import { DATA_ASSET_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import './filter-configuration.less';

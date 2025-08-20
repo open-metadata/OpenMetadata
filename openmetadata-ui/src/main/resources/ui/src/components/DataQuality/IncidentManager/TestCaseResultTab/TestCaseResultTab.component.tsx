@@ -23,7 +23,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 
 import { EntityTags } from 'Models';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
+import StarIcon from '../../../../assets/svg/ic-suggestions.svg?react';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Operation } from '../../../../generated/entity/policies/policy';

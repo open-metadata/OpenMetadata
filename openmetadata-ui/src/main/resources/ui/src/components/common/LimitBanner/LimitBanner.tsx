@@ -17,8 +17,8 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
-import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
+import CloseIcon from './../../../assets/svg/close.svg?react';
+import WarningIcon from './../../../assets/svg/ic-warning-2.svg?react';
 import './limit-banner.less';
 
 export const LimitBanner = () => {

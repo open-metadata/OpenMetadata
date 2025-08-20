@@ -15,8 +15,8 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
+import CompletedIcon from '../../../../../assets/svg/ic-check-circle-new.svg?react';
+import PendingIcon from '../../../../../assets/svg/pending-badge-1.svg?react';
 import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
   GlossaryTerm,

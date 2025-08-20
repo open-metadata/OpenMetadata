@@ -17,7 +17,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
+import TeamIcon from '../../../assets/svg/teams-grey.svg?react';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
 import { OwnerType } from '../../../enums/user.enum';

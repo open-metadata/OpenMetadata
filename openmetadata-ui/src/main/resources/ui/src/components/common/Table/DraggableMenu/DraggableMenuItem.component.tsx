@@ -14,7 +14,7 @@ import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
+import ColumnDragIcon from '../../../../assets/svg/menu-duo.svg?react';
 import './draggable-menu-item.less';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 

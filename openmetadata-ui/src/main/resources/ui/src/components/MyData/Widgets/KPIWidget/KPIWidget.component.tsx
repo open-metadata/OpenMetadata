@@ -26,8 +26,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
-import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
+import KPIIcon from '../../../../assets/svg/ic-kpi-widget.svg?react';
+import KPINoDataPlaceholder from '../../../../assets/svg/no-search-placeholder.svg?react';
 import {
   CHART_WIDGET_DAYS_DURATION,
   ROUTES,

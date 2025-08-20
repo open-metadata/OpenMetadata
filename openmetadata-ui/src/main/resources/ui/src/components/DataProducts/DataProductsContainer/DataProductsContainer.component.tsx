@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
+import DataProductIcon from '../../../assets/svg/ic-data-product.svg?react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';

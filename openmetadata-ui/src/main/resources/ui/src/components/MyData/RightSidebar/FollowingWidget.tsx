@@ -17,8 +17,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
+import FollowingAssetsIcon from '../../../assets/svg/ic-following-assets.svg?react';
+import NoDataAssetsPlaceholder from '../../../assets/svg/no-notifications.svg?react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,

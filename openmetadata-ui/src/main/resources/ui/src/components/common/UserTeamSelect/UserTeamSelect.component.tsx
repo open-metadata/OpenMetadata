@@ -15,8 +15,8 @@ import { Input, Select, Space, Spin, Tabs, Typography } from 'antd';
 import { debounce, noop } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import IconTeamsGrey from '../../../assets/svg/teams-grey.svg?react';
+import IconUser from '../../../assets/svg/user.svg?react';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   PAGE_SIZE_MEDIUM,

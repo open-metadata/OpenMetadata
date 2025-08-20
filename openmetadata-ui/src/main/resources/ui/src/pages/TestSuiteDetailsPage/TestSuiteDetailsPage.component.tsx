@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import TestSuiteIcon from '../../assets/svg/icon-test-suite.svg?react';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';

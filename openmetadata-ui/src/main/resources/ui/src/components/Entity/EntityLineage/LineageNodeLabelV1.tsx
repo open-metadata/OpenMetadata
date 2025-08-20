@@ -14,8 +14,8 @@
 import { Col, Row, Space, Typography } from 'antd';
 import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import IconDBTModel from '../../../assets/svg/dbt-model.svg?react';
+import DeleteIcon from '../../../assets/svg/ic-delete.svg?react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {

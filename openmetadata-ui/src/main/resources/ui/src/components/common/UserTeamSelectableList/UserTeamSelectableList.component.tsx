@@ -16,8 +16,8 @@ import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
+import IconTeamsGrey from '../../../assets/svg/teams-grey.svg?react';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   DE_ACTIVE_COLOR,

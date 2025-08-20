@@ -15,8 +15,8 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
+import MyTaskNoDataIcon from '../../../../assets/svg/add-placeholder.svg?react';
+import MyTaskIcon from '../../../../assets/svg/ic-my-task.svg?react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,

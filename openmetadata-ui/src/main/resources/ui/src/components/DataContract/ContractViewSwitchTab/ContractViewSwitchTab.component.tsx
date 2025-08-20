@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Radio, RadioChangeEvent } from 'antd';
-import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
-import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
+import BookOutline from '../../../assets/svg/bookoutline.svg?react';
+import CodeOutline from '../../../assets/svg/codeOutline.svg?react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import './contract-view-switch-tab.less';

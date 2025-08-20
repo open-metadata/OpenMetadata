@@ -15,8 +15,8 @@ import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
-import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';
+import GridIcon from '../../../assets/svg/ic-grid.svg?react';
+import ListIcon from '../../../assets/svg/ic-list.svg?react';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_VISIBLE_COLUMNS,

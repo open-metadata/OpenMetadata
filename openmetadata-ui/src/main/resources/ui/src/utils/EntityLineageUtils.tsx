@@ -17,7 +17,7 @@ import { Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import MetricIcon from '../assets/svg/metric.svg?react';
 
 import {
   get,
@@ -44,11 +44,11 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import DashboardIcon from '../assets/svg/dashboard-grey.svg?react';
+import MlModelIcon from '../assets/svg/mlmodal.svg?react';
+import PipelineIcon from '../assets/svg/pipeline-grey.svg?react';
+import TableIcon from '../assets/svg/table-grey.svg?react';
+import TopicIcon from '../assets/svg/topic-grey.svg?react';
 import Loader from '../components/common/Loader/Loader';
 import { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';

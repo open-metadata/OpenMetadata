@@ -13,7 +13,7 @@
 import { Button, Popover, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,

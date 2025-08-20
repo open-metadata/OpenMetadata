@@ -28,7 +28,7 @@ import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
+import AddPlaceHolderIcon from '../../assets/svg/add-placeholder.svg?react';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import {

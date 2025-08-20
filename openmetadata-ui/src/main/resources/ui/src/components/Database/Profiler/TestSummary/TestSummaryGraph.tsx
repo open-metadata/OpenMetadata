@@ -32,7 +32,7 @@ import {
 } from 'recharts';
 import { CategoricalChartState } from 'recharts/types/chart/generateCategoricalChart';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { ReactComponent as FilterPlaceHolderIcon } from '../../../../assets/svg/no-search-placeholder.svg';
+import FilterPlaceHolderIcon from '../../../../assets/svg/no-search-placeholder.svg?react';
 import {
   GREEN_3,
   GREEN_3_OPACITY,

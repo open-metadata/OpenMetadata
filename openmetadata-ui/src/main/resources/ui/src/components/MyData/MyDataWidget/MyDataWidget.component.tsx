@@ -16,8 +16,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
+import MyDataIcon from '../../../assets/svg/ic-my-data.svg?react';
+import NoDataAssetsPlaceholder from '../../../assets/svg/no-data-placeholder.svg?react';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,

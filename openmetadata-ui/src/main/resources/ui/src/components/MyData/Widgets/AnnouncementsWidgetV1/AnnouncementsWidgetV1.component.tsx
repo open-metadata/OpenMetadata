@@ -14,7 +14,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Badge, Button, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
+import MegaphoneIcon from '../../../../assets/svg/announcements-v1.svg?react';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';

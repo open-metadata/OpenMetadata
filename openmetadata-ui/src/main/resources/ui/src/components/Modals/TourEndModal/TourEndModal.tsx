@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LogoMonogram } from '../../../assets/svg/logo-monogram.svg';
+import LogoMonogram from '../../../assets/svg/logo-monogram.svg?react';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {

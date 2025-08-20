@@ -13,8 +13,8 @@
 import { Button, Popover, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
+import DomainIcon from '../../../assets/svg/ic-domain.svg?react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';

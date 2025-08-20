@@ -13,8 +13,8 @@
 
 import Icon from '@ant-design/icons';
 import i18next from 'i18next';
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
+import IconMentions from '../../assets/svg/ic-mentions.svg?react';
+import IconTask from '../../assets/svg/ic-task.svg?react';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';

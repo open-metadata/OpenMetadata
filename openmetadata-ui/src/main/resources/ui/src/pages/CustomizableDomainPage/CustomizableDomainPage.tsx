@@ -15,7 +15,7 @@ import { Col, Row } from 'antd';
 import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import DomainIcon from '../../assets/svg/ic-domain.svg?react';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';

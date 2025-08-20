@@ -33,12 +33,12 @@ import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
-import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
+import AddPlaceHolderIcon from '../../../../assets/svg/add-placeholder.svg?react';
+import ExportIcon from '../../../../assets/svg/ic-export.svg?react';
+import ImportIcon from '../../../../assets/svg/ic-import.svg?react';
+import IconRestore from '../../../../assets/svg/ic-restore.svg?react';
+import IconTeams from '../../../../assets/svg/ic-teams.svg?react';
+import IconOpenLock from '../../../../assets/svg/open-lock.svg?react';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,

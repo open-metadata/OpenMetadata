@@ -29,7 +29,7 @@ import {
   TagSource,
 } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import IconExternalLink from '../assets/svg/external-links.svg?react';
 
 const { Text } = Typography;
 

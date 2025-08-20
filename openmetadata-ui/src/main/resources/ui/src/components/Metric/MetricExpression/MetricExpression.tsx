@@ -13,7 +13,7 @@
 import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Language } from '../../../generated/api/data/createMetric';
 import { Metric } from '../../../generated/entity/data/metric';

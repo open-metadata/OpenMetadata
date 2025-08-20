@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
-import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import IconSuccessBadge from '../../assets/svg/success-badge.svg?react';
 import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {

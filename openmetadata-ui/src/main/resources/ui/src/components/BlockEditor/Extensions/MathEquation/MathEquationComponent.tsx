@@ -19,7 +19,7 @@ import 'katex/dist/katex.min.css';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../../assets/svg/edit-new.svg?react';
 import './math-equation.less';
 
 export const MathEquationComponent: FC<NodeViewProps> = ({

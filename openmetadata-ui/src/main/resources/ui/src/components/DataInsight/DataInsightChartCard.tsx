@@ -29,7 +29,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
-import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
+import RightArrowIcon from '../../assets/svg/right-arrow.svg?react';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,

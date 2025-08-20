@@ -14,7 +14,7 @@ import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
 import { NodeViewProps } from '@tiptap/react';
 import { Button } from 'antd';
 import React from 'react';
-import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
+import IconDelete from '../../../../../assets/svg/ic-delete.svg?react';
 import { bytesToSize } from '../../../../../utils/StringsUtils';
 
 const FileAttachment = ({

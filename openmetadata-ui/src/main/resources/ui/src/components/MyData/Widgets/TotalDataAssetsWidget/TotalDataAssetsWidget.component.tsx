@@ -24,8 +24,8 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-data-assets.svg';
-import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
+import TotalAssetsWidgetIcon from '../../../../assets/svg/ic-data-assets.svg?react';
+import TotalDataAssetsEmptyIcon from '../../../../assets/svg/no-data-placeholder.svg?react';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';

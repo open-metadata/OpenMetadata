@@ -16,7 +16,7 @@ import classNames from 'classnames';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import IconCollateSupport from '../../../assets/svg/ic-collate-support.svg?react';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';

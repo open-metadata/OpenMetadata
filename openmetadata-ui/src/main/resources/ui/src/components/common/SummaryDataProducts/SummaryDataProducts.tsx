@@ -14,7 +14,7 @@ import { Col, Row, Tag, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
+import DataProductIcon from '../../../assets/svg/ic-data-product.svg?react';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../utils/EntityUtils';

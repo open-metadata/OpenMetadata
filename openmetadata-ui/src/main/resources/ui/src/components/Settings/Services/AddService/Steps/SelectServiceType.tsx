@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
+import IconCheckboxPrimary from '../../../../../assets/svg/checkbox-primary.svg?react';
 import {
   BETA_SERVICES,
   excludedService,

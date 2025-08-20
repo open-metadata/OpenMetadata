@@ -14,8 +14,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import IconDelete from '../../../assets/svg/ic-delete.svg?react';
+import PlusIcon from '../../../assets/svg/plus-primary.svg?react';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
 
 interface GlossaryTermReferencesModalProps {

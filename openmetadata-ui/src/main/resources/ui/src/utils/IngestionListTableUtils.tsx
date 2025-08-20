@@ -16,9 +16,9 @@ import { Col, Row, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { capitalize, isUndefined, startCase } from 'lodash';
-import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
-import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
-import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
+import ActiveIcon from '../assets/svg/check-colored.svg?react';
+import PausedIcon from '../assets/svg/ic-pause.svg?react';
+import TimeDateIcon from '../assets/svg/time-date.svg?react';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
   IngestionPipeline,

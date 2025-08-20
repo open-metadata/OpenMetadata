@@ -20,9 +20,9 @@ import Qs from 'qs';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import ExitFullScreen from '../../../assets/svg/exit-full-screen.svg?react';
+import FullScreen from '../../../assets/svg/full-screen.svg?react';
+import CopyIcon from '../../../assets/svg/icon-copy.svg?react';
 import {
   ONE_MINUTE_IN_MILLISECOND,
   PIPE_SYMBOL,

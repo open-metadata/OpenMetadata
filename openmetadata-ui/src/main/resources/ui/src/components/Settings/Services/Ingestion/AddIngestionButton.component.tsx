@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
+import DropdownIcon from '../../../../assets/svg/drop-down.svg?react';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {

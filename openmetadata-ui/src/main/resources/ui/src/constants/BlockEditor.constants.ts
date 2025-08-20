@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { EditorOptions } from '@tiptap/core';
-import { ReactComponent as IconDanger } from '../assets/svg/callout-danger.svg';
-import { ReactComponent as IconInfo } from '../assets/svg/callout-info.svg';
-import { ReactComponent as IconNote } from '../assets/svg/callout-note.svg';
-import { ReactComponent as IconWarning } from '../assets/svg/callout-warning.svg';
+import IconDanger from '../assets/svg/callout-danger.svg?react';
+import IconInfo from '../assets/svg/callout-info.svg?react';
+import IconNote from '../assets/svg/callout-note.svg?react';
+import IconWarning from '../assets/svg/callout-warning.svg?react';
 
 export const EDITOR_OPTIONS: Partial<EditorOptions> = {
   enableInputRules: [

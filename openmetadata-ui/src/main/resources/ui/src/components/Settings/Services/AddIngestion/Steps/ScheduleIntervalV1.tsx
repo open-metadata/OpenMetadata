@@ -17,8 +17,8 @@ import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
-import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
+import ClockIcon from '../../../../../assets/svg/calender-v1.svg?react';
+import PlayIcon from '../../../../../assets/svg/trigger.svg?react';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,

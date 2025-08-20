@@ -24,7 +24,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../../../assets/svg/edit-new.svg?react';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,

@@ -18,9 +18,9 @@ import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
+import TaskCloseIcon from '../../../assets/svg/ic-close-task.svg?react';
+import TaskOpenIcon from '../../../assets/svg/ic-open-task.svg?react';
+import ReplyIcon from '../../../assets/svg/ic-reply-2.svg?react';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {

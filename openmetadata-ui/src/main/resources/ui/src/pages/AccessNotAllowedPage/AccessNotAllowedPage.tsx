@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
+import NoAccessPlaceHolderIcon from '../../assets/svg/no-access-placeholder.svg?react';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 

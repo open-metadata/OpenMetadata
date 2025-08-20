@@ -19,7 +19,7 @@ import { isUndefined, omit } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
+import PlusIcon from '../../assets/svg/plus-primary.svg?react';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

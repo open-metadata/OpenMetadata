@@ -16,10 +16,10 @@ import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
+import EditIcon from '../../../../../assets/svg/edit-new.svg?react';
+import ClosePopoverIcon from '../../../../../assets/svg/ic-popover-close.svg?react';
+import SavePopoverIcon from '../../../../../assets/svg/ic-popover-save.svg?react';
+import RoleIcon from '../../../../../assets/svg/ic-roles.svg?react';
 
 import {
   PAGE_SIZE_LARGE,

@@ -17,7 +17,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
+import ArrowBottom from '../../assets/svg/ic-arrow-down.svg?react';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import {
   AnnouncementDetails,

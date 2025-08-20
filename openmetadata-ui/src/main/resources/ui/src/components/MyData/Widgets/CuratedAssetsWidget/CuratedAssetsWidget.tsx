@@ -19,9 +19,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
-import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
-import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import CuratedAssetsEmptyIcon from '../../../../assets/svg/curated-assets-no-data-placeholder.svg?react';
+import CuratedAssetsNoDataIcon from '../../../../assets/svg/curated-assets-not-found-placeholder.svg?react';
+import StarOutlinedIcon from '../../../../assets/svg/star-outlined.svg?react';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
   PAGE_SIZE_BASE,

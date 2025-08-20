@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/ic-column.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-info-circle.svg';
-import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/ic-table-test.svg';
+import DataQualityIcon from '../../../../assets/svg/ic-check-circle-new.svg?react';
+import ColumnProfileIcon from '../../../../assets/svg/ic-column.svg?react';
+import IncidentIcon from '../../../../assets/svg/ic-info-circle.svg?react';
+import TableProfileIcon from '../../../../assets/svg/ic-table-test.svg?react';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';

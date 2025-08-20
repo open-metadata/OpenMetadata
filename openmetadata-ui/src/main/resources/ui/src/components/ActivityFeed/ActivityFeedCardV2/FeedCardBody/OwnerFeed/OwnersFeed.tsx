@@ -16,8 +16,8 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
-import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
+import AddIcon from '../../../../../assets/svg/added-icon.svg?react';
+import DeletedIcon from '../../../../../assets/svg/deleted-icon.svg?react';
 import {
   MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
   MAX_VISIBLE_OWNERS_FOR_FEED_TAB,

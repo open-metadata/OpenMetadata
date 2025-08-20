@@ -41,10 +41,10 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
+import EditIcon from '../../../../assets/svg/edit-new.svg?react';
+import TaskCloseIcon from '../../../../assets/svg/ic-close-task.svg?react';
+import TaskOpenIcon from '../../../../assets/svg/ic-open-task.svg?react';
+import AddColored from '../../../../assets/svg/plus-colored.svg?react';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,

@@ -28,7 +28,7 @@ import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
+import IconSync from '../../../../assets/svg/ic-sync.svg?react';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
   EMAIL_REG_EX,

@@ -16,7 +16,7 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import VersionIcon from '../../../assets/svg/ic-version.svg?react';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';

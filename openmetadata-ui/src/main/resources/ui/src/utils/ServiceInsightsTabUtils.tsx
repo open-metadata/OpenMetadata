@@ -21,12 +21,12 @@ import {
   toLower,
 } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
-import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
-import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
-import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
-import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
-import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
+import DescriptionPlaceholderIcon from '../assets/svg/ic-flat-doc.svg?react';
+import TablePlaceholderIcon from '../assets/svg/ic-large-table.svg?react';
+import NoDataPlaceholderIcon from '../assets/svg/ic-no-records.svg?react';
+import OwnersPlaceholderIcon from '../assets/svg/key-hand.svg?react';
+import TierPlaceholderIcon from '../assets/svg/no-tier.svg?react';
+import PiiPlaceholderIcon from '../assets/svg/security-safe.svg?react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';

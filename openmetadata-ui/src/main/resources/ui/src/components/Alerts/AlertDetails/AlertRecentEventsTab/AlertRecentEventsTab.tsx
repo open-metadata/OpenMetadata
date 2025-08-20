@@ -26,7 +26,7 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
+import FilterIcon from '../../../../assets/svg/ic-feeds-filter.svg?react';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';

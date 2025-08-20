@@ -15,7 +15,7 @@ import { Avatar, Button, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
+import ThreadIcon from '../../../../assets/svg/ic-reply-2.svg?react';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';

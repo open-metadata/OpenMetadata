@@ -16,13 +16,13 @@ import { isEmpty, isNil, isUndefined } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
-import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
-import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
-import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
-import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
+import KillIcon from '../../../../../../assets/svg/close-circle-outlined.svg?react';
+import DeployIcon from '../../../../../../assets/svg/deploy.svg?react';
+import EditIcon from '../../../../../../assets/svg/edit-new.svg?react';
+import DeleteIcon from '../../../../../../assets/svg/ic-delete.svg?react';
+import MoreIcon from '../../../../../../assets/svg/menu.svg?react';
+import ReloadIcon from '../../../../../../assets/svg/reload.svg?react';
+import RunIcon from '../../../../../../assets/svg/run.svg?react';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import {
   IngestionPipeline,

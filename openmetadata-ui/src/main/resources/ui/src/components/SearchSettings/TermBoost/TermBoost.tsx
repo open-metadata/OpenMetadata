@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
+import Delete from '../../../assets/svg/delete-colored.svg?react';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';

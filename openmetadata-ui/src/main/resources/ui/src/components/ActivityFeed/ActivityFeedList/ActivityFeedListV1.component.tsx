@@ -13,7 +13,7 @@
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
+import FeedEmptyIcon from '../../../assets/svg/activity-feed-no-data-placeholder.svg?react';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';

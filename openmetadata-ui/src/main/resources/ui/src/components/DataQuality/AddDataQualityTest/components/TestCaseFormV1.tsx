@@ -34,9 +34,9 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
+import CloseIcon from '../../../../assets/svg/close.svg?react';
+import ColumnIcon from '../../../../assets/svg/ic-column.svg?react';
+import TableIcon from '../../../../assets/svg/ic-table-test.svg?react';
 import {
   MAX_NAME_LENGTH,
   PAGE_SIZE_LARGE,

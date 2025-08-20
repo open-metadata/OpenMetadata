@@ -13,7 +13,7 @@
 
 import { Dropdown, Space, Typography } from 'antd';
 import React from 'react';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
+import DropDownIcon from '../../assets/svg/bottom-arrow.svg?react';
 
 export interface SortingField {
   name: string;

@@ -34,7 +34,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as IconDropdown } from '../../../../../assets/svg/menu.svg';
+import IconDropdown from '../../../../../assets/svg/menu.svg?react';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../../../enums/entity.enum';

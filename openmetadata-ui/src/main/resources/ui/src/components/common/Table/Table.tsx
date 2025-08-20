@@ -36,7 +36,7 @@ import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types'
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import ColumnIcon from '../../../assets/svg/ic-column.svg?react';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,

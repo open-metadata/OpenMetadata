@@ -15,7 +15,7 @@ import { WidgetProps } from '@rjsf/utils';
 import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
 import { FC, ReactNode, useMemo } from 'react';
-import { ReactComponent as ArrowIcon } from '../../../../../assets/svg/ic-arrow-down.svg';
+import ArrowIcon from '../../../../../assets/svg/ic-arrow-down.svg?react';
 import { TEXT_BODY_COLOR } from '../../../../../constants/constants';
 
 const TreeSelectWidget: FC<WidgetProps> = ({

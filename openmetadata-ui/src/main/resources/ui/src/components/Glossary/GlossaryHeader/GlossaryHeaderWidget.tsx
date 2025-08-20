@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import IconTerm from '../../../assets/svg/book.svg?react';
+import GlossaryIcon from '../../../assets/svg/glossary.svg?react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';

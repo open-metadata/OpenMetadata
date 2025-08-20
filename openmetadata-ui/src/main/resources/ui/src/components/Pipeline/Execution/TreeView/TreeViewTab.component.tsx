@@ -16,7 +16,7 @@ import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../../assets/svg/vector.svg';
+import ArrowSvg from '../../../../assets/svg/vector.svg?react';
 import {
   PipelineStatus,
   Task,

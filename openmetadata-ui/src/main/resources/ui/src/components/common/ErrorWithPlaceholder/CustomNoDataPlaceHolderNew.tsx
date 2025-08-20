@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { NoDataPlaceholderProps } from './placeholder.interface';
 
-import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/edit-colored.svg';
+import NoDataFoundPlaceHolderIcon from '../../../assets/svg/edit-colored.svg?react';
 
 const CustomNoDataPlaceHolderNew = ({
   size,

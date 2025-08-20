@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
+import IconTimesCircle from '../../assets/svg/ic-times-circle.svg?react';
 
 interface LineageNodeRemoveButtonProps {
   onRemove: () => void;

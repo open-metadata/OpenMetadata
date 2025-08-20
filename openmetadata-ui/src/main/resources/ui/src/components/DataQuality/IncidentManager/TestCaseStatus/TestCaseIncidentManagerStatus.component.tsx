@@ -15,7 +15,7 @@ import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../../assets/svg/edit-new.svg?react';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';

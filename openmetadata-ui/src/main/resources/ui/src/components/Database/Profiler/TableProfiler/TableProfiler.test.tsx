@@ -14,9 +14,9 @@
 // Library imports
 import { render, screen } from '@testing-library/react';
 // internal imports
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
-import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/table-profile.svg';
+import ColumnProfileIcon from '../../../../assets/svg/column-profile.svg?react';
+import DataQualityIcon from '../../../../assets/svg/data-quality.svg?react';
+import TableProfileIcon from '../../../../assets/svg/table-profile.svg?react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TEST_CASE } from '../../../../mocks/TableData.mock';
 import TableProfilerV1 from './TableProfiler';

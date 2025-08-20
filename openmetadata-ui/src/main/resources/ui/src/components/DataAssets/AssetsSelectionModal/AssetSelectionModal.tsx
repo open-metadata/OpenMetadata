@@ -40,7 +40,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
+import FilterIcon from '../../../assets/svg/ic-feeds-filter.svg?react';
 import {
   ES_UPDATE_DELAY,
   PAGE_SIZE_MEDIUM,

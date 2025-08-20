@@ -18,7 +18,7 @@ import { ExtraInfo } from 'Models';
 import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
+import ScoreIcon from '../../../assets/svg/score.svg?react';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';

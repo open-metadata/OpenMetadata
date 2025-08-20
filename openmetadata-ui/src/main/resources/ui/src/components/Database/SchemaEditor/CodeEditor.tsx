@@ -29,7 +29,7 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
+import CopyIcon from '../../../assets/svg/copy-left.svg?react';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';

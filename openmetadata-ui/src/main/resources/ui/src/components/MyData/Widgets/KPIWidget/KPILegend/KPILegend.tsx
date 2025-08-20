@@ -15,7 +15,7 @@ import { Col, Progress, Row, Tooltip, Typography } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
+import CheckIcon from '../../../../../assets/svg/ic-check-circle-new.svg?react';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../../../../constants/Widgets.constant';
 import { KpiTargetType } from '../../../../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../../../../interface/data-insight.interface';

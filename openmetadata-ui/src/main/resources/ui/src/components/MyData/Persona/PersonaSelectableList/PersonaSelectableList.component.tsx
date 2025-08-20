@@ -14,10 +14,10 @@ import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
+import EditIcon from '../../../../assets/svg/edit-new.svg?react';
+import PersonaIcon from '../../../../assets/svg/ic-persona-new.svg?react';
+import ClosePopoverIcon from '../../../../assets/svg/ic-popover-close.svg?react';
+import SavePopoverIcon from '../../../../assets/svg/ic-popover-save.svg?react';
 
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';

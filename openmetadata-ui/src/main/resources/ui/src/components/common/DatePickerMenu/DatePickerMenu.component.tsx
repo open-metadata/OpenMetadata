@@ -20,7 +20,7 @@ import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
+import DropdownIcon from '../../../assets/svg/drop-down.svg?react';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,

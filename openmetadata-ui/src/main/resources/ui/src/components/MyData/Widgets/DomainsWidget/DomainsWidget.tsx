@@ -16,8 +16,8 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import DomainNoDataPlaceholder from '../../../../assets/svg/domain-no-data-placeholder.svg?react';
+import DomainIcon from '../../../../assets/svg/ic-domains-widget.svg?react';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,

@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as AbortedIcon } from '../assets/svg/aborted-status.svg';
-import { ReactComponent as DeprecatedIcon } from '../assets/svg/arrow-down-colored.svg';
-import { ReactComponent as ApprovedIcon } from '../assets/svg/check-colored.svg';
-import { ReactComponent as DraftIcon } from '../assets/svg/clipboard-colored.svg';
-import { ReactComponent as InReviewIcon } from '../assets/svg/eye-colored.svg';
-import { ReactComponent as FailedIcon } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as ActiveErrorIcon } from '../assets/svg/ic-alert-circle.svg';
-import { ReactComponent as CompletedIcon } from '../assets/svg/ic-check-circle-colored.svg';
-import { ReactComponent as PendingIcon } from '../assets/svg/ic-pause.svg';
-import { ReactComponent as RunningIcon } from '../assets/svg/ic-play.svg';
-import { ReactComponent as StartedIcon } from '../assets/svg/ic-rocket.svg';
-import { ReactComponent as StoppedIcon } from '../assets/svg/ic-stop-circle.svg';
-import { ReactComponent as RejectedIcon } from '../assets/svg/x-colored.svg';
+import AbortedIcon from '../assets/svg/aborted-status.svg?react';
+import DeprecatedIcon from '../assets/svg/arrow-down-colored.svg?react';
+import ApprovedIcon from '../assets/svg/check-colored.svg?react';
+import DraftIcon from '../assets/svg/clipboard-colored.svg?react';
+import InReviewIcon from '../assets/svg/eye-colored.svg?react';
+import FailedIcon from '../assets/svg/fail-badge.svg?react';
+import ActiveErrorIcon from '../assets/svg/ic-alert-circle.svg?react';
+import CompletedIcon from '../assets/svg/ic-check-circle-colored.svg?react';
+import PendingIcon from '../assets/svg/ic-pause.svg?react';
+import RunningIcon from '../assets/svg/ic-play.svg?react';
+import StartedIcon from '../assets/svg/ic-rocket.svg?react';
+import StoppedIcon from '../assets/svg/ic-stop-circle.svg?react';
+import RejectedIcon from '../assets/svg/x-colored.svg?react';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status as AppStatus } from '../generated/entity/applications/appRunRecord';
 import { Status } from '../generated/entity/data/glossaryTerm';

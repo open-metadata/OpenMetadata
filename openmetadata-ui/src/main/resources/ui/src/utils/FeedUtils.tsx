@@ -21,8 +21,8 @@ import { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
-import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
-import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
+import AddIcon from '../assets/svg/added-icon.svg?react';
+import UpdatedIcon from '../assets/svg/updated-icon.svg?react';
 import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {

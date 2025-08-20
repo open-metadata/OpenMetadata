@@ -13,10 +13,10 @@
 import { Badge, Button, Modal, Popover, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
-import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
+import EditProfileIcon from '../../assets/svg/edit-new.svg?react';
+import ChangePassword from '../../assets/svg/ic-change-pw.svg?react';
+import MenuDots from '../../assets/svg/ic-menu-dots.svg?react';
+import DeleteIcon from '../../assets/svg/ic-trash.svg?react';
 import { User } from '../../generated/entity/teams/user';
 import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
 

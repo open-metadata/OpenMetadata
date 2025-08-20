@@ -12,7 +12,7 @@
  */
 
 import { Tooltip } from 'antd';
-import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
+import IconComments from '../assets/svg/comment.svg?react';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';

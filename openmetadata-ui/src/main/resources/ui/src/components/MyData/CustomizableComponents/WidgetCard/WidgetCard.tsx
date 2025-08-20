@@ -15,7 +15,7 @@ import { Card, Typography } from 'antd';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
+import CheckIcon from '../../../../assets/svg/ic-check-circle-new.svg?react';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';

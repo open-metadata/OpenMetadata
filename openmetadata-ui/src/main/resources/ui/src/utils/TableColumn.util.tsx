@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
+import FilterIcon from '../assets/svg/ic-filter.svg?react';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import DataProductsContainer from '../components/DataProducts/DataProductsContainer/DataProductsContainer.component';

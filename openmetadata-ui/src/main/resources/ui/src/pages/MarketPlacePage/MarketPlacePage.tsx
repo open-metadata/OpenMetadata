@@ -16,7 +16,7 @@ import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-heading.svg';
+import HeadingIcon from '../../assets/svg/marketplace-heading.svg?react';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';

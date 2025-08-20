@@ -30,13 +30,13 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
-import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
-import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
-import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
+import DropDownIcon from '../../assets/svg/drop-down.svg?react';
+import IconBell from '../../assets/svg/ic-alert-bell.svg?react';
+import DomainIcon from '../../assets/svg/ic-domain.svg?react';
+import Help from '../../assets/svg/ic-help.svg?react';
+import RefreshIcon from '../../assets/svg/ic-refresh.svg?react';
+import SidebarCollapsedIcon from '../../assets/svg/ic-sidebar-collapsed.svg?react';
+import SidebarExpandedIcon from '../../assets/svg/ic-sidebar-expanded.svg?react';
 import {
   DEFAULT_DOMAIN_VALUE,
   LAST_VERSION_FETCH_TIME_KEY,

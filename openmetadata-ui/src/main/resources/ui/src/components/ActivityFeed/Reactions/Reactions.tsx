@@ -16,7 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
+import AddReactionIcon from '../../../assets/svg/ic-add-emoji.svg?react';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,

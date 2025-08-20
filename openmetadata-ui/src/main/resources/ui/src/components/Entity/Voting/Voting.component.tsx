@@ -15,7 +15,7 @@ import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
+import ThumbsUpOutline from '../../../assets/svg/thumbs-up-outline.svg?react';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 

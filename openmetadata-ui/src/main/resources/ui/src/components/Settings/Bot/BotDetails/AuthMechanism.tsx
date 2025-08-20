@@ -16,7 +16,7 @@ import { Button, Divider, Input, Space, Typography } from 'antd';
 
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
+import IconError from '../../../../assets/svg/error.svg?react';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
 import { getTokenExpiry } from '../../../../utils/BotsUtils';

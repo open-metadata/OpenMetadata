@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
+import IconRemove from '../../../assets/svg/ic-remove.svg?react';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';

@@ -17,7 +17,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isString } from 'lodash';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import DeleteIcon from '../../../assets/svg/ic-delete.svg?react';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';

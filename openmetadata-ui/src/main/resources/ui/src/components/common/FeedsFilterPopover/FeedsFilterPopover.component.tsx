@@ -21,7 +21,7 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
+import FilterIcon from '../../../assets/svg/ic-feeds-filter.svg?react';
 import { FeedFilter } from '../../../enums/mydata.enum';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

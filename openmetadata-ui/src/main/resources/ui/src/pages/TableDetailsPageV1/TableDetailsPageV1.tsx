@@ -20,7 +20,7 @@ import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
+import RedAlertIcon from '../../assets/svg/ic-alert-red.svg?react';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

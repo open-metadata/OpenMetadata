@@ -13,7 +13,7 @@
 import { Alert, AlertProps } from 'antd';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
-import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
+import CrossIcon from '../../assets/svg/ic-cross.svg?react';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { getIconAndClassName } from '../../utils/ToastUtils';
 import './alert-bar.style.less';

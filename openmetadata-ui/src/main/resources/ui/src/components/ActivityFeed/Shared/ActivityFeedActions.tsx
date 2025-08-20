@@ -14,8 +14,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import IconEdit from '../../../assets/svg/edit-new.svg?react';
+import DeleteIcon from '../../../assets/svg/ic-delete.svg?react';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   Post,
@@ -23,7 +23,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 
-import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
+import IconReply from '../../../assets/svg/ic-reply.svg?react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';

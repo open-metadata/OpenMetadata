@@ -15,7 +15,7 @@ import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
+import CertificationIcon from '../../assets/svg/ic-certification.svg?react';
 import { Tag } from '../../generated/entity/classification/tag';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityUtils';

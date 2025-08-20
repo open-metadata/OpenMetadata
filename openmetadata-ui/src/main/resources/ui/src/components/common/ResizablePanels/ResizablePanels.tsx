@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
+import SidebarCollapsedIcon from '../../../assets/svg/ic-sidebar-collapsed.svg?react';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';

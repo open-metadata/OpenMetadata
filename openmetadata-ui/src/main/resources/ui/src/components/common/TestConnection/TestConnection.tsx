@@ -16,9 +16,9 @@ import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
-import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
+import FailIcon from '../../../assets/svg/fail-badge.svg?react';
+import WarningIcon from '../../../assets/svg/ic-warning.svg?react';
+import SuccessIcon from '../../../assets/svg/success-badge.svg?react';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,

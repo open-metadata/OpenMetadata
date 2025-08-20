@@ -25,8 +25,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
-import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
+import IconTeams from '../../../assets/svg/teams-grey.svg?react';
+import IconUsers from '../../../assets/svg/user.svg?react';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';

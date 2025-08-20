@@ -14,7 +14,7 @@ import { Card, Skeleton, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
+import PieChartIcon from '../../../assets/svg/pie-chart.svg?react';
 import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsTabUtils';

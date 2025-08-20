@@ -14,8 +14,8 @@
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
-import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
-import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
+import AddIcon from '../../../../../assets/svg/added-icon.svg?react';
+import DeletedIcon from '../../../../../assets/svg/deleted-icon.svg?react';
 
 import { Tag } from '../../../../../generated/entity/feed/tag';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';

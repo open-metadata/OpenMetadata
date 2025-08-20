@@ -18,8 +18,8 @@ import { Editor } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as DuplicateIcon } from '../../../assets/svg/ic-duplicate.svg';
+import DeleteIcon from '../../../assets/svg/ic-delete.svg?react';
+import DuplicateIcon from '../../../assets/svg/ic-duplicate.svg?react';
 import {
   nodeDOMAtCoords,
   nodePosAtDOM,

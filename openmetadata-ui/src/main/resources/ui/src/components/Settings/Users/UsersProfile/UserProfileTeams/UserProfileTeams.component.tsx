@@ -14,10 +14,10 @@
 import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
+import EditIcon from '../../../../../assets/svg/edit-new.svg?react';
+import ClosePopoverIcon from '../../../../../assets/svg/ic-popover-close.svg?react';
+import SavePopoverIcon from '../../../../../assets/svg/ic-popover-save.svg?react';
+import IconTeamsGrey from '../../../../../assets/svg/teams-grey.svg?react';
 
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';

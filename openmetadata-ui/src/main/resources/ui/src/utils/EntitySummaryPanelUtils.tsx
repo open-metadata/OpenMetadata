@@ -17,7 +17,7 @@ import { Col, Row, Typography } from 'antd';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import IconExternalLink from '../assets/svg/external-links.svg?react';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';

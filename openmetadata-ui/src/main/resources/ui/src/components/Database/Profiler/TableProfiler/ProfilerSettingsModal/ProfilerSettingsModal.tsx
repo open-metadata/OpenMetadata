@@ -40,7 +40,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
+import IconDelete from '../../../../../assets/svg/ic-delete.svg?react';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,

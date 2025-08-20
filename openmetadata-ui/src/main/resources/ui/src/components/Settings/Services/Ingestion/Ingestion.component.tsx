@@ -25,8 +25,8 @@ import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
-import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
+import MetadataAgentIcon from '../../../../assets/svg/ic-collapse.svg?react';
+import CollateAI from '../../../../assets/svg/ic-suggestions.svg?react';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,

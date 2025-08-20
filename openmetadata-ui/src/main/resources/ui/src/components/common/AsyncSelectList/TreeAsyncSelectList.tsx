@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
+import ArrowIcon from '../../../assets/svg/ic-arrow-down.svg?react';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';

@@ -14,7 +14,7 @@
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import AddPlaceHolderIcon from '../../../assets/svg/add-placeholder.svg?react';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { AssignPlaceholderProps } from './placeholder.interface';
 

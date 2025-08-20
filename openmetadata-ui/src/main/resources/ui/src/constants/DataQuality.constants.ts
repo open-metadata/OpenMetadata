@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as SkippedIcon } from '../assets/svg/ic-aborted.svg';
-import { ReactComponent as FailedIcon } from '../assets/svg/ic-fail.svg';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-successful.svg';
+import SkippedIcon from '../assets/svg/ic-aborted.svg?react';
+import FailedIcon from '../assets/svg/ic-fail.svg?react';
+import SuccessIcon from '../assets/svg/ic-successful.svg?react';
 
 export const TEST_CASE_STATUS_ICON = {
   Aborted: SkippedIcon,

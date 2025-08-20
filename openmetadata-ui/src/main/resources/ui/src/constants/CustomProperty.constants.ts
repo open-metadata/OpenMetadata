@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as DateTimeIcon } from '../assets/svg/customproperties/date-time.svg';
-import { ReactComponent as DateIcon } from '../assets/svg/customproperties/date.svg';
-import { ReactComponent as DurationIcon } from '../assets/svg/customproperties/duration.svg';
-import { ReactComponent as EmailIcon } from '../assets/svg/customproperties/email.svg';
-import { ReactComponent as EntityReferenceListIcon } from '../assets/svg/customproperties/entity-list.svg';
-import { ReactComponent as EntityReferenceIcon } from '../assets/svg/customproperties/entity.svg';
-import { ReactComponent as EnumIcon } from '../assets/svg/customproperties/enum.svg';
-import { ReactComponent as IntegerIcon } from '../assets/svg/customproperties/integer.svg';
-import { ReactComponent as MarkDownIcon } from '../assets/svg/customproperties/markdown.svg';
-import { ReactComponent as NumberIcon } from '../assets/svg/customproperties/number.svg';
-import { ReactComponent as SQLQueryIcon } from '../assets/svg/customproperties/sql-query.svg';
-import { ReactComponent as StringIcon } from '../assets/svg/customproperties/string.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/customproperties/table.svg';
-import { ReactComponent as TimeIntervalIcon } from '../assets/svg/customproperties/time-interval.svg';
-import { ReactComponent as TimeIcon } from '../assets/svg/customproperties/time.svg';
-import { ReactComponent as TimestampIcon } from '../assets/svg/customproperties/timestamp.svg';
+import DateTimeIcon from '../assets/svg/customproperties/date-time.svg?react';
+import DateIcon from '../assets/svg/customproperties/date.svg?react';
+import DurationIcon from '../assets/svg/customproperties/duration.svg?react';
+import EmailIcon from '../assets/svg/customproperties/email.svg?react';
+import EntityReferenceListIcon from '../assets/svg/customproperties/entity-list.svg?react';
+import EntityReferenceIcon from '../assets/svg/customproperties/entity.svg?react';
+import EnumIcon from '../assets/svg/customproperties/enum.svg?react';
+import IntegerIcon from '../assets/svg/customproperties/integer.svg?react';
+import MarkDownIcon from '../assets/svg/customproperties/markdown.svg?react';
+import NumberIcon from '../assets/svg/customproperties/number.svg?react';
+import SQLQueryIcon from '../assets/svg/customproperties/sql-query.svg?react';
+import StringIcon from '../assets/svg/customproperties/string.svg?react';
+import TableIcon from '../assets/svg/customproperties/table.svg?react';
+import TimeIntervalIcon from '../assets/svg/customproperties/time-interval.svg?react';
+import TimeIcon from '../assets/svg/customproperties/time.svg?react';
+import TimestampIcon from '../assets/svg/customproperties/timestamp.svg?react';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 

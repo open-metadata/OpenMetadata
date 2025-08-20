@@ -30,13 +30,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart } from 'recharts';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
-import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
-import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
-import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+import EditIcon from '../../../assets/svg/edit-new-thick.svg?react';
+import EmptyContractIcon from '../../../assets/svg/empty-contract.svg?react';
+import FlagIcon from '../../../assets/svg/flag.svg?react';
+import FailIcon from '../../../assets/svg/ic-fail.svg?react';
+import CheckIcon from '../../../assets/svg/ic-successful.svg?react';
+import DefaultIcon from '../../../assets/svg/ic-task.svg?react';
+import DeleteIcon from '../../../assets/svg/ic-trash.svg?react';
 import {
   ICON_DIMENSION_USER_PAGE,
   NO_DATA_PLACEHOLDER,

@@ -20,8 +20,8 @@ import {
 } from 'antd';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
-import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
+import IconTimeOut from '../../../../assets/svg/ic-time-out.svg?react';
+import IconTimeOutButton from '../../../../assets/svg/ic-timeout-button.svg?react';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';

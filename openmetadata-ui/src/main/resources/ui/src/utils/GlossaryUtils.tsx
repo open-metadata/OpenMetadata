@@ -16,7 +16,7 @@ import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import ExternalLinkIcon from '../assets/svg/external-links.svg?react';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';

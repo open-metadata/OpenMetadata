@@ -12,9 +12,9 @@
  */
 
 import { CSSProperties } from 'react';
-import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
-import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+import IconCompleteBadge from '../assets/svg/complete.svg?react';
+import IconFailedBadge from '../assets/svg/fail-badge.svg?react';
+import IconSuccessBadge from '../assets/svg/success-badge.svg?react';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {

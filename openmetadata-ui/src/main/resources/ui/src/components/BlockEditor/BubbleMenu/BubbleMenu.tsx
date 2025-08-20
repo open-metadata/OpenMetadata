@@ -19,11 +19,11 @@ import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, useMemo } from 'react';
-import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
-import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
-import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
-import { ReactComponent as FormatLinkIcon } from '../../../assets/svg/ic-format-link.svg';
-import { ReactComponent as FormatStrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
+import FormatBoldIcon from '../../../assets/svg/ic-format-bold.svg?react';
+import FormatInlineCodeIcon from '../../../assets/svg/ic-format-inline-code.svg?react';
+import FormatItalicIcon from '../../../assets/svg/ic-format-italic.svg?react';
+import FormatLinkIcon from '../../../assets/svg/ic-format-link.svg?react';
+import FormatStrikeIcon from '../../../assets/svg/ic-format-strike.svg?react';
 
 interface BubbleMenuProps {
   editor: Editor;

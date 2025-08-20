@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
-import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
+import DragIconDotted from '../../../assets/svg/dots-six-bold.svg?react';
 import { entityData } from '../../../constants/Lineage.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import searchClassBase from '../../../utils/SearchClassBase';

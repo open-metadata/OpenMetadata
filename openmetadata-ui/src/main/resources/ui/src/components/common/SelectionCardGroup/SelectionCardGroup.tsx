@@ -14,7 +14,7 @@
 import { Card } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
+import CheckIcon from '../../../assets/svg/check-colored.svg?react';
 import './selection-card-group.less';
 import {
   SelectionCardGroupProps,

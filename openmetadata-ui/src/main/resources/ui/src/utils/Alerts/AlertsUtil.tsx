@@ -49,15 +49,15 @@ import {
   uniqBy,
 } from 'lodash';
 import { Fragment } from 'react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as ConfigIcon } from '../../assets/svg/configuration-icon.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
-import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
-import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import AlertIcon from '../../assets/svg/alert.svg?react';
+import AllActivityIcon from '../../assets/svg/all-activity.svg?react';
+import ClockIcon from '../../assets/svg/clock.svg?react';
+import ConfigIcon from '../../assets/svg/configuration-icon.svg?react';
+import CheckIcon from '../../assets/svg/ic-check.svg?react';
+import MailIcon from '../../assets/svg/ic-mail.svg?react';
+import MSTeamsIcon from '../../assets/svg/ms-teams.svg?react';
+import SlackIcon from '../../assets/svg/slack.svg?react';
+import WebhookIcon from '../../assets/svg/webhook.svg?react';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';

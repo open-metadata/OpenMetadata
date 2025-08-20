@@ -13,12 +13,12 @@
 import i18next from 'i18next';
 import yaml from 'js-yaml';
 import { omit } from 'lodash';
-import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
-import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
-import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
-import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
-import { ReactComponent as SemanticsIcon } from '../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/table-grey.svg';
+import ContractAbortedIcon from '../../assets/svg/ic-contract-aborted.svg?react';
+import ContractFailedIcon from '../../assets/svg/ic-contract-failed.svg?react';
+import ContractRunningIcon from '../../assets/svg/ic-contract-running.svg?react';
+import QualityIcon from '../../assets/svg/policies.svg?react';
+import SemanticsIcon from '../../assets/svg/semantics.svg?react';
+import TableIcon from '../../assets/svg/table-grey.svg?react';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import {
   GREEN_3,

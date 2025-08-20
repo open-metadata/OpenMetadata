@@ -19,8 +19,8 @@ import { isNaN, map } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
+import Calendar from '../../../assets/svg/calendar.svg?react';
+import FilterIcon from '../../../assets/svg/filter.svg?react';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,

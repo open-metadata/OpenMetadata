@@ -17,7 +17,7 @@ import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
+import IconSuggestionsBlue from '../../assets/svg/ic-suggestions-blue.svg?react';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
   APICollectionSource,

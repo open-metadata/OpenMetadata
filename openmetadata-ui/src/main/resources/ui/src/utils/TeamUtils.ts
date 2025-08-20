@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
-import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
-import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import GChatIcon from '../assets/svg/gchat.svg?react';
+import MsTeamsIcon from '../assets/svg/ms-teams.svg?react';
+import SlackIcon from '../assets/svg/slack.svg?react';
 import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import { Team, TeamType } from '../generated/entity/teams/team';
 import { getEntityName } from './EntityUtils';

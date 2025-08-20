@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../../assets/svg/arrow-down-light.svg';
+import ArrowSvg from '../../../../assets/svg/arrow-down-light.svg?react';
 import { SelectOption } from '../../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import Loader from '../../../../components/common/Loader/Loader';
 import { Webhook } from '../../../../generated/events/eventSubscription';

@@ -14,11 +14,11 @@ import { Editor } from '@tiptap/react';
 import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
-import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
-import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
-import { ReactComponent as IconDeleteRow } from '../../../assets/svg/ic-format-delete-row.svg';
+import IconDeleteTable from '../../../assets/svg/ic-delete.svg?react';
+import IconAddColumnAfter from '../../../assets/svg/ic-format-add-column-after.svg?react';
+import IconAddRowAfter from '../../../assets/svg/ic-format-add-row-after.svg?react';
+import IconDeleteColumn from '../../../assets/svg/ic-format-delete-column.svg?react';
+import IconDeleteRow from '../../../assets/svg/ic-format-delete-row.svg?react';
 
 interface TableMenuProps {
   editor: Editor;

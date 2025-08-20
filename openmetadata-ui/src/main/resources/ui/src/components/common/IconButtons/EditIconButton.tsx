@@ -13,12 +13,12 @@
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, ButtonProps, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
-import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
+import CommentIcon from '../../../assets/svg/comment.svg?react';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
+import CardExpandCollapseIcon from '../../../assets/svg/ic-card-expand-collapse.svg?react';
+import IconDelete from '../../../assets/svg/ic-delete.svg?react';
+import ExpandIcon from '../../../assets/svg/ic-expand-right.svg?react';
+import RequestIcon from '../../../assets/svg/request-icon.svg?react';
 
 type IconButtonPropsInternal = ButtonProps & {
   newLook?: boolean;

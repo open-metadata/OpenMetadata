@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
+import CloseIcon from '../../../../assets/svg/close.svg?react';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';

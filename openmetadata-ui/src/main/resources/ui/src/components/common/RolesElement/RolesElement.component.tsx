@@ -16,7 +16,7 @@ import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import IconUser from '../../../assets/svg/user.svg?react';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityUtils';
 import './roles-element.styles.less';

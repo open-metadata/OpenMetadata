@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { reverse } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../assets/svg/edit-new.svg?react';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';

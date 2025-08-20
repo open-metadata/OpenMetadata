@@ -16,7 +16,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
+import PlusSquare from '../../../../../assets/svg/plus-square.svg?react';
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
 import {
   CuratedAssetsFormSelectedAssetsInfo,

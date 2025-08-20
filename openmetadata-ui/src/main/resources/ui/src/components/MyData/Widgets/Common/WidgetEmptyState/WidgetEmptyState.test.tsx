@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
+import TaskIcon from '../../../../../assets/svg/ic-task.svg?react';
 import WidgetEmptyState from './WidgetEmptyState';
 
 const mockProps = {

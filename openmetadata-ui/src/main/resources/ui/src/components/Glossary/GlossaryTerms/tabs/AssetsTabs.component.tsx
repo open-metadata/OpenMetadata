@@ -41,10 +41,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import DeleteIcon from '../../../../assets/svg/ic-delete.svg?react';
+import FilterIcon from '../../../../assets/svg/ic-feeds-filter.svg?react';
+import AddPlaceHolderIcon from '../../../../assets/svg/ic-no-records.svg?react';
+import IconDropdown from '../../../../assets/svg/menu.svg?react';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';

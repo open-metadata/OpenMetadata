@@ -15,9 +15,24 @@ type SvgComponent = React.FunctionComponent<React.SVGAttributes<SVGElement>>;
 
 // Module declaration to allow importing SVG files
 declare module '*.svg' {
-  const ReactComponent: SvgComponent;
-  const path: string; // Fix it with url-loader
+  import React from 'react';
+  // For backward compatibility with existing code
+  export const ReactComponent: React.FunctionComponent<
+    React.SVGAttributes<SVGElement>
+  >;
+  const src: string;
+  export default src;
+}
 
-  export { ReactComponent };
-  export default path;
+// Module declaration for SVG files imported as React components with ?react query
+declare module '*.svg?react' {
+  import React from 'react';
+  const Component: React.FunctionComponent<React.SVGAttributes<SVGElement>>;
+  export default Component;
+}
+
+// Module declaration for SVG files imported as URLs with ?url query
+declare module '*.svg?url' {
+  const src: string;
+  export default src;
 }

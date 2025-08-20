@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+import IconFailBadge from '../assets/svg/fail-badge.svg?react';
+import IconSkippedBadge from '../assets/svg/skipped-badge.svg?react';
+import IconSuccessBadge from '../assets/svg/success-badge.svg?react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';

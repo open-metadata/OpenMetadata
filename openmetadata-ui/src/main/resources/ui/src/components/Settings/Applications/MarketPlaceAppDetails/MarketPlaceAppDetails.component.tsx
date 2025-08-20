@@ -26,7 +26,7 @@ import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
+import CheckMarkIcon from '../../../../assets/svg/ic-cloud-checkmark.svg?react';
 import { ROUTES } from '../../../../constants/constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';

@@ -18,7 +18,7 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
+import SuccessIcon from '../assets/svg/ic-alert-success.svg?react';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';

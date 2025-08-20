@@ -17,8 +17,8 @@ import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import DomainIcon from '../../../assets/svg/ic-domain.svg?react';
+import InheritIcon from '../../../assets/svg/ic-inherit.svg?react';
 
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';

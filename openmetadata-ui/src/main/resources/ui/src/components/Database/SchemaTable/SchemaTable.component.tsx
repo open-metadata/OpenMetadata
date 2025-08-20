@@ -20,7 +20,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import IconEdit from '../../../assets/svg/edit-new.svg?react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,

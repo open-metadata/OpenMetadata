@@ -16,7 +16,7 @@ import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import IconEdit from '../../../assets/svg/edit-new.svg?react';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';

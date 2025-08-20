@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
+import CrossIcon from '../../assets/svg/ic-cross.svg?react';
 import * as ToastUtils from '../../utils/ToastUtils';
 import AlertBar from './AlertBar';
 

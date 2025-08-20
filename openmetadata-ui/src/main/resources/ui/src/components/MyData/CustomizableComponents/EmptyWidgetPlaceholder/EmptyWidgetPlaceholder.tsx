@@ -16,7 +16,7 @@ import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
+import AddPlaceHolderIcon from '../../../../assets/svg/add-placeholder.svg?react';
 import { SIZE } from '../../../../enums/common.enum';
 import './empty-widget-placeholder.less';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';

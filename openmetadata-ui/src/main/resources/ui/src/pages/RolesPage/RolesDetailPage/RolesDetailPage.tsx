@@ -19,7 +19,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
+import RoleIcon from '../../../assets/svg/role-colored.svg?react';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

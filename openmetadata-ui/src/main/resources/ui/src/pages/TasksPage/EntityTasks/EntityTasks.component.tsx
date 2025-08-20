@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import IconRequest from '../../../assets/svg/request-icon.svg?react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';

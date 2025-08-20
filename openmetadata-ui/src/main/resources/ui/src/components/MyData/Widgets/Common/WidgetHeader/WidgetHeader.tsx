@@ -16,7 +16,7 @@ import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import EditIcon from '../../../../../assets/svg/edit-new.svg?react';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
 import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';

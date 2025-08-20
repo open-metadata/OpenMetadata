@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
+import ImportIcon from '../../assets/svg/ic-drag-drop.svg?react';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';

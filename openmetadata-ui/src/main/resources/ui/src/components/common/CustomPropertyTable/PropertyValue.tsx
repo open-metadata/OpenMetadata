@@ -41,11 +41,11 @@ import moment, { Moment } from 'moment';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
-import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time-arrow.svg';
-import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
-import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
+import ArrowIconComponent from '../../../assets/svg/drop-down.svg?react';
+import EditIconComponent from '../../../assets/svg/edit-new.svg?react';
+import EndTimeArrowIcon from '../../../assets/svg/end-time-arrow.svg?react';
+import EndTimeIcon from '../../../assets/svg/end-time.svg?react';
+import StartTimeIcon from '../../../assets/svg/start-time.svg?react';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import TestCaseIcon from '../../assets/svg/all-activity-v2.svg?react';
+import TestSuiteIcon from '../../assets/svg/icon-test-suite.svg?react';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import i18n from '../../utils/i18next/LocalUtil';

@@ -25,8 +25,8 @@ const AppLogo = ({
 
   const fetchLogo = useCallback(async () => {
     if (!logo) {
-      const data = await applicationsClassBase.importAppLogo(appName);
-      const Icon = data.ReactComponent as React.ComponentType<
+      const module = await applicationsClassBase.importAppLogo(appName);
+      const Icon = module.default as React.ComponentType<
         JSX.IntrinsicElements['svg']
       >;
       setAppLogo(<Icon />);

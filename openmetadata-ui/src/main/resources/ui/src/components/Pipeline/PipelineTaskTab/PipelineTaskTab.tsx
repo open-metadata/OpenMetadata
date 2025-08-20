@@ -18,7 +18,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
+import ExternalLinkIcon from '../../../assets/svg/external-links.svg?react';
 import {
   DATA_ASSET_ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,

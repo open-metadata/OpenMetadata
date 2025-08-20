@@ -16,8 +16,8 @@ import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import IconDelete from '../../../../assets/svg/ic-delete.svg?react';
+import PlusIcon from '../../../../assets/svg/plus-primary.svg?react';
 import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import {

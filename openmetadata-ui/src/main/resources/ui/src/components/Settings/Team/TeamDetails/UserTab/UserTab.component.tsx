@@ -19,9 +19,9 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
+import ExportIcon from '../../../../../assets/svg/ic-export.svg?react';
+import ImportIcon from '../../../../../assets/svg/ic-import.svg?react';
+import IconRemove from '../../../../../assets/svg/ic-remove.svg?react';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {

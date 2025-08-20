@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
-import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
+import Icon from '../../../assets/svg/teams-grey.svg?react';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 

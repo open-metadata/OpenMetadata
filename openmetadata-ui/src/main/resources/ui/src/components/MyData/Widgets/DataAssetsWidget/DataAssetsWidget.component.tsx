@@ -17,8 +17,8 @@ import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
-import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
+import DataAssetIcon from '../../../../assets/svg/ic-data-assets.svg?react';
+import NoDataAssetsPlaceholder from '../../../../assets/svg/no-folder-data.svg?react';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import {
   getSortField,

@@ -18,7 +18,7 @@ import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
+import InternalLinkIcon from '../../../../assets/svg/InternalIcons.svg?react';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';

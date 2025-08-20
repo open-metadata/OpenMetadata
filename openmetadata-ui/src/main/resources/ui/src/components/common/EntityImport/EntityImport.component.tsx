@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
+import SuccessBadgeIcon from '../../../assets/svg/success-badge.svg?react';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { STEPS_FOR_IMPORT_ENTITY } from '../../../constants/entity.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';

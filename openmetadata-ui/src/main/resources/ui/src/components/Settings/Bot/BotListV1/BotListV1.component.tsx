@@ -19,7 +19,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import IconDelete from '../../../../assets/svg/ic-delete.svg?react';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';

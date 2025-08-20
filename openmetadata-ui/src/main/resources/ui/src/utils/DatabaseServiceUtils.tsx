@@ -13,8 +13,8 @@
 
 import { cloneDeep } from 'lodash';
 import { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
+import ExportIcon from '../assets/svg/ic-export.svg?react';
+import ImportIcon from '../assets/svg/ic-import.svg?react';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';

@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import IconEdit from '../../assets/svg/edit-new.svg?react';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {

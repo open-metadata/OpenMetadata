@@ -33,8 +33,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
+import IconDown from '../../assets/svg/ic-arrow-down.svg?react';
+import IconRight from '../../assets/svg/ic-arrow-right.svg?react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {

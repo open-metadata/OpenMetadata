@@ -38,7 +38,7 @@ class ApplicationsClassBase {
     };
   }
   public importAppLogo(appName: string) {
-    return import(`../../../../assets/svg/${appName}.svg`);
+    return import(`../../../../assets/svg/${appName}.svg?react`);
   }
   /**
    * Used to pass extra elements from installed Apps.

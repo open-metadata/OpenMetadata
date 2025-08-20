@@ -13,9 +13,9 @@
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
-import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
+import AllTestsIcon from '../../../assets/svg/all-activity-v2.svg?react';
+import DataAssetsCoverageIcon from '../../../assets/svg/ic-data-assets-coverage.svg?react';
+import HealthCheckIcon from '../../../assets/svg/ic-green-heart-border.svg?react';
 import {
   BLUE_2,
   GREEN_3,

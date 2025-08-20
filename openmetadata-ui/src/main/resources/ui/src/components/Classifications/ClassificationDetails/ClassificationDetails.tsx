@@ -27,9 +27,9 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
-import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import IconTag from '../../../assets/svg/classification.svg?react';
+import LockIcon from '../../../assets/svg/closed-lock.svg?react';
+import VersionIcon from '../../../assets/svg/ic-version.svg?react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';

@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
+import AddIcon from '../../../../assets/svg/add-square.svg?react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import {

@@ -16,7 +16,7 @@ import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
+import CopyLeft from '../../../../../assets/svg/copy-left.svg?react';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
 import './workflow-array-field-template.less';

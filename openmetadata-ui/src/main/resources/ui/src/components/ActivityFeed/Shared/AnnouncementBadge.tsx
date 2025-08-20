@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import AnnouncementIcon from '../../../assets/svg/announcements-v1.svg?react';
 import './task-badge.less';
 
 const AnnouncementBadge = () => {

@@ -21,7 +21,7 @@ import {
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
-import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
+import IconDeleteColored from '../assets/svg/ic-delete-colored.svg?react';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';

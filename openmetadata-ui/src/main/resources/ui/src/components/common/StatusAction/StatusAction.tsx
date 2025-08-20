@@ -14,8 +14,8 @@ import Icon from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseCircleIcon } from '../../../assets/svg/close-circle-white.svg';
-import { ReactComponent as TickCircleIcon } from '../../../assets/svg/tick-circle-white.svg';
+import CloseCircleIcon from '../../../assets/svg/close-circle-white.svg?react';
+import TickCircleIcon from '../../../assets/svg/tick-circle-white.svg?react';
 import './status-action.less';
 
 interface StatusActionProps {
