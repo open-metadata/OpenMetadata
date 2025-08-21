@@ -38,6 +38,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
   private Expression inputNamespaceMapExpr;
+  private Expression approvalThresholdExpr;
+  private Expression rejectionThresholdExpr;
 
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -53,8 +55,33 @@ public class CreateApprovalTaskImpl implements TaskListener {
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
+      // Get approval threshold, default to 1 if not set
+      Integer approvalThreshold = 1;
+      if (approvalThresholdExpr != null) {
+        String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
+        if (thresholdStr != null && !thresholdStr.isEmpty()) {
+          approvalThreshold = Integer.parseInt(thresholdStr);
+        }
+      }
+
+      // Get rejection threshold, default to 1 if not set
+      Integer rejectionThreshold = 1;
+      if (rejectionThresholdExpr != null) {
+        String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
+        if (thresholdStr != null && !thresholdStr.isEmpty()) {
+          rejectionThreshold = Integer.parseInt(thresholdStr);
+        }
+      }
+
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+
+      // Store approval and rejection thresholds and initialize approval tracking in task variables
+      delegateTask.setVariable("approvalThreshold", approvalThreshold);
+      delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
+      delegateTask.setVariable("approvals", new ArrayList<Map<String, Object>>());
+      delegateTask.setVariable("approvalCount", 0);
+      delegateTask.setVariable("rejectionCount", 0);
     } catch (Exception exc) {
       LOG.error(
           String.format(

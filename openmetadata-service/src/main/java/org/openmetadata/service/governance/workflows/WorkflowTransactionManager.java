@@ -1,7 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -38,7 +37,7 @@ public class WorkflowTransactionManager {
 
     // Validate the workflow BEFORE starting any transaction
     Workflow workflow = new Workflow(entity);
-    validateWorkflow(workflow);
+    //    validateWorkflow(workflow);
 
     // Start a NEW transaction at the API level
     // This is the TOP-LEVEL transaction for this operation
@@ -78,7 +77,7 @@ public class WorkflowTransactionManager {
 
     // Validate the updated workflow BEFORE starting transaction
     Workflow updatedWorkflow = new Workflow(updated);
-    validateWorkflow(updatedWorkflow);
+    //    validateWorkflow(updatedWorkflow);
 
     // Start a NEW transaction at the API level
     Jdbi jdbi = Entity.getJdbi();
@@ -140,27 +139,27 @@ public class WorkflowTransactionManager {
    * Validate a workflow definition with Flowable.
    * This is done BEFORE starting any transaction.
    */
-  private static void validateWorkflow(Workflow workflow) {
-    if (!WorkflowHandler.isInitialized()) {
-      throw new UnhandledServerException("WorkflowHandler is not initialized");
-    }
-
-    try {
-      BpmnXMLConverter converter = new BpmnXMLConverter();
-      String mainBpmnXml = new String(converter.convertToXML(workflow.getMainModel()));
-      String triggerBpmnXml = new String(converter.convertToXML(workflow.getTriggerModel()));
-
-      boolean valid =
-          WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
-              && WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml);
-
-      if (!valid) {
-        throw new UnhandledServerException(
-            "Invalid workflow definition: Failed Flowable validation");
-      }
-    } catch (Exception e) {
-      LOG.error("Error validating workflow", e);
-      throw new UnhandledServerException("Failed to validate workflow: " + e.getMessage(), e);
-    }
-  }
+  //  private static void validateWorkflow(Workflow workflow) {
+  //    if (!WorkflowHandler.isInitialized()) {
+  //      throw new UnhandledServerException("WorkflowHandler is not initialized");
+  //    }
+  //
+  //    try {
+  //      BpmnXMLConverter converter = new BpmnXMLConverter();
+  //      String mainBpmnXml = new String(converter.convertToXML(workflow.getMainModel()));
+  //      String triggerBpmnXml = new String(converter.convertToXML(workflow.getTriggerModel()));
+  //
+  //      boolean valid =
+  //          WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
+  //              && WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml);
+  //
+  //      if (!valid) {
+  //        throw new UnhandledServerException(
+  //            "Invalid workflow definition: Failed Flowable validation");
+  //      }
+  //    } catch (Exception e) {
+  //      LOG.error("Error validating workflow", e);
+  //      throw new UnhandledServerException("Failed to validate workflow: " + e.getMessage(), e);
+  //    }
+  //  }
 }

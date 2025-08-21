@@ -84,6 +84,20 @@
             }
           },
           "additionalProperties": false
+        },
+        "approvalThreshold": {
+          "title": "Approval Threshold",
+          "description": "Number of reviewers that must approve for the task to be completed. Default is 1 (any single reviewer can approve).",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "rejectionThreshold": {
+          "title": "Rejection Threshold",
+          "description": "Number of reviewers that must reject for the task to be rejected. Default is 1 (any single reviewer can reject). This allows for scenarios where you want multiple approvals but a single rejection can veto.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
         }
       },
       "required": ["assignees"],

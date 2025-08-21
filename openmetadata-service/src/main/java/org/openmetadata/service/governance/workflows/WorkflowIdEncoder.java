@@ -10,8 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class WorkflowIdEncoder {
-  private static final int MAX_FLOWABLE_ID_LENGTH = 255;
-  private static final int SAFE_ID_LENGTH = 200;
+  private static final int MAX_FLOWABLE_ID_LENGTH = 64;
+  private static final int SAFE_ID_LENGTH = 50;
   private static final Map<String, String> ID_CACHE = new ConcurrentHashMap<>();
   private static final Map<String, String> REVERSE_CACHE = new ConcurrentHashMap<>();
 
@@ -75,18 +75,14 @@ public class WorkflowIdEncoder {
 
   public static String generateSafeFlowableId(String... parts) {
     String combined = String.join("-", parts);
-    String encoded = encodeId(combined);
 
-    if (encoded.length() > MAX_FLOWABLE_ID_LENGTH) {
-      String hash = generateHash(combined);
-      String safeId = "id_" + hash;
-      ID_CACHE.put(combined, safeId);
-      REVERSE_CACHE.put(safeId, combined);
-      LOG.debug("Generated safe Flowable ID: original={}, safe={}", combined, safeId);
-      return safeId;
-    }
-
-    return encoded;
+    // Always generate a short hash-based ID for Flowable compatibility
+    String hash = generateHash(combined);
+    String safeId = "id_" + hash.substring(0, Math.min(hash.length(), 20));
+    ID_CACHE.put(combined, safeId);
+    REVERSE_CACHE.put(safeId, combined);
+    LOG.debug("Generated safe Flowable ID: original={}, safe={}", combined, safeId);
+    return safeId;
   }
 
   private static String generateHash(String input) {

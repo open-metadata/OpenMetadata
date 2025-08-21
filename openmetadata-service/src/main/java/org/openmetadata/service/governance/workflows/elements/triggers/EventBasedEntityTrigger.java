@@ -31,7 +31,6 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.governance.workflows.WorkflowIdEncoder;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -135,10 +134,10 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
         signalEventDefinition.setSignalRef(signal.getId());
 
-        // Use safe ID encoding instead of truncation
+        // Create start event with proper ID
         String startEventId =
-            WorkflowIdEncoder.generateSafeFlowableId(
-                workflowTriggerId, entityType, eventId, "start");
+            getFlowableElementId(
+                workflowTriggerId, String.format("%s-%s-%s", entityType, eventId, "start"));
 
         StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
 

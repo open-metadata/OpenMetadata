@@ -65,6 +65,18 @@ public class UserApprovalTask implements NodeInterface {
                         : new HashMap<>()))
             .build();
 
+    FieldExtension approvalThresholdExpr =
+        new FieldExtensionBuilder()
+            .fieldName("approvalThresholdExpr")
+            .fieldValue(String.valueOf(nodeDefinition.getConfig().getApprovalThreshold()))
+            .build();
+
+    FieldExtension rejectionThresholdExpr =
+        new FieldExtensionBuilder()
+            .fieldName("rejectionThresholdExpr")
+            .fieldValue(String.valueOf(nodeDefinition.getConfig().getRejectionThreshold()))
+            .build();
+
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
     StartEvent startEvent =
@@ -72,9 +84,20 @@ public class UserApprovalTask implements NodeInterface {
 
     ServiceTask setAssigneesVariable =
         getSetAssigneesVariableServiceTask(
-            subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
+            subProcessId,
+            assigneesExpr,
+            assigneesVarNameExpr,
+            inputNamespaceMapExpr,
+            approvalThresholdExpr,
+            rejectionThresholdExpr);
 
-    UserTask userTask = getUserTask(subProcessId, assigneesVarNameExpr, inputNamespaceMapExpr);
+    UserTask userTask =
+        getUserTask(
+            subProcessId,
+            assigneesVarNameExpr,
+            inputNamespaceMapExpr,
+            approvalThresholdExpr,
+            rejectionThresholdExpr);
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -122,7 +145,9 @@ public class UserApprovalTask implements NodeInterface {
       String subProcessId,
       FieldExtension assigneesExpr,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr) {
+      FieldExtension inputNamespaceMapExpr,
+      FieldExtension approvalThresholdExpr,
+      FieldExtension rejectionThresholdExpr) {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
         .implementation(SetApprovalAssigneesImpl.class.getName())
@@ -135,7 +160,9 @@ public class UserApprovalTask implements NodeInterface {
   private UserTask getUserTask(
       String subProcessId,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr) {
+      FieldExtension inputNamespaceMapExpr,
+      FieldExtension approvalThresholdExpr,
+      FieldExtension rejectionThresholdExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -148,6 +175,8 @@ public class UserApprovalTask implements NodeInterface {
             .event("create")
             .implementation(CreateApprovalTaskImpl.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
+            .addFieldExtension(approvalThresholdExpr)
+            .addFieldExtension(rejectionThresholdExpr)
             .build();
 
     return new UserTaskBuilder()

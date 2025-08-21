@@ -88,6 +88,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -384,6 +385,23 @@ public class FeedRepository {
     EntityInterface aboutEntity = threadContext.getAboutEntity();
     String origJson = JsonUtils.pojoToJson(aboutEntity);
     EntityInterface updatedEntity = taskWorkflow.performTask(user, resolveTask);
+
+    // For approval tasks, check if the task is actually completed
+    // (multi-approval tasks may still be open after a single approval)
+    if (taskWorkflow instanceof GlossaryTermRepository.ApprovalTaskWorkflow) {
+      // Check if the workflow task is still open
+      UUID taskId = threadContext.getThread().getId();
+      boolean isTaskStillOpen = WorkflowHandler.getInstance().isTaskStillOpen(taskId);
+
+      if (isTaskStillOpen) {
+        // Task is still open, waiting for more approvals
+        // Don't close the task or apply patches yet
+        LOG.info("Task {} is still open, waiting for more approvals", taskId);
+        return;
+      }
+    }
+
+    // Task is completed, apply the changes
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
     EntityRepository<?> repository = threadContext.getEntityRepository();

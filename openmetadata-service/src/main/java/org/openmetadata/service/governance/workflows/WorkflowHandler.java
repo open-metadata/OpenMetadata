@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -169,24 +170,41 @@ public class WorkflowHandler {
     BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
     // Deploy Main Workflow
-    byte[] bpmnMainWorkflowBytes = bpmnXMLConverter.convertToXML(workflow.getMainModel());
+    byte[] bpmnMainWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
+    LOG.info("[Deploy] Deploying main workflow: {}", workflow.getMainWorkflow().getWorkflowName());
     repositoryService
         .createDeployment()
         .addBytes(
-            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflowName()),
+            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
             bpmnMainWorkflowBytes)
-        .name(workflow.getMainWorkflowName())
+        .name(workflow.getMainWorkflow().getWorkflowName())
         .deploy();
 
     // Deploy Trigger Workflow
-    byte[] bpmnTriggerWorkflowBytes = bpmnXMLConverter.convertToXML(workflow.getTriggerModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format("%s-workflow.bpmn20.xml", workflow.getTriggerWorkflowName()),
-            bpmnTriggerWorkflowBytes)
-        .name(workflow.getTriggerWorkflowName())
-        .deploy();
+    byte[] bpmnTriggerWorkflowBytes =
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
+    LOG.info(
+        "[Deploy] Deploying trigger workflow: {}", workflow.getTriggerWorkflow().getWorkflowName());
+    try {
+      repositoryService
+          .createDeployment()
+          .addBytes(
+              String.format(
+                  "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
+              bpmnTriggerWorkflowBytes)
+          .name(workflow.getTriggerWorkflow().getWorkflowName())
+          .deploy();
+      LOG.info(
+          "[Deploy] Successfully deployed trigger workflow: {}",
+          workflow.getTriggerWorkflow().getWorkflowName());
+    } catch (Exception e) {
+      LOG.error(
+          "[Deploy] Failed to deploy trigger workflow: {}",
+          workflow.getTriggerWorkflow().getWorkflowName(),
+          e);
+      throw e;
+    }
   }
 
   public boolean isDeployed(WorkflowDefinition wf) {
@@ -371,21 +389,44 @@ public class WorkflowHandler {
             task.getId(),
             task.getProcessInstanceId(),
             task.getName());
-        Optional.ofNullable(variables)
-            .ifPresentOrElse(
-                variablesValue -> {
-                  LOG.info(
-                      "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
-                      task.getId(),
-                      variablesValue);
-                  taskService.complete(task.getId(), variablesValue);
-                },
-                () -> {
-                  LOG.info(
-                      "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
-                  taskService.complete(task.getId());
-                });
-        LOG.info("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
+
+        // Check if this is a multi-approval task
+        Integer approvalThreshold =
+            (Integer) taskService.getVariable(task.getId(), "approvalThreshold");
+        Integer rejectionThreshold =
+            (Integer) taskService.getVariable(task.getId(), "rejectionThreshold");
+        if ((approvalThreshold != null && approvalThreshold > 1)
+            || (rejectionThreshold != null && rejectionThreshold > 1)) {
+          // This is a multi-reviewer approval task
+          boolean taskCompleted =
+              handleMultiApproval(task, variables, approvalThreshold, rejectionThreshold);
+          if (taskCompleted) {
+            LOG.info(
+                "[WorkflowTask] SUCCESS: Multi-approval task '{}' completed with threshold met",
+                customTaskId);
+          } else {
+            LOG.info(
+                "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
+                customTaskId);
+          }
+        } else {
+          // Single approval - original behavior
+          Optional.ofNullable(variables)
+              .ifPresentOrElse(
+                  variablesValue -> {
+                    LOG.info(
+                        "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
+                        task.getId(),
+                        variablesValue);
+                    taskService.complete(task.getId(), variablesValue);
+                  },
+                  () -> {
+                    LOG.info(
+                        "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
+                    taskService.complete(task.getId());
+                  });
+          LOG.info("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
+        }
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
       }
@@ -398,6 +439,121 @@ public class WorkflowHandler {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
       throw e;
+    }
+  }
+
+  private boolean handleMultiApproval(
+      Task task,
+      Map<String, Object> variables,
+      Integer approvalThreshold,
+      Integer rejectionThreshold) {
+    TaskService taskService = processEngine.getTaskService();
+
+    // Default thresholds to 1 if not set
+    if (approvalThreshold == null) {
+      approvalThreshold = 1;
+    }
+    if (rejectionThreshold == null) {
+      rejectionThreshold = 1;
+    }
+
+    // Get current approval tracking variables
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> approvals =
+        (List<Map<String, Object>>) taskService.getVariable(task.getId(), "approvals");
+    if (approvals == null) {
+      approvals = new ArrayList<>();
+    }
+
+    Integer approvalCount = (Integer) taskService.getVariable(task.getId(), "approvalCount");
+    if (approvalCount == null) {
+      approvalCount = 0;
+    }
+
+    Integer rejectionCount = (Integer) taskService.getVariable(task.getId(), "rejectionCount");
+    if (rejectionCount == null) {
+      rejectionCount = 0;
+    }
+
+    // Get the current user and approval decision
+    String currentUser = (String) variables.get("updatedBy");
+    Boolean approved = (Boolean) variables.get("result");
+
+    // Check if this user has already voted
+    boolean alreadyVoted =
+        approvals.stream().anyMatch(a -> currentUser != null && currentUser.equals(a.get("user")));
+
+    if (alreadyVoted) {
+      LOG.warn("[MultiApproval] User '{}' has already voted on this task", currentUser);
+      return false;
+    }
+
+    // Record the approval/rejection
+    Map<String, Object> approval = new HashMap<>();
+    approval.put("user", currentUser);
+    approval.put("approved", approved);
+    approval.put("timestamp", System.currentTimeMillis());
+    approvals.add(approval);
+
+    if (Boolean.TRUE.equals(approved)) {
+      approvalCount++;
+    } else {
+      rejectionCount++;
+    }
+
+    // Update task variables
+    taskService.setVariable(task.getId(), "approvals", approvals);
+    taskService.setVariable(task.getId(), "approvalCount", approvalCount);
+    taskService.setVariable(task.getId(), "rejectionCount", rejectionCount);
+
+    LOG.info(
+        "[MultiApproval] Task '{}' - Approvals: {}/{}, Rejections: {}/{}",
+        task.getId(),
+        approvalCount,
+        approvalThreshold,
+        rejectionCount,
+        rejectionThreshold);
+
+    // Check if rejection threshold is met (rejection takes precedence)
+    if (rejectionCount >= rejectionThreshold) {
+      LOG.info(
+          "[MultiApproval] Rejection threshold met ({}/{}), rejecting task",
+          rejectionCount,
+          rejectionThreshold);
+      // Set the final result as rejected and complete the task
+      variables.put("result", false);
+      taskService.complete(task.getId(), variables);
+      return true;
+    }
+
+    // Check if approval threshold is met
+    if (approvalCount >= approvalThreshold) {
+      LOG.info(
+          "[MultiApproval] Approval threshold met ({}/{}), approving task",
+          approvalCount,
+          approvalThreshold);
+      // Set the final result as approved and complete the task
+      variables.put("result", true);
+      taskService.complete(task.getId(), variables);
+      return true;
+    }
+
+    // Task remains open for more votes
+    LOG.info(
+        "[MultiApproval] Task '{}' remains open. Need {} more approvals or {} more rejections",
+        task.getId(),
+        approvalThreshold - approvalCount,
+        rejectionThreshold - rejectionCount);
+    return false;
+  }
+
+  public boolean isTaskStillOpen(UUID customTaskId) {
+    try {
+      Task task = getTaskFromCustomTaskId(customTaskId);
+      return task != null && !task.isSuspended();
+    } catch (Exception e) {
+      LOG.debug("Task {} not found or already completed", customTaskId);
+      return false;
     }
   }
 
