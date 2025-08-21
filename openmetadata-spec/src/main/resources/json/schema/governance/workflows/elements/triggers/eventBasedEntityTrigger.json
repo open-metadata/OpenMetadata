@@ -23,7 +23,7 @@
       "type": "object",
       "properties": {
         "entityType": {
-          "description": "[DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for multiple types.",
+          "description": "Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes' for multiple types.",
           "type": "string"
         },
         "entityTypes": {
@@ -37,7 +37,7 @@
         },
         "events": {
           "title": "Events",
-          "descriptions": "Select the events that should trigger this workflow",
+          "description": "Select the events that should trigger this workflow",
           "type": "array",
           "items": {
             "$ref": "#/definitions/event"

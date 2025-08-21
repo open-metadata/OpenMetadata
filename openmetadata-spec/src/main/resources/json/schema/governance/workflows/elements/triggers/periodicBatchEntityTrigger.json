@@ -20,7 +20,7 @@
         },
         "entityType": {
           "title": "Entity Type",
-          "description": "[DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for multiple types.",
+          "description": "Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes' for multiple types.",
           "type": "string"
         },
         "entityTypes": {

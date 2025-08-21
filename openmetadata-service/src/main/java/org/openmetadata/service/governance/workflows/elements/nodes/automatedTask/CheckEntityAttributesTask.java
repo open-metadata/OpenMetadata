@@ -46,7 +46,6 @@ public class CheckEntityAttributesTask implements NodeInterface {
                 nodeDefinition.getInputNamespaceMap() != null
                     ? nodeDefinition.getInputNamespaceMap()
                     : new HashMap<>()));
-    ;
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();

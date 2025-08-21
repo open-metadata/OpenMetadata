@@ -218,6 +218,18 @@ public class FeedRepository {
     @SuppressWarnings("unused")
     protected void closeTask(String user, CloseTask closeTask) {}
 
+    /**
+     * Check if this task supports multi-approval.
+     * ALL workflows support multi-approval by default after the upgrade.
+     * Only legacy workflows (deployed before multi-approval feature) return false.
+     */
+    public boolean supportsMultiApproval() {
+      // Check if this workflow was deployed with multi-approval support
+      // by checking if the task has approval threshold variables
+      return WorkflowHandler.getInstance()
+          .hasMultiApprovalSupport(threadContext.getThread().getId());
+    }
+
     protected final TaskType getTaskType() {
       return threadContext.getThread().getTask().getType();
     }
@@ -386,9 +398,8 @@ public class FeedRepository {
     String origJson = JsonUtils.pojoToJson(aboutEntity);
     EntityInterface updatedEntity = taskWorkflow.performTask(user, resolveTask);
 
-    // For approval tasks, check if the task is actually completed
-    // (multi-approval tasks may still be open after a single approval)
-    if (taskWorkflow instanceof GlossaryTermRepository.ApprovalTaskWorkflow) {
+    // For tasks that support multi-approval, check if the task is actually completed
+    if (taskWorkflow.supportsMultiApproval()) {
       // Check if the workflow task is still open
       UUID taskId = threadContext.getThread().getId();
       boolean isTaskStillOpen = WorkflowHandler.getInstance().isTaskStillOpen(taskId);
@@ -396,7 +407,6 @@ public class FeedRepository {
       if (isTaskStillOpen) {
         // Task is still open, waiting for more approvals
         // Don't close the task or apply patches yet
-        LOG.info("Task {} is still open, waiting for more approvals", taskId);
         return;
       }
     }

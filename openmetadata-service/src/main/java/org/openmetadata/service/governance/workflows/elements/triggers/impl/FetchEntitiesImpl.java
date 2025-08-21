@@ -25,8 +25,26 @@ public class FetchEntitiesImpl implements JavaDelegate {
 
   @Override
   public void execute(DelegateExecution execution) {
-    List<String> entityTypes =
-        JsonUtils.readOrConvertValue(entityTypesExpr.getValue(execution), List.class);
+    // Handle both legacy entityType (string) and new entityTypes (array) for backward compatibility
+    Object entityTypesValue = entityTypesExpr.getValue(execution);
+    List<String> entityTypes;
+
+    if (entityTypesValue instanceof List) {
+      entityTypes = (List<String>) entityTypesValue;
+    } else if (entityTypesValue instanceof String) {
+      // Try to parse as JSON array, fallback to single string
+      String strValue = (String) entityTypesValue;
+      if (strValue.trim().startsWith("[") && strValue.trim().endsWith("]")) {
+        entityTypes = JsonUtils.readOrConvertValue(strValue, List.class);
+      } else {
+        // Legacy single entityType
+        entityTypes = new ArrayList<>();
+        entityTypes.add(strValue);
+      }
+    } else {
+      // Fallback: try to convert to List
+      entityTypes = JsonUtils.readOrConvertValue(entityTypesValue, List.class);
+    }
     String searchFilter =
         Optional.ofNullable(searchFilterExpr)
             .map(expr -> (String) expr.getValue(execution))

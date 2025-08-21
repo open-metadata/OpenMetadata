@@ -172,7 +172,6 @@ public class WorkflowHandler {
     // Deploy Main Workflow
     byte[] bpmnMainWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
-    LOG.info("[Deploy] Deploying main workflow: {}", workflow.getMainWorkflow().getWorkflowName());
     repositoryService
         .createDeployment()
         .addBytes(
@@ -184,27 +183,14 @@ public class WorkflowHandler {
     // Deploy Trigger Workflow
     byte[] bpmnTriggerWorkflowBytes =
         bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
-    LOG.info(
-        "[Deploy] Deploying trigger workflow: {}", workflow.getTriggerWorkflow().getWorkflowName());
-    try {
-      repositoryService
-          .createDeployment()
-          .addBytes(
-              String.format(
-                  "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
-              bpmnTriggerWorkflowBytes)
-          .name(workflow.getTriggerWorkflow().getWorkflowName())
-          .deploy();
-      LOG.info(
-          "[Deploy] Successfully deployed trigger workflow: {}",
-          workflow.getTriggerWorkflow().getWorkflowName());
-    } catch (Exception e) {
-      LOG.error(
-          "[Deploy] Failed to deploy trigger workflow: {}",
-          workflow.getTriggerWorkflow().getWorkflowName(),
-          e);
-      throw e;
-    }
+    repositoryService
+        .createDeployment()
+        .addBytes(
+            String.format(
+                "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
+            bpmnTriggerWorkflowBytes)
+        .name(workflow.getTriggerWorkflow().getWorkflowName())
+        .deploy();
   }
 
   public boolean isDeployed(WorkflowDefinition wf) {
@@ -506,7 +492,7 @@ public class WorkflowHandler {
     taskService.setVariable(task.getId(), "approvalCount", approvalCount);
     taskService.setVariable(task.getId(), "rejectionCount", rejectionCount);
 
-    LOG.info(
+    LOG.debug(
         "[MultiApproval] Task '{}' - Approvals: {}/{}, Rejections: {}/{}",
         task.getId(),
         approvalCount,
@@ -516,7 +502,7 @@ public class WorkflowHandler {
 
     // Check if rejection threshold is met (rejection takes precedence)
     if (rejectionCount >= rejectionThreshold) {
-      LOG.info(
+      LOG.debug(
           "[MultiApproval] Rejection threshold met ({}/{}), rejecting task",
           rejectionCount,
           rejectionThreshold);
@@ -528,7 +514,7 @@ public class WorkflowHandler {
 
     // Check if approval threshold is met
     if (approvalCount >= approvalThreshold) {
-      LOG.info(
+      LOG.debug(
           "[MultiApproval] Approval threshold met ({}/{}), approving task",
           approvalCount,
           approvalThreshold);
@@ -539,7 +525,7 @@ public class WorkflowHandler {
     }
 
     // Task remains open for more votes
-    LOG.info(
+    LOG.debug(
         "[MultiApproval] Task '{}' remains open. Need {} more approvals or {} more rejections",
         task.getId(),
         approvalThreshold - approvalCount,
@@ -553,6 +539,30 @@ public class WorkflowHandler {
       return task != null && !task.isSuspended();
     } catch (Exception e) {
       LOG.debug("Task {} not found or already completed", customTaskId);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a task has multi-approval support by checking for approval threshold variables.
+   * Tasks deployed with the new multi-approval feature will have these variables.
+   * Legacy tasks won't have them.
+   */
+  public boolean hasMultiApprovalSupport(UUID customTaskId) {
+    try {
+      Task task = getTaskFromCustomTaskId(customTaskId);
+      if (task == null) {
+        return false;
+      }
+
+      TaskService taskService = processEngine.getTaskService();
+      // Check if the task has approval threshold variable
+      // This variable is only present in workflows deployed with multi-approval support
+      Object approvalThreshold = taskService.getVariable(task.getId(), "approvalThreshold");
+      return approvalThreshold != null;
+    } catch (Exception e) {
+      LOG.debug(
+          "Error checking multi-approval support for task {}: {}", customTaskId, e.getMessage());
       return false;
     }
   }

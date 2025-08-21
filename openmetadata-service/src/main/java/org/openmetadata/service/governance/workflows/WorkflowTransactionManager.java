@@ -10,18 +10,17 @@ import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 /**
- * WorkflowTransactionManager provides atomic operations for workflow definitions
- * across both OpenMetadata and Flowable databases.
+ * WorkflowTransactionManager provides coordinated operations for workflow definitions.
  *
- * IMPORTANT DESIGN PRINCIPLES:
- * 1. This should ONLY be used at the API/Resource layer, NOT in repository methods
- * 2. This should NEVER be called during seed data initialization
- * 3. This manages the TOP-LEVEL transaction for workflow operations
+ * REALITY CHECK:
+ * - We CANNOT have true atomic transactions across OpenMetadata and Flowable databases
+ * - We use compensating transactions pattern: try to clean up on failures
+ * - This is "best effort" coordination, not true 2PC (two-phase commit)
  *
- * The problem we're solving:
- * - We need atomic operations across TWO databases (OpenMetadata and Flowable)
- * - If either operation fails, both should rollback
- * - But we must NOT interfere with seed data loading which has its own transaction management
+ * USAGE:
+ * - Use at API/Resource layer only, NOT in repositories
+ * - Skip during seed data initialization (WorkflowHandler not initialized)
+ * - Accepts that some edge cases may leave orphaned deployments in Flowable
  */
 @Slf4j
 public class WorkflowTransactionManager {
@@ -35,9 +34,8 @@ public class WorkflowTransactionManager {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Validate the workflow BEFORE starting any transaction
+    // Pre-validate by creating Workflow object (constructor will throw if invalid)
     Workflow workflow = new Workflow(entity);
-    //    validateWorkflow(workflow);
 
     // Start a NEW transaction at the API level
     // This is the TOP-LEVEL transaction for this operation
@@ -75,9 +73,8 @@ public class WorkflowTransactionManager {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Validate the updated workflow BEFORE starting transaction
+    // Pre-validate the updated workflow
     Workflow updatedWorkflow = new Workflow(updated);
-    //    validateWorkflow(updatedWorkflow);
 
     // Start a NEW transaction at the API level
     Jdbi jdbi = Entity.getJdbi();
@@ -135,31 +132,6 @@ public class WorkflowTransactionManager {
         });
   }
 
-  /**
-   * Validate a workflow definition with Flowable.
-   * This is done BEFORE starting any transaction.
-   */
-  //  private static void validateWorkflow(Workflow workflow) {
-  //    if (!WorkflowHandler.isInitialized()) {
-  //      throw new UnhandledServerException("WorkflowHandler is not initialized");
-  //    }
-  //
-  //    try {
-  //      BpmnXMLConverter converter = new BpmnXMLConverter();
-  //      String mainBpmnXml = new String(converter.convertToXML(workflow.getMainModel()));
-  //      String triggerBpmnXml = new String(converter.convertToXML(workflow.getTriggerModel()));
-  //
-  //      boolean valid =
-  //          WorkflowHandler.getInstance().validateWorkflowDefinition(mainBpmnXml)
-  //              && WorkflowHandler.getInstance().validateWorkflowDefinition(triggerBpmnXml);
-  //
-  //      if (!valid) {
-  //        throw new UnhandledServerException(
-  //            "Invalid workflow definition: Failed Flowable validation");
-  //      }
-  //    } catch (Exception e) {
-  //      LOG.error("Error validating workflow", e);
-  //      throw new UnhandledServerException("Failed to validate workflow: " + e.getMessage(), e);
-  //    }
-  //  }
+  // Removed deployToFlowableFirst - the postCreate/postUpdate hooks handle deployment
+  // We accept that we cannot have true atomic transactions across two databases
 }

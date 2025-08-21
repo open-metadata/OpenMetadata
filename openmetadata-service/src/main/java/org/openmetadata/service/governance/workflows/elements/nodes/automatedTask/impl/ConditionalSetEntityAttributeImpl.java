@@ -297,8 +297,12 @@ public class ConditionalSetEntityAttributeImpl implements JavaDelegate {
     }
 
     if (fieldValue == null || fieldValue.isEmpty()) {
-      // Remove item with matching property
-      arrayList.removeIf(item -> fieldValue.equals(item.get(propertyName)));
+      // Remove items where the property value is null or empty
+      arrayList.removeIf(
+          item -> {
+            Object value = item.get(propertyName);
+            return value == null || (value instanceof String && ((String) value).isEmpty());
+          });
     } else {
       // Find existing item or create new one
       Map<String, Object> targetItem =

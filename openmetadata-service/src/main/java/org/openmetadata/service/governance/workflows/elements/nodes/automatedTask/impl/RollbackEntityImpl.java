@@ -17,11 +17,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 public class RollbackEntityImpl implements JavaDelegate {
-  @Autowired private Workflow workflow;
+  private Workflow workflow;
 
   @Override
   public void execute(DelegateExecution execution) {
