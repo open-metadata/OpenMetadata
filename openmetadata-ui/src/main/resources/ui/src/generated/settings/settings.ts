@@ -1285,6 +1285,7 @@ export enum DataType {
  * This schema defines all possible metric types in OpenMetadata.
  */
 export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
     ColumnCount = "columnCount",
     ColumnNames = "columnNames",
     CountInSet = "countInSet",

@@ -515,6 +515,10 @@ export interface CustomMetric {
  */
 export interface ColumnProfile {
     /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Custom Metrics profile list bound to a column.
      */
     customMetrics?: CustomMetricProfile[];
@@ -630,6 +634,24 @@ export interface ColumnProfile {
      * Variance of a column.
      */
     variance?: number;
+}
+
+/**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
 }
 
 /**
