@@ -69,7 +69,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MySQLScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
-    OracleConnection,
+    OracleConnection as OracleConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleDatabaseSchema,
     OracleScheme,
     OracleServiceName,
@@ -116,6 +118,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
+from metadata.ingestion.source.database.oracle.connection import OracleConnection
 from metadata.ingestion.source.database.snowflake.connection import SnowflakeConnection
 from metadata.ingestion.source.database.trino.connection import TrinoConnection
 
@@ -1139,14 +1142,10 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_oracle_url(self):
-        from metadata.ingestion.source.database.oracle.connection import (
-            get_connection_url,
-        )
-
         # oracle with db
         expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
 
-        oracle_conn_obj = OracleConnection(
+        oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
@@ -1154,21 +1153,21 @@ class SourceConnectionTest(TestCase):
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
         )
 
-        assert expected_url == get_connection_url(oracle_conn_obj)
+        assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with service name
         expected_url = (
             "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
         )
 
-        oracle_conn_obj = OracleConnection(
+        oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
         )
-        assert expected_url == get_connection_url(oracle_conn_obj)
+        assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with db & connection options
         expected_url = [
@@ -1176,7 +1175,7 @@ class SourceConnectionTest(TestCase):
             "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
-        oracle_conn_obj = OracleConnection(
+        oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
@@ -1186,7 +1185,7 @@ class SourceConnectionTest(TestCase):
                 test_key_1="test_value_1", test_key_2="test_value_2"
             ),
         )
-        assert get_connection_url(oracle_conn_obj) in expected_url
+        assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
         # oracle with service name & connection options
         expected_url = [
@@ -1194,7 +1193,7 @@ class SourceConnectionTest(TestCase):
             "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
         ]
 
-        oracle_conn_obj = OracleConnection(
+        oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",
@@ -1204,7 +1203,7 @@ class SourceConnectionTest(TestCase):
                 test_key_1="test_value_1", test_key_2="test_value_2"
             ),
         )
-        assert get_connection_url(oracle_conn_obj) in expected_url
+        assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
         tns_connection = (
             "(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)"
@@ -1212,7 +1211,7 @@ class SourceConnectionTest(TestCase):
         )
         expected_url = f"oracle+cx_oracle://admin:password@{tns_connection}"
 
-        oracle_conn_obj = OracleConnection(
+        oracle_conn_obj = OracleConnectionConfig(
             username="admin",
             password="password",
             hostPort="localhost:1541",  # We will ignore it here
@@ -1220,7 +1219,7 @@ class SourceConnectionTest(TestCase):
                 oracleTNSConnection=tns_connection
             ),
         )
-        assert get_connection_url(oracle_conn_obj) == expected_url
+        assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
 
     def test_exasol_url(self):
         from metadata.ingestion.source.database.exasol.connection import (
