@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "مسیر فایل نتایج اجرای dbt",
     "dbt-run-result-http-path": "مسیر HTTP نتایج اجرای dbt",
     "dbt-source": "منبع dbt",
+    "dbt-source-project": "پروژه منبع dbt",
     "deactivated": "غیرفعال شده",
     "december": "دسامبر",
     "decision": "Decision",

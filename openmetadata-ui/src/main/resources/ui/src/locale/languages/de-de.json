@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt-Ausführungsergebnisdateipfad",
     "dbt-run-result-http-path": "dbt-Ausführungsergebnis-HTTP-Pfad",
     "dbt-source": "dbt-Quelle",
+    "dbt-source-project": "dbt-Quellprojekt",
     "deactivated": "Deaktiviert",
     "december": "Dezember",
     "decision": "Decision",

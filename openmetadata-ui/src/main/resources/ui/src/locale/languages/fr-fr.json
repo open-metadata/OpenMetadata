@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "Chemin du Fichier de Résultats d'Exécution dbt",
     "dbt-run-result-http-path": "Chemin HTTP du Fichier de Résultats d'Exécution dbt",
     "dbt-source": "Source dbt",
+    "dbt-source-project": "Projet Source dbt",
     "deactivated": "Désactivé",
     "december": "Décembre",
     "decision": "Decision",
