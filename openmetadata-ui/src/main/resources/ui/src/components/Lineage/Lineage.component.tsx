@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, RadioChangeEvent } from 'antd';
+import classNames from 'classnames';
 import Qs from 'qs';
 import {
   DragEvent,
@@ -162,7 +163,10 @@ const Lineage = ({
       data-testid="lineage-details"
       title={
         isPlatformLineage ? null : (
-          <>
+          <div
+            className={classNames('lineage-header', {
+              'lineage-header-edit-mode': isEditMode,
+            })}>
             {isFullScreen && breadcrumbs.length > 0 && (
               <TitleBreadcrumb className="p-b-lg" titleLinks={breadcrumbs} />
             )}
@@ -172,7 +176,7 @@ const Lineage = ({
               handleActiveViewTabChange={handleActiveViewTabChange}
               onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
             />
-          </>
+          </div>
         )
       }>
       {activeViewTab === LINEAGE_TAB_VIEW.DIAGRAM_VIEW ? (
