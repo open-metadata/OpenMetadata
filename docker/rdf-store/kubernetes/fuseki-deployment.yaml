@@ -42,51 +42,51 @@ spec:
         app: openmetadata-fuseki
     spec:
       containers:
-      - name: fuseki
-        image: openmetadata/fuseki-rdf:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3030
-          name: fuseki
-        env:
-        - name: FUSEKI_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: fuseki-secrets
-              key: admin-password
-        - name: FUSEKI_OPENMETADATA_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: fuseki-secrets
-              key: openmetadata-password
-        - name: JAVA_OPTIONS
-          value: "-Xmx2g -Xms1g"
-        volumeMounts:
-        - name: fuseki-data
-          mountPath: /fuseki-data
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "3Gi"
-            cpu: "2000m"
-        livenessProbe:
-          httpGet:
-            path: /$/ping
-            port: 3030
-          initialDelaySeconds: 30
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /$/ping
-            port: 3030
-          initialDelaySeconds: 10
-          periodSeconds: 10
+        - name: fuseki
+          image: openmetadata/fuseki-rdf:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3030
+              name: fuseki
+          env:
+            - name: FUSEKI_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fuseki-secrets
+                  key: admin-password
+            - name: FUSEKI_OPENMETADATA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fuseki-secrets
+                  key: openmetadata-password
+            - name: JAVA_OPTIONS
+              value: "-Xmx2g -Xms1g"
+          volumeMounts:
+            - name: fuseki-data
+              mountPath: /fuseki-data
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "3Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /$/ping
+              port: 3030
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /$/ping
+              port: 3030
+            initialDelaySeconds: 10
+            periodSeconds: 10
       volumes:
-      - name: fuseki-data
-        persistentVolumeClaim:
-          claimName: fuseki-data-pvc
+        - name: fuseki-data
+          persistentVolumeClaim:
+            claimName: fuseki-data-pvc
 ---
 apiVersion: v1
 kind: Secret

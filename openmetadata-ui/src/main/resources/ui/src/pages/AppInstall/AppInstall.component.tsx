@@ -15,7 +15,7 @@ import { RJSFSchema } from '@rjsf/utils';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -27,6 +27,7 @@ import {
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ApplicationConfiguration from '../../components/Settings/Applications/ApplicationConfiguration/ApplicationConfiguration';
+import { AppPlugin } from '../../components/Settings/Applications/plugins/AppPlugin';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
@@ -65,6 +66,7 @@ const AppInstall = () => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [pluginComponent, setPluginComponent] = useState<FC | null>(null);
   const { config, getResourceLimit } = useLimitStore();
 
   const { pipelineSchedules } =
@@ -112,6 +114,20 @@ const AppInstall = () => {
       const schema = await applicationSchemaClassBase.importSchema(fqn);
 
       setJsonSchema(schema);
+
+      // Check if this app has a plugin with a custom install component
+      if (data.name) {
+        const PluginClass = applicationsClassBase.appPluginRegistry[data.name];
+        if (PluginClass) {
+          const pluginInstance: AppPlugin = new PluginClass(data.name, false);
+          if (pluginInstance.getAppInstallComponent) {
+            const Component = pluginInstance.getAppInstallComponent(data);
+            if (Component) {
+              setPluginComponent(() => Component);
+            }
+          }
+        }
+      }
     } catch (_) {
       showErrorToast(
         t('message.no-application-schema-found', { appName: fqn })
@@ -260,17 +276,22 @@ const AppInstall = () => {
     <PageLayoutV1
       className="app-install-page"
       pageTitle={t('label.application-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
-          <IngestionStepper
-            activeStep={activeServiceStep}
-            steps={stepperList}
-          />
-        </Col>
-        <Col className="app-intall-page-tabs" span={24}>
-          {renderSelectedTab}
-        </Col>
-      </Row>
+      {pluginComponent ? (
+        // Render plugin's custom app details component
+        React.createElement(pluginComponent)
+      ) : (
+        <Row gutter={[0, 16]}>
+          <Col span={24}>
+            <IngestionStepper
+              activeStep={activeServiceStep}
+              steps={stepperList}
+            />
+          </Col>
+          <Col className="app-intall-page-tabs" span={24}>
+            {renderSelectedTab}
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };
