@@ -343,8 +343,8 @@ cacheConfiguration:
   useSsl: ${CACHE_USE_SSL:-false}
   awsConfig:
     region: ${CACHE_AWS_REGION:-""}
-    accessKeyId: ${CACHE_AWS_ACCESS_KEY_ID:-""}
-    secretAccessKey: ${CACHE_AWS_SECRET_ACCESS_KEY:-""}
+    accessKey: ${CACHE_AWS_ACCESS_KEY:-""}
+    secretKey: ${CACHE_AWS_SECRET_KEY:-""}
   azureConfig:
     resourceGroup: ${CACHE_AZURE_RESOURCE_GROUP:-""}
     subscriptionId: ${CACHE_AZURE_SUBSCRIPTION_ID:-""}
