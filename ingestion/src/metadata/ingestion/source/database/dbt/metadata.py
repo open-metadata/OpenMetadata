@@ -511,6 +511,7 @@ class DbtSource(DbtServiceSource):
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if (
@@ -520,6 +521,11 @@ class DbtSource(DbtServiceSource):
                 self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
+            dbt_project_name = (
+                dbt_objects.dbt_manifest.metadata.project_name
+                if hasattr(dbt_objects.dbt_manifest.metadata, "project_name")
+                else None
+            )
             for key, manifest_node in manifest_entities.items():
                 try:
                     resource_type = getattr(
@@ -644,6 +650,7 @@ class DbtSource(DbtServiceSource):
                                     catalog_node=catalog_node,
                                 ),
                                 tags=dbt_table_tags_list or [],
+                                dbtSourceProject=dbt_project_name,
                             ),
                         )
                         yield Either(right=data_model_link)
