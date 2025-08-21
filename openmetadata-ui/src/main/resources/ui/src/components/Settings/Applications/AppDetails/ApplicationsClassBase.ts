@@ -19,8 +19,13 @@ import ApplicationConfiguration, {
 } from '../ApplicationConfiguration/ApplicationConfiguration';
 
 class ApplicationsClassBase {
-  public importSchema(fqn: string) {
-    return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
+  public async importSchema(fqn: string) {
+    const module = await import(
+      `../../../../jsons/applicationSchemas/${fqn}.json`
+    );
+    const schema = module.default || module;
+
+    return schema;
   }
   public getJSONUISchema() {
     return {

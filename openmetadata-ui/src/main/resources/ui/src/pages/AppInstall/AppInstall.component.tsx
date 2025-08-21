@@ -286,7 +286,8 @@ const AppInstall = () => {
   return (
     <PageLayoutV1
       className="app-install-page"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={t('label.application-plural')}
+    >
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <IngestionStepper
