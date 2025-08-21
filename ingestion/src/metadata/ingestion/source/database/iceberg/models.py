@@ -73,7 +73,7 @@ class IcebergTable(BaseModel):
             description=table.properties.get("comment"),
             owners=owners,
             columns=[IcebergColumnParser.parse(column) for column in iceberg_columns],
-            tablePartition=partition_columns
-            and TablePartition(columns=partition_columns)
-            or None,
+            tablePartition=(
+                TablePartition(columns=partition_columns) if partition_columns else None
+            ),
         )
