@@ -31,6 +31,7 @@ import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
@@ -57,10 +58,19 @@ public class ConfigResource {
   }
 
   @GET
+  @Path(("/rdf"))
   @Produces(MediaType.APPLICATION_JSON)
-  public Map<String, String> getConfig() {
-    Map<String, String> config = new HashMap<>();
+  public Map<String, Object> getConfig() {
+    Map<String, Object> config = new HashMap<>();
     config.put("basePath", openMetadataApplicationConfig.getBasePath());
+
+    // Add RDF configuration
+    if (openMetadataApplicationConfig.getRdfConfiguration() != null) {
+      config.put("rdfEnabled", openMetadataApplicationConfig.getRdfConfiguration().getEnabled());
+    } else {
+      config.put("rdfEnabled", false);
+    }
+
     return config;
   }
 
@@ -79,25 +89,34 @@ public class ConfigResource {
                     schema = @Schema(implementation = AuthenticationConfiguration.class)))
       })
   public AuthenticationConfiguration getAuthConfig() {
-    AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
+    AuthenticationConfiguration responseAuthConfig = new AuthenticationConfiguration();
+    AuthenticationConfiguration yamlConfig =
+        openMetadataApplicationConfig.getAuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
-      authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
-      // Remove Ldap Configuration
-      authenticationConfiguration.setLdapConfiguration(null);
-
-      if (authenticationConfiguration.getSamlConfiguration() != null) {
+      responseAuthConfig.setProvider(yamlConfig.getProvider());
+      responseAuthConfig.setProviderName(yamlConfig.getProviderName());
+      responseAuthConfig.setClientType(yamlConfig.getClientType());
+      responseAuthConfig.setEnableSelfSignup(yamlConfig.getEnableSelfSignup());
+      responseAuthConfig.setJwtPrincipalClaims(yamlConfig.getJwtPrincipalClaims());
+      responseAuthConfig.setJwtPrincipalClaimsMapping(yamlConfig.getJwtPrincipalClaimsMapping());
+      responseAuthConfig.setClientId(yamlConfig.getClientId());
+      responseAuthConfig.setAuthority(yamlConfig.getAuthority());
+      responseAuthConfig.setCallbackUrl(yamlConfig.getCallbackUrl());
+      if (responseAuthConfig.getProvider().equals(AuthProvider.SAML)
+          && yamlConfig.getSamlConfiguration() != null) {
         // Remove Saml Fields
         SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
         ssoClientConfig.setIdp(
             new IdentityProviderConfig()
-                .withAuthorityUrl(
-                    authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
-        authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
+                .withAuthorityUrl(yamlConfig.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        responseAuthConfig.setSamlConfiguration(ssoClientConfig);
+      } else {
+        responseAuthConfig.setSamlConfiguration(null);
       }
-
-      authenticationConfiguration.setOidcConfiguration(null);
+      responseAuthConfig.setLdapConfiguration(null);
+      responseAuthConfig.setOidcConfiguration(null);
     }
-    return authenticationConfiguration;
+    return responseAuthConfig;
   }
 
   @GET
@@ -134,11 +153,12 @@ public class ConfigResource {
                     schema = @Schema(implementation = AuthorizerConfiguration.class)))
       })
   public AuthorizerConfiguration getAuthorizerConfig() {
-    AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
-    if (openMetadataApplicationConfig.getAuthorizerConfiguration() != null) {
-      authorizerConfiguration = openMetadataApplicationConfig.getAuthorizerConfiguration();
+    AuthorizerConfiguration responseAuthorizerConfig = new AuthorizerConfiguration();
+    AuthorizerConfiguration yamlConfig = openMetadataApplicationConfig.getAuthorizerConfiguration();
+    if (yamlConfig != null) {
+      responseAuthorizerConfig.setPrincipalDomain(yamlConfig.getPrincipalDomain());
     }
-    return authorizerConfiguration;
+    return responseAuthorizerConfig;
   }
 
   @GET

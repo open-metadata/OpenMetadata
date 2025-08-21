@@ -180,7 +180,13 @@ public class SearchResource {
                   "Explain the results of the query. Defaults to false. Only for debugging purposes.")
           @DefaultValue("false")
           @QueryParam("explain")
-          boolean explain)
+          boolean explain,
+      @Parameter(
+              description =
+                  "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.")
+          @DefaultValue("false")
+          @QueryParam("semanticSearch")
+          boolean semanticSearch)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -213,7 +219,8 @@ public class SearchResource {
             .withApplyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
-            .withExplain(explain);
+            .withExplain(explain)
+            .withSemanticSearch(semanticSearch);
     return searchRepository.search(request, subjectContext);
   }
 
