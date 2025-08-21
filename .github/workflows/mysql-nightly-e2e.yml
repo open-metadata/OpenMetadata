@@ -142,19 +142,6 @@ jobs:
       - name: Run Okta Login Tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn playwright:okta
-        env:
-          OKTA_PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.OKTA_PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585' }}
-          PLAYWRIGHT_IS_OSS: true
-          # Okta Backend Configuration
-          AUTHENTICATION_PROVIDER: okta
-          AUTHENTICATION_AUTHORITY: ${{ secrets.OKTA_AUTHORITY || 'https://dev-83408225.okta.com/oauth2/ausdgfkqvmYVnimUC5d7' }}
-          AUTHENTICATION_CLIENT_ID: ${{ secrets.OKTA_CLIENT_ID || '0oadgyzfutiOo6J4Y5d7' }}
-          AUTHENTICATION_PUBLIC_KEYS: ${{ secrets.OKTA_PUBLIC_KEYS || '[https://dev-83408225.okta.com/oauth2/ausdgfkqvmYVnimUC5d7/v1/keys, http://localhost:8585/api/v1/system/config/jwks,https://www.googleapis.com/oauth2/v3/certs]' }}
-          AUTHENTICATION_CALLBACK_URL: ${{ secrets.OKTA_CALLBACK_URL || 'http://localhost:8585/callback' }}
-          AUTHENTICATION_RESPONSE_TYPE: id_token
-          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS: '[email,preferred_username,sub]'
-          AUTHENTICATION_ENABLE_SELF_SIGNUP: true
-          AUTHENTICATION_CLIENT_TYPE: public
 
       - name: Clean Up
         run: |
