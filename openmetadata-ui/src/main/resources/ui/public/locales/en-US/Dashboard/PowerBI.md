@@ -10,9 +10,9 @@ To access the PowerBI APIs and import dashboards, charts, and datasets from Powe
 
 ### Step 1: Create an Azure AD app and configure the PowerBI Admin console
 
-Please follow the steps mentioned [here](https://docs.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal) for setting up the Azure AD application service principle and configure PowerBI admin settings.
+Please follow the steps mentioned <a href="https://docs.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal" target="_blank">here</a> for setting up the Azure AD application service principle and configure PowerBI admin settings.
 
-Login to [Power BI](https://app.powerbi.com/) as Admin and from the `Tenant` settings allow the following permissions:
+Login to <a href="https://app.powerbi.com/" target="_blank">Power BI</a> as Admin and from the `Tenant` settings allow the following permissions:
 - Allow service principles to use Power BI APIs,
 - Allow service principals to use read-only Power BI admin APIs,
 - Enhance admin APIs responses with detailed metadata.
@@ -29,14 +29,14 @@ Optional Permissions: (Without granting these permissions, the dataset informati
 
 $$note
 Make sure that in the API permissions section, **Tenant**-related permissions are not being given to the app
-Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected) for detailed explanation
+Please refer <a href="https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected" target="_blank">here</a> for detailed explanation
 $$
 
 ### Step 3: Create New PowerBI workspace
 
-The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces) ([reference](https://community.powerbi.com/t5/Service/Error-while-executing-Get-dataset-call-quot-API-is-not/m-p/912360#M85711)).
+The service principal only works with <a href="https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces" target="_blank">new workspaces</a> (<a href="https://community.powerbi.com/t5/Service/Error-while-executing-Get-dataset-call-quot-API-is-not/m-p/912360#M85711" target="_blank">reference</a>).
 
-You can find further information on the PowerBi connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/powerbi).
+You can find further information on the PowerBi connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/powerbi" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -45,7 +45,7 @@ $$section
 
 To get the Client ID (also known as application ID), follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for embedding your Power BI content.
 4. From the `Overview` section, copy the `Application (client) ID`.
@@ -56,7 +56,7 @@ $$section
 
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for embedding your Power BI content.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -70,7 +70,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.
@@ -119,7 +119,7 @@ There are no limitations on the Datasets that are retrieved for creating lineage
 
 - `Disabled` (Use Non-Admin PowerBI APIs)
 Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
-Also lineage information can only be generated if the dataset is a [Push Dataset](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets).
-For more information please visit the PowerBI official documentation [here](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables#limitations).
+Also lineage information can only be generated if the dataset is a <a href="https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets" target="_blank">Push Dataset</a>.
+For more information please visit the PowerBI official documentation <a href="https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables#limitations" target="_blank">here</a>.
 
 $$

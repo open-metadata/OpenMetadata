@@ -10,7 +10,7 @@ You will need the following permissions to extract Salesforce metadata:
 - **API Access**: You must have the API Enabled permission in your Salesforce organization.
 - **Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
 
-You can find further information on the Salesforce connector in the [docs](https://docs.open-metadata.org/connectors/database/salesforce).
+You can find further information on the Salesforce connector in the <a href="https://docs.open-metadata.org/connectors/database/salesforce" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -29,17 +29,17 @@ $$
 $$section
 ### Security Token $(id="securityToken")
 
-Salesforce Security Token is required to access the metadata through APIs. You can check out [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
+Salesforce Security Token is required to access the metadata through APIs. You can check out <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5" target="_blank">this doc</a> on how to get the security token.
 $$
 
 $$section
 ### Organization ID $(id="organizationId")
 
-Salesforce Organization ID is the unique identifier for your Salesforce identity. You can check out [this doc](https://help.salesforce.com/s/articleView?id=000385215&type=1) on how to get the your Salesforce Organization ID.
+Salesforce Organization ID is the unique identifier for your Salesforce identity. You can check out <a href="https://help.salesforce.com/s/articleView?id=000385215&type=1" target="_blank">this doc</a> on how to get the your Salesforce Organization ID.
 
 **Note**: You need to provide `15` digit organization id in this section. for e.g. `00DIB000004nDEq`, which you can find by following the steps mentioned in above doc (`Salesforce dashboard->Setup->Company Profile->Company Information->Salesforce.com Organization Id`).
 
-**Note**: If you want to access salesforce metadata without token(only by using organization id), you will need to setup your ip in trusted ip ranges. You can go (`Salesforce dashboard->Setup->Security->Network Access->Trusted IP Ranges`) to configure this. You can check [here](https://help.salesforce.com/s/articleView?id=sf.security_networkaccess.htm&type=5) to configure your ip in trusted ip ranges.
+**Note**: If you want to access salesforce metadata without token(only by using organization id), you will need to setup your ip in trusted ip ranges. You can go (`Salesforce dashboard->Setup->Security->Network Access->Trusted IP Ranges`) to configure this. You can check <a href="https://help.salesforce.com/s/articleView?id=sf.security_networkaccess.htm&type=5" target="_blank">here</a> to configure your ip in trusted ip ranges.
 $$
 
 $$section
@@ -65,7 +65,7 @@ $$section
 
 The version of the Salesforce API to use.
 
-Follow the steps mentioned [here](https://help.salesforce.com/s/articleView?id=000386929&type=1) to get the API version.
+Follow the steps mentioned <a href="https://help.salesforce.com/s/articleView?id=000386929&type=1" target="_blank">here</a> to get the API version.
 Enter the numerical value in the field, For example `42.0`.
 
 $$

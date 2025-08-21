@@ -1,9 +1,9 @@
 # Couchbase
-In this section, we provide guides and references to use the Couchbase connector. You can view the full documentation for Couchbase [here](https://docs.open-metadata.org/connectors/database/couchbase).
+In this section, we provide guides and references to use the Couchbase connector. You can view the full documentation for Couchbase <a href="https://docs.open-metadata.org/connectors/database/couchbase" target="_blank">here</a>.
 ## Requirements
 To extract metadata, the user used in the connection needs to have all necessary access permission.
 
-You can find further information on the Couchbase connector in the [here](https://docs.open-metadata.org/connectors/database/couchbase).
+You can find further information on the Couchbase connector in the <a href="https://docs.open-metadata.org/connectors/database/couchbase" target="_blank">here</a>.
 
 ## Connection Details
 

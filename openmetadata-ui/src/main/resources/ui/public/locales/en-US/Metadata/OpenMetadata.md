@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the OpenMetadata connec
 
 ## Requirements
 <!-- to be updated -->
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/metadata/openmetadata).
+You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/metadata/openmetadata" target="_blank">docs</a>.
 
 ## Connection Details
 

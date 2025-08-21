@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the GCS connector.
 
-By default, the GCS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the [docs](https://docs.open-metadata.org/connectors/storage).
+By default, the GCS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the <a href="https://docs.open-metadata.org/connectors/storage" target="_blank">docs</a>.
 
 ## Requirements
 
@@ -23,9 +23,9 @@ $$section
 
 You can authenticate with your BigQuery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check <a href="https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console" target="_blank">this</a> documentation on how to create the service account keys and download it.
 
-If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCP credentials empty.
+If you want to use <a href="https://cloud.google.com/docs/authentication#adc" target="_blank">ADC authentication</a> for BigQuery you can just leave the GCP credentials empty.
 
 $$
 

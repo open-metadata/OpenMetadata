@@ -25,7 +25,7 @@ Following authentication types are supported:
 - username: Username of the user.
 - password: Password of the user.
 
-2. Access Token Authentication: The access token created using the steps mentioned [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui) can directly be entered. We'll use that directly to authenticate the Alation APIs
+2. Access Token Authentication: The access token created using the steps mentioned <a href="https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui" target="_blank">here</a> can directly be entered. We'll use that directly to authenticate the Alation APIs
 - accessToken: Generated access token
 $$
 

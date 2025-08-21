@@ -1,12 +1,12 @@
 # ElasticSearch
 
-In this section, we provide guides and references to use the ElasticSearch connector. You can view the full documentation for ElasticSearch [here](https://docs.open-metadata.org/connectors/search/elasticsearch).
+In this section, we provide guides and references to use the ElasticSearch connector. You can view the full documentation for ElasticSearch <a href="https://docs.open-metadata.org/connectors/search/elasticsearch" target="_blank">here</a>.
 
 ## Requirements
 
-We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
+We extract ElasticSearch's metadata by using its <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html" target="_blank">API</a>. To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
 
-You can find further information on the ElasticSearch connector in the [docs](https://docs.open-metadata.org/connectors/search/elasticsearch).
+You can find further information on the ElasticSearch connector in the <a href="https://docs.open-metadata.org/connectors/search/elasticsearch" target="_blank">docs</a>.
 
 ## Connection Details
 

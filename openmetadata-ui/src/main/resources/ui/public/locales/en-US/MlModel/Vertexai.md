@@ -10,7 +10,7 @@ We need to enable the Vertex API and use an account with a specific set of minim
 
 Click on `Enable API`, which will enable the APs on the selected project:
 
-- [VertexAI API ](https://cloud.google.com/vertex-ai/docs/featurestore/setup)
+- <a href="https://cloud.google.com/vertex-ai/docs/featurestore/setup" target="_blank">VertexAI API </a>
 
 ### GCP Permissions
 
@@ -24,9 +24,9 @@ To execute the metadata extraction and Usage workflow successfully, the user or 
 - `aiplatform.models.deploy`
 - `aiplatform.models.undeploy`
 
-You can visit [this](https://cloud.google.com/vertex-ai/docs/general/access-control) documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
+You can visit <a href="https://cloud.google.com/vertex-ai/docs/general/access-control" target="_blank">this</a> documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
 
-You can find further information on the VertexAI connector in the [docs](https://docs.open-metadata.org/connectors/ml-model/vertexai).
+You can find further information on the VertexAI connector in the <a href="https://docs.open-metadata.org/connectors/ml-model/vertexai" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -35,7 +35,7 @@ $$section
 
 You can authenticate with your VertexAI instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check <a href="https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console" target="_blank">this</a> documentation on how to create the service account keys and download it.
 
 
 $$

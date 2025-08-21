@@ -1,10 +1,10 @@
 # Databricks
 
-In this section, we provide guides and references to use the Databricks connector. You can view the full documentation for Databricks [here](https://docs.open-metadata.org/connectors/database/databricks).
+In this section, we provide guides and references to use the Databricks connector. You can view the full documentation for Databricks <a href="https://docs.open-metadata.org/connectors/database/databricks" target="_blank">here</a>.
 
 ## Requirements
 
-To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
+To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these <a href="https://docs.open-metadata.org/connectors/database/databricks/troubleshooting" target="_blank">docs</a>.
 
 $$note
 We support Databricks runtime version 9 and above.
@@ -16,7 +16,7 @@ $$note
 To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
-You can find further information on the Databricks connector in the [docs](https://docs.open-metadata.org/connectors/database/databricks).
+You can find further information on the Databricks connector in the <a href="https://docs.open-metadata.org/connectors/database/databricks" target="_blank">docs</a>.
 
 ## Connection Details
 

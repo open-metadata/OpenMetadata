@@ -6,9 +6,9 @@ In this section, we provide guides and references to use the Teradata connector.
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-You can find further information on the Teradata connector in the [docs](https://docs.open-metadata.org/connectors/database/teradata).
+You can find further information on the Teradata connector in the <a href="https://docs.open-metadata.org/connectors/database/teradata" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -51,7 +51,7 @@ $$
 $$section
 ### Transaction mode $(id="tmode")
 
-Specifies the transaction mode for the connection. Possible values are DEFAULT (the default), ANSI, or TERA. More information about this parameter can be found [here](https://teradata-docs.s3.amazonaws.com/doc/connectivity/jdbc/reference/current/jdbcug_chapter_2.html#TMODESEC) 
+Specifies the transaction mode for the connection. Possible values are DEFAULT (the default), ANSI, or TERA. More information about this parameter can be found <a href="https://teradata-docs.s3.amazonaws.com/doc/connectivity/jdbc/reference/current/jdbcug_chapter_2.html#TMODESEC" target="_blank">here</a> 
 $$
 
 $$section
@@ -65,12 +65,12 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-You can find further information about Connection Arguments [here](https://pypi.org/project/teradatasql/).
+You can find further information about Connection Arguments <a href="https://pypi.org/project/teradatasql/" target="_blank">here</a>.
 $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
-You can find further information about Connection Options [here](https://pypi.org/project/teradatasql/).
+You can find further information about Connection Options <a href="https://pypi.org/project/teradatasql/" target="_blank">here</a>.
 $$

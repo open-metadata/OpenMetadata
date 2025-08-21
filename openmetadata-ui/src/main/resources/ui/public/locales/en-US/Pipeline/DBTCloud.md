@@ -3,16 +3,16 @@ In this section, we provide guides and references to use the DBTCloud connector.
 
 ## Requirements
 
-OpenMetadata is integrated with DBT cloud up to version [1.8](https://docs.getdbt.com/docs/get-started-dbt) and will continue to work for future DBT cloud versions.
+OpenMetadata is integrated with DBT cloud up to version <a href="https://docs.getdbt.com/docs/get-started-dbt" target="_blank">1.8</a> and will continue to work for future DBT cloud versions.
 
-The Ingestion framework uses [DBT Cloud APIs](https://docs.getdbt.com/dbt-cloud/api-v2#/) to connect to the dbtcloud  and fetch metadata.
+The Ingestion framework uses <a href="https://docs.getdbt.com/dbt-cloud/api-v2#/" target="_blank">DBT Cloud APIs</a> to connect to the dbtcloud  and fetch metadata.
 
-You can find further information on the dbtcloud connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/dbtcloud).
+You can find further information on the dbtcloud connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/dbtcloud" target="_blank">docs</a>.
 
 ## Connection Details
 $$section
 ### Host $(id="host")
-DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit [here](https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls).
+DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit <a href="https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls" target="_blank">here</a>.
 $$
 
 $$section
@@ -39,6 +39,6 @@ $$
 
 $$section
 ### Token $(id="token")
-The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs [here](https://docs.getdbt.com/docs/dbt-cloud-apis/authentication).
+The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs <a href="https://docs.getdbt.com/docs/dbt-cloud-apis/authentication" target="_blank">here</a>.
 Make sure you have the necessary permissions on the token to run graphql queries and get job and run details. 
 $$

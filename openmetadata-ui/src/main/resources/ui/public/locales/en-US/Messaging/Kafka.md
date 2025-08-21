@@ -10,7 +10,7 @@ $$note
 Note that the ingestion of the Kafka topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory to extract basic metadata.
 $$
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/messaging/kafka).
+You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/messaging/kafka" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -29,7 +29,7 @@ If you encounter issues connecting to the Schema Registry, ensure that the proto
 - Use `http://localhost:8081` instead of `localhost:8081`.
 The Schema Registry requires a properly formatted URL, including the protocol (`http://` or `https://`). While this differentiation is expected in the Schema Registry configuration, it may not be immediately apparent.
 
-**NOTE**: For now, the schema will be the last version found for the schema name `{topic-name}-value`. An [issue](https://github.com/open-metadata/OpenMetadata/issues/10399) to improve how it currently works has been opened.
+**NOTE**: For now, the schema will be the last version found for the schema name `{topic-name}-value`. An <a href="https://github.com/open-metadata/OpenMetadata/issues/10399" target="_blank">issue</a> to improve how it currently works has been opened.
 $$
 
 $$section
@@ -77,13 +77,13 @@ $$
 $$section
 ### Consumer Config $(id="consumerConfig")
 
-The accepted additional values for the consumer configuration can be found in the following [link](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
+The accepted additional values for the consumer configuration can be found in the following <a href="https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md" target="_blank">link</a>.
 $$
 
 $$section
 ### Schema Registry Config $(id="schemaRegistryConfig")
 
-The accepted additional values for the Schema Registry configuration can be found in the following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
+The accepted additional values for the Schema Registry configuration can be found in the following <a href="https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient" target="_blank">link</a>.
 $$
 
 $$section

@@ -3,7 +3,7 @@
 In this section, we provide guides and references to use the SAS Viya connector.
 
 ## Requirements
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/metadata/atlas).
+You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/metadata/atlas" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -28,7 +28,7 @@ $$
 $$section
 ### Filter $(id="filter")
 
-A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog-search)
+A filter expression specifying items for import. For more information <a href="https://developer.sas.com/apis/rest/DataManagement/#catalog-search" target="_blank">see</a>
 
 $$
 
