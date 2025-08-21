@@ -390,6 +390,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = getOrCreateTestSuite(dataContract);
     testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
+    testSuiteRepository.deleteFromSearch(testSuite, true);
   }
 
   private TestSuite getOrCreateTestSuite(DataContract dataContract) {

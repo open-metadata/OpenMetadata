@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -3192,6 +3193,18 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(testSuite.getTests());
     assertEquals(2, testSuite.getTests().size());
 
+    // Verify test suite exists in search index
+    Map<String, String> searchQueryParams = new HashMap<>();
+    searchQueryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
+    searchQueryParams.put("fields", "tests");
+    ResultList<TestSuite> testSuitesInSearchIndex =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndex);
+    assertFalse(testSuitesInSearchIndex.getData().isEmpty());
+    assertEquals(1, testSuitesInSearchIndex.getData().size());
+    assertEquals(testSuite.getId(), testSuitesInSearchIndex.getData().get(0).getId());
+
     // Verify both test cases exist and are accessible before deletion
     TestCase retrievedTestCase1 =
         testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
@@ -3211,6 +3224,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Verify test suite is no longer in search index
+    ResultList<TestSuite> testSuitesInSearchIndexAfterDeletion =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndexAfterDeletion);
+    assertTrue(testSuitesInSearchIndexAfterDeletion.getData().isEmpty());
 
     // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist
     // independently
