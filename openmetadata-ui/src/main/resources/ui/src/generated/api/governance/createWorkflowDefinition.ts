@@ -65,8 +65,6 @@ export interface EdgeDefinition {
  *
  * Sets any Entity attribute field to the configured value.
  *
- * Sets Entity attribute field based on conditional input from previous nodes.
- *
  * Sets the GlossaryTerm Status to the configured value.
  *
  * Sets the Entity Certification to the configured value.
@@ -115,18 +113,6 @@ export interface NodeConfiguration {
      * Value to set for the field
      */
     fieldValue?: string;
-    /**
-     * Name of the variable to check for true/false condition
-     */
-    conditionVariableName?: string;
-    /**
-     * Value to set if condition is false
-     */
-    falseValue?: string;
-    /**
-     * Value to set if condition is true
-     */
-    trueValue?: string;
     /**
      * Choose which Status to apply to the Glossary Term
      */
@@ -212,10 +198,6 @@ export enum Status {
 export interface InputNamespaceMap {
     relatedEntity: string;
     updatedBy?:    string;
-    /**
-     * Name of the node that provides the condition result
-     */
-    result?: string;
 }
 
 /**
