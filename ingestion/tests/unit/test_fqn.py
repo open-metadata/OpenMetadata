@@ -16,8 +16,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.models.custom_basemodel_validation import (
+    RESERVED_ARROW_KEYWORD,
+    RESERVED_COLON_KEYWORD,
+    RESERVED_QUOTE_KEYWORD,
+)
 from metadata.ingestion.ometa.utils import quote
 from metadata.utils import fqn
 
@@ -158,3 +163,128 @@ class TestFqn(TestCase):
         assert quote("a.b.c") == "a.b.c"
         assert quote(FullyQualifiedEntityName('"foo.bar".baz')) == "%22foo.bar%22.baz"
         assert quote('"foo.bar/baz".hello') == "%22foo.bar%2Fbaz%22.hello"
+
+    def test_table_with_quotes(self):
+        """Test FQN building for table names containing quotes"""
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
+
+        table_name = 'users "2024"'
+        result = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Table,
+            service_name="mysql",
+            database_name="test_db",
+            schema_name="public",
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+        expected = f"mysql.test_db.public.users {RESERVED_QUOTE_KEYWORD}2024{RESERVED_QUOTE_KEYWORD}"
+        self.assertEqual(result, expected)
+
+    def test_column_with_special_chars(self):
+        """Test FQN building for column names with multiple special characters"""
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
+
+        column_name = 'data::type>"info"'
+        result = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Column,
+            service_name="postgres",
+            database_name="analytics",
+            schema_name="reporting",
+            table_name="metrics",
+            column_name=column_name,
+        )
+
+        expected = f"postgres.analytics.reporting.metrics.data{RESERVED_COLON_KEYWORD}type{RESERVED_ARROW_KEYWORD}{RESERVED_QUOTE_KEYWORD}info{RESERVED_QUOTE_KEYWORD}"
+        self.assertEqual(result, expected)
+
+    def test_both_table_and_column_special_chars(self):
+        """Test FQN building when both table and column have special characters"""
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
+
+        table_name = "report::daily"
+        column_name = 'value>"USD"'
+
+        result = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Column,
+            service_name="snowflake",
+            database_name="warehouse",
+            schema_name="analytics",
+            table_name=table_name,
+            column_name=column_name,
+        )
+
+        expected = f"snowflake.warehouse.analytics.report{RESERVED_COLON_KEYWORD}daily.value{RESERVED_ARROW_KEYWORD}{RESERVED_QUOTE_KEYWORD}USD{RESERVED_QUOTE_KEYWORD}"
+        self.assertEqual(result, expected)
+
+    def test_no_transformation_needed(self):
+        """Test FQN building for names without special characters"""
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
+
+        result = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Table,
+            service_name="mysql",
+            database_name="test_db",
+            schema_name="public",
+            table_name="normal_table_name",
+            skip_es_search=True,
+        )
+
+        self.assertEqual(result, "mysql.test_db.public.normal_table_name")
+
+    def test_real_world_scenarios(self):
+        """Test FQN building for real-world database scenarios"""
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
+
+        # Snowflake case-sensitive identifier
+        snowflake_table = '"MixedCase_Table"'
+        result1 = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Table,
+            service_name="snowflake",
+            database_name="ANALYTICS",
+            schema_name="PUBLIC",
+            table_name=snowflake_table,
+            skip_es_search=True,
+        )
+        expected1 = f"snowflake.ANALYTICS.PUBLIC.{RESERVED_QUOTE_KEYWORD}MixedCase_Table{RESERVED_QUOTE_KEYWORD}"
+        self.assertEqual(result1, expected1)
+
+        # PostgreSQL type cast in column
+        postgres_column = "created_at::timestamp"
+        result2 = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Column,
+            service_name="postgres",
+            database_name="mydb",
+            schema_name="public",
+            table_name="events",
+            column_name=postgres_column,
+        )
+        expected2 = (
+            f"postgres.mydb.public.events.created_at{RESERVED_COLON_KEYWORD}timestamp"
+        )
+        self.assertEqual(result2, expected2)
+
+        # BigQuery partition notation
+        bigquery_table = 'events_2024$"daily"'
+        result3 = fqn.build(
+            metadata=mocked_metadata,
+            entity_type=Table,
+            service_name="bigquery",
+            database_name="my-project",
+            schema_name="dataset",
+            table_name=bigquery_table,
+            skip_es_search=True,
+        )
+        expected3 = f"bigquery.my-project.dataset.events_2024${RESERVED_QUOTE_KEYWORD}daily{RESERVED_QUOTE_KEYWORD}"
+        self.assertEqual(result3, expected3)
