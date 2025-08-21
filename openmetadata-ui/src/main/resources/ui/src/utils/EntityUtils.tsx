@@ -2452,6 +2452,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiCollection: t('label.api-collection'),
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
+    page: t('label.knowledge-page'),
   };
 
   return (
