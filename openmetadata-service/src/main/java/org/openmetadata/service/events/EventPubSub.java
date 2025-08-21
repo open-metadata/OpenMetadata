@@ -16,6 +16,7 @@ package org.openmetadata.service.events;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
@@ -39,7 +40,7 @@ public class EventPubSub {
   public static void start() {
     if (!started) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
-      // disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
+      disruptor.setDefaultExceptionHandler(new ShutdownAwareExceptionHandler());
       executor = AsyncService.getInstance().getExecutorService();
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
@@ -49,14 +50,27 @@ public class EventPubSub {
 
   public static void shutdown() throws InterruptedException {
     if (started) {
-      disruptor.shutdown();
-      disruptor.halt();
-      executor.shutdownNow();
-      executor.awaitTermination(10, TimeUnit.SECONDS);
-      disruptor = null;
-      ringBuffer = null;
-      started = false;
-      LOG.info("Disruptor stopped");
+      LOG.info("Shutting down EventPubSub...");
+      try {
+        disruptor.shutdown();
+        Thread.sleep(100);
+        disruptor.halt();
+        executor.shutdown();
+        if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+          LOG.warn("Executor did not terminate gracefully, forcing shutdown");
+          executor.shutdownNow();
+          // Wait a bit more after forced shutdown
+          executor.awaitTermination(2, TimeUnit.SECONDS);
+        }
+      } catch (InterruptedException e) {
+        LOG.warn("Interrupted during EventPubSub shutdown", e);
+        Thread.currentThread().interrupt();
+      } finally {
+        disruptor = null;
+        ringBuffer = null;
+        started = false;
+        LOG.info("Disruptor stopped");
+      }
     }
   }
 
@@ -83,7 +97,7 @@ public class EventPubSub {
       EventHandler<ChangeEventHolder> eventHandler) {
     BatchEventProcessor<ChangeEventHolder> processor =
         new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
-    // processor.setExceptionHandler(new DefaultExceptionHandler());
+    processor.setExceptionHandler(new ShutdownAwareExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
     LOG.info("Processor added for {}", processor);
@@ -97,5 +111,36 @@ public class EventPubSub {
 
   public void close() {
     /* Nothing to clean up */
+  }
+
+  /**
+   * Custom exception handler that gracefully handles interruptions during shutdown
+   */
+  private static class ShutdownAwareExceptionHandler
+      implements ExceptionHandler<ChangeEventHolder> {
+    @Override
+    public void handleEventException(Throwable ex, long sequence, ChangeEventHolder event) {
+      if (ex instanceof InterruptedException
+          || (ex instanceof RuntimeException && ex.getCause() instanceof InterruptedException)) {
+        LOG.debug("Event processing interrupted during shutdown (sequence: {})", sequence);
+      } else {
+        LOG.error("Exception processing event at sequence {}: {}", sequence, ex.getMessage(), ex);
+      }
+    }
+
+    @Override
+    public void handleOnStartException(Throwable ex) {
+      LOG.error("Exception during event processor startup: {}", ex.getMessage(), ex);
+    }
+
+    @Override
+    public void handleOnShutdownException(Throwable ex) {
+      if (ex instanceof InterruptedException
+          || (ex instanceof RuntimeException && ex.getCause() instanceof InterruptedException)) {
+        LOG.debug("Event processor interrupted during shutdown");
+      } else {
+        LOG.error("Exception during event processor shutdown: {}", ex.getMessage(), ex);
+      }
+    }
   }
 }

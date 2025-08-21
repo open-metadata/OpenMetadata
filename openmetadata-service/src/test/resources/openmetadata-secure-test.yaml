@@ -227,3 +227,12 @@ objectStorage:
   enabled: false
   provider: NOOP
   maxFileSize: 5242880
+
+rdf:
+  enabled: false
+  baseUri: "https://open-metadata.org/"
+  storageType: "FUSEKI"
+  remoteEndpoint: "http://localhost:3030/openmetadata"
+  username: "admin"
+  password: "admin"
+  dataset: "openmetadata"

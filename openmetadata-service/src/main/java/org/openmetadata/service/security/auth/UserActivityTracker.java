@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.ExecutorManager;
 
 /**
  * Distributed user activity tracker that works across multiple web servers.
@@ -61,11 +62,9 @@ public class UserActivityTracker {
     int maxConcurrentDbOperations = 10;
     this.dbOperationPermits = new Semaphore(maxConcurrentDbOperations);
     this.scheduler =
-        org.openmetadata.service.util.ExecutorManager.getInstance()
-            .getScheduledExecutor("user-activity-scheduler", 1);
+        ExecutorManager.getInstance().getScheduledExecutor("user-activity-scheduler", 1);
     this.virtualThreadExecutor =
-        org.openmetadata.service.util.ExecutorManager.getInstance()
-            .getScheduledExecutor("user-activity-virtual", 2);
+        ExecutorManager.getInstance().getScheduledVirtualThreadExecutor("user-activity-virtual", 2);
   }
 
   public static UserActivityTracker getInstance() {
