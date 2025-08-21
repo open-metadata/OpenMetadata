@@ -76,11 +76,10 @@ export const selectActiveGlossary = async (
     } else {
       await menuItem.click();
     }
-  } else {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
   }
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectActiveGlossaryTerm = async (

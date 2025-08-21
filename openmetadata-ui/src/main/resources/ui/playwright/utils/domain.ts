@@ -172,6 +172,8 @@ export const selectDataProductFromTab = async (
 
   await dpRes;
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
 
   await page
