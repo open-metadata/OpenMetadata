@@ -15,7 +15,6 @@
  */
 export enum NodeSubType {
     CheckEntityAttributesTask = "checkEntityAttributesTask",
-    ConditionalSetEntityAttributeTask = "conditionalSetEntityAttributeTask",
     CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     DataCompletenessTask = "dataCompletenessTask",
     EndEvent = "endEvent",

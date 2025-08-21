@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ConditionalSetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
@@ -28,9 +27,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = SetEntityAttributeTaskDefinition.class,
       name = "setEntityAttributeTask"),
-  @JsonSubTypes.Type(
-      value = ConditionalSetEntityAttributeTaskDefinition.class,
-      name = "conditionalSetEntityAttributeTask"),
   @JsonSubTypes.Type(
       value = SetEntityCertificationTaskDefinition.class,
       name = "setEntityCertificationTask"),
