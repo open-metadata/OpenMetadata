@@ -24,7 +24,7 @@
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
-    <quartz.version>2.5.0-rc2</quartz.version>
+    <quartz.version>2.5.0</quartz.version>
     <pac4j.version>5.7.0</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>

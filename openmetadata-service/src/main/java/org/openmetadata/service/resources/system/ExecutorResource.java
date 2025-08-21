@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.system;
 
+import io.dropwizard.core.server.DefaultServerFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,9 +17,11 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.util.ExecutorManager;
 import org.openmetadata.service.util.ExecutorMonitor;
@@ -32,6 +35,11 @@ import org.openmetadata.service.util.ExecutorMonitor;
 @Collection(name = "Executors")
 public class ExecutorResource {
   public static final String COLLECTION_PATH = "/v1/system/executors";
+  private DefaultServerFactory serverFactory;
+
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    serverFactory = (DefaultServerFactory) config.getServerFactory();
+  }
 
   @GET
   @Path("/summary")
@@ -216,7 +224,7 @@ public class ExecutorResource {
             .append(" blocked threads. ");
       }
 
-      if (systemMetrics.getTotalThreads() > 1000) {
+      if (systemMetrics.getTotalThreads() > serverFactory.getMaxThreads()) {
         issues
             .append("High thread count detected: ")
             .append(systemMetrics.getTotalThreads())
