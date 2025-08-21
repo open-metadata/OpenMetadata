@@ -534,7 +534,6 @@ test.describe(
         .getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`)
         .getByTestId('expand-icon')
         .click();
-      await page.waitForResponse('api/v1/search/query?*');
       await page
         .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
         .click();
