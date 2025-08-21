@@ -546,12 +546,184 @@ def test_formula_columns_in_final_lineage():
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed = parse_fn(cdata)
 
-    # Find TOTAL_JOIN_1 mappings
-    total_join_1_mappings = [m for m in parsed.mappings if m.target == "TOTAL_JOIN_1"]
+    # Test that formulas from multiple layers are preserved
+    formula_tests = [
+        ("TOTAL_JOIN_1", '"PRICE" * "QUANTITY"'),
+        ("TOTAL2_JOIN_1", 'string("AMOUNT") + \' , \' + "PRODUCT"'),
+        ("TOTAL_PROJ_1", '"PRICE" *  "QUANTITY"'),  # Note: extra space in original
+        ("TOTAL_PROJ_2", '"PRICE" * "QUANTITY"'),
+        (
+            "TOTAL_PROJ_3",
+            'string("AMOUNT") + \' , \' +  "PRODUCT"',
+        ),  # Note: extra space
+    ]
 
-    # Should have mappings from the ultimate source tables
-    assert len(total_join_1_mappings) > 0
+    for col_name, expected_formula in formula_tests:
+        mappings = [m for m in parsed.mappings if m.target == col_name]
+        assert len(mappings) > 0, f"{col_name} not found in star join mappings"
 
-    # Check that we have mappings from actual source tables (not logical views)
-    source_types = {m.data_source.source_type for m in total_join_1_mappings}
-    assert ViewType.CALCULATION_VIEW in source_types
+        # Verify formula is preserved through all layers
+        has_formula = any(m.formula == expected_formula for m in mappings)
+        assert has_formula, (
+            f"Formula for {col_name} not preserved in star join. "
+            f"Expected: {expected_formula}, Got: {[m.formula for m in mappings]}"
+        )
+
+
+def test_formula_parsing_comprehensive():
+    """Comprehensive test for formula parsing covering all critical scenarios"""
+
+    # Scenario 1: Logical model formulas (the original issue reported)
+    logical_model_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" 
+    schemaVersion="2.3" id="CV_BASIC" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="CV_BASE" type="CALCULATION_VIEW">
+      <resourceUri>/my-package/calculationviews/CV_BASE</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="CV_BASE">
+    <calculatedAttributes>
+      <calculatedAttribute id="CALCULATED_PRICE">
+        <keyCalculation datatype="DOUBLE">
+          <formula>&quot;PRICE&quot;</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <baseMeasures>
+      <measure id="PRICE" aggregationType="sum">
+        <measureMapping columnObjectName="CV_BASE" columnName="PRICE"/>
+      </measure>
+      <measure id="QUANTITY" aggregationType="sum">
+        <measureMapping columnObjectName="CV_BASE" columnName="QUANTITY"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures>
+      <measure id="TOTAL" aggregationType="sum">
+        <formula>&quot;QUANTITY&quot; * &quot;PRICE&quot;</formula>
+      </measure>
+    </calculatedMeasures>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+    parsed = parse_fn(logical_model_xml)
+
+    # Test logical model calculated attribute
+    calc_price = next(
+        (m for m in parsed.mappings if m.target == "CALCULATED_PRICE"), None
+    )
+    assert (
+        calc_price and calc_price.formula == '"PRICE"'
+    ), "Logical model calculated attribute formula missing"
+
+    # Test logical model calculated measure
+    total = next((m for m in parsed.mappings if m.target == "TOTAL"), None)
+    assert (
+        total and total.formula == '"QUANTITY" * "PRICE"'
+    ), "Logical model calculated measure formula missing"
+
+    # Scenario 2: Nested calculation view formulas (the deeper layer issue we found)
+    nested_view_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    schemaVersion="2.3" id="TEST_CV" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="TEST_TABLE" type="DATA_BASE_TABLE">
+      <columnObject columnObjectName="TEST_TABLE" schemaName="TEST_SCHEMA"/>
+    </DataSource>
+  </dataSources>
+  <calculationViews>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+      <viewAttributes>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="QUANTITY"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute id="PROJ_TOTAL" datatype="DECIMAL">
+          <formula>&quot;PRICE&quot; * &quot;QUANTITY&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#TEST_TABLE">
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+      </input>
+    </calculationView>
+  </calculationViews>
+  <logicalModel id="Projection_1">
+    <attributes>
+      <attribute id="PROJ_TOTAL">
+        <keyMapping columnObjectName="Projection_1" columnName="PROJ_TOTAL"/>
+      </attribute>
+    </attributes>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parsed = parse_fn(nested_view_xml)
+
+    # Critical test: Formula from calculation view must propagate through logical model
+    proj_total = [m for m in parsed.mappings if m.target == "PROJ_TOTAL"]
+    assert len(proj_total) > 0, "PROJ_TOTAL not found in mappings"
+    assert any(
+        m.formula == '"PRICE" * "QUANTITY"' for m in proj_total
+    ), f"Nested calculation view formula not propagated. Got: {[(m.formula, m.sources) for m in proj_total]}"
+
+    # Scenario 3: Multiple formula types and edge cases
+    edge_cases_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    schemaVersion="2.3" id="TEST_CV" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="TEST_TABLE" type="DATA_BASE_TABLE">
+      <columnObject columnObjectName="TEST_TABLE" schemaName="TEST_SCHEMA"/>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="TEST_TABLE">
+    <calculatedAttributes>
+      <calculatedAttribute id="CONSTANT_ATTR">
+        <keyCalculation datatype="INTEGER">
+          <formula>1234</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+      <calculatedAttribute id="STRING_FORMULA">
+        <keyCalculation datatype="NVARCHAR">
+          <formula>string(&quot;PRICE&quot;) + ' USD'</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <baseMeasures>
+      <measure id="PRICE" aggregationType="sum">
+        <measureMapping columnObjectName="TEST_TABLE" columnName="PRICE"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures>
+      <measure id="COMPLEX_CALC" aggregationType="sum">
+        <formula>&quot;PRICE&quot; * 1.1 + 10</formula>
+      </measure>
+    </calculatedMeasures>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parsed = parse_fn(edge_cases_xml)
+
+    # Test constant formulas don't create mappings
+    targets = {m.target for m in parsed.mappings}
+    assert "CONSTANT_ATTR" not in targets, "Constant formula should not create mapping"
+
+    # Test string formulas work
+    string_formula = next(
+        (m for m in parsed.mappings if m.target == "STRING_FORMULA"), None
+    )
+    assert (
+        string_formula and "string(" in string_formula.formula
+    ), "String formula not preserved"
+
+    # Test complex formulas with constants
+    complex_calc = next(
+        (m for m in parsed.mappings if m.target == "COMPLEX_CALC"), None
+    )
+    assert (
+        complex_calc and complex_calc.formula == '"PRICE" * 1.1 + 10'
+    ), "Complex formula not preserved"
