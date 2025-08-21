@@ -57,7 +57,8 @@ export const getAuthContext = async (token: string) => {
 
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
-  await page.waitForURL('**/my-data');
+  // Increase timeout from default 30s to 60s to handle Service Worker initialization in CI environments
+  await page.waitForURL('**/my-data', { timeout: 60000 });
   await page.waitForLoadState('networkidle');
 };
 
