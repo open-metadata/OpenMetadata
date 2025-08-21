@@ -225,6 +225,7 @@ EXPECTED_DATA_MODEL_VERSIONLESS = [
     DataModel(
         modelType="DBT",
         resourceType="model",
+        dbtSourceProject="jaffle_shop",
         description="This table has basic information about a customer, as well as some derived facts based on a customer's orders",
         path="models/customers.sql",
         rawSql="sample customers raw code",
@@ -1104,3 +1105,31 @@ class DbtUnitTest(TestCase):
         ]
 
         assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    def test_dbt_source_project_name(self):
+        """
+        Test that the DBT source project name is correctly set in the data model
+        """
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        # Get expected data models
+        yield_data_models = self.dbt_source_obj.yield_data_models(
+            dbt_objects=dbt_objects
+        )
+
+        for data_model_link in yield_data_models:
+            if isinstance(data_model_link, Either) and data_model_link.right:
+                data_model = data_model_link.right.datamodel
+
+                # Check that the dbtSourceProject field is correctly set
+                self.assertEqual(
+                    data_model.dbtSourceProject,
+                    "jaffle_shop",
+                    "DBT source project should be set to 'jaffle_shop'",
+                )
+
+                # Verify the field exists and is not None
+                self.assertIsNotNone(
+                    data_model.dbtSourceProject,
+                    "dbtSourceProject field should not be None",
+                )
