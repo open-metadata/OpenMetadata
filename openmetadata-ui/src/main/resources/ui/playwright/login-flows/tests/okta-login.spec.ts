@@ -18,8 +18,8 @@ test.describe('Okta Sign-in Flow Tests', () => {
   });
 
   test('complete Okta sign-in flow', async ({ page }) => {
-    const OKTA_USERNAME = 'chirag@getcollate.io';
-    const OKTA_PASSWORD = 'Okta@1234';
+    const OKTA_USERNAME = '';
+    const OKTA_PASSWORD = '';
 
     // Navigate to login page
     await page.goto('/signin');
