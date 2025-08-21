@@ -86,7 +86,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
-  static final String FIELDS = "owners,reviewers";
+  static final String FIELDS = "owners,reviewers,extension";
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {

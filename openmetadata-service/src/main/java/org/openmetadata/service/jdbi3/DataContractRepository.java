@@ -82,9 +82,9 @@ import org.openmetadata.service.util.RestUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult,extension";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult,extension";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";

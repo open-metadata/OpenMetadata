@@ -43,6 +43,7 @@ public class DataContractMapper {
             .withEffectiveFrom(create.getEffectiveFrom())
             .withEffectiveUntil(create.getEffectiveUntil())
             .withSourceUrl(create.getSourceUrl())
+            .withExtension(create.getExtension())
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
 
