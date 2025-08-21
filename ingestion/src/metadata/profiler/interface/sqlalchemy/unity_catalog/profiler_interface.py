@@ -14,7 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-
+from sqlalchemy import event
+from sqlalchemy.orm import sessionmaker, scoped_session
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
 )
@@ -26,5 +27,16 @@ from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import
 class UnityCatalogProfilerInterface(DatabricksProfilerInterface):
     def create_session(self):
         self.connection = databricks_get_connection(self.service_connection_config)
-        super().create_session()
-        self.set_catalog(self.session)
+        
+        # Create custom session factory with after_begin event to set catalog
+        session_maker = sessionmaker(bind=self.connection)
+        
+        @event.listens_for(session_maker, "after_begin")
+        def set_catalog(session, transaction, connection):
+            connection.execute(
+                "USE CATALOG %(catalog)s;",
+                {"catalog": self.service_connection_config.catalog}
+            )
+        
+        self.session_factory = scoped_session(session_maker)
+        self.session = self.session_factory()
