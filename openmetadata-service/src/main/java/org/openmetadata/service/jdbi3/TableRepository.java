@@ -769,12 +769,6 @@ public class TableRepository extends EntityRepository<Table> {
         t -> PIIMasker.getTableProfile(fqn, t.getColumns(), authorizer, securityContext));
   }
 
-  public Table getLatestTableProfile(
-      String fqn, boolean authorizePII, boolean includeColumnProfile) {
-    return getLatestTableProfileInternal(
-        fqn, includeColumnProfile, t -> PIIMasker.getTableProfile(t.getColumns(), authorizePII));
-  }
-
   private Table getLatestTableProfileInternal(
       String fqn, boolean includeColumnProfile, Function<Table, List<Column>> maskFn) {
     Table table = findByName(fqn, ALL);

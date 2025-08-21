@@ -139,10 +139,6 @@ public class PIIMasker {
     return maskColumnsIfNotAuthorized(columns, authorizePII);
   }
 
-  public static List<Column> getTableProfile(List<Column> columns, boolean authorizePII) {
-    return maskColumnsIfNotAuthorized(columns, authorizePII);
-  }
-
   private static List<Column> maskColumnsIfNotAuthorized(
       List<Column> columns, boolean authorizePII) {
     if (authorizePII) return columns;
