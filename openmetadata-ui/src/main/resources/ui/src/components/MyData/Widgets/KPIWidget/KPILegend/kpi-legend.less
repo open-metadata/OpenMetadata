@@ -14,10 +14,13 @@
 @import (reference) url('../../../../../styles/variables.less');
 
 .kpi-legend {
-  border: 1px solid @grey-15;
   border-radius: @border-rad-sm;
-  overflow-y: auto;
+  border: 1px solid @grey-15;
+  display: flex;
+  flex-direction: column;
+  gap: @size-xs;
   max-height: 350px;
+  overflow-y: auto;
 
   .legend-dot {
     border-radius: 50%;
@@ -26,19 +29,28 @@
   }
 
   .kpi-full-legend {
-    min-width: 235px;
-    background-color: @purple-4;
-    border: 1px solid @grey-16;
-    border-radius: @border-rad-sm;
     background-color: @grey-26;
+    border-radius: @border-rad-sm;
+    border: 1px solid @grey-16;
+    display: flex;
+    flex-direction: column;
+    gap: @size-xxs;
+    margin-bottom: @size-xs;
+    min-width: 0;
+    padding: @size-xs;
+    width: 100%;
   }
 
   .kpi-legend-title {
     color: @grey-700;
+    flex: 1;
     font-size: @size-sm;
-    line-height: 1.2;
     font-weight: @font-regular;
-    max-width: 180px;
+    line-height: 1.2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .kpi-legend-info-icon {
@@ -60,41 +72,90 @@
   }
 
   .goal-completed-container {
-    padding: @size-xxs @size-xs;
-    border-radius: @border-rad-xs;
+    align-items: center;
     background-color: @green-9;
+    border-radius: @border-rad-xs;
+    display: flex;
+    flex-shrink: 1;
     font-size: 10px;
-    max-width: 115px;
+    gap: @size-xxs;
+    min-width: 0;
+    padding: @size-xxs @size-xs;
+    width: fit-content;
 
     .ant-typography {
       color: @green-10;
-      margin-left: @size-xxs;
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     svg {
-      width: @size-sm;
-      height: @size-sm;
       color: @green-10;
+      flex-shrink: 0;
+      height: @size-sm;
+      width: @size-sm;
     }
   }
 
   .goal-missed-container {
-    padding: @size-xxs @size-xs;
-    border-radius: @border-rad-xs;
+    align-items: center;
     background-color: @yellow-10;
+    border-radius: @border-rad-xs;
     color: @yellow-11;
+    display: flex;
+    flex-shrink: 1;
     font-size: 10px;
-    max-width: 100px;
+    gap: @size-xxs;
+    min-width: 0;
+    padding: @size-xxs @size-xs;
+    width: fit-content;
 
     .ant-typography {
       color: @yellow-11;
-      margin-left: @size-xxs;
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     svg {
-      width: @size-sm;
-      height: @size-sm;
       color: @yellow-11;
+      flex-shrink: 0;
+      height: @size-sm;
+      width: @size-sm;
     }
+  }
+
+  .kpi-legend-header {
+    align-items: center;
+    display: flex;
+    gap: @size-xs;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .kpi-legend-bottom-row {
+    align-items: center;
+    display: flex;
+    gap: @size-xxs;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .kpi-legend-center-section {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .kpi-legend-value-section {
+    flex-shrink: 0;
+    min-width: fit-content;
   }
 }
