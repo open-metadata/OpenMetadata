@@ -3314,4 +3314,50 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(1, testSuite.getTests().size());
     assertEquals(testCase.getId(), testSuite.getTests().get(0).getId());
   }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractOwnerFieldFiltering(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create owners list
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(USER1_REF);
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withOwners(owners);
+
+    DataContract created = createDataContract(create);
+
+    // Verify owner was set during creation
+    assertNotNull(created.getOwners());
+    assertEquals(1, created.getOwners().size());
+
+    // Test 1: Get without specifying fields - should not include owner information
+    DataContract retrievedWithoutFields = getDataContract(created.getId(), null);
+    assertNotNull(retrievedWithoutFields);
+    assertEquals(created.getId(), retrievedWithoutFields.getId());
+    assertNull(retrievedWithoutFields.getOwners());
+
+    // Test 2: Get with "owners" in fields - should include owner information
+    DataContract retrievedWithOwners = getDataContract(created.getId(), "owners");
+    assertNotNull(retrievedWithOwners);
+    assertEquals(created.getId(), retrievedWithOwners.getId());
+    assertNotNull(retrievedWithOwners.getOwners());
+    assertEquals(1, retrievedWithOwners.getOwners().size());
+    assertEquals(USER1_REF.getId(), retrievedWithOwners.getOwners().get(0).getId());
+
+    // Test 3: Get with multiple fields including owners - should include owner information
+    DataContract retrievedWithMultipleFields = getDataContract(created.getId(), "owners,reviewers");
+    assertNotNull(retrievedWithMultipleFields);
+    assertEquals(created.getId(), retrievedWithMultipleFields.getId());
+    assertNotNull(retrievedWithMultipleFields.getOwners());
+    assertEquals(1, retrievedWithMultipleFields.getOwners().size());
+
+    // Test 4: Get with fields that exclude owners - should not include owner information
+    DataContract retrievedWithoutOwnerField = getDataContract(created.getId(), "reviewers");
+    assertNotNull(retrievedWithoutOwnerField);
+    assertEquals(created.getId(), retrievedWithoutOwnerField.getId());
+    assertNull(retrievedWithoutOwnerField.getOwners());
+  }
 }
