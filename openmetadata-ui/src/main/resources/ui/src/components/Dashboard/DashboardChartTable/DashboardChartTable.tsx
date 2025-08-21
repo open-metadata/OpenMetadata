@@ -410,10 +410,14 @@ export const DashboardChartTable = ({
   }, [listChartIds, isCustomizationPage, initializeCharts]);
 
   useEffect(() => {
-    setFilters({
-      showDeletedCharts:
-        chartFilters.showDeletedCharts ?? dashboardDetails?.deleted,
-    });
+    const newShowDeletedValue =
+      chartFilters.showDeletedCharts ?? dashboardDetails?.deleted;
+    // Only update if the value actually changed to prevent unnecessary navigation
+    if (chartFilters.showDeletedCharts !== newShowDeletedValue) {
+      setFilters({
+        showDeletedCharts: newShowDeletedValue,
+      });
+    }
   }, [dashboardDetails?.deleted, chartFilters.showDeletedCharts, setFilters]);
 
   return (

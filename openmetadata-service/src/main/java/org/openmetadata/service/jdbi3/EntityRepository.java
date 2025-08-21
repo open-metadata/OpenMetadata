@@ -4635,13 +4635,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
       }
       // Add relationships from updated
-      addRelationship(
-          fromId,
-          updatedToRef.getId(),
-          fromEntityType,
-          toEntityType,
-          relationshipType,
-          bidirectional);
+      if (updatedToRef != null) {
+        addRelationship(
+            fromId,
+            updatedToRef.getId(),
+            fromEntityType,
+            toEntityType,
+            relationshipType,
+            bidirectional);
+      }
     }
 
     /**
@@ -4716,7 +4718,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
 
       // Add relationships from updated
-      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      if (updatedFromRef != null) {
+        addRelationship(
+            updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      }
     }
 
     public final void storeUpdate() {

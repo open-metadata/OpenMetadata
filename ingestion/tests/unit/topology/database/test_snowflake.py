@@ -14,7 +14,7 @@ snowflake unit tests
 """
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
@@ -24,6 +24,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
 )
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
@@ -305,3 +311,58 @@ class SnowflakeUnitTest(TestCase):
         self.assertEqual(map_type.key_type, key_type)
         self.assertEqual(map_type.value_type, sqltypes.VARCHAR)  # default
         self.assertFalse(map_type.not_null)  # default
+
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
+    )
+    @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
+    def test_schema_tag_inheritance(
+        self, mock_get_tag_label, mock_parent_get_tag_labels
+    ):
+        """Test schema tag inheritance"""
+        for source in self.sources.values():
+            # Verify tags are fetched and stored
+            mock_schema_tags = [
+                Mock(
+                    SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
+                ),
+            ]
+            mock_execute = Mock()
+            mock_execute.all.return_value = mock_schema_tags
+            source.engine.execute = Mock(return_value=mock_execute)
+
+            source.set_schema_tags_map("TEST_DATABASE")
+            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            self.assertEqual(
+                source.schema_tags_map["TEST_SCHEMA"][0],
+                {"tag_name": "SCHEMA_TAG", "tag_value": "VALUE"},
+            )
+
+            # Verify schema tag labels
+            mock_get_tag_label.return_value = TagLabel(
+                tagFQN="SnowflakeTag.SCHEMA_TAG",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            )
+
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertIsNotNone(schema_labels)
+            self.assertEqual(len(schema_labels), 1)
+
+            # Verify tag inheritance
+            source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
+            mock_parent_get_tag_labels.return_value = [
+                TagLabel(
+                    tagFQN="SnowflakeTag.TABLE_TAG",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+            ]
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 2)
+            tag_fqns = [tag.tagFQN.root for tag in table_labels]
+            self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
+            self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)

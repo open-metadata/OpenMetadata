@@ -159,7 +159,12 @@ test.describe('Entity Version pages', () => {
       test.slow();
 
       await entity.visitEntityPage(page);
-      const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+
+      await page.waitForLoadState('networkidle');
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions/0.2') && response.status() === 200
+      );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
 
