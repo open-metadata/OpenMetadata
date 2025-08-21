@@ -100,7 +100,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
