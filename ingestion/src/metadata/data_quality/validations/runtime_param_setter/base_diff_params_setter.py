@@ -109,11 +109,11 @@ class BaseTableParameter:
         _, _, schema, table = fqn.split(table_fqn)
         try:
             dialect = PythonDialects[service_type.name].value
-            url = make_url(f"{dialect}://")
-            dialect_instance = url.get_dialect()()
-
-            table = dialect_instance.denormalize_name(name=table)
-            schema = dialect_instance.denormalize_name(name=schema)
+            if dialect in (Dialects.Oracle):
+                url = make_url(f"{dialect}://")
+                dialect_instance = url.get_dialect()()
+                table = dialect_instance.denormalize_name(name=table)
+                schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
             logger.debug(
                 f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
