@@ -230,7 +230,20 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      navigate(ROUTES.HOME);
+      // Check if provider uses OidcAuthenticator which has routing logic
+      const usesOidcAuthenticator = [
+        AuthProviderEnum.Google,
+        AuthProviderEnum.CustomOidc,
+        AuthProviderEnum.AwsCognito,
+      ].includes(authConfig?.provider as AuthProviderEnum);
+
+      // For providers using OidcAuthenticator, navigate to HOME for routing
+      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
+      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
+        navigate(ROUTES.HOME);
+      } else {
+        navigate(ROUTES.MY_DATA);
+      }
     }
   };
 
