@@ -475,7 +475,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContractResult validateContract(DataContract dataContract) {
+  public RestUtil.PutResponse<DataContractResult> validateContract(DataContract dataContract) {
     // Check if there's a running validation and abort it before starting a new one
     abortRunningValidation(dataContract);
 
@@ -520,8 +520,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // Add the result to the data contract and update the time series
-    addContractResult(dataContract, result);
-    return result;
+    return addContractResult(dataContract, result);
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {

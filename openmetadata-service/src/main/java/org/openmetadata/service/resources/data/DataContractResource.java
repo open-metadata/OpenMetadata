@@ -73,6 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -872,8 +873,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    DataContractResult result = repository.validateContract(dataContract);
-    return Response.ok(result).build();
+    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
+    return result.toResponse();
   }
 
   // Add runId and dataContractFQN to the result if not incoming
