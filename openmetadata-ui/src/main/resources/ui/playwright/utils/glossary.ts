@@ -784,9 +784,9 @@ export const dragAndDropTerm = async (
   dragElement: string,
   dropTarget: string
 ) => {
-  await page.getByRole('cell', { name: dragElement }).hover();
+  await page.getByRole('cell', { name: dragElement, exact: true }).hover();
   await page.mouse.down();
-  await page.getByRole('cell', { name: dropTarget }).hover();
+  await page.getByRole('cell', { name: dropTarget, exact: true }).hover();
   await page.mouse.up();
 };
 

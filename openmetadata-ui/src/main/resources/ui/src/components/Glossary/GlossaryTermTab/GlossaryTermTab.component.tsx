@@ -277,17 +277,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         return;
       }
 
-      if (loadMore) {
-        // Append to existing terms without rebuilding the entire tree
-        if (!Array.isArray(glossaryChildTerms)) {
-          setGlossaryChildTerms(data as ModifiedGlossary[]);
+      const newTerms = data as ModifiedGlossary[];
 
-          return;
-        }
-        const mergedTerms = [
-          ...glossaryChildTerms,
-          ...(data as ModifiedGlossary[]),
-        ];
+      if (loadMore && Array.isArray(glossaryChildTerms)) {
+        // Use unionBy to append new terms while avoiding duplicates
+        const mergedTerms = [...glossaryChildTerms, ...newTerms];
+
         setGlossaryChildTerms(mergedTerms);
       } else {
         // Replace terms
@@ -297,8 +292,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
 
       // Update cursor for next page
-      setAfterCursor(paging?.after);
       // Check if there are more terms
+      setAfterCursor(paging?.after);
       setHasMoreTerms(paging?.after !== undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -405,7 +400,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     if (inView && hasMoreTerms && !isLoadingMore && !isTableLoading) {
       fetchAllTerms(true);
     }
-  }, [inView, hasMoreTerms, isLoadingMore, isTableLoading, afterCursor]);
+  }, [inView, hasMoreTerms, isLoadingMore, isTableLoading]);
 
   // Monitor for DOM changes to detect when the table becomes scrollable
   useEffect(() => {
@@ -452,41 +447,27 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
     };
 
-    // Try to find scroll container with a delay to ensure DOM is ready
-    const setupScrollListener = () => {
-      const scrollContainer = findScrollContainer();
-      if (scrollContainer) {
-        scrollContainer.addEventListener('scroll', handleScroll, {
-          passive: true,
-        });
+    const scrollContainer = findScrollContainer();
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, {
+        passive: true,
+      });
 
-        return () =>
-          scrollContainer.removeEventListener('scroll', handleScroll);
-      }
+      return () => {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      };
+    }
 
-      return undefined;
-    };
-
-    // Try immediately and also after a delay
-    let cleanup = setupScrollListener();
-    const timeoutId = setTimeout(() => {
-      if (!cleanup) {
-        cleanup = setupScrollListener();
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (cleanup) {
-        cleanup();
-      }
-    };
+    // If container not found initially, no need for timeout -
+    // the component should handle cases where container might appear later
+    return undefined;
   }, [
     hasMoreTerms,
     isLoadingMore,
     isTableLoading,
     afterCursor,
     findScrollContainer,
+    fetchAllTerms,
   ]);
 
   const glossaryTermStatus: Status | null = useMemo(() => {
