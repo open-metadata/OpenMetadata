@@ -635,7 +635,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   private void deleteTable(UUID id) {
-    WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
+    WebTarget tableTarget =
+        APP.client().target(getTableUri() + "/" + id).queryParam("recursive", true);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
@@ -1892,6 +1893,31 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         },
         Status.FORBIDDEN,
         "Principal: CatalogPrincipal{name='test'} operations [Delete] not allowed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractIsDeletedWhenTableIsDeleted(TestInfo test) throws IOException {
+    // Create a table
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create a data contract for the table
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the data contract was created
+    assertNotNull(dataContract);
+    assertEquals(table.getId(), dataContract.getEntity().getId());
+
+    // Verify we can get the data contract before deletion
+    DataContract retrieved = getDataContract(dataContract.getId(), null);
+    assertNotNull(retrieved);
+
+    // Delete the table
+    deleteTable(table.getId());
+
+    // Verify that the data contract is also deleted (should throw HttpResponseException)
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
   }
 
   @Test

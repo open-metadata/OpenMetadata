@@ -877,7 +877,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         dataContract.getId(),
         dataContract.getEntity().getType(),
         Entity.DATA_CONTRACT,
-        Relationship.HAS);
+        Relationship.CONTAINS);
 
     storeOwners(dataContract, dataContract.getOwners());
     storeReviewers(dataContract, dataContract.getReviewers());
