@@ -16,7 +16,6 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
@@ -150,23 +149,15 @@ const GithubStarCard = () => {
         </Typography.Paragraph>
 
         <ButtonGroup className="github-action-button-group">
-          <Link
-            target="_blank"
-            to={{
-              pathname: OMD_REPOSITORY_LINK,
-            }}>
+          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
             <Button
               className="github-star-button github-modal-action-button"
               icon={<Icon component={StarGithubIcon} size={12} />}>
               {t('label.star')}
             </Button>
-          </Link>
+          </Typography.Link>
 
-          <Link
-            target="_blank"
-            to={{
-              pathname: OMD_REPOSITORY_LINK,
-            }}>
+          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
@@ -176,7 +167,7 @@ const GithubStarCard = () => {
                 starredCount
               )}
             </Button>
-          </Link>
+          </Typography.Link>
         </ButtonGroup>
       </Card>
     </Affix>

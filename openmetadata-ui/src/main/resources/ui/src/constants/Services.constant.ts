@@ -40,6 +40,7 @@ import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
+import grafana from '../assets/img/service-icon-grafana.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
@@ -212,6 +213,7 @@ export const FLINK = flink;
 export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
+export const GRAFANA = grafana;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -313,6 +315,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
+    'rootProcessingEngine',
     'name',
     'displayName',
     ...SERVICE_FILTER_PATTERN_FIELDS,
@@ -444,6 +447,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.ThoughtSpot,
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
+  DashboardServiceType.Grafana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -512,6 +516,14 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+];
+
+export const SERVICE_AUTOPILOT_AGENT_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Lineage,
+  PipelineType.Usage,
+  PipelineType.AutoClassification,
+  PipelineType.Profiler,
 ];
 
 export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([

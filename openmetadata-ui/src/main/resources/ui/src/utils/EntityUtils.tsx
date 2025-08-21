@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Popover, Space, Typography } from 'antd';
 import i18next, { t } from 'i18next';
 import {
@@ -27,7 +26,6 @@ import QueryString from 'qs';
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import { ReactComponent as CancelOutlineIcon } from '../assets/svg/ic-cancel-outline.svg';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
@@ -104,7 +102,6 @@ import {
   EventSubscription,
 } from '../generated/events/eventSubscription';
 import { TestCase, TestSuite } from '../generated/tests/testCase';
-import { ContractExecutionStatus } from '../generated/type/contractExecutionStatus';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
@@ -2455,6 +2452,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiCollection: t('label.api-collection'),
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
+    page: t('label.knowledge-page'),
   };
 
   return (
@@ -2658,10 +2656,5 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SERVICE]: t('label.service'),
   [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
-};
-
-export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
-  return status === ContractExecutionStatus.Failed ? (
-    <Icon component={CancelOutlineIcon} />
-  ) : null;
+  [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
 };

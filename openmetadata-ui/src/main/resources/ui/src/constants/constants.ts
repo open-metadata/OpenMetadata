@@ -315,6 +315,7 @@ export const SOCKET_EVENTS = {
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
+  CHART_DATA_STREAM: 'chartDataStream',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -431,6 +432,10 @@ export const STATUS_LABEL = {
 
 export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
+};
+
+export const INITIAL_CHART_FILTERS = {
+  showDeletedCharts: false,
 };
 
 export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;

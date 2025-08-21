@@ -79,6 +79,7 @@ export enum EntityType {
   WORKFLOW_DEFINITION = 'workflowDefinition',
   SERVICE = 'service',
   DATA_CONTRACT = 'dataContract',
+  INGESTION_RUNNER = 'ingestionRunner',
 }
 
 export enum EntityLineageDirection {
@@ -190,6 +191,7 @@ export enum EntityTabs {
   TABLE_QUERIES = 'table_queries',
   PROFILER = 'profiler',
   LINEAGE = 'lineage',
+  KNOWLEDGE_GRAPH = 'knowledge_graph',
   DBT = 'dbt',
   VIEW_DEFINITION = 'view_definition',
   SCHEMA_DEFINITION = 'schema_definition',

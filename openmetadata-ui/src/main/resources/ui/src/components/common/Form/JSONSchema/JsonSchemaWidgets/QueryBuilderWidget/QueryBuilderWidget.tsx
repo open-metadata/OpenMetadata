@@ -51,6 +51,7 @@ import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
+  migrateJsonLogic,
   READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
@@ -60,12 +61,13 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
 
-const QueryBuilderWidget: FC<WidgetProps> = ({
-  onChange,
-  schema,
-  value,
-  ...props
-}) => {
+const QueryBuilderWidget: FC<
+  WidgetProps & {
+    fields?: Config['fields'];
+    defaultField?: string;
+    subField?: string;
+  }
+> = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
   const {
     config,
     treeInternal,
@@ -190,7 +192,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
+        // migrate existing json logic to new format
+        const migratedValue = migrateJsonLogic(parsedValue);
+
+        const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,
@@ -202,7 +207,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     } else {
       const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? getEmptyJsonTreeForQueryBuilder()
+          ? getEmptyJsonTreeForQueryBuilder(defaultField, subField)
           : getEmptyJsonTree();
 
       const tree = QbUtils.loadTree(emptyJsonTree);
@@ -253,6 +258,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
             )}
             <Query
               {...config}
+              fields={fields ?? config.fields}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {

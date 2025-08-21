@@ -209,9 +209,10 @@ describe('WhatsNewAlert', () => {
       appVersion: undefined,
     }));
 
-    const { findByText } = render(<WhatsNewAlert />);
+    const { queryByTestId } = render(<WhatsNewAlert />);
 
-    expect(await findByText('Version')).toBeInTheDocument();
+    // Should not render the alert when appVersion is undefined
+    expect(queryByTestId('whats-new-alert-card')).not.toBeInTheDocument();
   });
 
   it('should call brandClassBase methods with correct version', () => {

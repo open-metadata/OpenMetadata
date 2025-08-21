@@ -18,7 +18,6 @@ import {
   assignDomain,
   removeDataProduct,
   removeDomain,
-  updateDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -40,6 +39,7 @@ import {
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
+  editAnnouncement,
   followEntity,
   hardDeleteEntity,
   removeCertification,
@@ -143,7 +143,11 @@ export class EntityClass {
     await assignDomain(page, domain1);
     await assignDataProduct(page, domain1, dataProduct1);
     await assignDataProduct(page, domain1, dataProduct2, 'Edit');
-    await updateDomain(page, domain2);
+    await removeDataProduct(page, dataProduct1);
+    await removeDataProduct(page, dataProduct2);
+    await removeDomain(page, domain1);
+
+    await assignDomain(page, domain2);
     await assignDataProduct(page, domain2, dataProduct3);
     await removeDataProduct(page, dataProduct3);
     await removeDomain(page, domain2);
@@ -489,6 +493,10 @@ export class EntityClass {
     await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
+    });
+    await editAnnouncement(page, {
+      title: 'Edited Playwright Test Announcement',
+      description: 'Updated Playwright Test Announcement Description',
     });
     await replyAnnouncement(page);
     await deleteAnnouncement(page);

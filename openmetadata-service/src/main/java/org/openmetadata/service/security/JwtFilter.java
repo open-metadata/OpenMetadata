@@ -33,6 +33,8 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Priority;
+import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -66,6 +68,7 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
 @Provider
+@Priority(Priorities.AUTHENTICATION)
 public class JwtFilter implements ContainerRequestFilter {
   public static final String EMAIL_CLAIM_KEY = "email";
   public static final String USERNAME_CLAIM_KEY = "username";
@@ -88,6 +91,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/system/config/authorizer",
           "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
+          "v1/system/config/rdf",
+          "v1/system/health",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
@@ -164,12 +169,14 @@ public class JwtFilter implements ContainerRequestFilter {
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    boolean isBotUser = isBot(claims);
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
             catalogPrincipal,
             scheme,
             SecurityContext.DIGEST_AUTH,
-            getUserRolesFromClaims(claims, isBot(claims)));
+            getUserRolesFromClaims(claims, isBotUser),
+            isBotUser);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }
@@ -310,10 +317,12 @@ public class JwtFilter implements ContainerRequestFilter {
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    boolean isBotUser = isBot(claims);
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBot(claims)));
+        getUserRolesFromClaims(claims, isBotUser),
+        isBotUser);
   }
 }

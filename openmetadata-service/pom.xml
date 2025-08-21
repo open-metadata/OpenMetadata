@@ -19,7 +19,7 @@
     <org.testcontainers.version>1.20.3</org.testcontainers.version>
     <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
-    <azure-kv.version>4.9.0</azure-kv.version>
+    <azure-kv.version>4.10.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
@@ -978,6 +978,36 @@
       <artifactId>opensearch-rest-high-level-client</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- Apache Jena RDF Dependencies -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>apache-jena-libs</artifactId>
+      <version>4.10.0</version>
+      <type>pom</type>
+    </dependency>
+    
+    <!-- Apache Calcite for SQL parsing -->
+    <dependency>
+      <groupId>org.apache.calcite</groupId>
+      <artifactId>calcite-core</artifactId>
+      <version>1.36.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.apicatalog</groupId>
+      <artifactId>titanium-json-ld</artifactId>
+      <version>1.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>jakarta.json</artifactId>
+      <version>2.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.jsqlparser</groupId>
+      <artifactId>jsqlparser</artifactId>
+      <version>4.9</version>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -1075,10 +1105,10 @@
         </build>
       </profile>
       <profile>
+        <id>mysql-tests</id>
         <activation>
           <activeByDefault>true</activeByDefault>
         </activation>
-        <id>mysql-tests</id>
         <build>
           <plugins>
             <plugin>
@@ -1157,6 +1187,45 @@
                       <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                       <include>**/cache/*Test.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>postgres-rdf-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                  <enableRdf>true</enableRdf>
+                  <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-rdf-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
                 </execution>
