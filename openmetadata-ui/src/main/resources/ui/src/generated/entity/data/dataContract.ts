@@ -47,6 +47,10 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
