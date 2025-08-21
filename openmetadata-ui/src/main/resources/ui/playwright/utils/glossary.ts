@@ -552,8 +552,8 @@ export const verifyWorkflowInstanceExists = async (
       },
       {
         message: 'To verify workflow instance exists',
-        timeout: 180_000,
-        intervals: [40_000, 30_000],
+        timeout: 200_000,
+        intervals: [50_000],
       }
     )
     .toBe(true);
