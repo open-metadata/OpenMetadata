@@ -605,4 +605,98 @@ test.describe('Persona customization', () => {
       ).toBeVisible();
     });
   });
+
+  test("customize tab label should only render if it's customize by user", async ({
+    adminPage,
+    userPage,
+  }) => {
+    await test.step('apply tab label customization for Table', async () => {
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage
+        .getByTestId(`persona-details-card-${persona.data.name}`)
+        .click();
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage.getByText('Data Assets').click();
+      await adminPage.getByText('Table', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-sample_data`)
+      ).toBeVisible();
+
+      await adminPage
+        .getByTestId('customize-tab-card')
+        .getByTestId(`tab-sample_data`)
+        .click();
+
+      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+
+      await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+      await adminPage.getByRole('dialog').getByRole('textbox').clear();
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('textbox')
+        .fill('Sample Data Updated');
+
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Ok' })
+        .click();
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-sample_data`)
+      ).toHaveText('Sample Data Updated');
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step(
+      'validate applied label change and language support for page',
+      async () => {
+        await redirectToHomePage(userPage);
+
+        const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
+        await entity.visitEntityPage(userPage);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Change language to French
+        await userPage.getByRole('button', { name: 'EN' }).click();
+        await userPage.getByRole('menuitem', { name: 'Français - FR' }).click();
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(
+          userPage.getByRole('tab', { name: 'Sample Data Updated' })
+        ).toBeVisible();
+        // Overview tab in French, only customized tab should be non-localized rest should be localized
+        await expect(
+          userPage.getByRole('tab', { name: 'Colonnes' })
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByRole('tab', { name: "Flux d'Activité & Tâches" })
+        ).toBeVisible();
+      }
+    );
+  });
 });
