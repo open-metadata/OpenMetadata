@@ -12,83 +12,12 @@
  */
 
 import react from '@vitejs/plugin-react';
-import fs from 'fs';
 import path from 'path';
-import { defineConfig, loadEnv, Plugin } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
-
-// Custom plugin to handle Less imports with url() syntax
-const lessImportResolver = (): Plugin => ({
-  name: 'less-import-resolver',
-  enforce: 'pre',
-  async transform(code, id) {
-    if (id.endsWith('.less')) {
-      let transformed = code;
-      const fileDir = path.dirname(id);
-
-      // Transform url() syntax to standard import syntax
-      transformed = transformed.replace(
-        /@import\s*(\(reference\))?\s*url\((['"]?)([^'")\s]+)\2\)/g,
-        '@import $1 $2$3$2'
-      );
-
-      // Handle all relative imports
-      transformed = transformed.replace(
-        /@import\s*(\(reference\))?\s*['"]\.\/([^'"]+)['"]/g,
-        (match, ref, importPath) => {
-          const absolutePath = path.resolve(fileDir, importPath);
-          if (fs.existsSync(absolutePath)) {
-            return `@import ${ref || ''} '${absolutePath}'`;
-          }
-
-          return match;
-        }
-      );
-
-      // Handle parent directory imports
-      transformed = transformed.replace(
-        /@import\s*(\(reference\))?\s*['"]\.\.\/([^'"]+)['"]/g,
-        (match, ref, importPath) => {
-          const absolutePath = path.resolve(fileDir, '..', importPath);
-          if (fs.existsSync(absolutePath)) {
-            return `@import ${ref || ''} '${absolutePath}'`;
-          }
-
-          return match;
-        }
-      );
-
-      // Handle antd imports without leading path
-      transformed = transformed.replace(
-        /@import\s*(\(reference\))?\s*['"]antd\/([^'"]+)['"]/g,
-        (match, ref, antdPath) => {
-          const absolutePath = path.resolve(
-            __dirname,
-            'node_modules/antd',
-            antdPath
-          );
-          if (fs.existsSync(absolutePath)) {
-            return `@import ${ref || ''} '${absolutePath}'`;
-          }
-
-          return match;
-        }
-      );
-
-      if (transformed !== code) {
-        return {
-          code: transformed,
-          map: null,
-        };
-      }
-    }
-
-    return null;
-  },
-});
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -98,8 +27,8 @@ export default defineConfig(({ mode }) => {
     'http://localhost:8585/';
 
   return {
+    base: '/',
     plugins: [
-      lessImportResolver(),
       react(),
       svgr(),
       tsconfigPaths(),
@@ -160,7 +89,9 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: 'build',
+      outDir: 'dist',
+      assetsDir: 'assets',
+      copyPublicDir: true,
       sourcemap: true,
       minify: mode === 'production' ? 'terser' : false,
       rollupOptions: {
@@ -174,6 +105,17 @@ export default defineConfig(({ mode }) => {
               '@tiptap/extension-link',
             ],
             'chart-vendor': ['recharts', 'reactflow'],
+          },
+          assetFileNames: (assetInfo) => {
+            const fileName = assetInfo.name || '';
+            const info = fileName.split('.');
+            const ext = info[info.length - 1];
+
+            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+              return `images/[name]-[hash][extname]`;
+            }
+
+            return `assets/[name]-[hash][extname]`;
           },
         },
       },
