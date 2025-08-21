@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { CursorType } from '../../../enums/pagination.enum';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { PersonaPage } from './PersonaPage';
 
@@ -82,6 +83,13 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     currentPage: 1,
     showPagination: true,
     pageSize: 10,
+    paging: {
+      [CursorType.AFTER]: '1',
+    },
+    pagingCursor: {
+      cursorType: CursorType.AFTER,
+      cursorValue: '',
+    },
     handlePageChange: jest.fn(),
     handlePagingChange: jest.fn(),
     handlePageSizeChange: jest.fn(),
