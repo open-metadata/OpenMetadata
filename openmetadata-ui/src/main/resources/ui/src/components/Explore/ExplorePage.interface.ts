@@ -22,6 +22,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Directory } from '../../generated/entity/data/directory';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -148,7 +149,8 @@ export type EntityWithServices =
   | DatabaseSchema
   | SearchIndexEntity
   | APICollection
-  | APIEndpoint;
+  | APIEndpoint
+  | Directory;
 
 export type EntityServiceUnion =
   | DatabaseService

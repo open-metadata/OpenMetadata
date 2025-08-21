@@ -91,4 +91,5 @@ export enum GlobalSettingOptions {
   CHARTS = 'charts',
   SECURITY = 'security',
   DRIVES = 'drives',
+  DIRECTORIES = 'directories',
 }

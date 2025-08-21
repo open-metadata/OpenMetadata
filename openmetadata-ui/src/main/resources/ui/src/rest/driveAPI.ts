@@ -12,11 +12,13 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { Worksheet } from '../generated/entity/data/worksheet';
+import { EntityReference } from '../generated/type/entityReference';
 import {
   GetDirectoriesParams,
   GetFilesParams,
@@ -87,9 +89,74 @@ export const getWorksheets = async (params: GetWorksheetsParams) => {
   return response.data;
 };
 
+export const getDirectoryByFqn = async (
+  fqn: string,
+  fields?: string | string[],
+  include?: string
+) => {
+  const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields;
+  const response = await APIClient.get<Directory>(
+    `${BASE_URL}/directories/name/${encodeURIComponent(fqn)}`,
+    {
+      params: {
+        ...(fieldsStr && { fields: fieldsStr }),
+        ...(include && { include }),
+      },
+    }
+  );
+
+  return response.data;
+};
+
 export const patchDirectoryDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Directory>>(
     `${BASE_URL}/directories/${id}`,
+    data
+  );
+
+  return response.data;
+};
+
+export const addFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`${BASE_URL}/directories/${id}/followers`, userId, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  return response.data;
+};
+
+export const removeFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: {
+        fieldsDeleted: { oldValue: EntityReference[] }[];
+      };
+    }>
+  >(`${BASE_URL}/directories/${id}/followers/${userId}`, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  return response.data;
+};
+
+export const restoreDirectory = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Directory>
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateDirectoryVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Directory>>(
+    `${BASE_URL}/directories/${id}/vote`,
     data
   );
 

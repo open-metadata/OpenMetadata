@@ -29,7 +29,8 @@
         "APIEndpoint",
         "Metric",
         "MlModel",
-        "Chart"
+        "Chart",
+        "Directory"
       ]
     }
   },

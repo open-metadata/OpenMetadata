@@ -119,6 +119,7 @@ export enum PageType {
     DashboardDataModel = "DashboardDataModel",
     Database = "Database",
     DatabaseSchema = "DatabaseSchema",
+    Directory = "Directory",
     Domain = "Domain",
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",

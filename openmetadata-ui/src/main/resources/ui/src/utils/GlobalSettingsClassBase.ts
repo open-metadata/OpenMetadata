@@ -642,6 +642,15 @@ class GlobalSettingsClassBase {
             icon: SchemaIcon,
           },
           {
+            label: t('label.directory'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.directory'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
+            icon: SchemaIcon,
+          },
+          {
             label: t('label.metric'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.metric'),

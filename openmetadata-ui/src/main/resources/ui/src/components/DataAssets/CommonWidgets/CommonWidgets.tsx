@@ -22,6 +22,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Directory } from '../../../generated/entity/data/directory';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -177,6 +178,8 @@ export const CommonWidgets = ({
       case EntityType.DOMAIN:
       case EntityType.METRIC:
         return true;
+      case EntityType.DIRECTORY:
+        return isEmpty((data as unknown as Directory).children);
       default:
         return false;
     }

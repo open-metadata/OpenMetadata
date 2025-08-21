@@ -58,6 +58,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.INSIGHTS]: 'label.insight-plural',
   [EntityTabs.SCHEMAS]: 'label.schema-plural',
   [EntityTabs.CONTRACT]: 'label.contract',
+  [EntityTabs.DIRECTORIES]: 'label.directory-plural',
 } as const;
 
 export type CustomizeEntityType =
@@ -78,7 +79,8 @@ export type CustomizeEntityType =
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
   | EntityType.METRIC
-  | EntityType.CHART;
+  | EntityType.CHART
+  | EntityType.DIRECTORY;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -99,4 +101,5 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.CONTAINER]: PageType.Container,
   [EntityType.METRIC]: PageType.Metric,
   [EntityType.CHART]: PageType.Chart,
+  [EntityType.DIRECTORY]: PageType.Directory,
 };

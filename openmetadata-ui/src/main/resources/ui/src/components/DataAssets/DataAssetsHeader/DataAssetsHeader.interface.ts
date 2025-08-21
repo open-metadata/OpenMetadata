@@ -108,7 +108,8 @@ export type DataAssetsWithFollowersField =
   | StoredProcedure
   | APIEndpoint
   | Metric
-  | Chart;
+  | Chart
+  | Directory;
 
 export type DataAssetsWithServiceField =
   | Table
@@ -124,7 +125,8 @@ export type DataAssetsWithServiceField =
   | DatabaseSchema
   | APICollection
   | APIEndpoint
-  | Chart;
+  | Chart
+  | Directory;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
@@ -184,6 +186,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetAPIEndpoint
   | DataAssetMetric
   | DataAssetChart
+  | DataAssetDirectory
 );
 
 export interface DataAssetTable {
@@ -304,6 +307,11 @@ export interface DataAssetSecurityService {
 export interface DataAssetDriveService {
   dataAsset: ServicesType;
   entityType: EntityType.DRIVE_SERVICE;
+}
+
+export interface DataAssetDirectory {
+  dataAsset: Directory;
+  entityType: EntityType.DIRECTORY;
 }
 
 export interface DataAssetHeaderInfo {

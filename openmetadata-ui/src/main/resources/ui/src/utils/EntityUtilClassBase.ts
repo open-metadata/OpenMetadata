@@ -35,6 +35,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
@@ -376,7 +377,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityDetailComponent(entityType: string) {
+  public getEntityDetailComponent(entityType: string): FC | null {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -410,6 +411,8 @@ class EntityUtilClassBase {
         return APIEndpointPage;
       case EntityType.METRIC:
         return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
 
       default:
         return null;
@@ -468,6 +471,9 @@ class EntityUtilClassBase {
       }
       case EntityType.METRIC: {
         return ResourceEntity.METRIC;
+      }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
       }
 
       default: {
