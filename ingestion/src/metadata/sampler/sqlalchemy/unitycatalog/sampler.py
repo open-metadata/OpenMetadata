@@ -14,7 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from sqlalchemy import event
+from sqlalchemy.orm import sessionmaker, scoped_session
 from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 
 
@@ -25,4 +26,15 @@ class UnityCatalogSamplerInterface(DatabricksSamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.session_factory = create_and_bind_thread_safe_session(self.connection)
+        
+        # Create custom session with after_begin event to set catalog
+        session_maker = sessionmaker(bind=self.connection)
+        
+        @event.listens_for(session_maker, "after_begin")
+        def set_catalog(session, transaction, connection):
+            connection.execute(
+                "USE CATALOG %(catalog)s;",
+                {"catalog": self.service_connection_config.catalog}
+            )
+        
+        self.session_factory = scoped_session(session_maker)
