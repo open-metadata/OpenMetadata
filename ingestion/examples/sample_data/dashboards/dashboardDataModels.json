@@ -14564,6 +14564,14 @@
                                   "description": "Trend confidence level",
                                   "tags": [],
                                   "ordinalPosition": 3
+                                },
+                                {
+                                  "name": "trend_confidence with quotes \"00\"",
+                                  "dataType": "DOUBLE",
+                                  "dataTypeDisplay": "double",
+                                  "description": "Trend confidence level",
+                                  "tags": [],
+                                  "ordinalPosition": 4
                                 }
                               ]
                             }
