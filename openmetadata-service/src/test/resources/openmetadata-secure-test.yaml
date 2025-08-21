@@ -221,3 +221,6 @@ objectStorage:
   enabled: false
   provider: NOOP
   maxFileSize: 5242880
+
+cacheConfiguration:
+  enabled: false
