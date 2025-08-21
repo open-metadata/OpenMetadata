@@ -38,9 +38,20 @@ export interface UserApprovalTask {
 
 export interface NodeConfiguration {
     /**
+     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
+     * single reviewer can approve).
+     */
+    approvalThreshold?: number;
+    /**
      * People/Teams assigned to the Task.
      */
     assignees: Assignees;
+    /**
+     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
+     * single reviewer can reject). This allows for scenarios where you want multiple approvals
+     * but a single rejection can veto.
+     */
+    rejectionThreshold?: number;
 }
 
 /**
