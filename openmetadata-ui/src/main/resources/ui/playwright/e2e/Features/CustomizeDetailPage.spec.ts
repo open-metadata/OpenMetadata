@@ -391,7 +391,7 @@ test.describe('Persona customization', () => {
           .getByTestId('remove-widget-button')
           .click();
 
-        await adminPage.getByTestId('tab-Custom Properties').click();
+        await adminPage.getByTestId('tab-custom_properties').click();
         await adminPage.getByText('Hide', { exact: true }).click();
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
@@ -475,9 +475,9 @@ test.describe('Persona customization', () => {
 
           for (const tabName of expectedTabs) {
             await expect(
-              adminPage.getByTestId('customize-tab-card').getByRole('button', {
-                name: tabName,
-              })
+              adminPage
+                .getByTestId('customize-tab-card')
+                .getByTestId(`tab-${tabName}`)
             ).toBeVisible();
           }
         }
@@ -494,6 +494,9 @@ test.describe('Persona customization', () => {
           .click();
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
+
+        await expect(adminPage.getByRole('dialog')).toBeVisible();
+
         await adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
@@ -556,8 +559,8 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      const dragElement = adminPage.getByTestId('tab-Overview');
-      const dropTarget = adminPage.getByTestId('tab-Custom Properties');
+      const dragElement = adminPage.getByTestId('tab-overview');
+      const dropTarget = adminPage.getByTestId('tab-custom_properties');
 
       await dragElement.dragTo(dropTarget);
 
