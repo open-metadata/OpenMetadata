@@ -98,6 +98,7 @@ class TableClassBase {
       EntityTabs.TABLE_QUERIES,
       EntityTabs.PROFILER,
       EntityTabs.LINEAGE,
+      EntityTabs.KNOWLEDGE_GRAPH,
       EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CONTRACT,

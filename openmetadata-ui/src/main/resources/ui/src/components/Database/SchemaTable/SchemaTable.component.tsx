@@ -314,12 +314,15 @@ const SchemaTable = () => {
     field?: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setTableColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );
