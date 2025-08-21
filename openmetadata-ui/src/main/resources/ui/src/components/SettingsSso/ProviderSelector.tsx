@@ -47,9 +47,6 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<
     AuthProvider | undefined
   >(initialSelectedProvider);
-  const [hoveredProvider, setHoveredProvider] = useState<
-    AuthProvider | undefined
-  >();
 
   const providers: ProviderOption[] = [
     {
@@ -84,7 +81,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
     },
     {
       key: AuthProvider.LDAP,
-      label: 'Ldap',
+      label: 'LDAP',
       icon: <UserOutlined />,
     },
     {
@@ -119,17 +116,14 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         </Button>
       </div>
 
-      <div
-        className="provider-selection-container d-flex flex-wrap"
-        onMouseLeave={() => setHoveredProvider(undefined)}>
+      <div className="provider-selection-container d-flex flex-wrap">
         {providers.map((provider) => (
           <div
             className={`provider-item ${
               selectedProvider === provider.key ? 'selected' : ''
             }`}
             key={provider.key}
-            onClick={() => handleCardClick(provider.key)}
-            onMouseEnter={() => setHoveredProvider(provider.key)}>
+            onClick={() => handleCardClick(provider.key)}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
                 {typeof provider.icon === 'string' ? (

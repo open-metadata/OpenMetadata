@@ -18,6 +18,7 @@ import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
 import GoogleIcon from '../../assets/img/icon-google.png';
 import OktaIcon from '../../assets/img/icon-okta.png';
+import SSOIcon from '../../assets/svg/sso-settings.svg';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { getSecurityConfiguration } from '../../rest/securityConfigAPI';
@@ -66,6 +67,10 @@ const SettingsSso = () => {
         return Auth0Icon;
       case 'awsCognito':
         return CognitoIcon;
+      case 'ldap':
+        return SSOIcon;
+      case 'saml':
+        return SSOIcon;
       default:
         return null;
     }

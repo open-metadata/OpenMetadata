@@ -24,6 +24,7 @@ import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
 import GoogleIcon from '../../assets/img/icon-google.png';
 import OktaIcon from '../../assets/img/icon-okta.png';
+import SSOIcon from '../../assets/svg/sso-settings.svg';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -145,6 +146,10 @@ const SSOConfigurationFormRJSF = ({
         return Auth0Icon;
       case 'awsCognito':
         return CognitoIcon;
+      case 'ldap':
+        return SSOIcon;
+      case 'saml':
+        return SSOIcon;
       default:
         return null;
     }
@@ -944,7 +949,7 @@ const SSOConfigurationFormRJSF = ({
               )}
             </div>
             <Typography.Title className="m-0 text-md" level={4}>
-              {getProviderDisplayName(currentProvider)}
+              {getProviderDisplayName(currentProvider)} {t('label.set-up')}
             </Typography.Title>
           </div>
         </div>

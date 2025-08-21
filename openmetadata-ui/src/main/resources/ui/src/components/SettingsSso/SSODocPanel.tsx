@@ -19,6 +19,7 @@ import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
 import GoogleIcon from '../../assets/img/icon-google.png';
 import OktaIcon from '../../assets/img/icon-okta.png';
+import SSOIcon from '../../assets/svg/sso-settings.svg';
 import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
@@ -35,7 +36,7 @@ interface SSODocPanelProp {
 }
 
 const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [markdownContent, setMarkdownContent] = useState<string>('');
@@ -46,18 +47,28 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     okta: OktaIcon,
     auth0: Auth0Icon,
     'aws-cognito': CognitoIcon,
+    ldap: SSOIcon,
+    saml: SSOIcon,
   };
 
-  const providerTitleMap: Record<string, string> = {
-    google: 'Google SSO',
-    azure: 'Azure AD SSO',
-    okta: 'Okta SSO',
-    auth0: 'Auth0 SSO',
-    'aws-cognito': 'AWS Cognito SSO',
-    saml: 'SAML SSO',
-    'custom-oidc': 'Custom OIDC SSO',
-    basic: 'Basic Authentication',
-    general: 'SSO Configuration',
+  const getProviderDisplayName = (provider: string) => {
+    return provider === 'azure'
+      ? 'Azure AD'
+      : provider === 'google'
+      ? 'Google'
+      : provider === 'okta'
+      ? 'Okta'
+      : provider === 'auth0'
+      ? 'Auth0'
+      : provider === 'aws-cognito'
+      ? 'AWS Cognito'
+      : provider === 'saml'
+      ? 'SAML'
+      : provider === 'custom-oidc'
+      ? 'Custom OIDC'
+      : provider === 'basic'
+      ? 'Basic Authentication'
+      : provider?.charAt(0).toUpperCase() + provider?.slice(1);
   };
 
   const fieldMappings: Record<string, string> = {
@@ -296,7 +307,11 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             </div>
           )}
           <Typography.Title className="sso-provider-title text-md">
-            {providerTitleMap[serviceName] || 'SSO Configuration'}
+            {serviceName === 'basic'
+              ? t('label.basic-configuration')
+              : `${getProviderDisplayName(serviceName)} ${t(
+                  'label.sso-configuration'
+                )}`}
           </Typography.Title>
         </div>
         <RichTextEditorPreviewer
