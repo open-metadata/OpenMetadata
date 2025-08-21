@@ -151,7 +151,7 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)) or (
+        if not is_quantifiable(self.col.type) or (
             is_value_non_numeric(res.get(Min.name()))
             or is_value_non_numeric(res.get(Max.name()))
         ):

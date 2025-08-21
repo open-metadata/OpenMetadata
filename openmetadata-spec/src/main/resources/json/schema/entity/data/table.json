@@ -654,6 +654,34 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "cardinalityDistribution": {
+          "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
+          "type": "object",
+          "properties": {
+            "categories": {
+              "description": "List of category names including 'Others'.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "counts": {
+              "description": "List of counts corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "percentages": {
+              "description": "List of percentages corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
