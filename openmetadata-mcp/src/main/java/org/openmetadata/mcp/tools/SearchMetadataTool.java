@@ -43,7 +43,8 @@ public class SearchMetadataTool implements McpTool {
           "upstreamLineage",
           "entityRelationship",
           "changeSummary",
-          "fqnHash");
+          "fqnHash",
+          "embeddings");
 
   @Override
   public Map<String, Object> execute(

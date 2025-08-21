@@ -10,7 +10,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -29,16 +28,15 @@ public class DefaultToolContext {
 
   public McpSchema.CallToolResult callTool(
       Authorizer authorizer,
-      JwtFilter jwtFilter,
       Limits limits,
       String toolName,
-      Map<String, Object> params) {
-    CatalogSecurityContext securityContext =
-        jwtFilter.getCatalogSecurityContext((String) params.get("Authorization"));
+      CatalogSecurityContext securityContext,
+      McpSchema.CallToolRequest request) {
     LOG.info(
         "Catalog Principal: {} is trying to call the tool: {}",
         securityContext.getUserPrincipal().getName(),
         toolName);
+    Map<String, Object> params = request.arguments();
     Object result;
     try {
       switch (toolName) {
