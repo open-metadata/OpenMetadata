@@ -24,8 +24,8 @@ export interface EventBasedEntityTrigger {
  */
 export interface TriggerConfiguration {
     /**
-     * [DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for
-     * multiple types.
+     * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
+     * for multiple types.
      */
     entityType?: string;
     /**
@@ -33,7 +33,10 @@ export interface TriggerConfiguration {
      * entity types in one workflow.
      */
     entityTypes?: string[];
-    events:       Event[];
+    /**
+     * Select the events that should trigger this workflow
+     */
+    events: Event[];
     /**
      * Select fields that should not trigger the workflow if only them are modified.
      */

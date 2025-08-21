@@ -28,8 +28,8 @@ export interface TriggerConfiguration {
      */
     batchSize?: number;
     /**
-     * [DEPRECATED] Single Entity Type for which it should be triggered. Use entityTypes for
-     * multiple types.
+     * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
+     * for multiple types.
      */
     entityType?: string;
     /**
