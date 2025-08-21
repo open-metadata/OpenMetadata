@@ -57,7 +57,7 @@
     },
     "input": {
       "type": "array",
-      "items": { "type":  "string" },
+      "items": { "type": "string" },
       "default": ["relatedEntity", "updatedBy"],
       "additionalItems": false,
       "minItems": 2,
@@ -80,11 +80,11 @@
     },
     "output": {
       "type": "array",
-      "items": { "type":  "string" },
+      "items": { "type": "string" },
       "default": [],
       "additionalItems": false,
       "minItems": 0,
       "maxItems": 0
     }
   }
-} 
+}

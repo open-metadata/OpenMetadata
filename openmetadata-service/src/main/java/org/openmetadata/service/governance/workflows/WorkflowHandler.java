@@ -462,26 +462,51 @@ public class WorkflowHandler {
     }
 
     // Get the current user and approval decision
+    // Variables might be namespaced, so check both namespaced and global versions
     String currentUser = (String) variables.get("updatedBy");
+    if (currentUser == null) {
+      // Try to find namespaced updatedBy (e.g., "ApproveGlossaryTerm_updatedBy")
+      for (String key : variables.keySet()) {
+        if (key.endsWith("_updatedBy")) {
+          currentUser = (String) variables.get(key);
+          break;
+        }
+      }
+    }
+
     Boolean approved = (Boolean) variables.get("result");
+    if (approved == null) {
+      // Try to find namespaced result (e.g., "ApproveGlossaryTerm_result")
+      for (String key : variables.keySet()) {
+        if (key.endsWith("_result")) {
+          approved = (Boolean) variables.get(key);
+          break;
+        }
+      }
+    }
+
+    // Make variables final for lambda expression
+    final String finalCurrentUser = currentUser;
+    final Boolean finalApproved = approved;
 
     // Check if this user has already voted
     boolean alreadyVoted =
-        approvals.stream().anyMatch(a -> currentUser != null && currentUser.equals(a.get("user")));
+        approvals.stream()
+            .anyMatch(a -> finalCurrentUser != null && finalCurrentUser.equals(a.get("user")));
 
     if (alreadyVoted) {
-      LOG.warn("[MultiApproval] User '{}' has already voted on this task", currentUser);
+      LOG.warn("[MultiApproval] User '{}' has already voted on this task", finalCurrentUser);
       return false;
     }
 
     // Record the approval/rejection
     Map<String, Object> approval = new HashMap<>();
-    approval.put("user", currentUser);
-    approval.put("approved", approved);
+    approval.put("user", finalCurrentUser);
+    approval.put("approved", finalApproved);
     approval.put("timestamp", System.currentTimeMillis());
     approvals.add(approval);
 
-    if (Boolean.TRUE.equals(approved)) {
+    if (Boolean.TRUE.equals(finalApproved)) {
       approvalCount++;
     } else {
       rejectionCount++;

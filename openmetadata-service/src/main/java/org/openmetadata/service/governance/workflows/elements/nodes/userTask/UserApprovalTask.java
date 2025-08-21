@@ -23,6 +23,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
@@ -179,10 +180,17 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(rejectionThresholdExpr)
             .build();
 
+    FlowableListener completionValidatorListener =
+        new FlowableListenerBuilder()
+            .event("complete")
+            .implementation(ApprovalTaskCompletionValidator.class.getName())
+            .build();
+
     return new UserTaskBuilder()
         .id(getFlowableElementId(subProcessId, "approvalTask"))
         .addListener(setCandidateUsersListener)
         .addListener(createOpenMetadataTaskListener)
+        .addListener(completionValidatorListener)
         .build();
   }
 
