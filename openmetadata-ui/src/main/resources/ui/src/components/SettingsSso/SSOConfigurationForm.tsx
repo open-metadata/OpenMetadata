@@ -90,6 +90,7 @@ interface FormData {
 interface SSOConfigurationFormProps {
   forceEditMode?: boolean;
   onChangeProvider?: () => void;
+  onProviderSelect?: (provider: AuthProvider) => void;
   selectedProvider?: string;
   hideBorder?: boolean;
 }
@@ -97,6 +98,7 @@ interface SSOConfigurationFormProps {
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
+  onProviderSelect,
   selectedProvider,
   hideBorder = false,
 }: SSOConfigurationFormProps) => {
@@ -587,6 +589,10 @@ const SSOConfigurationFormRJSF = ({
       const newProvider = e.formData?.authenticationConfiguration?.provider;
       if (newProvider && newProvider !== currentProvider) {
         setCurrentProvider(newProvider);
+        // Notify parent component about provider change
+        if (onProviderSelect) {
+          onProviderSelect(newProvider as AuthProvider);
+        }
       }
     }
   };
@@ -748,6 +754,11 @@ const SSOConfigurationFormRJSF = ({
     setShowProviderSelector(false);
     setShowForm(true);
     setIsEditMode(true);
+
+    // Notify parent component about provider selection
+    if (onProviderSelect) {
+      onProviderSelect(provider);
+    }
 
     // Initialize form data with selected provider for new configuration with all required fields
     const isConfidentialClient = !(
@@ -921,7 +932,7 @@ const SSOConfigurationFormRJSF = ({
       {/* SSO Provider Header */}
       {currentProvider && (
         <div className="sso-provider-form-header flex items-center">
-          <div className="flex align-items-center gap-5 flex items-center">
+          <div className="flex align-items-center gap-3 flex items-center">
             <div className="provider-icon-container">
               {getProviderIcon(currentProvider) && (
                 <img

@@ -210,7 +210,7 @@
     "check-upstream-failure": "Check Upstream Failure",
     "children": "Children",
     "children-lowercase": "children",
-    "choose-provider": "Choose SAML Provider",
+    "choose-provider": "Choose Provider",
     "claim-ownership": "Claim Ownership",
     "classification": "Classification",
     "classification-lowercase": "classification",

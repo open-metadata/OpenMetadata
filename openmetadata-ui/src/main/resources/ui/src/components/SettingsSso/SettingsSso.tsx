@@ -85,6 +85,7 @@ const SettingsSso = () => {
         {
           name: providerDisplayName,
           url: '',
+          activeTitle: true,
         },
       ];
     }
@@ -195,12 +196,8 @@ const SettingsSso = () => {
   // If showing provider selector
   if (showProviderSelector) {
     return (
-      <PageLayoutV1 pageTitle={t('label.sso')}>
-        <TitleBreadcrumb
-          titleLinks={getSettingPageEntityBreadCrumb(
-            GlobalSettingsMenuCategory.SSO
-          )}
-        />
+      <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
+        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
         {renderAccessTokenCard()}
         <div className="m-t-lg">
           <ProviderSelector
@@ -215,32 +212,14 @@ const SettingsSso = () => {
   // If no existing configuration, show the form directly without tabs
   if (!isLoading && !hasExistingConfig) {
     return (
-      <PageLayoutV1 pageTitle={t('label.sso')}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+      <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
+        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
         {renderAccessTokenCard()}
 
-        {/* Show provider header if we have a selected provider (from change provider flow) */}
-        {currentProvider && currentProvider !== 'basic' && (
-          <div className="sso-provider-header">
-            <div className="flex align-items-center gap-3">
-              <div className="provider-icon-container">
-                {getProviderIcon(currentProvider) && (
-                  <img
-                    alt={getProviderDisplayName(currentProvider)}
-                    height="32"
-                    src={getProviderIcon(currentProvider)}
-                    width="32"
-                  />
-                )}
-              </div>
-              <Typography.Title className="m-0" level={4}>
-                {getProviderDisplayName(currentProvider)}
-              </Typography.Title>
-            </div>
-          </div>
-        )}
-
-        <SSOConfigurationFormRJSF selectedProvider={currentProvider} />
+        <SSOConfigurationFormRJSF
+          selectedProvider={currentProvider}
+          onProviderSelect={handleProviderSelect}
+        />
       </PageLayoutV1>
     );
   }
@@ -248,8 +227,8 @@ const SettingsSso = () => {
   // If loading, show loading state
   if (isLoading) {
     return (
-      <PageLayoutV1 pageTitle={t('label.sso')}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+      <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
+        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
         {renderAccessTokenCard()}
 
         <SSOConfigurationFormRJSF />
@@ -324,8 +303,8 @@ const SettingsSso = () => {
 
   // For all configured SSO providers, show tabs
   return (
-    <PageLayoutV1 pageTitle={t('label.sso')}>
-      <TitleBreadcrumb titleLinks={breadcrumb} />
+    <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
+      <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {/* Provider Header - Outside tabs */}

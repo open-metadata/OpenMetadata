@@ -295,7 +295,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
               />
             </div>
           )}
-          <Typography.Title className="sso-provider-title" level={4}>
+          <Typography.Title className="sso-provider-title text-md">
             {providerTitleMap[serviceName] || 'SSO Configuration'}
           </Typography.Title>
         </div>

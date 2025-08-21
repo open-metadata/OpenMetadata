@@ -218,3 +218,61 @@
     }
   }
 }
+
+// SSO-specific breadcrumb styling - only applies within SSO settings page
+.sso-settings-page {
+  .breadcrumb-container {
+    ol .breadcrumb-item {
+      a.link-title {
+        color: @navigation-text-color;
+        font-family: 'Inter', sans-serif;
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+        text-decoration: none;
+
+        &:hover {
+          color: @primary-6;
+          text-decoration: none;
+        }
+      }
+
+      span.inactive-link,
+      span.inactive-link.cursor-text,
+      span.link-title.inactive-link {
+        color: @primary-6 !important;
+
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+
+        &.font-medium {
+          font-weight: 400;
+          color: @primary-6;
+        }
+      }
+
+      span.text-grey-muted {
+        color: @navigation-text-color;
+
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+        margin: 0 @size-xs;
+        padding: 0;
+        visibility: hidden;
+        position: relative;
+
+        &::after {
+          content: '>';
+          visibility: visible;
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          color: @navigation-text-color;
+        }
+      }
+    }
+  }
+}
