@@ -136,11 +136,6 @@ public class PIIMasker {
     Table table = Entity.getEntityByName(Entity.TABLE, fqn, "owners", Include.ALL);
     List<EntityReference> owners = table.getOwners();
     boolean authorizePII = authorizer.authorizePII(securityContext, owners);
-    return maskColumnsIfNotAuthorized(columns, authorizePII);
-  }
-
-  private static List<Column> maskColumnsIfNotAuthorized(
-      List<Column> columns, boolean authorizePII) {
     if (authorizePII) return columns;
     for (Column c : listOrEmpty(columns)) {
       if (hasPiiSensitiveTag(c)) {

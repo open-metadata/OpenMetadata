@@ -54,7 +54,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -763,14 +762,6 @@ public class TableRepository extends EntityRepository<Table> {
       boolean includeColumnProfile,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    return getLatestTableProfileInternal(
-        fqn,
-        includeColumnProfile,
-        t -> PIIMasker.getTableProfile(fqn, t.getColumns(), authorizer, securityContext));
-  }
-
-  private Table getLatestTableProfileInternal(
-      String fqn, boolean includeColumnProfile, Function<Table, List<Column>> maskFn) {
     Table table = findByName(fqn, ALL);
 
     TableProfile tableProfile =
@@ -788,8 +779,9 @@ public class TableRepository extends EntityRepository<Table> {
     // Always populate field tags; the masking strategy decides what to do with them
     populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
 
-    // Apply caller-provided masking strategy
-    table.setColumns(maskFn.apply(table));
+    List<Column> maskedColumns =
+        PIIMasker.getTableProfile(fqn, table.getColumns(), authorizer, securityContext);
+    table.setColumns(maskedColumns);
     return table;
   }
 
