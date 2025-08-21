@@ -70,14 +70,14 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page.locator(`div.rdg-cell-${columnName}`).dblclick();
+  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
   const isInputVisible = await page
     .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
     .isVisible();
 
   if (!isInputVisible) {
-    await page.locator(`div.rdg-cell-${columnName}`).dblclick();
+    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
   }
   await page
     .getByTestId('edit-table-type-property-modal')
