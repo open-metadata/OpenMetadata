@@ -198,6 +198,16 @@ const SSOConfigurationFormRJSF = ({
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
     if (selectedProvider) {
+      // If provider is 'basic', show provider selector instead
+      if (selectedProvider === 'basic') {
+        setShowProviderSelector(true);
+        setShowForm(false);
+        setIsEditMode(false);
+        setIsInitializing(false);
+
+        return;
+      }
+
       // Clear all existing state first
       setHasExistingConfig(false);
       setSavedData(undefined);

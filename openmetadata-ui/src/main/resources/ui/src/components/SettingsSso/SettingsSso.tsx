@@ -77,7 +77,7 @@ const SettingsSso = () => {
     );
 
     // Add provider name to breadcrumb if we have a current provider (existing or newly selected)
-    if (currentProvider) {
+    if (currentProvider && currentProvider !== 'basic') {
       const providerDisplayName = getProviderDisplayName(currentProvider);
 
       return [
@@ -220,7 +220,7 @@ const SettingsSso = () => {
         {renderAccessTokenCard()}
 
         {/* Show provider header if we have a selected provider (from change provider flow) */}
-        {currentProvider && (
+        {currentProvider && currentProvider !== 'basic' && (
           <div className="sso-provider-header">
             <div className="flex align-items-center gap-3">
               <div className="provider-icon-container">
@@ -329,7 +329,7 @@ const SettingsSso = () => {
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {/* Provider Header - Outside tabs */}
-        {currentProvider && (
+        {currentProvider && currentProvider !== 'basic' && (
           <div className="sso-provider-header">
             <div className="flex align-items-center gap-3">
               <div className="provider-icon-container">
