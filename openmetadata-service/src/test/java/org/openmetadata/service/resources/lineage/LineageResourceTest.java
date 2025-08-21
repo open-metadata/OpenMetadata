@@ -520,10 +520,16 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     MessageParser.EntityLink TABLE4_COLUMN_LINK =
         MessageParser.EntityLink.parse(
-            String.format("<#E::table::%s::columns::c1>", TABLES.get(4).getFullyQualifiedName()));
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(4).getFullyQualifiedName(),
+                TABLES.get(4).getColumns().get(0).getName()));
     MessageParser.EntityLink TABLE6_COLUMN_LINK =
         MessageParser.EntityLink.parse(
-            String.format("<#E::table::%s::columns::c1>", TABLES.get(6).getFullyQualifiedName()));
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(6).getFullyQualifiedName(),
+                TABLES.get(6).getColumns().get(0).getName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
