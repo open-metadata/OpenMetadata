@@ -48,6 +48,8 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   private final Map<String, McpServerSession> sessions = new ConcurrentHashMap<>();
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private McpServerSession.Factory sessionFactory;
+  private McpMetrics mcpMetrics = McpMetrics.NO_OP;
+  private McpConnectionManager connectionManager;
   private ExecutorService executorService =
       Executors.newFixedThreadPool(10, Thread.ofVirtual().name("MCP-Worker-SSE", 0).factory());
 
@@ -62,6 +64,15 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
     this.baseUrl = baseUrl;
     this.messageEndpoint = messageEndpoint;
     this.sseEndpoint = sseEndpoint;
+    // McpMetrics will be injected via setter
+  }
+
+  public void setMcpMetrics(McpMetrics mcpMetrics) {
+    this.mcpMetrics = mcpMetrics != null ? mcpMetrics : McpMetrics.NO_OP;
+  }
+
+  public void setConnectionManager(McpConnectionManager connectionManager) {
+    this.connectionManager = connectionManager;
   }
 
   public HttpServletSseServerTransportProvider(ObjectMapper objectMapper, String messageEndpoint) {
@@ -157,6 +168,10 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
     McpServerSession session = sessionFactory.create(sessionTransport);
     this.sessions.put(sessionId, session);
 
+    // Track metrics
+    mcpMetrics.sessionCreated(sessionId);
+    mcpMetrics.connectionOpened(null, null, "SSE");
+
     executorService.submit(
         () -> {
           // Handle session lifecycle and keepalive
@@ -167,6 +182,9 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
               if (!isClosing.get() && sessions.containsKey(sessionId)) {
                 writer.write(": keep-alive\n\n");
                 writer.flush();
+
+                // Track keepalive metric
+                mcpMetrics.sseKeepAliveSent();
 
                 // Check if client is still connected
                 if (writer.checkError()) {
@@ -182,6 +200,11 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
             LOG.error("SSE error for session: {}", sessionId, e);
           } finally {
             sessions.remove(sessionId);
+
+            // Track metrics
+            mcpMetrics.sessionDestroyed(sessionId);
+            mcpMetrics.connectionClosed(null, null);
+
             try {
               session.closeGracefully();
               asyncContext.complete();
@@ -256,11 +279,20 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
           getJsonRpcMessageWithAuthorizationParam(this.objectMapper, request, body.toString());
 
       // Process the message through the session's handle method
-      session.handle(message).block(); // Block for Servlet compatibility
+      io.micrometer.core.instrument.Timer.Sample msgTimer = mcpMetrics.startMessageProcessing();
+      mcpMetrics.messageReceived("jsonrpc");
+
+      try {
+        session.handle(message).block(); // Block for Servlet compatibility
+        mcpMetrics.messageSent("jsonrpc");
+      } finally {
+        mcpMetrics.endMessageProcessing(msgTimer);
+      }
 
       response.setStatus(HttpServletResponse.SC_OK);
     } catch (Exception e) {
       LOG.error("Error processing message: {}", e.getMessage());
+      mcpMetrics.messageError("jsonrpc", e.getMessage());
       try {
         McpError mcpError = new McpError(e.getMessage());
         response.setContentType(APPLICATION_JSON);

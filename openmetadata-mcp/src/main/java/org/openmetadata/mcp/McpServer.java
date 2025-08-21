@@ -3,6 +3,8 @@ package org.openmetadata.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -26,6 +28,8 @@ public class McpServer implements McpServerProvider {
   private JwtFilter jwtFilter;
   private Authorizer authorizer;
   private Limits limits;
+  private McpMetrics mcpMetrics = McpMetrics.NO_OP;
+  private McpConnectionManager connectionManager;
   protected DefaultToolContext toolContext;
   protected DefaultPromptsContext promptsContext;
 
@@ -50,6 +54,34 @@ public class McpServer implements McpServerProvider {
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
     this.authorizer = authorizer;
     this.limits = limits;
+
+    // Initialize MCP metrics with Prometheus registry from global Metrics
+    try {
+      PrometheusMeterRegistry prometheusMeterRegistry =
+          (PrometheusMeterRegistry)
+              Metrics.globalRegistry.getRegistries().stream()
+                  .filter(registry -> registry instanceof PrometheusMeterRegistry)
+                  .findFirst()
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "No PrometheusMeterRegistry found in global registry"));
+
+      this.mcpMetrics = new McpMetrics(prometheusMeterRegistry);
+      LOG.info("MCP metrics initialized successfully with Prometheus registry");
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize MCP metrics, using NO_OP implementation: {}", e.getMessage());
+      this.mcpMetrics = McpMetrics.NO_OP;
+    }
+
+    // Initialize connection manager with app configuration
+    this.connectionManager = McpConnectionManager.fromAppConfig(mcpMetrics);
+    LOG.info(
+        "MCP connection manager initialized with limits - Global: {}, User: {}, Org: {}",
+        connectionManager.getMaxGlobalConnections(),
+        connectionManager.getMaxUserConnections(),
+        connectionManager.getMaxOrgConnections());
+
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     McpAuthFilter authFilter =
         new McpAuthFilter(
@@ -83,6 +115,8 @@ public class McpServer implements McpServerProvider {
 
     HttpServletSseServerTransportProvider sseTransport =
         new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/messages", "/mcp/sse");
+    sseTransport.setMcpMetrics(mcpMetrics);
+    sseTransport.setConnectionManager(connectionManager);
 
     McpSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(sseTransport)
@@ -109,6 +143,8 @@ public class McpServer implements McpServerProvider {
     MCPStreamableHttpServlet streamableHttpServlet =
         new MCPStreamableHttpServlet(
             jwtFilter, authorizer, limits, toolContext, promptsContext, tools, prompts);
+    streamableHttpServlet.setMcpMetrics(mcpMetrics);
+    streamableHttpServlet.setConnectionManager(connectionManager);
     ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
     contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
 

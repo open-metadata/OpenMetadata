@@ -1,0 +1,169 @@
+groups:
+  - name: openmetadata_critical_alerts
+    interval: 15s
+    rules:
+      # Primary Alert: Thread Pool Exhaustion Risk
+      - alert: ThreadPoolExhaustionImminent
+        expr: |
+          (sum by (namespace) (jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"}) 
+           / on(namespace) jvm_threads_peak_threads) > 0.85
+        for: 2m
+        labels:
+          severity: critical
+          component: thread_pool
+        annotations:
+          summary: "Thread pool at {{ $value | humanizePercentage }} - Restart imminent"
+          description: "Thread pool critically high. Current: {{ $value | humanizePercentage }}. Immediate action required."
+          runbook: "1. Switch MCP to streamable endpoint 2. Increase threads to 250 3. Consider restart"
+          
+      # Queue Buildup Detection
+      - alert: JettyQueueBacklog
+        expr: |
+          jetty_queued_thread_pool_jobs > 10
+          or
+          jetty_queued_thread_pool_threads > 10
+        for: 1m
+        labels:
+          severity: warning
+          component: request_queue
+        annotations:
+          summary: "Request queue depth: {{ $value }}"
+          description: "Requests queuing up, indicating thread shortage. Queue: {{ $value }}"
+          
+      # Rapid Thread Growth
+      - alert: ThreadSpikeDetected
+        expr: |
+          rate(jvm_threads_live_threads[2m]) * 120 > 30
+        for: 1m
+        labels:
+          severity: warning
+          component: thread_pool
+        annotations:
+          summary: "Rapid thread growth: {{ $value }} threads/2min"
+          description: "Unusual thread creation rate detected. May indicate connection storm."
+          
+      # Health Check Degradation
+      - alert: HealthCheckSlowResponse
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_server_requests_seconds_bucket{uri="/api/v1/health"}[2m])) > 0.8
+        for: 1m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "Health check P95: {{ $value }}s (timeout at 1s)"
+          description: "Health endpoint approaching timeout threshold. Liveness probe failure imminent."
+          
+      # API Performance Degradation  
+      - alert: APIResponseTimeCritical
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_server_requests_seconds_bucket[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API P99 response time: {{ $value }}s"
+          description: "Overall API performance severely degraded."
+          
+      # Memory Pressure
+      - alert: HeapMemoryHigh
+        expr: |
+          sum(jvm_memory_used_bytes{area="heap"}) 
+          / sum(jvm_memory_max_bytes{area="heap"}) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+        annotations:
+          summary: "Heap usage: {{ $value | humanizePercentage }}"
+          description: "High heap memory usage may impact performance."
+          
+      # GC Overhead
+      - alert: ExcessiveGCOverhead
+        expr: |
+          rate(jvm_gc_pause_seconds_sum[5m]) > 0.15
+        for: 5m
+        labels:
+          severity: warning
+          component: gc
+        annotations:
+          summary: "GC overhead: {{ $value | humanizePercentage }} of CPU time"
+          description: "Excessive time spent in garbage collection."
+          
+      # Sustained High Waiting Threads (MCP Proxy)
+      - alert: HighWaitingThreads
+        expr: |
+          (jvm_threads_states_threads{state="waiting"} 
+           + jvm_threads_states_threads{state="timed-waiting"}) > 60
+        for: 10m
+        labels:
+          severity: warning
+          component: mcp_proxy
+        annotations:
+          summary: "{{ $value }} threads in waiting state"
+          description: "Sustained high waiting threads indicates many long-lived connections (likely MCP SSE)."
+          
+      # Thread Exhaustion Prediction
+      - alert: ThreadExhaustionPredicted
+        expr: |
+          (jvm_threads_peak_threads
+           - sum by (namespace) (jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"}))
+           / clamp_min(rate(jvm_threads_live_threads[5m]), 0.001) < 600
+        for: 2m
+        labels:
+          severity: warning
+          component: prediction
+        annotations:
+          summary: "Thread exhaustion predicted in {{ $value | humanizeDuration }}"
+          description: "At current growth rate, thread pool will be exhausted soon."
+          
+      # Combined Risk Score
+      - alert: SystemStabilityAtRisk
+        expr: |
+          (
+            ((sum by (namespace) (jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"}) 
+              / on(namespace) jvm_threads_peak_threads) > 0.75) * 3
+            + (jetty_queued_thread_pool_jobs > 5) * 2
+            + (histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{uri="/api/v1/health"}[2m])) > 0.5) * 2
+            + (rate(jvm_threads_live_threads[2m]) * 120 > 20) * 1
+          ) >= 4
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+          page: true
+        annotations:
+          summary: "Multiple risk factors detected - System instability"
+          description: "Multiple indicators show system at risk of failure. Check thread pool, queue, and response times."
+          action: "Consider immediate intervention: increase threads, switch MCP mode, or rolling restart."
+
+  - name: openmetadata_early_warning
+    interval: 30s
+    rules:
+      # Early Warning - 70% threshold
+      - alert: ThreadPoolHighUtilization
+        expr: |
+          (sum by (namespace) (jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"}) 
+           / on(namespace) jvm_threads_peak_threads) > 0.70
+        for: 5m
+        labels:
+          severity: info
+          component: thread_pool
+        annotations:
+          summary: "Thread pool utilization: {{ $value | humanizePercentage }}"
+          description: "Thread pool usage elevated but not critical. Monitor closely."
+          
+      # Jetty Metrics Available
+      - alert: JettyThreadPoolPressure
+        expr: |
+          jetty_threads_busy / jetty_threads_config_max > 0.7
+        for: 5m
+        labels:
+          severity: warning
+          component: jetty
+        annotations:
+          summary: "Jetty thread utilization: {{ $value | humanizePercentage }}"
+          description: "Jetty thread pool under pressure."

@@ -24,4 +24,30 @@ public class MCPConfiguration {
 
   @JsonProperty("originHeaderUri")
   private String originHeaderUri = "http://localhost";
+
+  // Connection management settings
+  @JsonProperty("maxConnections")
+  private Integer maxConnections = 100;
+
+  @JsonProperty("maxUserConnections")
+  private Integer maxUserConnections = 10;
+
+  @JsonProperty("maxOrgConnections")
+  private Integer maxOrgConnections = 30;
+
+  @JsonProperty("connectionsPerSecond")
+  private Double connectionsPerSecond = 10.0;
+
+  @JsonProperty("enableCircuitBreaker")
+  private Boolean enableCircuitBreaker = true;
+
+  // Thread pool settings
+  @JsonProperty("sseThreadPoolSize")
+  private Integer sseThreadPoolSize = 10;
+
+  @JsonProperty("streamableThreadPoolSize")
+  private Integer streamableThreadPoolSize = 10;
+
+  @JsonProperty("useVirtualThreads")
+  private Boolean useVirtualThreads = true;
 }

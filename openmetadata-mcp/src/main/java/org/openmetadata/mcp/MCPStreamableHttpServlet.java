@@ -83,6 +83,8 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final transient Limits limits;
   private final transient DefaultToolContext toolContext;
   private final transient DefaultPromptsContext promptsContext;
+  private transient McpMetrics mcpMetrics = McpMetrics.NO_OP;
+  private transient McpConnectionManager connectionManager;
   private static final LoadingCache<String, MCPConfiguration> MCP_CONFIG_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(100)
@@ -104,6 +106,14 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
     this.promptsContext = promptsContext;
     this.tools.addAll(tools);
     this.prompts.addAll(prompts);
+  }
+
+  public void setMcpMetrics(McpMetrics mcpMetrics) {
+    this.mcpMetrics = mcpMetrics != null ? mcpMetrics : McpMetrics.NO_OP;
+  }
+
+  public void setConnectionManager(McpConnectionManager connectionManager) {
+    this.connectionManager = connectionManager;
   }
 
   @Override

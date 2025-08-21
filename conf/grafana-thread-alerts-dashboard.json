@@ -1,0 +1,380 @@
+{
+  "dashboard": {
+    "title": "OpenMetadata - Thread Pool Early Warning System",
+    "description": "Thread pool monitoring and early warning alerts for high-load environments",
+    "tags": ["monitoring", "alerts", "thread-pool", "performance"],
+    "panels": [
+      {
+        "title": "🚨 Alert Status Overview",
+        "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"runnable\"}) / jvm_threads_peak_threads{namespace=\"$instance\"} * 100",
+            "legendFormat": "Thread Pool Saturation %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 },
+                { "color": "dark-red", "value": 95 }
+              ]
+            },
+            "unit": "percent",
+            "decimals": 1
+          }
+        }
+      },
+      {
+        "title": "Thread Pool Utilization Timeline",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"runnable\"}) / jvm_threads_peak_threads{namespace=\"$instance\"} * 100",
+            "legendFormat": "Thread Saturation %"
+          },
+          {
+            "expr": "70",
+            "legendFormat": "Warning Threshold"
+          },
+          {
+            "expr": "85",
+            "legendFormat": "Critical Threshold"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "percent",
+            "max": 100,
+            "min": 0
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Warning Threshold" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } },
+                { "id": "custom.lineStyle", "value": { "dash": [10, 10] } }
+              ]
+            },
+            {
+              "matcher": { "id": "byName", "options": "Critical Threshold" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+                { "id": "custom.lineStyle", "value": { "dash": [10, 10] } }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "Jetty Queue Depth",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jetty_queued_thread_pool_jobs{namespace=\"$instance\"}",
+            "legendFormat": "Queued Requests"
+          },
+          {
+            "expr": "jetty_queued_thread_pool_threads{namespace=\"$instance\"}",
+            "legendFormat": "Queued Threads"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "drawStyle": "line"
+            },
+            "unit": "short",
+            "min": 0
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Queued Requests" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+              ]
+            }
+          ]
+        },
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": { "params": [5], "type": "gt" },
+              "query": { "params": ["A", "5m", "now"] },
+              "reducer": { "params": [], "type": "avg" },
+              "type": "query"
+            }
+          ],
+          "frequency": "30s",
+          "handler": 1,
+          "name": "High Queue Depth",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "title": "Thread State Distribution",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jvm_threads_states_threads{namespace=\"$instance\", state=\"runnable\"}",
+            "legendFormat": "Runnable"
+          },
+          {
+            "expr": "jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"}",
+            "legendFormat": "Waiting"
+          },
+          {
+            "expr": "jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"}",
+            "legendFormat": "Timed Waiting"
+          },
+          {
+            "expr": "jvm_threads_states_threads{namespace=\"$instance\", state=\"blocked\"}",
+            "legendFormat": "Blocked"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 15,
+              "stacking": { "mode": "normal" }
+            },
+            "unit": "short",
+            "min": 0
+          }
+        }
+      },
+      {
+        "title": "Thread Growth Rate",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(jvm_threads_live_threads{namespace=\"$instance\"}[5m]) * 300",
+            "legendFormat": "Thread Growth (5min)"
+          },
+          {
+            "expr": "deriv(jvm_threads_live_threads{namespace=\"$instance\"}[1m]) * 60",
+            "legendFormat": "Thread Growth (1min)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "short",
+            "decimals": 1
+          },
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "Thread Growth (1min)" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "title": "Health Check Response Time",
+        "gridPos": { "h": 6, "w": 8, "x": 0, "y": 20 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{namespace=\"$instance\", uri=\"/api/v1/health\"}[2m]))",
+            "legendFormat": "P95 Health Check"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{namespace=\"$instance\", uri=\"/api/v1/health\"}[2m]))",
+            "legendFormat": "P99 Health Check"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "s",
+            "decimals": 3,
+            "min": 0,
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 0.5 },
+                { "color": "red", "value": 0.8 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "API Response Time P99",
+        "gridPos": { "h": 6, "w": 8, "x": 8, "y": 20 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{namespace=\"$instance\"}[5m]))",
+            "legendFormat": "P99 All Endpoints"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{namespace=\"$instance\", uri=~\".*/api/v1/metrics.*\"}[5m]))",
+            "legendFormat": "P99 Metrics Endpoints"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "s",
+            "decimals": 2,
+            "min": 0,
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 2 },
+                { "color": "red", "value": 5 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Time to Thread Exhaustion (Prediction)",
+        "gridPos": { "h": 6, "w": 8, "x": 16, "y": 20 },
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "(jvm_threads_peak_threads{namespace=\"$instance\"} - (jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"runnable\"})) / clamp_min(rate(jvm_threads_live_threads{namespace=\"$instance\"}[5m]), 0.001) / 60",
+            "legendFormat": "Minutes to Exhaustion"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "m",
+            "decimals": 0,
+            "min": 0,
+            "max": 60,
+            "thresholds": {
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "orange", "value": 10 },
+                { "color": "yellow", "value": 20 },
+                { "color": "green", "value": 30 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Memory Pressure Indicators",
+        "gridPos": { "h": 6, "w": 12, "x": 0, "y": 26 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{namespace=\"$instance\", area=\"heap\"} / jvm_memory_max_bytes{namespace=\"$instance\", area=\"heap\"} * 100",
+            "legendFormat": "Heap Usage %"
+          },
+          {
+            "expr": "rate(jvm_gc_pause_seconds_sum{namespace=\"$instance\"}[5m]) * 100",
+            "legendFormat": "GC Overhead %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "percent",
+            "decimals": 1,
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "title": "Connection Metrics (Proxy)",
+        "gridPos": { "h": 6, "w": 12, "x": 12, "y": 26 },
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"}",
+            "legendFormat": "Waiting Threads (Proxy for SSE Connections)"
+          },
+          {
+            "expr": "process_files_open_files{namespace=\"$instance\"}",
+            "legendFormat": "Open File Descriptors"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "short",
+            "decimals": 0,
+            "min": 0
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "datasource": "Prometheus",
+          "query": "label_values(jvm_memory_used_bytes, namespace)",
+          "current": {
+            "text": "$instance",
+            "value": "$instance"
+          },
+          "refresh": 2,
+          "label": "Instance"
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Restart Detection",
+          "datasource": "Prometheus",
+          "expr": "resets(process_uptime_seconds{namespace=\"$instance\"}[1m]) > 0",
+          "iconColor": "red",
+          "titleFormat": "Service Restart"
+        },
+        {
+          "name": "Thread Exhaustion Warning",
+          "datasource": "Prometheus",
+          "expr": "(jvm_threads_states_threads{namespace=\"$instance\", state=\"waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"timed-waiting\"} + jvm_threads_states_threads{namespace=\"$instance\", state=\"runnable\"}) / jvm_threads_peak_threads{namespace=\"$instance\"} > 0.85",
+          "iconColor": "orange",
+          "titleFormat": "Thread Pool Critical"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-3h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

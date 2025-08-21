@@ -1,0 +1,90 @@
+groups:
+  - name: openmetadata_thread_alerts
+    interval: 30s
+    rules:
+      # Early warning - thread pool filling up
+      - alert: ThreadPoolHighUtilization
+        expr: |
+          (sum(jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"}) 
+           / on() scalar(jvm_threads_peak_threads)) > 0.70
+        for: 5m
+        labels:
+          severity: warning
+          component: thread_pool
+        annotations:
+          summary: "Thread pool utilization above 70%"
+          description: "{{ $value | humanizePercentage }} of thread pool in use"
+          
+      # Critical - approaching exhaustion
+      - alert: ThreadPoolNearExhaustion
+        expr: |
+          (sum(jvm_threads_states_threads{state=~"waiting|timed-waiting|runnable"})
+           / on() scalar(jvm_threads_peak_threads)) > 0.85
+        for: 2m
+        labels:
+          severity: critical
+          component: thread_pool
+        annotations:
+          summary: "Thread pool critically high at {{ $value | humanizePercentage }}"
+          description: "Immediate action required - thread exhaustion imminent"
+          
+      # Queue building up - early indicator
+      - alert: RequestQueueBacklog
+        expr: jetty_queued_requests > 5
+        for: 1m
+        labels:
+          severity: warning
+          component: request_queue
+        annotations:
+          summary: "Request queue depth: {{ $value }}"
+          description: "Requests queuing indicates thread shortage"
+          
+      # Sudden spike in threads
+      - alert: ThreadSpike
+        expr: rate(jvm_threads_live_threads[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: thread_pool
+        annotations:
+          summary: "Rapid thread growth detected"
+          description: "Thread count increasing at {{ $value }} threads/sec"
+          
+      # MCP connections high
+      - alert: MCPConnectionHigh
+        expr: openmetadata_mcp_active_sessions > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "High MCP connection count: {{ $value }}"
+          description: "Consider switching to streamable MCP endpoint"
+          
+      # Response time degradation
+      - alert: APIResponseTimeDegraded
+        expr: |
+          histogram_quantile(0.99, 
+            rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "P99 response time: {{ $value }}s"
+          description: "API performance degrading, check thread availability"
+          
+      # Liveness probe failures predicted
+      - alert: LivenessProbeRisk
+        expr: |
+          (histogram_quantile(0.95,
+            rate(http_server_requests_seconds_bucket{uri="/api/v1/health"}[2m])) > 0.8)
+          or
+          (jetty_queued_requests > 8)
+        for: 1m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "Liveness probe at risk of timeout"
+          description: "Health endpoint slow or queue building"

@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "title": "OpenMetadata Early Warning System",
+    "panels": [
+      {
+        "title": "Thread Pool Saturation %",
+        "targets": [{
+          "expr": "(sum(jvm_threads_states_threads{state=~'waiting|timed-waiting|runnable'}) / on() scalar(jvm_threads_peak_threads)) * 100",
+          "legendFormat": "Thread Saturation"
+        }],
+        "alert": {
+          "conditions": [{
+            "evaluator": { "params": [70, 85], "type": "within_range" },
+            "type": "query"
+          }]
+        }
+      },
+      {
+        "title": "Request Queue Depth",
+        "targets": [{
+          "expr": "jetty_queued_requests",
+          "legendFormat": "Queued Requests"
+        }],
+        "thresholds": [
+          { "value": 5, "color": "yellow" },
+          { "value": 10, "color": "red" }
+        ]
+      },
+      {
+        "title": "Thread State Distribution",
+        "targets": [
+          { "expr": "jvm_threads_states_threads{state='runnable'}", "legendFormat": "Runnable" },
+          { "expr": "jvm_threads_states_threads{state='waiting'}", "legendFormat": "Waiting" },
+          { "expr": "jvm_threads_states_threads{state='timed-waiting'}", "legendFormat": "Timed Waiting" },
+          { "expr": "jvm_threads_states_threads{state='blocked'}", "legendFormat": "Blocked" }
+        ]
+      },
+      {
+        "title": "MCP Active Sessions",
+        "targets": [{
+          "expr": "openmetadata_mcp_active_sessions",
+          "legendFormat": "MCP Sessions"
+        }],
+        "thresholds": [
+          { "value": 30, "color": "yellow" },
+          { "value": 50, "color": "red" }
+        ]
+      },
+      {
+        "title": "API Response Time P99",
+        "targets": [{
+          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[5m]))",
+          "legendFormat": "P99 Response Time"
+        }],
+        "unit": "s",
+        "thresholds": [
+          { "value": 2, "color": "yellow" },
+          { "value": 5, "color": "red" }
+        ]
+      },
+      {
+        "title": "Thread Growth Rate",
+        "targets": [{
+          "expr": "rate(jvm_threads_live_threads[5m]) * 300",
+          "legendFormat": "Threads/5min"
+        }],
+        "thresholds": [
+          { "value": 20, "color": "yellow" },
+          { "value": 40, "color": "red" }
+        ]
+      },
+      {
+        "title": "Health Check Latency",
+        "targets": [{
+          "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{uri='/api/v1/health'}[2m]))",
+          "legendFormat": "Health Check P95"
+        }],
+        "thresholds": [
+          { "value": 0.5, "color": "yellow" },
+          { "value": 0.8, "color": "red" }
+        ]
+      },
+      {
+        "title": "Prediction: Time to Thread Exhaustion",
+        "targets": [{
+          "expr": "(scalar(jvm_threads_peak_threads) - sum(jvm_threads_states_threads{state=~'waiting|timed-waiting|runnable'})) / rate(jvm_threads_live_threads[5m])",
+          "legendFormat": "Minutes to Exhaustion"
+        }],
+        "unit": "m",
+        "thresholds": [
+          { "value": 10, "color": "red" },
+          { "value": 30, "color": "yellow" }
+        ]
+      }
+    ]
+  }
+}

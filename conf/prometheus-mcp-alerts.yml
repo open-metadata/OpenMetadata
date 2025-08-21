@@ -1,0 +1,148 @@
+groups:
+  - name: mcp_monitoring
+    interval: 15s
+    rules:
+      # Active MCP Sessions/Connections
+      - alert: HighMcpSessions
+        expr: mcp_sessions_active > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "High MCP session count: {{ $value }}"
+          description: "{{ $value }} active MCP sessions. Consider switching heavy users to streamable endpoint."
+          
+      - alert: HighMcpConnections
+        expr: mcp_connections_active > 75
+        for: 5m
+        labels:
+          severity: critical
+          component: mcp
+        annotations:
+          summary: "MCP connections critically high: {{ $value }}"
+          description: "Active MCP connections approaching thread pool limits."
+          
+      # Connection Growth Rate
+      - alert: McpConnectionSpike
+        expr: rate(mcp_connections_opened[2m]) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "Rapid MCP connection growth: {{ $value }}/sec"
+          description: "MCP connections opening rapidly, may exhaust resources."
+          
+      # Connection Failures
+      - alert: McpConnectionFailures
+        expr: rate(mcp_connections_failed[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "MCP connection failures: {{ $value }}/sec"
+          description: "Elevated MCP connection failure rate."
+          
+      # Per-User/Org Limits
+      - alert: McpUserConnectionLimit
+        expr: mcp_connections_per_user_max > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "Single user has {{ $value }} MCP connections"
+          description: "A single user is consuming many MCP connections. Consider rate limiting."
+          
+      - alert: McpOrgConnectionLimit
+        expr: mcp_connections_per_org_max > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "Single org has {{ $value }} MCP connections"
+          description: "An organization is consuming many MCP connections."
+          
+      # Message Processing Performance
+      - alert: McpMessageProcessingSlow
+        expr: |
+          histogram_quantile(0.99, 
+            rate(mcp_message_processing_duration_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "MCP message processing P99: {{ $value }}s"
+          description: "MCP messages taking too long to process."
+          
+      # SSE Connection Duration
+      - alert: McpLongLivedConnections
+        expr: |
+          histogram_quantile(0.95,
+            rate(mcp_sse_connection_duration_bucket[5m])) > 1800
+        for: 10m
+        labels:
+          severity: info
+          component: mcp
+        annotations:
+          summary: "MCP SSE connections lasting > 30min"
+          description: "Long-lived SSE connections may be holding threads unnecessarily."
+          
+      # Thread Pool Exhaustion
+      - alert: McpThreadPoolExhausted
+        expr: increase(mcp_thread_pool_exhausted[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: mcp
+        annotations:
+          summary: "MCP thread pool exhausted {{ $value }} times"
+          description: "MCP requests rejected due to thread pool exhaustion."
+          
+      # Queue Time
+      - alert: McpHighQueueTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(mcp_request_queue_time_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "MCP requests queued for {{ $value }}s (P95)"
+          description: "MCP requests spending significant time in queue."
+          
+      # Message Errors
+      - alert: McpMessageErrors
+        expr: rate(mcp_messages_errors[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: mcp
+        annotations:
+          summary: "MCP message error rate: {{ $value }}/sec"
+          description: "Elevated MCP message processing errors."
+          
+      # Combined MCP Health Score
+      - alert: McpSystemOverloaded
+        expr: |
+          (
+            (mcp_sessions_active > 40) * 2
+            + (mcp_connections_active > 60) * 3
+            + (rate(mcp_connections_opened[2m]) > 0.3) * 1
+            + (histogram_quantile(0.95, rate(mcp_message_processing_duration_bucket[5m])) > 1) * 2
+            + (increase(mcp_thread_pool_exhausted[5m]) > 0) * 5
+          ) >= 5
+        for: 2m
+        labels:
+          severity: critical
+          component: mcp
+          page: true
+        annotations:
+          summary: "MCP system overloaded - multiple indicators"
+          description: "Multiple MCP metrics indicate system overload. Immediate action required."
+          action: "1. Switch to streamable MCP 2. Increase thread pool 3. Enable rate limiting"

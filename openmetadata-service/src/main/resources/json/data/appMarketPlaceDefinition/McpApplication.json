@@ -18,7 +18,19 @@
   "supportsInterrupt": true,
   "appConfiguration": {
     "originValidationEnabled": false,
-    "originHeaderUri": "http://localhost"
+    "originHeaderUri": "http://localhost",
+    "connectionLimits": {
+      "maxConnections": 100,
+      "maxUserConnections": 10,
+      "maxOrgConnections": 30,
+      "connectionsPerSecond": 10.0,
+      "enableCircuitBreaker": true
+    },
+    "threadPoolConfig": {
+      "sseThreadPoolSize": 10,
+      "streamableThreadPoolSize": 10,
+      "useVirtualThreads": true
+    }
   }
 }
 
