@@ -53,16 +53,20 @@ class IcebergTable(BaseModel):
 
         partition_columns = []
         for partition in table.spec().fields:
-            parition_column_name = get_column_from_partition(iceberg_columns, partition)
-            column_parition_type = get_column_partition_type(iceberg_columns, partition)
+            partition_column_name = get_column_from_partition(
+                iceberg_columns, partition
+            )
+            column_partition_type = get_column_partition_type(
+                iceberg_columns, partition
+            )
 
-            if not (parition_column_name and column_parition_type):
+            if not (partition_column_name and column_partition_type):
                 continue
 
             partition_columns.append(
                 PartitionColumnDetails(
-                    columnName=parition_column_name,
-                    intervalType=column_parition_type,
+                    columnName=partition_column_name,
+                    intervalType=column_partition_type,
                     interval=None,
                 )
             )
