@@ -137,6 +137,7 @@
   }
 
   &.sso-configured {
+    margin-top: @size-xs;
     .ant-card {
       border: none !important;
     }
@@ -148,8 +149,8 @@
 }
 
 .content-height-with-resizable-panel.sso-configured {
-  background-color: @white !important;
-  height: calc(100vh - var(--ant-navbar-height) - 200px);
+  background-color: @white;
+  height: calc(100vh - var(--ant-navbar-height) - 216px);
 
   .right-panel-splitter {
     margin-left: 42px;
@@ -378,5 +379,19 @@
   &:focus {
     outline: none;
     box-shadow: 0 0 0 @size-xxs @primary-1;
+  }
+}
+
+.hide-section-title {
+  > .panel-title,
+  > .form-group > .panel-title,
+  > .panel-default > .panel-heading,
+  > .panel-heading,
+  > legend,
+  > fieldset > legend {
+    display: none;
+    margin: 0;
+    padding: 0;
+    height: 0;
   }
 }

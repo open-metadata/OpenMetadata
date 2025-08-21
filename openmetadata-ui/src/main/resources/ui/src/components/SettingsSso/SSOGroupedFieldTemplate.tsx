@@ -314,36 +314,38 @@ export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps
 
     const fieldElement = (
       <Fragment>
-        <Space className="w-full justify-between header-title-wrapper">
-          <label
-            className={classNames('control-label', {
-              'font-medium text-base-color text-md':
-                !schema.additionalProperties,
-            })}
-            id={`${idSchema.$id}__title`}>
-            {title}
-          </label>
+        {title && title.trim() !== '' && (
+          <Space className="w-full justify-between header-title-wrapper">
+            <label
+              className={classNames('control-label', {
+                'font-medium text-base-color text-md':
+                  !schema.additionalProperties,
+              })}
+              id={`${idSchema.$id}__title`}>
+              {title}
+            </label>
 
-          {schema.additionalProperties && (
-            <Button
-              data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
-              id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onAddClick(schema)();
-              }}
-              onFocus={() => {
-                if (!isUndefined(formContext.handleFocus)) {
-                  formContext.handleFocus(idSchema.$id);
+            {schema.additionalProperties && (
+              <Button
+                data-testid={`add-item-${title}`}
+                icon={
+                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
                 }
-              }}
-            />
-          )}
-        </Space>
+                id={`${idSchema.$id}`}
+                size="small"
+                type="primary"
+                onClick={() => {
+                  onAddClick(schema)();
+                }}
+                onFocus={() => {
+                  if (!isUndefined(formContext.handleFocus)) {
+                    formContext.handleFocus(idSchema.$id);
+                  }
+                }}
+              />
+            )}
+          </Space>
+        )}
 
         {AdditionalField &&
           createElement(AdditionalField, {

@@ -328,11 +328,13 @@ export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
 export const getSSOUISchema = (provider: string) => {
   const commonSchema = {
     authenticationConfiguration: {
+      'ui:title': ' ', // Hide the title with a space to prevent rendering
       ...COMMON_HIDDEN_FIELDS,
       ...COMMON_FIELD_TITLES,
       ...(PROVIDER_UI_SCHEMAS[provider] || {}),
     },
     authorizerConfiguration: {
+      'ui:title': ' ', // Hide the title with a space to prevent rendering
       ...AUTHORIZER_HIDDEN_FIELDS,
       ...AUTHORIZER_FIELD_TITLES,
       botPrincipals:

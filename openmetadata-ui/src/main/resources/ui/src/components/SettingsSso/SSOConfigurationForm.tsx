@@ -576,7 +576,17 @@ const SSOConfigurationFormRJSF = ({
       }
     }
 
-    return baseSchema;
+    return {
+      ...baseSchema,
+      authenticationConfiguration: {
+        ...baseSchema.authenticationConfiguration,
+        'ui:classNames': 'hide-section-title',
+      },
+      authorizerConfiguration: {
+        ...baseSchema.authorizerConfiguration,
+        'ui:classNames': 'hide-section-title',
+      },
+    };
   }, [
     currentProvider,
     internalData?.authenticationConfiguration?.clientType,
@@ -914,7 +924,7 @@ const SSOConfigurationFormRJSF = ({
           ),
           minWidth: 400,
           flex: 0.5,
-          className: 'content-resizable-panel-container sso-configured',
+          className: 'content-resizable-panel-container sso-configured m-t-2',
         }}
         secondPanel={{
           children: (
@@ -925,6 +935,7 @@ const SSOConfigurationFormRJSF = ({
           ),
           minWidth: 400,
           flex: 0.5,
+          className: 'm-t-xs',
         }}
       />
     );
