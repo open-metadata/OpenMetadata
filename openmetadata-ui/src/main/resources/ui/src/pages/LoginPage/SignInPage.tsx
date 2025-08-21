@@ -277,7 +277,9 @@ const SignInPage = () => {
               <Typography.Text className="text-xl text-grey-muted m-t-lg">
                 {t('message.om-description')}
               </Typography.Text>
-              <div className="sso-signup">{signInButton}</div>
+              <div className="sso-signup" data-testid="sso-signin-button">
+                {signInButton}
+              </div>
             </div>
           )}
         </div>

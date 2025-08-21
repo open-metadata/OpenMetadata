@@ -36,6 +36,10 @@
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
+    "playwright:login-flows": "playwright test --project=login-flows",
+    "playwright:login-flows:ui": "playwright test --project=login-flows --ui",
+    "playwright:okta": "playwright test --config=playwright.okta.config.ts",
+    "playwright:okta:ui": "playwright test --config=playwright.okta.config.ts --ui",
     "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
