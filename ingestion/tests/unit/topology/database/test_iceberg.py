@@ -647,9 +647,10 @@ class IcebergUnitTest(TestCase):
             def name(self):
                 return next(self.data)
 
-        with patch.object(
-            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
-        ), patch.object(HiveCatalog, "load_table", return_value=LoadTableMock()):
+        with (
+            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST),
+            patch.object(HiveCatalog, "load_table", return_value=LoadTableMock()),
+        ):
             for i, table in enumerate(self.iceberg.get_tables_name_and_type()):
                 self.assertEqual(table, EXPECTED_TABLE_LIST[i])
 
@@ -658,10 +659,11 @@ class IcebergUnitTest(TestCase):
         def raise_no_such_iceberg_table():
             raise pyiceberg.exceptions.NoSuchIcebergTableError()
 
-        with patch.object(
-            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
-        ), patch.object(
-            HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table
+        with (
+            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST),
+            patch.object(
+                HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table
+            ),
         ):
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
@@ -670,9 +672,10 @@ class IcebergUnitTest(TestCase):
         def raise_no_such_table():
             raise pyiceberg.exceptions.NoSuchTableError()
 
-        with patch.object(
-            HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST
-        ), patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_table):
+        with (
+            patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST),
+            patch.object(HiveCatalog, "load_table", side_effect=raise_no_such_table),
+        ):
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
     def test_get_owner_ref(self):
@@ -856,9 +859,80 @@ class IcebergUnitTest(TestCase):
             databaseSchema=FullyQualifiedEntityName(fq_database_schema),
         )
 
-        with patch.object(
-            OpenMetadata, "get_reference_by_email", return_value=ref
-        ), patch.object(fqn, "build", return_value=fq_database_schema):
+        with (
+            patch.object(OpenMetadata, "get_reference_by_email", return_value=ref),
+            patch.object(fqn, "build", return_value=fq_database_schema),
+        ):
+            result = next(self.iceberg.yield_table((table_name, table_type))).right
+
+            self.assertEqual(result, expected)
+
+    def test_yield_table_with_nested_partition_column(self):
+        table_name = "table_name"
+        table_type = TableType.Regular
+
+        iceberg_table = {
+            "identifier": (
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
+                table_name,
+            ),
+            "metadata": TableMetadataV2.model_validate(
+                {
+                    "location": "foo",
+                    "current-schema-id": 0,
+                    "last_column_id": 1,
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
+                        )
+                    ],
+                    "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=100,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="nested1",
+                                ),
+                            )
+                        }
+                    ],
+                    "properties": {"owner": "myself", "comment": "Table Description"},
+                }
+            ),
+            "metadata_location": "bar",
+            "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
+            "catalog": self.iceberg.connection_obj,
+        }
+
+        fq_database_schema = "FullyQualifiedDatabaseSchema"
+
+        ref = EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), type="user")])
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table)
+
+        expected = CreateTableRequest(
+            name=EntityName(table_name),
+            tableType=table_type,
+            description=Markdown("Table Description"),
+            owners=ref,
+            columns=[
+                MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
+            ],
+            tablePartition=None,
+            databaseSchema=FullyQualifiedEntityName(fq_database_schema),
+        )
+
+        with (
+            patch.object(OpenMetadata, "get_reference_by_email", return_value=ref),
+            patch.object(fqn, "build", return_value=fq_database_schema),
+        ):
             result = next(self.iceberg.yield_table((table_name, table_type))).right
 
             self.assertEqual(result, expected)
