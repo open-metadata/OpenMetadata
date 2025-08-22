@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.data;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -567,7 +569,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       target = target.queryParam("fields", fields);
     }
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private DataContract getDataContractByName(String name, String fields)
@@ -577,7 +579,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       target = target.queryParam("fields", fields);
     }
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private DataContract getDataContractByEntityId(UUID entityId, String entityType)
@@ -596,14 +598,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       target = target.queryParam("fields", fields);
     }
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private DataContract updateDataContract(CreateDataContract create) throws IOException {
     WebTarget target = getCollection();
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).put(Entity.json(create));
-    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private DataContract patchDataContract(UUID id, String originalJson, DataContract updated)
@@ -624,18 +626,19 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private void deleteDataContract(UUID id) throws IOException {
     WebTarget target = getResource(id);
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
-    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private void deleteDataContract(UUID id, boolean recursive) throws IOException {
     WebTarget target = getResource(id);
     target = target.queryParam("recursive", recursive);
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
-    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
   }
 
   private void deleteTable(UUID id) {
-    WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
+    WebTarget tableTarget =
+        APP.client().target(getTableUri() + "/" + id).queryParam("recursive", true);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
@@ -666,16 +669,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       throws HttpResponseException {
     WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
     Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(
-        latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(latestResponse, DataContractResult.class, OK.getStatusCode());
   }
 
   private DataContractResult runValidate(DataContract dataContract) throws HttpResponseException {
     WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
     Response validateResponse =
         SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
-    return TestUtils.readResponse(
-        validateResponse, DataContractResult.class, Status.OK.getStatusCode());
+    return TestUtils.readResponse(validateResponse, DataContractResult.class, OK.getStatusCode());
   }
 
   private Response getResultById(UUID dataContractId, UUID resultId) {
@@ -1776,8 +1777,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     WebTarget target = getCollection();
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).put(Entity.json(create));
-    DataContract updated =
-        TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    DataContract updated = TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
 
     assertEquals(ContractStatus.Active, updated.getStatus());
   }
@@ -1797,7 +1797,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         () -> {
           Response response =
               SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).put(Entity.json(create));
-          TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+          TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
         },
         Status.FORBIDDEN,
         "Principal: CatalogPrincipal{name='test'} operations [EditAll] not allowed");
@@ -1869,7 +1869,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Delete as admin should work
     WebTarget target = getResource(created.getId());
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
-    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+    TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
 
     // Verify deletion
     assertThrows(HttpResponseException.class, () -> getDataContract(created.getId(), null));
@@ -1888,10 +1888,35 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertResponse(
         () -> {
           Response response = SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).delete();
-          TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+          TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
         },
         Status.FORBIDDEN,
         "Principal: CatalogPrincipal{name='test'} operations [Delete] not allowed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractIsDeletedWhenTableIsDeleted(TestInfo test) throws IOException {
+    // Create a table
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create a data contract for the table
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the data contract was created
+    assertNotNull(dataContract);
+    assertEquals(table.getId(), dataContract.getEntity().getId());
+
+    // Verify we can get the data contract before deletion
+    DataContract retrieved = getDataContract(dataContract.getId(), null);
+    assertNotNull(retrieved);
+
+    // Delete the table
+    deleteTable(table.getId());
+
+    // Verify that the data contract is also deleted (should throw HttpResponseException)
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
   }
 
   @Test
@@ -1905,7 +1930,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     WebTarget target = getResource(created.getId());
     Response response = SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS).get();
     DataContract retrieved =
-        TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
 
     assertEquals(created.getId(), retrieved.getId());
     assertEquals(created.getName(), retrieved.getName());
@@ -1935,7 +1960,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     WebTarget userTarget = getResource("users").path("name").path("admin");
     Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
-    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+    User adminUser = TestUtils.readResponse(response, User.class, OK.getStatusCode());
 
     // Create user references for reviewers using the full entity reference
     List<EntityReference> reviewers = new ArrayList<>();
@@ -1967,7 +1992,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     WebTarget userTarget = getResource("users").path("name").path("admin");
     Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
-    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+    User adminUser = TestUtils.readResponse(response, User.class, OK.getStatusCode());
 
     // Get the full data contract with all fields
     created = getDataContract(created.getId(), "reviewers");
@@ -1994,7 +2019,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     WebTarget userTarget = getResource("users").path("name").path("admin");
     Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
-    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+    User adminUser = TestUtils.readResponse(response, User.class, OK.getStatusCode());
 
     // Create with reviewers
     List<EntityReference> initialReviewers = new ArrayList<>();
@@ -2029,11 +2054,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     WebTarget userTarget = getResource("users").path("name").path("admin");
     Response response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
-    User adminUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+    User adminUser = TestUtils.readResponse(response, User.class, OK.getStatusCode());
 
     userTarget = getResource("users").path("name").path("test");
     response = SecurityUtil.addHeaders(userTarget, authHeaders).get();
-    User testUser = TestUtils.readResponse(response, User.class, Status.OK.getStatusCode());
+    User testUser = TestUtils.readResponse(response, User.class, OK.getStatusCode());
 
     // Create with one reviewer
     List<EntityReference> initialReviewers = new ArrayList<>();
@@ -2084,7 +2109,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Response response =
         SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
     DataContractResult result =
-        TestUtils.readResponse(response, DataContractResult.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(response, DataContractResult.class, OK.getStatusCode());
 
     assertNotNull(result);
     assertNotNull(result.getId());
@@ -2111,7 +2136,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         getResource(dataContract.getId()).path("/results").path(result.getId().toString());
     Response getResponse = SecurityUtil.addHeaders(getResultTarget, ADMIN_AUTH_HEADERS).get();
     DataContractResult updatedResult =
-        TestUtils.readResponse(getResponse, DataContractResult.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(getResponse, DataContractResult.class, OK.getStatusCode());
 
     assertNotNull(updatedResult);
     assertEquals(dataContract.getFullyQualifiedName(), updatedResult.getDataContractFQN());
@@ -2147,15 +2172,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
-      assertEquals(Status.OK.getStatusCode(), response.getStatus());
+      assertEquals(OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
 
     // List results
     WebTarget listTarget = getResource(dataContract.getId()).path("/results");
     Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    String jsonResponse =
-        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    String jsonResponse = TestUtils.readResponse(listResponse, String.class, OK.getStatusCode());
     ResultList<DataContractResult> results =
         JsonUtils.readValue(
             jsonResponse,
@@ -2195,7 +2219,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
-      assertEquals(Status.OK.getStatusCode(), response.getStatus());
+      assertEquals(OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
 
@@ -2227,14 +2251,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
     Response createResponse =
         SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
-    assertEquals(Status.OK.getStatusCode(), createResponse.getStatus());
+    assertEquals(OK.getStatusCode(), createResponse.getStatus());
     createResponse.readEntity(String.class); // Consume response
 
     // Verify result exists
     WebTarget listTarget = getResource(dataContract.getId()).path("/results");
     Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    String jsonResponse =
-        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    String jsonResponse = TestUtils.readResponse(listResponse, String.class, OK.getStatusCode());
     ResultList<DataContractResult> results =
         JsonUtils.readValue(
             jsonResponse,
@@ -2244,12 +2267,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Delete the result
     WebTarget deleteTarget = getResource(dataContract.getId()).path("/results/" + timestamp);
     Response deleteResponse = SecurityUtil.addHeaders(deleteTarget, ADMIN_AUTH_HEADERS).delete();
-    assertEquals(Status.OK.getStatusCode(), deleteResponse.getStatus());
+    assertEquals(OK.getStatusCode(), deleteResponse.getStatus());
 
     // Verify result is deleted
     Response listResponse2 = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    String jsonResponse2 =
-        TestUtils.readResponse(listResponse2, String.class, Status.OK.getStatusCode());
+    String jsonResponse2 = TestUtils.readResponse(listResponse2, String.class, OK.getStatusCode());
     ResultList<DataContractResult> results2 =
         JsonUtils.readValue(
             jsonResponse2,
@@ -2566,7 +2588,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Response response1 =
         SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult1));
     DataContractResult result1 =
-        TestUtils.readResponse(response1, DataContractResult.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(response1, DataContractResult.class, OK.getStatusCode());
 
     // Verify first result becomes latestResult
     DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
@@ -2615,7 +2637,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Response response3 =
         SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult3));
     DataContractResult result3 =
-        TestUtils.readResponse(response3, DataContractResult.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(response3, DataContractResult.class, OK.getStatusCode());
 
     // Verify latestResult IS updated to the newest result
     DataContract contractAfterThird = getDataContract(dataContract.getId(), "");
@@ -3003,8 +3025,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Finally, verify that we have 2 DataContractResults properly stored
     WebTarget listTarget = getResource(dataContract.getId()).path("/results");
     Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    String jsonResponse =
-        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    String jsonResponse = TestUtils.readResponse(listResponse, String.class, OK.getStatusCode());
     ResultList<DataContractResult> allResults =
         JsonUtils.readValue(
             jsonResponse,
@@ -3077,8 +3098,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify we have 2 results: one aborted, one successful
     WebTarget listTarget = getResource(dataContract.getId()).path("/results");
     Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    String jsonResponse =
-        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    String jsonResponse = TestUtils.readResponse(listResponse, String.class, OK.getStatusCode());
     ResultList<DataContractResult> allResults =
         JsonUtils.readValue(
             jsonResponse,
@@ -3173,6 +3193,18 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(testSuite.getTests());
     assertEquals(2, testSuite.getTests().size());
 
+    // Verify test suite exists in search index
+    Map<String, String> searchQueryParams = new HashMap<>();
+    searchQueryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
+    searchQueryParams.put("fields", "tests");
+    ResultList<TestSuite> testSuitesInSearchIndex =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndex);
+    assertFalse(testSuitesInSearchIndex.getData().isEmpty());
+    assertEquals(1, testSuitesInSearchIndex.getData().size());
+    assertEquals(testSuite.getId(), testSuitesInSearchIndex.getData().get(0).getId());
+
     // Verify both test cases exist and are accessible before deletion
     TestCase retrievedTestCase1 =
         testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
@@ -3192,6 +3224,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Verify test suite is no longer in search index
+    ResultList<TestSuite> testSuitesInSearchIndexAfterDeletion =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndexAfterDeletion);
+    assertTrue(testSuitesInSearchIndexAfterDeletion.getData().isEmpty());
 
     // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist
     // independently
@@ -3274,5 +3313,51 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(testSuite.getTests());
     assertEquals(1, testSuite.getTests().size());
     assertEquals(testCase.getId(), testSuite.getTests().get(0).getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractOwnerFieldFiltering(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create owners list
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(USER1_REF);
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withOwners(owners);
+
+    DataContract created = createDataContract(create);
+
+    // Verify owner was set during creation
+    assertNotNull(created.getOwners());
+    assertEquals(1, created.getOwners().size());
+
+    // Test 1: Get without specifying fields - should not include owner information
+    DataContract retrievedWithoutFields = getDataContract(created.getId(), null);
+    assertNotNull(retrievedWithoutFields);
+    assertEquals(created.getId(), retrievedWithoutFields.getId());
+    assertNull(retrievedWithoutFields.getOwners());
+
+    // Test 2: Get with "owners" in fields - should include owner information
+    DataContract retrievedWithOwners = getDataContract(created.getId(), "owners");
+    assertNotNull(retrievedWithOwners);
+    assertEquals(created.getId(), retrievedWithOwners.getId());
+    assertNotNull(retrievedWithOwners.getOwners());
+    assertEquals(1, retrievedWithOwners.getOwners().size());
+    assertEquals(USER1_REF.getId(), retrievedWithOwners.getOwners().get(0).getId());
+
+    // Test 3: Get with multiple fields including owners - should include owner information
+    DataContract retrievedWithMultipleFields = getDataContract(created.getId(), "owners,reviewers");
+    assertNotNull(retrievedWithMultipleFields);
+    assertEquals(created.getId(), retrievedWithMultipleFields.getId());
+    assertNotNull(retrievedWithMultipleFields.getOwners());
+    assertEquals(1, retrievedWithMultipleFields.getOwners().size());
+
+    // Test 4: Get with fields that exclude owners - should not include owner information
+    DataContract retrievedWithoutOwnerField = getDataContract(created.getId(), "reviewers");
+    assertNotNull(retrievedWithoutOwnerField);
+    assertEquals(created.getId(), retrievedWithoutOwnerField.getId());
+    assertNull(retrievedWithoutOwnerField.getOwners());
   }
 }
