@@ -110,12 +110,12 @@ const TableVersion: React.FC<TableVersionProp> = ({
               q: searchQuery,
               limit: pageSize,
               offset: offset,
-              fields: 'tags,customMetrics',
+              fields: 'tags',
             })
           : await getTableColumnsByFQN(tableFqn, {
               limit: pageSize,
               offset: offset,
-              fields: 'tags,customMetrics',
+              fields: 'tags',
             });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -341,54 +341,52 @@ const TableVersion: React.FC<TableVersionProp> = ({
 
   // Fetch columns when search changes
   useEffect(() => {
-    if (tableFqn) {
+    if (tableFqn && !isVersionLoading) {
       // Reset to first page when search changes
       fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [isVersionLoading, tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  if (isVersionLoading) {
+    return <Loader />;
+  }
 
   return (
-    <>
-      {isVersionLoading ? (
-        <Loader />
-      ) : (
-        <div className={classNames('version-data')}>
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
-              <DataAssetsVersionHeader
-                breadcrumbLinks={slashedTableName}
-                currentVersionData={currentVersionData}
-                deleted={deleted}
-                displayName={displayName}
-                domainDisplayName={domainDisplayName}
-                entityType={EntityType.TABLE}
-                ownerDisplayName={ownerDisplayName}
-                ownerRef={ownerRef}
-                serviceName={currentVersionData.service?.name}
-                tierDisplayName={tierDisplayName}
-                version={version}
-                onVersionClick={backHandler}
-              />
-            </Col>
-            <GenericProvider
-              isVersionView
-              currentVersionData={currentVersionData}
-              data={currentVersionData}
-              permissions={entityPermissions}
-              type={EntityType.TABLE}
-              onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
-                <Tabs
-                  className="tabs-new"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
-            </GenericProvider>
-          </Row>
-        </div>
-      )}
+    <div className={classNames('version-data')}>
+      <Row gutter={[0, 12]}>
+        <Col span={24}>
+          <DataAssetsVersionHeader
+            breadcrumbLinks={slashedTableName}
+            currentVersionData={currentVersionData}
+            deleted={deleted}
+            displayName={displayName}
+            domainDisplayName={domainDisplayName}
+            entityType={EntityType.TABLE}
+            ownerDisplayName={ownerDisplayName}
+            ownerRef={ownerRef}
+            serviceName={currentVersionData.service?.name}
+            tierDisplayName={tierDisplayName}
+            version={version}
+            onVersionClick={backHandler}
+          />
+        </Col>
+        <GenericProvider
+          isVersionView
+          currentVersionData={currentVersionData}
+          data={currentVersionData}
+          permissions={entityPermissions}
+          type={EntityType.TABLE}
+          onUpdate={() => Promise.resolve()}>
+          <Col className="entity-version-page-tabs" span={24}>
+            <Tabs
+              className="tabs-new"
+              defaultActiveKey={tab}
+              items={tabItems}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
+      </Row>
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
@@ -397,7 +395,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </>
+    </div>
   );
 };
 
