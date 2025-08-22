@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -27,6 +27,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getAllRowKeysByKeyName,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -54,6 +55,7 @@ function VersionTable<T extends Column | SearchIndexField>({
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const data = useMemo(() => {
     if (!searchText) {
@@ -245,6 +247,14 @@ function VersionTable<T extends Column | SearchIndexField>({
     [searchText, handleSearchAction]
   );
 
+  const handleExpandedRowsChange = useCallback((keys: readonly Key[]) => {
+    setExpandedRowKeys(keys as string[]);
+  }, []);
+
+  useEffect(() => {
+    setExpandedRowKeys(getAllRowKeysByKeyName<T>(columns ?? [], 'name'));
+  }, [columns]);
+
   return (
     <Table
       columns={versionTableColumns}
@@ -254,9 +264,10 @@ function VersionTable<T extends Column | SearchIndexField>({
       dataSource={data}
       expandable={{
         ...getTableExpandableConfig<T>(),
-        defaultExpandAllRows: true,
+        rowExpandable: (record) => !isEmpty(record.children),
+        onExpandedRowsChange: handleExpandedRowsChange,
+        expandedRowKeys: expandedRowKeys,
       }}
-      key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
       loading={isLoading}
       locale={{
         emptyText: <FilterTablePlaceHolder />,
