@@ -85,10 +85,7 @@ export const fetchLogsRecursively = async (
   return logs;
 };
 
-export const downloadIngestionLog = async (
-  ingestionId?: string,
-  pipelineType?: PipelineType
-) => {
+export const downloadIngestionLog = async (ingestionId?: string) => {
   if (!ingestionId) {
     return '';
   }
