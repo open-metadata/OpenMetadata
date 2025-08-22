@@ -229,6 +229,14 @@ async function runParsers() {
 
   // Parse Application schemas
   await parseApplicationSchemas();
+
+  await main(
+    'configTemp',
+    'schema/configuration',
+    'src/jsons/configuration',
+    true,
+    ['authenticationConfiguration.json', 'authorizerConfiguration.json']
+  );
 }
 
 runParsers();

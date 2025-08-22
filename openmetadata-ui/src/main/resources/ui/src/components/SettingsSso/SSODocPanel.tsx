@@ -14,12 +14,13 @@ import { Col, Row, Typography } from 'antd';
 import { first, last } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import LdapIcon from '../../assets/img/ic-ldap.svg';
+import SamlIcon from '../../assets/img/ic-saml.svg';
 import Auth0Icon from '../../assets/img/icon-auth0.png';
 import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
 import GoogleIcon from '../../assets/img/icon-google.png';
 import OktaIcon from '../../assets/img/icon-okta.png';
-import SSOIcon from '../../assets/svg/sso-settings.svg';
 import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
@@ -48,8 +49,8 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     okta: OktaIcon,
     auth0: Auth0Icon,
     'aws-cognito': CognitoIcon,
-    ldap: SSOIcon,
-    saml: SSOIcon,
+    ldap: LdapIcon,
+    saml: SamlIcon,
   };
 
   const getProviderDisplayName = (provider: string) => {

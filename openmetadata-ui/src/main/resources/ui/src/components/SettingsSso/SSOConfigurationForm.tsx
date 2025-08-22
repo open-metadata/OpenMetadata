@@ -19,12 +19,14 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import LdapIcon from '../../assets/img/ic-ldap.svg';
+import SamlIcon from '../../assets/img/ic-saml.svg';
 import Auth0Icon from '../../assets/img/icon-auth0.png';
 import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
 import GoogleIcon from '../../assets/img/icon-google.png';
 import OktaIcon from '../../assets/img/icon-okta.png';
-import SSOIcon from '../../assets/svg/sso-settings.svg';
+
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -147,9 +149,9 @@ const SSOConfigurationFormRJSF = ({
       case AuthProvider.AwsCognito:
         return CognitoIcon;
       case AuthProvider.LDAP:
-        return SSOIcon;
+        return LdapIcon;
       case AuthProvider.Saml:
-        return SSOIcon;
+        return SamlIcon;
       default:
         return null;
     }
