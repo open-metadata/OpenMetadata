@@ -162,7 +162,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(recordEntity, entityClass));
   }
 
-  protected void postDelete(T recordEntity) {
+  protected void postDelete(T recordEntity, boolean hardDelete) {
     searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
   }
 

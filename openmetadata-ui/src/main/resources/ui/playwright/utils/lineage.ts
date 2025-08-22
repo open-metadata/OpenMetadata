@@ -103,7 +103,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 8 })) {
+    for (const _ of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -123,7 +123,7 @@ export const deleteEdge = async (
 
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   await page
     .locator(
@@ -131,7 +131,7 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page

@@ -619,6 +619,7 @@ export const AuthProvider = ({
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
+          // RDF enabled status is already set from system config in App.tsx
           updateAuthInstance(configJson);
           if (!getOidcToken()) {
             handleStoreProtectedRedirectPath();

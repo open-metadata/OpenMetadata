@@ -14,10 +14,16 @@
 import { FC } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
-  public importSchema(fqn: string) {
-    return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
+  public async importSchema(fqn: string) {
+    const module = await import(
+      `../../../../jsons/applicationSchemas/${fqn}.json`
+    );
+    const schema = module.default || module;
+
+    return schema;
   }
   public getJSONUISchema() {
     return {
@@ -53,8 +59,15 @@ class ApplicationsClassBase {
   }
 
   public importAppScreenshot(screenshotName: string) {
-    return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
+    return import(
+      /* @vite-ignore */ `../../../../assets/img/appScreenshots/${screenshotName}`
+    );
   }
+
+  public appPluginRegistry: Record<
+    string,
+    new (name: string, isInstalled: boolean) => AppPlugin
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,

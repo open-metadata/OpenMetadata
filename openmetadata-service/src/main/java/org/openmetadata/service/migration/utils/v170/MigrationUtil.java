@@ -261,7 +261,8 @@ public class MigrationUtil {
     }
   }
 
-  static DataInsightSystemChartRepository dataInsightSystemChartRepository;
+  static DataInsightSystemChartRepository dataInsightSystemChartRepository =
+      new DataInsightSystemChartRepository();
 
   public static void createChart(String chartName, Object chartObject) {
     createChart(chartName, chartObject, DataInsightCustomChart.ChartType.LINE_CHART);

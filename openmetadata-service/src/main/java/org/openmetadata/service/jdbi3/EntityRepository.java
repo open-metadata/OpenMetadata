@@ -157,6 +157,7 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -193,6 +194,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
@@ -1209,11 +1211,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(entity);
   }
 
   protected void postCreate(List<T> entities) {
     for (T entity : entities) {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+      // Update RDF
+      RdfUpdater.updateEntity(entity);
     }
   }
 
@@ -1221,12 +1229,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @Transaction
@@ -1503,7 +1517,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1516,7 +1530,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = findByNameOrNull(name, ALL);
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-      postDelete(response.entity());
+      postDelete(response.entity(), hardDelete);
       deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
@@ -1529,7 +1543,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1539,7 +1553,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {}
+  protected void postDelete(T entity, boolean hardDelete) {
+    // Delete from RDF only on hard delete
+    if (hardDelete) {
+      RdfUpdater.deleteEntity(entity.getEntityReference());
+    }
+  }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (hardDelete) {
@@ -2418,6 +2437,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal());
+
+        // Update RDF store
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
       }
     }
   }
@@ -2438,6 +2460,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+
+      // Update RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+      }
     }
   }
 
@@ -2457,6 +2484,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
+
+      // Remove from RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFQN);
+      }
     }
   }
 
@@ -2641,6 +2673,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntity)
+            .withToEntity(toEntity)
+            .withRelationshipType(relationship);
+    RdfUpdater.addRelationship(entityRelationship);
+
+    if (bidirectional) {
+      // Also add the reverse relationship to RDF
+      EntityRelationship reverseRelationship =
+          new EntityRelationship()
+              .withFromId(toId)
+              .withToId(fromId)
+              .withFromEntity(toEntity)
+              .withToEntity(fromEntity)
+              .withRelationshipType(relationship);
+      RdfUpdater.addRelationship(reverseRelationship);
+    }
   }
 
   @Transaction
@@ -2811,6 +2865,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .delete(fromId, fromEntityType, toId, toEntityType, relationship.ordinal());
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntityType)
+            .withToEntity(toEntityType)
+            .withRelationshipType(relationship);
+    RdfUpdater.removeRelationship(entityRelationship);
   }
 
   public final void deleteTo(
@@ -4571,13 +4635,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
       }
       // Add relationships from updated
-      addRelationship(
-          fromId,
-          updatedToRef.getId(),
-          fromEntityType,
-          toEntityType,
-          relationshipType,
-          bidirectional);
+      if (updatedToRef != null) {
+        addRelationship(
+            fromId,
+            updatedToRef.getId(),
+            fromEntityType,
+            toEntityType,
+            relationshipType,
+            bidirectional);
+      }
     }
 
     /**
@@ -4652,7 +4718,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
 
       // Add relationships from updated
-      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      if (updatedFromRef != null) {
+        addRelationship(
+            updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      }
     }
 
     public final void storeUpdate() {

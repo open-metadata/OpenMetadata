@@ -49,7 +49,9 @@ function TotalDataAssetsWidget({
   );
 
   return (
-    <Card className="widget-info-card total-data-assets-widget">
+    <Card
+      className="widget-info-card total-data-assets-widget"
+      data-testid="total-data-assets-widget">
       <div className="flex items-center gap-2">
         <div className="p-0 icon-container">
           <PieChartIcon height={16} width={16} />
@@ -69,18 +71,14 @@ function TotalDataAssetsWidget({
                 className="flex items-center justify-between"
                 key={entity.name}>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="bullet"
-                    style={{
-                      backgroundColor: entity.fill,
-                    }}
-                  />
                   <div className="p-0 icon-container">{entity.icon}</div>
 
                   <Typography.Text>{entity.name}</Typography.Text>
                 </div>
 
-                <Typography.Text className="font-bold">
+                <Typography.Text
+                  className="font-bold"
+                  data-testid={`${entity.name}-count`}>
                   {getReadableCountString(entity.value)}
                 </Typography.Text>
               </div>

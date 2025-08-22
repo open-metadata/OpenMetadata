@@ -12,7 +12,7 @@
  */
 
 import { Form, Input, Modal, Space } from 'antd';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -48,8 +48,8 @@ const EditAnnouncementModal: FC<Props> = ({
     startTime,
     endTime,
   }: CreateAnnouncement) => {
-    const startTimeMs = startTime.unix();
-    const endTimeMs = endTime.unix();
+    const startTimeMs = startTime.toMillis();
+    const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));
@@ -104,8 +104,8 @@ const EditAnnouncementModal: FC<Props> = ({
         initialValues={{
           title: announcementTitle,
           description: announcement.description,
-          startTime: moment(announcement.startTime),
-          endTime: moment(announcement.endTime),
+          startTime: DateTime.fromMillis(announcement.startTime),
+          endTime: DateTime.fromMillis(announcement.endTime),
         }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
