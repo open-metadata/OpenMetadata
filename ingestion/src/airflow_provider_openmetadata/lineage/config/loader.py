@@ -37,7 +37,7 @@ class AirflowLineageConfig(BaseModel):
     timeout: Optional[int] = None
     retry: Optional[int] = None
     retry_wait: Optional[int] = None
-    retry_codes: Optional[list[int]] = None
+    retry_codes: Optional[List[int]] = None
 
 
 def parse_airflow_config(
