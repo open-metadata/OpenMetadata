@@ -81,6 +81,7 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.ExecutorManager;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -276,6 +277,7 @@ public abstract class OpenMetadataApplicationTest {
             config,
             forceMigrations);
     // Initialize search repository
+    ExecutorManager.initialize(config);
     SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(getDao(jdbi));

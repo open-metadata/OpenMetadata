@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Include;
@@ -31,6 +30,7 @@ import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
@@ -55,15 +55,7 @@ public class CacheWarmupService {
   public CacheWarmupService(CacheConfiguration cacheConfig, CollectionDAO collectionDAO) {
     this.cacheConfig = cacheConfig;
     this.collectionDAO = collectionDAO;
-    this.executorService =
-        Executors.newFixedThreadPool(
-            cacheConfig.getWarmupThreads(),
-            r -> {
-              Thread t = new Thread(r, "cache-warmup-thread");
-              t.setDaemon(true);
-              return t;
-            });
-
+    this.executorService = AsyncService.getInstance().getExecutorService();
     // Create Resilience4j rate limiter to control warmup pace and prevent database overload
     RateLimiterConfig rateLimiterConfig =
         RateLimiterConfig.custom()

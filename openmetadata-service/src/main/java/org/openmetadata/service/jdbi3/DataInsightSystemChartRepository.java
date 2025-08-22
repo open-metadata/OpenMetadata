@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -110,9 +109,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   // Lazy initialization for scheduler
   private ScheduledExecutorService getScheduler() {
-    if (scheduler == null) {
-      scheduler = Executors.newScheduledThreadPool(10);
-    }
+    scheduler =
+        org.openmetadata.service.util.ExecutorManager.getInstance()
+            .getScheduledVirtualThreadExecutor("datainsight-chart-streaming", 10);
     return scheduler;
   }
 

@@ -23,10 +23,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.util.ExecutorManager;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -49,7 +49,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private McpServerSession.Factory sessionFactory;
   private ExecutorService executorService =
-      Executors.newFixedThreadPool(10, Thread.ofVirtual().name("MCP-Worker-SSE", 0).factory());
+      ExecutorManager.getInstance().getVirtualThreadExecutor("mcp-sse-transport", 10);
 
   public HttpServletSseServerTransportProvider(
       ObjectMapper objectMapper, String messageEndpoint, String sseEndpoint) {

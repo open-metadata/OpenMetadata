@@ -18,12 +18,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 
 /**
  * Dispatcher for entity lifecycle events.
@@ -39,7 +39,7 @@ public class EntityLifecycleEventDispatcher {
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
-    this.asyncExecutor = Executors.newFixedThreadPool(50, Thread.ofVirtual().factory());
+    this.asyncExecutor = AsyncService.getInstance().getExecutorService();
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {

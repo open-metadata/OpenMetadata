@@ -63,6 +63,7 @@ import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.ExecutorManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -599,8 +600,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
     producersDone.set(false);
     jobExecutor =
-        Executors.newFixedThreadPool(
-            jobData.getEntities().size(), Thread.ofPlatform().name("job-", 0).factory());
+        ExecutorManager.getInstance()
+            .getVirtualThreadExecutor("search-index-job", jobData.getEntities().size());
 
     int finalNumConsumers = threadConfig.numConsumers;
     if (finalNumConsumers > MAX_CONSUMER_THREADS) {
@@ -611,12 +612,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
       finalNumConsumers = MAX_CONSUMER_THREADS;
     }
 
-    consumerExecutor =
-        Executors.newFixedThreadPool(
-            finalNumConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
-    producerExecutor =
-        Executors.newFixedThreadPool(
-            threadConfig.numProducers, Thread.ofPlatform().name("producer-", 0).factory());
+    try {
+      consumerExecutor =
+          org.openmetadata.service.util.ExecutorManager.getInstance()
+              .getFixedThreadPool("search-index-consumer", finalNumConsumers);
+      producerExecutor =
+          org.openmetadata.service.util.ExecutorManager.getInstance()
+              .getFixedThreadPool("search-index-producer", threadConfig.numProducers);
+    } catch (IllegalStateException e) {
+      LOG.warn("ExecutorManager not available, using direct executors", e);
+      consumerExecutor =
+          Executors.newFixedThreadPool(
+              finalNumConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
+      producerExecutor =
+          Executors.newFixedThreadPool(
+              threadConfig.numProducers, Thread.ofPlatform().name("producer-", 0).factory());
+    }
 
     return effectiveQueueSize;
   }

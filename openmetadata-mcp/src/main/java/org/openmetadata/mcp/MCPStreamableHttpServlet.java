@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +51,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.util.ExecutorManager;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -73,8 +73,7 @@ public class MCPStreamableHttpServlet extends HttpServlet implements McpServerTr
   private final transient SecureRandom secureRandom = new SecureRandom();
   private final transient Semaphore sseConnectionSemaphore = new Semaphore(50, true);
   private final transient ExecutorService executorService =
-      Executors.newFixedThreadPool(
-          10, Thread.ofVirtual().name("MCP-Worker-Streamable-", 0).factory());
+      ExecutorManager.getInstance().getVirtualThreadExecutor("mcp-streamable-servlet", 10);
   private transient McpServerSession.Factory sessionFactory;
   private final transient JwtFilter jwtFilter;
   private final transient Authorizer authorizer;

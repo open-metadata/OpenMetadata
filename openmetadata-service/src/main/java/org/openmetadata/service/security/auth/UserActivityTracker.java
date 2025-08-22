@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +28,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.ExecutorManager;
 
 /**
  * Distributed user activity tracker that works across multiple web servers.
@@ -48,13 +48,8 @@ public class UserActivityTracker {
   private final long minUpdateIntervalMs;
   private final long batchUpdateIntervalSeconds;
 
-  private final ScheduledExecutorService scheduler =
-      Executors.newSingleThreadScheduledExecutor(
-          r -> Thread.ofPlatform().name("UserActivityTracker-Scheduler").daemon(true).unstarted(r));
-
-  private final ScheduledExecutorService virtualThreadExecutor =
-      Executors.newScheduledThreadPool(
-          0, r -> Thread.ofVirtual().name("UserActivityTracker-VirtualThread-", 0).unstarted(r));
+  private final ScheduledExecutorService scheduler;
+  private final ScheduledExecutorService virtualThreadExecutor;
 
   private volatile UserRepository userRepository;
 
@@ -66,6 +61,10 @@ public class UserActivityTracker {
         3600; // 1 hour batch flush to database (since we only care about daily)
     int maxConcurrentDbOperations = 10;
     this.dbOperationPermits = new Semaphore(maxConcurrentDbOperations);
+    this.scheduler =
+        ExecutorManager.getInstance().getScheduledExecutor("user-activity-scheduler", 1);
+    this.virtualThreadExecutor =
+        ExecutorManager.getInstance().getScheduledVirtualThreadExecutor("user-activity-virtual", 2);
   }
 
   public static UserActivityTracker getInstance() {

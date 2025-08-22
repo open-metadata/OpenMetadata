@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,14 +48,15 @@ public class LazyCacheService {
   public LazyCacheService(CacheConfiguration cacheConfig, CollectionDAO collectionDAO) {
     this.cacheConfig = cacheConfig;
     this.collectionDAO = collectionDAO;
-    this.executorService =
-        Executors.newFixedThreadPool(
-            Math.max(1, cacheConfig.getWarmupThreads()),
-            r -> {
-              Thread t = new Thread(r, "lazy-cache-thread");
-              t.setDaemon(true);
-              return t;
-            });
+    try {
+      this.executorService =
+          org.openmetadata.service.util.ExecutorManager.getInstance()
+              .getVirtualThreadExecutor(
+                  "lazy-cache-service", Math.max(1, cacheConfig.getWarmupThreads()));
+    } catch (Exception e) {
+      LOG.warn("ExecutorManager not available, falling back to default executor", e);
+      throw new RuntimeException("Failed to initialize lazy cache executor", e);
+    }
 
     LOG.info("LazyCacheService initialized with {} threads", cacheConfig.getWarmupThreads());
   }

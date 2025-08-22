@@ -9,11 +9,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ExecutorManager;
 
 /**
  * Thin static façade over Redis Hash + tagUsage counter for caching entity relationships.
@@ -30,7 +30,10 @@ public final class RelationshipCache {
   private static int defaultTtlSeconds;
   private static int maxRetries;
 
-  private static final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(2);
+  private static final ScheduledExecutorService retryExecutor =
+      ExecutorManager.getInstance()
+          .getScheduledVirtualThreadExecutor("relationship-cache-retry", 1);
+  ;
 
   private static final String RELATIONSHIP_KEY_PREFIX = "rel:";
   private static final String TAG_USAGE_KEY = "tagUsage";

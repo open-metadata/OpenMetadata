@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -173,7 +172,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void reIndexFromStartToEnd() throws InterruptedException {
     // Reduce thread count to avoid overwhelming Fuseki with concurrent updates
     int numThreads = Math.min(jobData.getEntities().size(), 5);
-    executorService = Executors.newFixedThreadPool(numThreads);
+    try {
+      executorService =
+          org.openmetadata.service.util.ExecutorManager.getInstance()
+              .getVirtualThreadExecutor("rdf-index-app", numThreads);
+    } catch (Exception e) {
+      LOG.warn("ExecutorManager not available, falling back to default executor", e);
+      throw new RuntimeException("Failed to initialize RDF index executor", e);
+    }
     CountDownLatch latch = new CountDownLatch(jobData.getEntities().size());
 
     for (String entityType : jobData.getEntities()) {

@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -49,7 +48,8 @@ public class WebsocketNotificationHandler {
   private final ExecutorService threadScheduler;
 
   public WebsocketNotificationHandler() {
-    this.threadScheduler = Executors.newFixedThreadPool(1);
+    this.threadScheduler =
+        ExecutorManager.getInstance().getVirtualThreadExecutor("websocket-notification", 1);
   }
 
   public void processNotifications(ContainerResponseContext responseContext) {

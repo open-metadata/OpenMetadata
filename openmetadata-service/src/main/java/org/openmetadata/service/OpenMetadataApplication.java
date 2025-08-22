@@ -150,6 +150,7 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.ExecutorManager;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
@@ -199,6 +200,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           KeyStoreException,
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
+
+    // Initialize ExecutorManager for centralized thread pool management
+    ExecutorManager.initialize(catalogConfig);
+    environment.lifecycle().manage(org.openmetadata.service.util.ExecutorManager.getInstance());
 
     // Instantiate incident severity classifier
     IncidentSeverityClassifierInterface.createInstance();
