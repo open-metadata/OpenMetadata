@@ -38,6 +38,8 @@ server:
   maxThreads: ${SERVER_MAX_THREADS:-50}
   minThreads: ${SERVER_MIN_THREADS:-10}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
+  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
