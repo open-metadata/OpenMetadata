@@ -55,14 +55,27 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
+export const ensureServiceWorkerReady = async (page: Page): Promise<void> => {
+  // Ensure service worker is ready to read IndexedDB storage state
+  await page.evaluate(async () => {
+    if ('serviceWorker' in navigator && 'indexedDB' in window) {
+      await navigator.serviceWorker.ready;
+      // Give service worker time to initialize token access
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  });
+};
+
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
+  await ensureServiceWorkerReady(page);
   await page.waitForURL('**/my-data');
   await page.waitForLoadState('networkidle');
 };
 
 export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
+  await ensureServiceWorkerReady(page);
   await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };

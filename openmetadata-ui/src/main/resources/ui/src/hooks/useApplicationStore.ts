@@ -30,7 +30,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   } as UIThemePreference,
   currentUser: undefined,
   newUser: undefined,
-  isAuthenticated: true,
+  isAuthenticated: false,
   authConfig: undefined,
   authorizerConfig: undefined,
   isSigningUp: false,
