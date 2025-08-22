@@ -23,14 +23,12 @@ on:
       - reopened
       - ready_for_review
     paths-ignore:
-      - 'openmetadata-docs/**'
       - '.github/**'
       - 'openmetadata-dist/**'
       - 'docker/**'
       - '!docker/development/docker-compose.yml'
       - '!docker/development/docker-compose-postgres.yml'  
 
-    
 permissions:
   contents: read
 
@@ -94,7 +92,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: '3.9'
+          python-version: "3.9"
           args: "-d mysql"
           ingestion_dependency: "playwright"
 
@@ -102,7 +100,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.48.2 install --with-deps
+        run: npx playwright@1.51.1 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
@@ -175,5 +173,3 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
-
-

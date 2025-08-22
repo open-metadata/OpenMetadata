@@ -15,6 +15,8 @@ package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -63,14 +65,41 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth =
         TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
+
+    // Verify required fields are present
     assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
     assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
-    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
-    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+    assertEquals(config.getAuthenticationConfiguration().getClientType(), auth.getClientType());
+    assertEquals(
+        config.getAuthenticationConfiguration().getEnableSelfSignup(), auth.getEnableSelfSignup());
     assertEquals(
         config.getAuthenticationConfiguration().getJwtPrincipalClaims(),
         auth.getJwtPrincipalClaims());
+    assertEquals(
+        config.getAuthenticationConfiguration().getJwtPrincipalClaimsMapping(),
+        auth.getJwtPrincipalClaimsMapping());
     assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
+    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
+    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+
+    // For SAML, verify samlConfiguration is present but only contains authorityUrl
+    if (auth.getProvider().name().equals("SAML")
+        && config.getAuthenticationConfiguration().getSamlConfiguration() != null) {
+      assertNotNull(auth.getSamlConfiguration());
+      assertNotNull(auth.getSamlConfiguration().getIdp());
+      assertEquals(
+          config.getAuthenticationConfiguration().getSamlConfiguration().getIdp().getAuthorityUrl(),
+          auth.getSamlConfiguration().getIdp().getAuthorityUrl());
+    }
+
+    // Verify sensitive/unused fields are excluded
+    assertNull(auth.getLdapConfiguration());
+    assertNull(auth.getOidcConfiguration());
+    assertTrue(auth.getPublicKeyUrls().isEmpty());
+    assertEquals(config.getAuthenticationConfiguration().getResponseType(), auth.getResponseType());
+    assertEquals(
+        config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+        auth.getTokenValidationAlgorithm());
   }
 
   @Test
@@ -78,20 +107,24 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth =
         TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
+
+    // Verify only required field is present
     assertEquals(
         config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
+
+    // Verify sensitive/unused fields are excluded
+    assertNull(auth.getClassName());
+    assertTrue(auth.getAdminPrincipals().isEmpty());
+    assertNull(auth.getContainerRequestFilter());
+    assertNull(auth.getEnableSecureSocketConnection());
+    assertNull(auth.getEnforcePrincipalDomain());
+    assertTrue(auth.getAllowedDomains().isEmpty());
+    assertTrue(auth.getAllowedEmailRegistrationDomains().isEmpty());
+    assertNull(auth.getBotPrincipals());
+    assertTrue(auth.getTestPrincipals().isEmpty());
     assertEquals(
-        config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
-    assertEquals(
-        config.getAuthorizerConfiguration().getContainerRequestFilter(),
-        auth.getContainerRequestFilter());
-    assertEquals(
-        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(),
-        auth.getEnableSecureSocketConnection());
-    assertEquals(
-        config.getAuthorizerConfiguration().getEnforcePrincipalDomain(),
-        auth.getEnforcePrincipalDomain());
+        config.getAuthorizerConfiguration().getUseRolesFromProvider(),
+        auth.getUseRolesFromProvider());
   }
 
   @Test

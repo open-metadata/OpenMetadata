@@ -135,7 +135,7 @@ class PowerBiMeasures(BaseModel):
     name: str
     expression: str
     description: Optional[str] = None
-    isHidden: bool
+    isHidden: Optional[bool] = False
 
 
 class PowerBITableSource(BaseModel):
