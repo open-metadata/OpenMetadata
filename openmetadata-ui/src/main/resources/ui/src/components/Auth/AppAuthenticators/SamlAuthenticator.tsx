@@ -26,9 +26,7 @@
 import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
 import {
@@ -64,12 +62,11 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const login = async () => {
-      if (config.idp.authorityUrl) {
-        const redirectUri = `${window.location.origin}${ROUTES.SAML_CALLBACK}`;
-        window.location.href = `${config.idp.authorityUrl}?redirectUri=${redirectUri}`;
-      } else {
-        showErrorToast('SAML IDP Authority URL is not configured.');
-      }
+      // Use unified auth endpoint for SAML
+      const redirectUri = `${window.location.origin}/callback`;
+      window.location.href = `/api/v1/auth/login?redirectUri=${encodeURIComponent(
+        redirectUri
+      )}`;
     };
 
     const logout = async () => {

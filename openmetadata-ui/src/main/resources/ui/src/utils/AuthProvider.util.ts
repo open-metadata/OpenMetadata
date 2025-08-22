@@ -39,8 +39,9 @@ import { setOidcToken } from './LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
-// 1 minutes for client auth approach
-export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
+// 5 seconds for testing (normally 1 minute)
+// TODO: Revert to 1 * 60 * 1000 after testing
+export const EXPIRY_THRESHOLD_MILLES = 5 * 1000;
 
 const subPath = getBasePath();
 

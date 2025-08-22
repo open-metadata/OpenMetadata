@@ -29,6 +29,7 @@ export interface AccessTokenResponse {
 }
 
 const apiPath = '/users';
+const authApiPath = '/api/v1/auth';
 
 export const basicAuthRegister = async (payload: RegistrationRequest) => {
   const response = await axiosClient.post(`${apiPath}/signup`, payload);
@@ -37,12 +38,37 @@ export const basicAuthRegister = async (payload: RegistrationRequest) => {
 };
 
 export const basicAuthSignIn = async (payload: LoginRequest) => {
-  const response = await axiosClient.post<
-    LoginRequest,
-    AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/login`, payload);
+  // Create a hidden form and submit it to avoid password in URL
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `${authApiPath}/login`;
+  form.style.display = 'none';
 
-  return response.data;
+  const emailInput = document.createElement('input');
+  emailInput.name = 'email';
+  emailInput.value = payload.email;
+  form.appendChild(emailInput);
+
+  const passwordInput = document.createElement('input');
+  passwordInput.name = 'password';
+  passwordInput.value = payload.password || '';
+  form.appendChild(passwordInput);
+
+  const redirectInput = document.createElement('input');
+  redirectInput.name = 'redirectUri';
+  redirectInput.value = window.location.origin + '/callback';
+  form.appendChild(redirectInput);
+
+  document.body.appendChild(form);
+  form.submit();
+
+  return {
+    accessToken: '',
+    refreshToken: '',
+    tokenType: '',
+    expiryDuration: 0,
+    email: payload.email,
+  };
 };
 
 export const generatePasswordResetLink = async (email: string) => {
@@ -69,12 +95,67 @@ export const confirmRegistration = async (token: string) => {
 };
 
 export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
-  const response = await axiosClient.post<
-    TokenRefreshRequest,
-    AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/refresh`, payload);
+  // Starting token refresh with iframe
 
-  return response.data;
+  // For token refresh, we'll use an iframe to avoid page reload
+  return new Promise<AccessTokenResponse>((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.name = 'auth_refresh_frame';
+
+    const redirectUri = encodeURIComponent(
+      window.location.origin + '/silent-callback'
+    );
+    const refreshUrl = `${authApiPath}/refresh?refreshToken=${encodeURIComponent(
+      payload.refreshToken as string
+    )}&redirectUri=${redirectUri}`;
+
+    // Creating iframe with URL
+    iframe.src = refreshUrl;
+
+    // Set up message listener for the response
+    const messageHandler = (event: MessageEvent) => {
+      // Received message in iframe handler
+
+      if (event.origin !== window.location.origin) {
+        // Ignoring message from different origin
+
+        return;
+      }
+
+      if (event.data.type === 'auth_refresh_success') {
+        // Token refresh successful via iframe
+        window.removeEventListener('message', messageHandler);
+        document.body.removeChild(iframe);
+        resolve({
+          accessToken: event.data.accessToken,
+          refreshToken: event.data.refreshToken,
+          tokenType: 'Bearer',
+          expiryDuration: 3600,
+          email: event.data.email || '',
+        });
+      } else if (event.data.type === 'auth_refresh_error') {
+        // Token refresh failed via iframe
+        window.removeEventListener('message', messageHandler);
+        document.body.removeChild(iframe);
+        reject(new Error(event.data.error));
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
+    document.body.appendChild(iframe);
+    // Iframe appended to body, waiting for response
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      // Token refresh timeout after 10 seconds
+      window.removeEventListener('message', messageHandler);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+      reject(new Error('Token refresh timeout'));
+    }, 10000);
+  });
 };
 
 export const refreshSAMLToken = async (payload: TokenRefreshRequest) => {
@@ -102,7 +183,14 @@ export const generateRandomPwd = async () => {
  * Logout a User(Only called for saml and basic Auth)
  */
 export const logoutUser = async (payload: LogoutRequest) => {
-  const response = await axiosClient.post(`${apiPath}/logout`, payload);
+  const logoutRedirectUrl = encodeURIComponent(
+    window.location.origin + '/signin'
+  );
+  window.location.href = `${authApiPath}/logout?token=${encodeURIComponent(
+    payload.token as string
+  )}&refreshToken=${encodeURIComponent(
+    payload.refreshToken as string
+  )}&logoutRedirectUrl=${logoutRedirectUrl}`;
 
-  return response.data;
+  return {};
 };

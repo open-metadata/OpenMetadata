@@ -30,7 +30,6 @@ import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
@@ -50,7 +49,7 @@ public class SamlSettingsHolder {
     return new SamlSettingsHolder();
   }
 
-  public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)
+  public void initDefaultSettings()
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
         SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration();

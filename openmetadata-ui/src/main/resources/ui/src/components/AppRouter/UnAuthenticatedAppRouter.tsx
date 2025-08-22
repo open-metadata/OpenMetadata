@@ -21,6 +21,8 @@ import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
+import SilentAuthCallback from '../Auth/Callbacks/SilentAuthCallback';
+import UnifiedAuthCallback from '../Auth/Callbacks/UnifiedAuthCallback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
@@ -56,6 +58,10 @@ export const UnAuthenticatedAppRouter = () => {
       case AuthProvider.Auth0: {
         return Auth0Callback;
       }
+      case AuthProvider.Basic:
+      case AuthProvider.LDAP: {
+        return UnifiedAuthCallback;
+      }
       default: {
         return null;
       }
@@ -71,6 +77,10 @@ export const UnAuthenticatedAppRouter = () => {
       <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
       {CallbackComponent && (
         <Route element={<CallbackComponent />} path={ROUTES.CALLBACK} />
+      )}
+      {/* Silent callback for token refresh */}
+      {isBasicAuthProvider && (
+        <Route element={<SilentAuthCallback />} path={ROUTES.SILENT_CALLBACK} />
       )}
       {!isSigningUp && (
         <Route

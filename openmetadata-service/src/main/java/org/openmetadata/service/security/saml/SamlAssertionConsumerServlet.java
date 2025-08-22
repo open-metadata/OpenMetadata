@@ -150,8 +150,9 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
 
   private String buildBaseRequestUrl(HttpServletRequest req) {
     // In case of IDP initiated one it needs to be built on fly, since the session might not exist
+    // Use unified callback endpoint
     return String.format(
-        "%s://%s:%s/saml/callback", req.getScheme(), req.getServerName(), req.getServerPort());
+        "%s://%s:%s/callback", req.getScheme(), req.getServerName(), req.getServerPort());
   }
 
   private JwtResponse getJwtResponseWithRefresh(

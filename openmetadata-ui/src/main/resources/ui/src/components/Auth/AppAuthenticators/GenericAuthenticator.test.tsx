@@ -81,7 +81,7 @@ describe('GenericAuthenticator', () => {
     expect(setIsAuthenticated).toHaveBeenCalledWith(false);
     expect(setIsSigningUp).toHaveBeenCalledWith(true);
     expect(locationAssign).toHaveBeenCalledWith(
-      expect.stringContaining('api/v1/auth/login?redirectUri=')
+      expect.stringContaining('/api/v1/auth/login?redirectUri=')
     );
   });
 

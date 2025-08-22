@@ -61,7 +61,6 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -89,7 +88,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpEnabled;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config) {
+  public void init() {
     if (SecurityConfigurationManager.getInstance()
             .getCurrentAuthConfig()
             .getProvider()
@@ -458,7 +457,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                 getRoleListFromUser(storedUser),
                 !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
-                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
+                60, // TODO: For testing, reduced to 60 seconds. Revert to
+                // SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime()
                 false,
                 ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();

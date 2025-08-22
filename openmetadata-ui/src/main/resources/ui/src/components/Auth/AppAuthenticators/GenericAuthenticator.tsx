@@ -28,7 +28,7 @@ export const GenericAuthenticator = forwardRef(
       setIsAuthenticated(false);
       setIsSigningUp(true);
       const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
-      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
+      window.location.assign(`/api/v1/auth/login?redirectUri=${redirectUri}`);
     };
 
     const handleLogout = async () => {

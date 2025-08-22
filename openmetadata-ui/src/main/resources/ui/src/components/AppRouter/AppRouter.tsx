@@ -26,6 +26,7 @@ import SamlCallback from '../../pages/SamlCallback';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
+import SilentAuthCallback from '../Auth/Callbacks/SilentAuthCallback';
 import Loader from '../common/Loader/Loader';
 
 const AppRouter = () => {
@@ -105,6 +106,8 @@ const AppRouter = () => {
        */}
       <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
       <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
+      {/* Silent callback for token refresh - must be available regardless of auth state */}
+      <Route element={<SilentAuthCallback />} path={ROUTES.SILENT_CALLBACK} />
       {isAuthenticated ? (
         <Route element={<AppContainer />} path="*" />
       ) : (

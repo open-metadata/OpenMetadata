@@ -312,10 +312,11 @@ export const AuthProvider = ({
    */
   const startTokenExpiryTimer = () => {
     // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
-    );
+    const token = getOidcToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
     const refreshToken = getRefreshToken();
+
+    // Starting timer check
 
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
@@ -324,28 +325,61 @@ export const AuthProvider = ({
         authConfig?.provider as AuthProviderEnum
       ) === -1;
 
+    // Should start expiry check
+
     if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
       clearTimeout(timeoutId);
+      // Setting timeout for token refresh
 
       const timerId = setTimeout(() => {
+        // Timer triggered, initiating token refresh
         tokenService.current?.refreshToken();
       }, timeoutExpiry);
       setTimeoutId(Number(timerId));
+    } else {
+      // Timer NOT started
     }
   };
 
+  // Set up token renewal when authenticator is ready
+  // We need to check this in a different way since React doesn't track ref changes
   useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
+    // Use a small delay to ensure authenticator ref is set
+    const setupTokenRenewal = () => {
+      if (authenticatorRef.current?.renewIdToken) {
+        // Setting up token renewal with authenticator
+        tokenService.current.updateRenewToken(
+          authenticatorRef.current.renewIdToken
+        );
+        // After every refresh success, start timer again
+        tokenService.current.updateRefreshSuccessCallback(
+          startTokenExpiryTimer
+        );
+
+        return true;
+      }
+
+      return false;
+    };
+
+    // Try immediately
+    if (!setupTokenRenewal()) {
+      // If not ready, try again after a short delay
+      const retryInterval = setInterval(() => {
+        if (setupTokenRenewal()) {
+          clearInterval(retryInterval);
+        }
+      }, 100);
+
+      // Clean up after 5 seconds if still not ready
+      setTimeout(() => clearInterval(retryInterval), 5000);
+
+      return () => clearInterval(retryInterval);
     }
-  }, [authenticatorRef.current?.renewIdToken]);
+  }, [authConfig?.provider]); // Re-run when provider changes
 
   /**
    * Performs cleanup around timers
@@ -366,6 +400,12 @@ export const AuthProvider = ({
     async (user: OidcUser) => {
       setApplicationLoading(true);
       setIsAuthenticated(true);
+
+      // Start token expiry timer immediately after login success
+      // This ensures refresh works even if user fetch fails
+      // Starting token expiry timer after successful login
+      startTokenExpiryTimer();
+
       const fields =
         authConfig?.provider === AuthProviderEnum.Basic
           ? userAPIQueryFields + ',' + isEmailVerifyField
@@ -388,10 +428,9 @@ export const AuthProvider = ({
           await fetchDomainList();
 
           handledVerifiedUser();
-          // Start expiry timer on successful login
-          startTokenExpiryTimer();
         }
       } catch (error) {
+        // Error in handleSuccessfulLogin
         const err = error as AxiosError;
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
@@ -405,8 +444,7 @@ export const AuthProvider = ({
             navigate(ROUTES.SIGNUP);
           }
         } else {
-          // eslint-disable-next-line no-console
-          console.error(err);
+          // Error occurred
           showErrorToast(err);
           resetUserDetails();
           navigate(ROUTES.SIGNIN);
@@ -760,7 +798,8 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
-    startTokenExpiryTimer();
+    // Don't start timer here - wait for successful login
+    // startTokenExpiryTimer();
     initializeAxiosInterceptors();
 
     return cleanup;

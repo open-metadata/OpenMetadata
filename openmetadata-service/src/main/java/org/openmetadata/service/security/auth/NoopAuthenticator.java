@@ -6,13 +6,12 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.FORBIDD
 import jakarta.ws.rs.core.Response;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 
 public class NoopAuthenticator implements AuthenticatorHandler {
   @Override
-  public void init(OpenMetadataApplicationConfig config) {
+  public void init() {
     /* deprecated unused */
   }
 

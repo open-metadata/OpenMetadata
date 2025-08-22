@@ -27,6 +27,7 @@ const REFRESHED_KEY = 'tokenRefreshed';
 class TokenService {
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
+  storageEventListener: ((event: StorageEvent) => void) | null = null;
   private static _instance: TokenService;
 
   constructor() {
@@ -57,35 +58,53 @@ class TokenService {
   }
 
   public updateRenewToken(renewToken: RenewTokenCallback) {
+    // updateRenewToken called
     this.renewToken = renewToken;
   }
 
   public updateRefreshSuccessCallback(callback: () => void) {
-    window.addEventListener('storage', (event) => {
+    // updateRefreshSuccessCallback called
+    this.refreshSuccessCallback = callback;
+
+    // Remove any existing listener to avoid duplicates
+    if (this.storageEventListener) {
+      window.removeEventListener('storage', this.storageEventListener);
+    }
+
+    // Create new listener
+    this.storageEventListener = (event: StorageEvent) => {
       if (event.key === REFRESHED_KEY && event.newValue === 'true') {
+        // Storage event detected - token refreshed in another tab
         callback(); // Notify the tab that the token was refreshed
         // Clear once notified
         localStorage.removeItem(REFRESHED_KEY);
       }
-    });
+    };
+
+    window.addEventListener('storage', this.storageEventListener);
   }
 
   // Refresh the token if it is expired
   async refreshToken() {
-    // eslint-disable-next-line no-console
-    console.timeLog('refreshToken', 'Token initiated refresh');
+    // refreshToken called
 
     if (this.isTokenUpdateInProgress()) {
+      // Refresh already in progress, skipping
+
       return;
     }
 
     const token = getOidcToken();
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
 
+    // Check token status
+
     // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
     if (isExpired || timeoutExpiry <= 0) {
+      // Token needs refresh, calling fetchNewToken
       // Logic to refresh the token
       const newToken = await this.fetchNewToken();
+      // fetchNewToken completed
       newToken && this.refreshSuccessCallback && this.refreshSuccessCallback();
       // To update all the tabs on updating channel token
       // Notify all tabs that the token has been refreshed
@@ -93,6 +112,8 @@ class TokenService {
 
       return newToken;
     } else {
+      // Token does not need refresh yet
+
       return null;
     }
   }
@@ -100,11 +121,17 @@ class TokenService {
   // Call renewal method according to the provider
   async fetchNewToken() {
     let response: string | AccessTokenResponse | null | void = null;
+    // fetchNewToken called
+
     if (typeof this.renewToken === 'function') {
       try {
+        // Setting refresh in progress
         this.setRefreshInProgress();
+        // Calling renewToken function
         response = await this.renewToken();
+        // renewToken completed
       } catch (error) {
+        // Error during token refresh
         // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message !== 'Frame window timed out') {
           // Perform logout for any error
@@ -120,6 +147,8 @@ class TokenService {
         // For Callback based refresh token, response will be void
         response && this.clearRefreshInProgress();
       }
+    } else {
+      // renewToken is not a function
     }
 
     return response;

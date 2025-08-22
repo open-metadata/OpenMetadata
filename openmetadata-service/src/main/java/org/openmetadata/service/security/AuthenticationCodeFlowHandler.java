@@ -205,7 +205,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
-    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+    // Defer client authentication initialization to avoid network calls during startup
+    this.clientAuthentication = null; // Will be initialized lazily when needed
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -609,6 +610,20 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return map;
   }
 
+  /**
+   * Get client authentication, initializing it lazily if needed
+   */
+  private ClientAuthentication getClientAuthenticationLazy() {
+    if (clientAuthentication == null) {
+      synchronized (this) {
+        if (clientAuthentication == null) {
+          clientAuthentication = getClientAuthentication(client.getConfiguration());
+        }
+      }
+    }
+    return clientAuthentication;
+  }
+
   private ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
     ClientID clientID = new ClientID(configuration.getClientId());
     ClientAuthentication clientAuthenticationMechanism = null;
@@ -910,11 +925,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private TokenRequest createTokenRequest(final AuthorizationGrant grant) {
-    if (clientAuthentication != null) {
+    ClientAuthentication auth = getClientAuthenticationLazy();
+    if (auth != null) {
       return new TokenRequest(
-          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),
-          this.clientAuthentication,
-          grant);
+          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(), auth, grant);
     } else {
       return new TokenRequest(
           client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),

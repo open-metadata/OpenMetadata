@@ -15,10 +15,7 @@ import { AxiosError } from 'axios';
 import { createContext, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  HTTP_STATUS_CODE,
-  LOGIN_FAILED_ERROR,
-} from '../../../constants/Auth.constants';
+import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
@@ -35,15 +32,11 @@ import {
   showInfoToast,
   showSuccessToast,
 } from '../../../utils/ToastUtils';
-import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
-import { toLower } from 'lodash';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
   getRefreshToken,
-  setOidcToken,
-  setRefreshToken,
 } from '../../../utils/LocalStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
@@ -87,36 +80,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      try {
-        const response = await basicAuthSignIn({
-          email,
-          password: getBase64EncodedString(password),
-        });
-
-        if (response.accessToken) {
-          setRefreshToken(response.refreshToken);
-          setOidcToken(response.accessToken);
-
-          handleSuccessfulLogin({
-            id_token: response.accessToken,
-            profile: {
-              email: toLower(email),
-              name: '',
-              picture: '',
-              sub: '',
-            },
-            scope: '',
-          });
-        }
-
-        // reset web analytic session
-        resetWebAnalyticSession();
-      } catch (error) {
-        const err = error as AxiosError<{ code: number; message: string }>;
-
-        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
-        handleFailedLogin();
-      }
+      await basicAuthSignIn({
+        email,
+        password: getBase64EncodedString(password),
+      });
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unauthorized-user'));
     }
@@ -167,10 +134,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         await logoutUser({ token, refreshToken });
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        // This will cleanup the application state and redirect to login page
         handleSuccessfulLogout();
       }
+    } else {
+      handleSuccessfulLogout();
     }
   };
 

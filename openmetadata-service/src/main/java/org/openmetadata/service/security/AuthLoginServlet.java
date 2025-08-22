@@ -14,4 +14,10 @@ public class AuthLoginServlet extends HttpServlet {
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
     handler.handleLogin(req, resp);
   }
+
+  @Override
+  protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleLogin(req, resp);
+  }
 }

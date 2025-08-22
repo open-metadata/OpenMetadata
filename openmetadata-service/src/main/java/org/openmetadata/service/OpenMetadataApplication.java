@@ -126,9 +126,7 @@ import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
 import org.openmetadata.service.security.AuthRefreshServlet;
-import org.openmetadata.service.security.AuthServeletHandlerFactory;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
@@ -333,11 +331,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     authorizer.init(catalogConfig);
 
     // authenticationHandler Handles auth related activities
-    authenticatorHandler.init(catalogConfig);
+    authenticatorHandler.init();
 
     registerMicrometerFilter(environment, catalogConfig.getEventMonitorConfiguration());
 
-    registerSamlServlets(catalogConfig, environment);
+    registerSamlServlets(environment);
 
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
@@ -386,7 +384,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
-    AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
     // Set up a Session Manager
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     SessionHandler sessionHandler = contextHandler.getSessionHandler();
@@ -399,11 +396,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
     cookieConfig.setSecure(isHttps(config));
-    cookieConfig.setMaxAge(
-        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+
+    // Handle session configuration safely
+    int sessionExpiry = 3600; // Default 1 hour
+    if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null
+        && SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getOidcConfiguration()
+            != null) {
+      sessionExpiry =
+          SecurityConfigurationManager.getInstance()
+              .getCurrentAuthConfig()
+              .getOidcConfiguration()
+              .getSessionExpiry();
+    }
+
+    cookieConfig.setMaxAge(sessionExpiry);
     cookieConfig.setPath("/");
-    sessionHandler.setMaxInactiveInterval(
-        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+    sessionHandler.setMaxInactiveInterval(sessionExpiry);
 
     // Register Servlets
     ServletHolder authLoginHolder = new ServletHolder(new AuthLoginServlet());
@@ -502,8 +510,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     return originalDAO;
   }
 
-  private void registerSamlServlets(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment)
+  private void registerSamlServlets(Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
     // Ensure we have a session handler
@@ -518,7 +525,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       }
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
-      SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+      SamlSettingsHolder.getInstance().initDefaultSettings();
       contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
       contextHandler.addServlet(
           new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
@@ -617,7 +624,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment) {
     try {
       LOG.info("Starting authentication system reinitialization");
-      AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
+      // Reset the handler to force lazy reinitialization
+      AuthServeletHandlerRegistry.resetHandler();
 
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
@@ -629,20 +637,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Re-register authenticator with new config
       registerAuthenticator(SecurityConfigurationManager.getInstance());
-      reRegisterAuthorizer(config, environment);
+      reRegisterAuthorizer();
       config.setAuthenticationConfiguration(
           SecurityConfigurationManager.getInstance().getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      authenticatorHandler.init();
 
-      // Re-register servlets
-      if (AuthServeletHandlerFactory.getHandler(config) instanceof AuthenticationCodeFlowHandler) {
-        AuthenticationCodeFlowHandler.getInstance(
-                SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-                SecurityConfigurationManager.getInstance().getCurrentAuthzConfig())
-            .updateConfiguration(
-                SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-                SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
-      }
+      // Update configuration for AuthenticationCodeFlowHandler if it's in use
+      // This will be initialized lazily when first accessed
+      LOG.debug("Authentication handler will be reinitialized on next request");
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null
@@ -651,7 +653,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               .getProvider()
               .equals(AuthProvider.SAML)) {
         LOG.info("Reinitializing SAML settings during authentication reinitialization");
-        registerSamlServlets(config, environment);
+        registerSamlServlets(environment);
       }
 
       LOG.info("Successfully reinitialized authentication system");
@@ -702,8 +704,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void reRegisterAuthorizer(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment)
+  private void reRegisterAuthorizer()
       throws NoSuchMethodException,
           ClassNotFoundException,
           IllegalAccessException,

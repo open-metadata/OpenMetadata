@@ -18,6 +18,7 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 
 import io.dropwizard.core.setup.Environment;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -39,18 +40,12 @@ public class SecurityConfigurationManager {
   private OpenMetadataApplication application;
   private Environment environment;
   private OpenMetadataApplicationConfig config;
-  @Getter private AuthenticatorHandler authenticatorHandler;
+  @Setter @Getter private AuthenticatorHandler authenticatorHandler;
 
-  private SecurityConfigurationManager() {
-    // Private constructor
-  }
+  private SecurityConfigurationManager() {}
 
   public static SecurityConfigurationManager getInstance() {
     return Holder.INSTANCE;
-  }
-
-  public void setAuthenticatorHandler(AuthenticatorHandler handler) {
-    this.authenticatorHandler = handler;
   }
 
   public void initialize(
@@ -67,19 +62,10 @@ public class SecurityConfigurationManager {
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
       LOG.info("Loaded security configuration from database");
     } catch (Exception e) {
-      // If not in database, use the one from YAML
       currentAuthConfig = config.getAuthenticationConfiguration();
       currentAuthzConfig = config.getAuthorizerConfiguration();
       LOG.info("Using security configuration from YAML");
     }
-  }
-
-  public AuthenticationConfiguration getCurrentAuthConfig() {
-    return currentAuthConfig;
-  }
-
-  public AuthorizerConfiguration getCurrentAuthzConfig() {
-    return currentAuthzConfig;
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -114,7 +100,7 @@ public class SecurityConfigurationManager {
     if (previousSecurityConfig != null) {
       currentAuthConfig = previousSecurityConfig.getAuthenticationConfiguration();
       currentAuthzConfig = previousSecurityConfig.getAuthorizerConfiguration();
-      LOG.info("Rolled back to previous security configuration");
+      // May need to save back to SettingsCache
     }
   }
 }

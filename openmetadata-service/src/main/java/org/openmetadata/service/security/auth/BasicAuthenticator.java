@@ -82,7 +82,6 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
@@ -106,10 +105,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpAvailable;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config) {
+  public void init() {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
+    this.authorizerConfiguration =
+        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
     this.isSelfSignUpAvailable =
         SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getEnableSelfSignup();
   }
@@ -389,7 +389,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
                 getRoleListFromUser(storedUser),
                 !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
-                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
+                60, // TODO: For testing, reduced to 60 seconds. Revert to
+                // SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime()
                 false,
                 ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();

@@ -27,7 +27,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 public interface AuthenticatorHandler {
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
-  void init(OpenMetadataApplicationConfig config);
+  void init();
 
   /**
    * Reload the authentication configuration without restarting the server
@@ -35,7 +35,7 @@ public interface AuthenticatorHandler {
    */
   default void reload(OpenMetadataApplicationConfig config) {
     // Default implementation reinitializes
-    init(config);
+    init();
   }
 
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;

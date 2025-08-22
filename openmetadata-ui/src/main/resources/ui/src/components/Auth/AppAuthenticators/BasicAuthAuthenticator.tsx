@@ -20,10 +20,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
-import {
-  AccessTokenResponse,
-  getAccessTokenOnExpiry,
-} from '../../../rest/auth-API';
+import { getAccessTokenOnExpiry } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -44,37 +41,45 @@ const BasicAuthenticator = forwardRef(
     const { t } = useTranslation();
     const { authConfig, isApplicationLoading } = useApplicationStore();
 
-    const handleSilentSignIn =
-      useCallback(async (): Promise<AccessTokenResponse> => {
-        const refreshToken = getRefreshToken();
+    const handleSilentSignIn = useCallback(async () => {
+      const refreshToken = getRefreshToken();
 
-        if (
-          authConfig?.provider !== AuthProvider.Basic &&
-          authConfig?.provider !== AuthProvider.LDAP
-        ) {
-          return Promise.reject(
-            new Error(t('message.authProvider-is-not-basic'))
-          );
-        }
+      if (
+        authConfig?.provider !== AuthProvider.Basic &&
+        authConfig?.provider !== AuthProvider.LDAP
+      ) {
+        return Promise.reject(
+          new Error(t('message.authProvider-is-not-basic'))
+        );
+      }
 
-        if (!refreshToken) {
-          return Promise.reject(new Error(t('message.no-token-available')));
-        }
+      if (!refreshToken) {
+        return Promise.reject(new Error(t('message.no-token-available')));
+      }
 
-        const response = await getAccessTokenOnExpiry({
-          refreshToken: refreshToken as string,
-        });
+      const response = await getAccessTokenOnExpiry({
+        refreshToken: refreshToken as string,
+      });
 
+      // Update the tokens in localStorage
+      setOidcToken(response.accessToken);
+      if (response.refreshToken) {
         setRefreshToken(response.refreshToken);
-        setOidcToken(response.accessToken);
+      }
 
-        return Promise.resolve(response);
-      }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);
+      return response;
+    }, [authConfig, t]);
 
-    useImperativeHandle(ref, () => ({
-      invokeLogout: handleLogout,
-      renewIdToken: handleSilentSignIn,
-    }));
+    useImperativeHandle(
+      ref,
+      () => {
+        return {
+          invokeLogout: handleLogout,
+          renewIdToken: handleSilentSignIn,
+        };
+      },
+      [handleLogout, handleSilentSignIn]
+    );
 
     /**
      * isApplicationLoading is true when the application is loading in AuthProvider

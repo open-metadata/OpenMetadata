@@ -20,23 +20,22 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Unified logout servlet that handles logout for all authentication types.
+ * Unified callback servlet that handles authentication callbacks for all authentication types.
  * Routes to the appropriate handler based on the current authentication configuration.
  */
-@WebServlet("/api/v1/auth/logout")
+@WebServlet("/api/v1/auth/callback")
 @Slf4j
-public class AuthLogoutServlet extends HttpServlet {
+public class AuthCallbackApiServlet extends HttpServlet {
+
+  @Override
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleCallback(req, resp);
+  }
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
-    handler.handleLogout(req, resp);
-  }
-
-  @Override
-  protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-    // Support GET for logout as well for compatibility
-    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
-    handler.handleLogout(req, resp);
+    handler.handleCallback(req, resp);
   }
 }

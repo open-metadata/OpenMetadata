@@ -68,11 +68,18 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
         TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
 
     // Verify required fields are present
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider(), auth.getProvider());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProviderName(), auth.getProviderName());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getClientType(), auth.getClientType());
     assertEquals(
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getEnableSelfSignup(), auth.getEnableSelfSignup());
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider(),
+        auth.getProvider());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProviderName(),
+        auth.getProviderName());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getClientType(),
+        auth.getClientType());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getEnableSelfSignup(),
+        auth.getEnableSelfSignup());
     assertEquals(
         SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProviderName(),
         auth.getProviderName());
@@ -88,17 +95,28 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     assertEquals(
         config.getAuthenticationConfiguration().getJwtPrincipalClaimsMapping(),
         auth.getJwtPrincipalClaimsMapping());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getClientId(), auth.getClientId());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getAuthority(), auth.getAuthority());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getCallbackUrl(), auth.getCallbackUrl());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getClientId(),
+        auth.getClientId());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getAuthority(),
+        auth.getAuthority());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getCallbackUrl(),
+        auth.getCallbackUrl());
 
     // For SAML, verify samlConfiguration is present but only contains authorityUrl
     if (auth.getProvider().name().equals("SAML")
-        && SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration() != null) {
+        && SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration()
+            != null) {
       assertNotNull(auth.getSamlConfiguration());
       assertNotNull(auth.getSamlConfiguration().getIdp());
       assertEquals(
-              SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration().getIdp().getAuthorityUrl(),
+          SecurityConfigurationManager.getInstance()
+              .getCurrentAuthConfig()
+              .getSamlConfiguration()
+              .getIdp()
+              .getAuthorityUrl(),
           auth.getSamlConfiguration().getIdp().getAuthorityUrl());
     }
 
@@ -106,9 +124,13 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     assertNull(auth.getLdapConfiguration());
     assertNull(auth.getOidcConfiguration());
     assertTrue(auth.getPublicKeyUrls().isEmpty());
-    assertEquals(SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getResponseType(), auth.getResponseType());
     assertEquals(
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getTokenValidationAlgorithm(),
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getResponseType(),
+        auth.getResponseType());
+    assertEquals(
+        SecurityConfigurationManager.getInstance()
+            .getCurrentAuthConfig()
+            .getTokenValidationAlgorithm(),
         auth.getTokenValidationAlgorithm());
   }
 
