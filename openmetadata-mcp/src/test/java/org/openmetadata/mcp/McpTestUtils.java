@@ -132,11 +132,12 @@ public class McpTestUtils {
   /**
    * Creates a search metadata tool call.
    */
-  public static Map<String, Object> createSearchMetadataToolCall(String query, int limit) {
+  public static Map<String, Object> createSearchMetadataToolCall(
+      String query, int limit, String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
-    arguments.put("entity_type", "table");
+    arguments.put("entity_type", entityType);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("search_metadata", arguments);

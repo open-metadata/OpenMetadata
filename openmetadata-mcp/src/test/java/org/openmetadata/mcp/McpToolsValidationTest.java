@@ -344,8 +344,9 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
   void testSearchMetadataTool() throws Exception {
     System.out.println("Testing search_metadata tool...");
 
-    // Search for the test table we created
-    Map<String, Object> toolCall = McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5);
+    // Search for the test table we created≥
+    Map<String, Object> toolCall =
+        McpTestUtils.createSearchMetadataToolCall("mcp_test_table", 5, Entity.TABLE);
     JsonNode result = executeToolCall(toolCall);
 
     validateSearchMetadataResponse(result, "mcp_test_table");
@@ -446,7 +447,8 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     System.out.println("Running comprehensive validation of all MCP tools...");
 
     // Validate that our test entities can be found via search
-    Map<String, Object> searchCall = McpTestUtils.createSearchMetadataToolCall("mcp_test", 10);
+    Map<String, Object> searchCall =
+        McpTestUtils.createSearchMetadataToolCall("mcp_test", 10, Entity.TABLE);
     JsonNode searchResult = executeToolCall(searchCall);
     validateSearchMetadataResponse(searchResult, "mcp_test");
 
@@ -458,7 +460,7 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
 
     // Validate user search works
     Map<String, Object> userSearchCall =
-        McpTestUtils.createSearchMetadataToolCall(testUser.getName(), 5);
+        McpTestUtils.createSearchMetadataToolCall(testUser.getName(), 5, Entity.USER);
     JsonNode userSearchResult = executeToolCall(userSearchCall);
     validateSearchMetadataResponse(userSearchResult, testUser.getName());
 
