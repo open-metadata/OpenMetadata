@@ -15,8 +15,9 @@ import { Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ import Table from '../../components/common/Table/Table';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
@@ -39,10 +41,14 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { ServicesType } from '../../interface/service.interface';
+import { searchQuery } from '../../rest/searchAPI';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import {
@@ -96,10 +102,68 @@ function ServiceMainTabContent({
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const { permissions } = usePermissionProvider();
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
   const tags = getTagsWithoutTier(serviceDetails?.tags ?? []);
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.serviceSearch as string | undefined;
+  }, [location.search]);
+
+  const getSearchIndexForService = (
+    serviceCategory: ServiceTypes
+  ): SearchIndex => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return SearchIndex.DATABASE;
+      case ServiceCategory.MESSAGING_SERVICES:
+        return SearchIndex.TOPIC;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return SearchIndex.DASHBOARD;
+      case ServiceCategory.PIPELINE_SERVICES:
+        return SearchIndex.PIPELINE;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return SearchIndex.MLMODEL;
+      case ServiceCategory.STORAGE_SERVICES:
+        return SearchIndex.CONTAINER;
+      case ServiceCategory.SEARCH_SERVICES:
+        return SearchIndex.SEARCH_INDEX;
+      case ServiceCategory.API_SERVICES:
+        return SearchIndex.API_COLLECTION_INDEX;
+      default:
+        return SearchIndex.DATABASE;
+    }
+  };
+
+  const getServiceFieldForQuery = (serviceCategory: ServiceTypes): string => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.MESSAGING_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.PIPELINE_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.STORAGE_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.SEARCH_SERVICES:
+        return 'service.fullyQualifiedName';
+      case ServiceCategory.API_SERVICES:
+        return 'service.fullyQualifiedName';
+      default:
+        return 'service.fullyQualifiedName';
+    }
+  };
 
   /**
    * Formulates updated tags and updates table entity data for API call
@@ -168,6 +232,80 @@ function ServiceMainTabContent({
     [pageData, serviceCategory]
   );
 
+  const searchServiceData = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      if (!searchValue.trim()) {
+        return;
+      }
+
+      try {
+        const response = await searchQuery({
+          query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      [getServiceFieldForQuery(serviceCategory)]:
+                        serviceDetails.fullyQualifiedName,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          searchIndex: getSearchIndexForService(serviceCategory),
+          includeDeleted: showDeleted,
+          trackTotalHits: true,
+        });
+
+        const searchData = response.hits.hits.map(
+          (hit) => hit._source
+        ) as ServicePageData[];
+        const total = response.hits.total.value;
+
+        setPageData(searchData);
+        pagingInfo.handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      serviceCategory,
+      serviceDetails.fullyQualifiedName,
+      showDeleted,
+      pagingInfo,
+    ]
+  );
+
+  useEffect(() => {
+    setPageData(data);
+  }, [data]);
+
+  const onServiceSearch = (value: string) => {
+    const currentParams = QueryString.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    navigate({
+      search: QueryString.stringify({
+        ...currentParams,
+        serviceSearch: isEmpty(value) ? undefined : value,
+        currentPage: undefined, // Reset to first page when searching
+      }),
+    });
+    if (value && value.trim()) {
+      searchServiceData(value);
+    } else {
+      setPageData(data);
+    }
+  };
+
   const editDisplayNamePermission = useMemo(() => {
     if (isVersionPage) {
       return false;
@@ -197,15 +335,39 @@ function ServiceMainTabContent({
       getServiceMainTabColumns(
         serviceCategory,
         editDisplayNamePermission,
-        handleDisplayNameUpdate
+        handleDisplayNameUpdate,
+        searchValue
       ),
-    [serviceCategory, handleDisplayNameUpdate, editDisplayNamePermission]
+    [
+      serviceCategory,
+      handleDisplayNameUpdate,
+      editDisplayNamePermission,
+      searchValue,
+    ]
   );
 
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]
   );
+
+  const handleServicePageChange = useCallback(
+    ({ currentPage }: { currentPage: number }) => {
+      if (searchValue) {
+        searchServiceData(searchValue, currentPage);
+      } else {
+        pagingHandler({ currentPage, cursorType: undefined });
+      }
+    },
+    [searchValue, pagingHandler, searchServiceData]
+  );
+
+  // Handle search when URL parameter changes
+  useEffect(() => {
+    if (searchValue && searchValue.trim()) {
+      searchServiceData(searchValue);
+    }
+  }, [searchValue, showDeleted]);
 
   const handleEditTable = () => {
     navigate({
@@ -239,8 +401,17 @@ function ServiceMainTabContent({
   );
 
   useEffect(() => {
-    setPageData(data);
-  }, [data]);
+    // Only update pageData with original data if we're not searching
+    if (!searchValue) {
+      setPageData(data);
+    }
+  }, [data, searchValue]);
+
+  useEffect(() => {
+    if (searchValue && searchValue.trim()) {
+      searchServiceData(searchValue);
+    }
+  }, [searchValue, showDeleted, searchServiceData]);
 
   return (
     <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
@@ -277,10 +448,12 @@ function ServiceMainTabContent({
                           showPagination:
                             !isUndefined(pagingInfo) &&
                             pagingInfo.showPagination,
+                          isNumberBased: Boolean(searchValue),
                           pageSize: pagingInfo.pageSize,
                           paging,
-
-                          pagingHandler: pagingHandler,
+                          pagingHandler: searchValue
+                            ? handleServicePageChange
+                            : pagingHandler,
                           onShowSizeChange: pagingInfo.handlePageSizeChange,
                         }}
                         data-testid="service-children-table"
@@ -316,6 +489,18 @@ function ServiceMainTabContent({
                         pagination={false}
                         rowKey="id"
                         scroll={TABLE_SCROLL_VALUE}
+                        searchProps={{
+                          placeholder: t('label.search-for-type', {
+                            type: t('label.entity-name', {
+                              entity: getEntityTypeFromServiceCategory(
+                                serviceCategory
+                              ).replace('Service', ''),
+                            }),
+                          }),
+                          value: searchValue,
+                          typingInterval: 500,
+                          onSearch: onServiceSearch,
+                        }}
                         size="small"
                         staticVisibleColumns={
                           COMMON_STATIC_TABLE_VISIBLE_COLUMNS
