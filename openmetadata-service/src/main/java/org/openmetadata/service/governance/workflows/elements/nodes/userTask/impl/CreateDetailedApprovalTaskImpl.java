@@ -139,8 +139,12 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
               .withAssignees(FeedMapper.formatAssignees(assignees))
               .withType(TaskType.RequestApproval)
               .withStatus(TaskStatus.Open)
-              .withOldValue("Current entity state")
-              .withSuggestion("Please review and approve the changes");
+              .withOldValue(
+                  entity.getChangeDescription() != null
+                      ? JsonUtils.pojoToJson(entity.getChangeDescription())
+                      : "{}")
+              .withSuggestion(
+                  "{\"action\":\"review_changes\",\"message\":\"Please review and approve the changes\"}");
 
       thread =
           new Thread()
