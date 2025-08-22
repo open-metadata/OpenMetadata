@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 /**
- * Rolls back an entity to its previous approved version.
+ * Rolls back an entity to its previous approved version. Always rolls back to the most
+ * recent 'Approved' status.
  */
 export interface RollbackEntityTask {
     config?: NodeConfiguration;
@@ -22,20 +23,23 @@ export interface RollbackEntityTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
-    name:     string;
-    output?:  string[];
-    subType?: string;
-    type?:    string;
+    name:                string;
+    output?:             string[];
+    outputNamespaceMap?: { [key: string]: string };
+    subType?:            string;
+    type?:               string;
 }
 
 export interface NodeConfiguration {
-    /**
-     * The status to look for when finding the previous approved version
-     */
-    rollbackToStatus?: string;
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }
