@@ -681,6 +681,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException;
 
   public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -691,7 +701,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getEntitySemantics()
         .forEach(
             rule -> {
-              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+              if (ruleName.equals(rule.getName())) {
                 rule.setEnabled(enable);
               }
             });

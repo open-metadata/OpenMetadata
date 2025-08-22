@@ -13,6 +13,7 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -105,6 +106,62 @@ public class LogicOps {
             return false; // More than one team or both team and user ownership
           }
           return true;
+        });
+
+    // Domain validation for Data Product assignment
+    // This validates that entities being assigned to Data Products have matching domains
+    jsonLogic.addOperation(
+        "validateDataProductDomainMatch",
+        (args) -> {
+          if (nullOrEmpty(args) || args.length < 2) {
+            return true; // If no data products or domains, validation passes
+          }
+
+          List<EntityReference> dataProducts =
+              JsonUtils.convertValue(args[0], new TypeReference<List<EntityReference>>() {});
+          List<EntityReference> domains =
+              JsonUtils.convertValue(args[1], new TypeReference<List<EntityReference>>() {});
+
+          if (nullOrEmpty(dataProducts) || nullOrEmpty(domains)) {
+            return true; // If no data products or domains, validation passes
+          }
+
+          // For each data product, check if its domain matches any entity domain
+          for (EntityReference dataProduct : dataProducts) {
+            try {
+              // Get the data product entity to access its domains
+              EntityInterface dpEntity =
+                  org.openmetadata.service.Entity.getEntity(
+                      org.openmetadata.service.Entity.DATA_PRODUCT,
+                      dataProduct.getId(),
+                      "domains",
+                      org.openmetadata.schema.type.Include.NON_DELETED);
+              List<EntityReference> dpDomains = dpEntity.getDomains();
+
+              if (nullOrEmpty(dpDomains)) {
+                continue; // If data product has no domains, skip validation
+              }
+
+              // Check if there's any domain overlap between entity and data product
+              boolean hasMatchingDomain =
+                  dpDomains.stream()
+                      .anyMatch(
+                          dpDomain ->
+                              domains.stream()
+                                  .anyMatch(
+                                      entityDomain ->
+                                          entityDomain.getId().equals(dpDomain.getId())));
+
+              if (!hasMatchingDomain) {
+                return false; // Domain mismatch found
+              }
+            } catch (Exception e) {
+              // If we can't fetch the data product, fail validation for safety
+              return false;
+            }
+          }
+
+          return true; // All data products have matching domains
         });
 
     // Example: {"filterReferenceByType":[{"var":"owner"},"team"]}

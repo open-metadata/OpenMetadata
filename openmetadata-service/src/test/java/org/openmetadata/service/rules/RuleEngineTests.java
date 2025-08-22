@@ -24,10 +24,12 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
@@ -38,8 +40,10 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.data.DataContractResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
@@ -48,6 +52,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
   private static TableResourceTest tableResourceTest;
   private static DataContractResourceTest dataContractResourceTest;
   private static DomainResourceTest domainResourceTest;
+  private static DataProductResourceTest dataProductResourceTest;
 
   private static final String C1 = "id";
   private static final String C2 = "name";
@@ -58,6 +63,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
   private static final String OWNERSHIP_RULE_EXC =
       "Rule [Multiple Users or Single Team Ownership] validation failed: Entity does not satisfy the rule. "
           + "Rule context: Validates that an entity has either multiple owners or a single team as the owner.";
+  private static final String DATA_PRODUCT_DOMAIN_RULE = "Data Product Domain Validation";
 
   @BeforeAll
   static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -65,6 +71,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     tableResourceTest.setup(test);
     dataContractResourceTest = new DataContractResourceTest();
     domainResourceTest = new DomainResourceTest();
+    dataProductResourceTest = new DataProductResourceTest();
   }
 
   Table getMockTable(TestInfo test) {
@@ -462,5 +469,308 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     table.withTags(List.of(TIER1_TAG_LABEL));
     RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false);
+  }
+
+  /**
+   * Helper method to create a real Domain entity for testing
+   */
+  Domain createTestDomain(String name, TestInfo test) throws IOException {
+    CreateDomain createDomain =
+        domainResourceTest
+            .createRequest(test.getDisplayName() + "_" + name)
+            .withName(name)
+            .withDescription("Test domain: " + name);
+    return domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Helper method to create a real DataProduct entity for testing
+   */
+  DataProduct createTestDataProduct(String name, List<Domain> domains, TestInfo test)
+      throws IOException {
+    String entityName = test.getDisplayName() + "_" + name;
+
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest
+            .createRequest(entityName)
+            .withName(entityName)
+            .withDescription("Test data product: " + name);
+
+    if (domains != null && !domains.isEmpty()) {
+      createDataProduct.withDomains(
+          domains.stream().map(domain -> domain.getFullyQualifiedName()).toList());
+    }
+
+    return dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Helper method to get the Data Product Domain Validation rule
+   */
+  SemanticsRule getDataProductDomainRule() {
+    List<SemanticsRule> rules =
+        SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
+            .getEntitySemantics();
+
+    return rules.stream()
+        .filter(rule -> DATA_PRODUCT_DOMAIN_RULE.equals(rule.getName()))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Data Product Domain Validation rule not found. Review the entityRulesSettings.json file."));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_RuleEnabled_MatchingDomains_ShouldPass(TestInfo test)
+      throws IOException {
+    // Create domains
+    Domain dataDomain = createTestDomain("Data", test);
+    Domain engineeringDomain = createTestDomain("Engineering", test);
+
+    // Create data products with matching domains
+    DataProduct dataProduct1 = createTestDataProduct("Product1", List.of(dataDomain), test);
+    DataProduct dataProduct2 = createTestDataProduct("Product2", List.of(engineeringDomain), test);
+
+    // Create table with domains that match the data products
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(
+                List.of(
+                    dataDomain.getFullyQualifiedName(), engineeringDomain.getFullyQualifiedName()))
+            .withDataProducts(
+                List.of(
+                    dataProduct1.getFullyQualifiedName(), dataProduct2.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should pass validation as entity domains match data product domains
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_RuleEnabled_NoMatchingDomains_ShouldFail(TestInfo test)
+      throws IOException {
+    // Create domains
+    Domain dataDomain = createTestDomain("Data", test);
+    Domain engineeringDomain = createTestDomain("Engineering", test);
+    Domain marketingDomain = createTestDomain("Marketing", test);
+
+    // Create data products with different domains than entity
+    DataProduct dataProduct1 = createTestDataProduct("Product1", List.of(dataDomain), test);
+    DataProduct dataProduct2 = createTestDataProduct("Product2", List.of(engineeringDomain), test);
+
+    // Create table with domains that don't match the data products
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(List.of(marketingDomain.getFullyQualifiedName()))
+            .withDataProducts(
+                List.of(
+                    dataProduct1.getFullyQualifiedName(), dataProduct2.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should fail validation as entity domains don't match data product domains
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(rule), false, false));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_RuleEnabled_MixedMatching_ShouldFail(TestInfo test)
+      throws IOException {
+    // Create domains
+    Domain dataDomain = createTestDomain("Data", test);
+    Domain engineeringDomain = createTestDomain("Engineering", test);
+    Domain marketingDomain = createTestDomain("Marketing", test);
+
+    // Create data products - one matches, one doesn't
+    DataProduct matchingDataProduct =
+        createTestDataProduct("MatchingProduct", List.of(dataDomain), test);
+    DataProduct nonMatchingDataProduct =
+        createTestDataProduct("NonMatchingProduct", List.of(marketingDomain), test);
+
+    // Create table with some matching and some non-matching domains
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(
+                List.of(
+                    dataDomain.getFullyQualifiedName(), engineeringDomain.getFullyQualifiedName()))
+            .withDataProducts(
+                List.of(
+                    matchingDataProduct.getFullyQualifiedName(),
+                    nonMatchingDataProduct.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should fail validation as not all data products have matching domains
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(rule), false, false));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_RuleDisabled_DifferentDomains_ShouldPass(TestInfo test)
+      throws IOException {
+    // Store original rule state
+    SemanticsRule originalRule = getDataProductDomainRule();
+    Boolean originalEnabled = originalRule.getEnabled();
+
+    try {
+      // Disable the rule using the system settings
+      EntityResourceTest.toggleRule(DATA_PRODUCT_DOMAIN_RULE, false);
+
+      // Create domains
+      Domain dataDomain = createTestDomain("Data", test);
+      Domain engineeringDomain = createTestDomain("Engineering", test);
+      Domain marketingDomain = createTestDomain("Marketing", test);
+
+      // Create data products with completely different domains than entity
+      DataProduct dataProduct1 = createTestDataProduct("Product1", List.of(dataDomain), test);
+      DataProduct dataProduct2 =
+          createTestDataProduct("Product2", List.of(engineeringDomain), test);
+
+      // Create table with domains that don't match the data products
+      CreateTable createTable =
+          tableResourceTest
+              .createRequest(test)
+              .withDomains(List.of(marketingDomain.getFullyQualifiedName()))
+              .withDataProducts(
+                  List.of(
+                      dataProduct1.getFullyQualifiedName(), dataProduct2.getFullyQualifiedName()));
+
+      Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+      SemanticsRule rule = getDataProductDomainRule();
+
+      // Should pass validation when rule is disabled, even with non-matching domains
+      RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+    } finally {
+      // Restore original rule state
+      EntityResourceTest.toggleRule(DATA_PRODUCT_DOMAIN_RULE, originalEnabled);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_EdgeCase_EntityWithNullDomains_ShouldHandleGracefully(
+      TestInfo test) throws IOException {
+    // Create domain and data product
+    Domain dataDomain = createTestDomain("Data", test);
+    DataProduct dataProduct = createTestDataProduct("Product1", List.of(dataDomain), test);
+
+    // Create table with no domains but assigned to data products with domains
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(null) // No domains
+            .withDataProducts(List.of(dataProduct.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should pass validation as the rule handles null entity domains gracefully
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_EdgeCase_DataProductWithNullDomains_ShouldHandleGracefully(
+      TestInfo test) throws IOException {
+    // Create domain for entity and data product with no domains
+    Domain dataDomain = createTestDomain("Data", test);
+    DataProduct dataProduct = createTestDataProduct("Product1", null, test);
+
+    // Create table with domains but assigned to data products with no domains
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(List.of(dataDomain.getFullyQualifiedName()))
+            .withDataProducts(List.of(dataProduct.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should pass validation as the rule handles null data product domains gracefully
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_EdgeCase_NoDataProducts_ShouldAlwaysPass(TestInfo test)
+      throws IOException {
+    // Create domain for entity
+    Domain dataDomain = createTestDomain("Data", test);
+
+    // Create table with domains but no data products assigned
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(List.of(dataDomain.getFullyQualifiedName()))
+            .withDataProducts(null); // No data products
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should always pass validation when entity has no data products
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+
+    // Also test with empty list
+    CreateTable createTableEmpty =
+        tableResourceTest
+            .createRequest(test.getDisplayName() + "_empty")
+            .withDomains(List.of(dataDomain.getFullyQualifiedName()))
+            .withDataProducts(List.of()); // Empty data products
+
+    Table tableEmpty = tableResourceTest.createEntity(createTableEmpty, ADMIN_AUTH_HEADERS);
+    RuleEngine.getInstance().evaluate(tableEmpty, List.of(rule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductDomainValidation_EdgeCase_NoDomains_ShouldHandleGracefully(TestInfo test)
+      throws IOException {
+    // Create data product with no domains
+    DataProduct dataProduct = createTestDataProduct("Product1", null, test);
+
+    // Create table with no domains assigned to data products with no domains
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test)
+            .withDomains(null) // No domains
+            .withDataProducts(List.of(dataProduct.getFullyQualifiedName()));
+
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule rule = getDataProductDomainRule();
+
+    // Should handle gracefully when neither entity nor data products have domains
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
+
+    // Also test with empty domain lists
+    CreateTable createTableEmpty =
+        tableResourceTest
+            .createRequest(test.getDisplayName() + "_empty")
+            .withDomains(List.of()) // Empty domains
+            .withDataProducts(List.of(dataProduct.getFullyQualifiedName()));
+
+    Table tableEmpty = tableResourceTest.createEntity(createTableEmpty, ADMIN_AUTH_HEADERS);
+    RuleEngine.getInstance().evaluate(tableEmpty, List.of(rule), false, false);
   }
 }

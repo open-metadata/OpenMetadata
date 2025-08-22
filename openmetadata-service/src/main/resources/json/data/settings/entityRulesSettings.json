@@ -29,6 +29,13 @@
       "enabled": false,
       "entityType": "table",
       "provider": "system"
+    },
+    {
+      "name": "Data Product Domain Validation",
+      "description": "Validates that entities assigned to Data Products have matching domains.",
+      "rule": "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}",
+      "enabled": true,
+      "provider": "system"
     }
   ]
 }

@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -43,6 +42,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -50,6 +50,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
@@ -214,34 +216,69 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
 
     EntityUtil.populateEntityReferences(request.getAssets());
+
+    // Get the data product reference for validation
+    DataProduct dataProduct = find(entityId, ALL);
+    EntityReference dataProductRef = dataProduct.getEntityReference();
 
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
-      removeCrossDomainDataProducts(ref, relationship);
+      try {
+        // Validate the asset-data product assignment using rule engine
+        if (isAdd) {
+          validateAssetDataProductAssignment(ref, dataProductRef);
+        }
 
-      if (isAdd) {
-        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-      } else {
-        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+        if (isAdd) {
+          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+        } else {
+          deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+        }
+
+        success.add(new BulkResponse().withRequest(ref));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+        searchRepository.updateEntity(ref);
+      } catch (RuleValidationException e) {
+        LOG.warn(
+            "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
+        failed.add(new BulkResponse().withRequest(ref).withMessage(e.getMessage()));
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+      } catch (Exception e) {
+        LOG.error(
+            "Unexpected error during bulk operation for asset {}: {}",
+            ref.getId(),
+            e.getMessage(),
+            e);
+        failed.add(
+            new BulkResponse().withRequest(ref).withMessage("Internal error: " + e.getMessage()));
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       }
-
-      success.add(new BulkResponse().withRequest(ref));
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-      searchRepository.updateEntity(ref);
     }
 
-    result.withSuccessRequest(success);
+    result.withSuccessRequest(success).withFailedRequest(failed);
 
-    // Create a Change Event on successful addition/removal of assets
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    // If all operations failed, mark as failure
+    if (success.isEmpty() && !failed.isEmpty()) {
+      result.setStatus(ApiStatus.FAILURE);
+    }
+
+    // Create a Change Event on successful operations
+    if (!success.isEmpty()) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      List<EntityReference> successfulAssets = new ArrayList<>();
+      for (BulkResponse response : success) {
+        successfulAssets.add((EntityReference) response.getRequest());
+      }
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+              entityInterface.getVersion(), isAdd, successfulAssets, null);
       ChangeEvent changeEvent =
           getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
@@ -250,51 +287,60 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
-  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
-    EntityReference domain =
-        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+  /**
+   * Validates that an asset can be assigned to a data product according to configured rules.
+   * This method constructs a temporary entity with the proposed data product assignment
+   * and runs rule validation to ensure it complies with domain validation rules.
+   *
+   * @param asset The asset entity reference to be assigned
+   * @param dataProductRef The data product entity reference
+   * @throws RuleValidationException if validation fails
+   */
+  private void validateAssetDataProductAssignment(
+      EntityReference asset, EntityReference dataProductRef) {
+    try {
+      // Get the full asset entity to validate against
+      EntityInterface assetEntity = Entity.getEntity(asset, "*", ALL);
 
-    if (!dataProducts.isEmpty() && domain != null) {
-      // Map dataProduct -> domain
-      Map<UUID, UUID> associatedDomains =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(
-                  dataProducts.stream()
-                      .map(dp -> dp.getId().toString())
-                      .collect(Collectors.toList()),
-                  relationship.ordinal(),
-                  DOMAIN)
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      rec -> UUID.fromString(rec.getToId()),
-                      rec -> UUID.fromString(rec.getFromId())));
-
-      List<EntityReference> dataProductsToDelete =
-          dataProducts.stream()
-              .filter(
-                  dataProduct -> {
-                    UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
-                    return associatedDomainId != null && !associatedDomainId.equals(domain.getId());
-                  })
-              .collect(Collectors.toList());
-
-      if (!dataProductsToDelete.isEmpty()) {
-        daoCollection
-            .relationshipDAO()
-            .bulkRemoveFromRelationship(
-                dataProductsToDelete.stream()
-                    .map(EntityReference::getId)
-                    .collect(Collectors.toList()),
-                ref.getId(),
-                DATA_PRODUCT,
-                ref.getType(),
-                relationship.ordinal());
-        LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+      // Get current data products for the asset
+      List<EntityReference> currentDataProducts = new ArrayList<>();
+      if (assetEntity.getDataProducts() != null) {
+        currentDataProducts.addAll(assetEntity.getDataProducts());
       }
+
+      // Add the new data product to the list
+      if (!currentDataProducts.contains(dataProductRef)) {
+        currentDataProducts.add(dataProductRef);
+      }
+
+      // Create a copy of the asset entity with the new data product assignment
+      assetEntity.setDataProducts(currentDataProducts);
+
+      // Run rule validation on the modified entity
+      RuleEngine.getInstance().evaluate(assetEntity);
+
+    } catch (RuleValidationException e) {
+      // Re-throw validation exceptions with context about the bulk operation
+      throw new RuleValidationException(
+          (List<SemanticsRule>) null,
+          String.format(
+              "Cannot assign asset '%s' (type: %s) to data product '%s': %s",
+              asset.getName(), asset.getType(), dataProductRef.getName(), e.getMessage()));
+    } catch (Exception e) {
+      LOG.warn(
+          "Error during asset data product validation for asset {}: {}",
+          asset.getId(),
+          e.getMessage());
+      // For non-validation errors, we allow the operation to proceed
+      // This ensures that rule engine issues don't break bulk operations
     }
+  }
+
+  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
+    // This method is deprecated and no longer performs hardcoded validation.
+    // Domain validation for Data Product assignment is now handled by the rule engine
+    // with the "Data Product Domain Validation" rule in entityRulesSettings.json.
+    // The validateAssetDataProductAssignment method above handles proper rule validation.
   }
 
   @Override
