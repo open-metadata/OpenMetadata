@@ -312,10 +312,7 @@ const LogsViewerPage = () => {
         element.click();
         document.body.removeChild(element);
       } else {
-        const logsBlob = await downloadIngestionLog(
-          ingestionDetails?.id,
-          ingestionDetails?.pipelineType
-        );
+        const logsBlob = await downloadIngestionLog(ingestionDetails?.id);
 
         const element = document.createElement('a');
         element.href = URL.createObjectURL(logsBlob as Blob);
