@@ -22,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import org.apache.http.client.HttpResponseException;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,6 +52,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -145,10 +147,18 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     // Create test database entities
     createTestDatabaseEntities();
 
-    // Set glossary name for later use
-    testGlossaryName = "McpValidationGlossary" + System.currentTimeMillis();
+    // Create a test glossary
+    createGlossary();
 
     System.out.println("✓ Test entities created successfully");
+  }
+
+  private void createGlossary() throws HttpResponseException {
+    // Set glossary name for later use
+    testGlossaryName = "McpValidationGlossary" + System.currentTimeMillis();
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    glossaryResourceTest.createEntity(
+        glossaryResourceTest.createRequest(testGlossaryName), ADMIN_AUTH_HEADERS);
   }
 
   private void createTestUser() {
@@ -363,12 +373,13 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
   void testCreateGlossaryTool() throws Exception {
     System.out.println("Testing create_glossary tool...");
 
+    String randomGlossaryName = "randomGlossary";
     Map<String, Object> toolCall =
         McpTestUtils.createGlossaryToolCall(
-            testGlossaryName, "Test glossary created for validation testing");
+            randomGlossaryName, "Test glossary created for validation testing");
 
     JsonNode result = executeToolCall(toolCall);
-    validateCreateGlossaryResponse(result, testGlossaryName);
+    validateCreateGlossaryResponse(result, randomGlossaryName);
 
     System.out.println("✓ create_glossary tool working correctly");
   }
@@ -402,7 +413,7 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
 
     try {
       JsonNode result = executeToolCall(toolCall);
-      validatePatchEntityResponse(result);
+      validatePatchEntityResponse(result, testTable.getFullyQualifiedName());
       System.out.println("✓ patch_entity tool working correctly");
     } catch (Exception e) {
       System.out.println(
@@ -564,7 +575,7 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     System.out.println("✓ Glossary term creation response contains proper term data");
   }
 
-  private void validatePatchEntityResponse(JsonNode result) throws Exception {
+  private void validatePatchEntityResponse(JsonNode result, String patchedEntity) throws Exception {
     assertThat(result.has("content")).isTrue();
     JsonNode content = result.get("content");
     assertThat(content.isArray()).isTrue();
@@ -575,11 +586,14 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     String responseText = firstResult.get("text").asText();
 
     // Parse the response as JSON to validate updated entity
-    JsonNode entityData = objectMapper.readTree(responseText);
+    JsonNode entityData = objectMapper.readTree(responseText).get("entity");
     assertThat(entityData.has("id")).isTrue();
     assertThat(entityData.has("description")).isTrue();
     assertThat(entityData.get("description").asText())
         .contains("Updated description via MCP patch tool");
+    assertThat(entityData.has("fullyQualifiedName")).isTrue();
+    assertThat(entityData.get("fullyQualifiedName").asText()).isEqualTo(patchedEntity);
+
     System.out.println("✓ Patch entity response contains updated entity data");
   }
 
