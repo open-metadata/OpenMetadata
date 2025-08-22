@@ -32,6 +32,8 @@ test.describe('SubDomain Pagination', () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
+    test.slow(true);
+    
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await domain.create(apiContext);
