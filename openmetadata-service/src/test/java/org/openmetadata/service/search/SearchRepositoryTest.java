@@ -1,184 +1,118 @@
 package org.openmetadata.service.search;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 
+@ExtendWith(MockitoExtension.class)
 class SearchRepositoryTest {
 
-  private SearchRepository searchRepository;
+  @Mock private SearchRepository searchRepository;
+
+  @Mock
+  private org.openmetadata.service.search.elasticsearch.ElasticSearchClient elasticSearchClient;
+
+  @Mock private org.openmetadata.service.search.opensearch.OpenSearchClient openSearchClient;
 
   @BeforeEach
   void setUp() {
     // Create a real instance for testing the new methods
     searchRepository = mock(SearchRepository.class);
 
-    // Mock the methods to return appropriate values for testing
+    // Mock the getClient() methods to return mock clients
     lenient()
-        .when(searchRepository.createBulkSink(10, 2, 1000000L))
-        .thenReturn(new TestBulkSink("test"));
-    lenient().when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+        .when(elasticSearchClient.getClient())
+        .thenReturn(mock(es.org.elasticsearch.client.RestHighLevelClient.class));
+    lenient()
+        .when(openSearchClient.getClient())
+        .thenReturn(mock(os.org.opensearch.client.RestHighLevelClient.class));
+
+    // Enable calling real methods for the methods we want to test
+    lenient().when(searchRepository.createBulkSink(10, 2, 1000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(1, 1, 1L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(1000, 100, 100000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(50, 5, 5000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(100, 10, 10000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.isVectorEmbeddingEnabled()).thenCallRealMethod();
   }
 
   @Test
-  void testCreateBulkSinkParameterValidation() {
-    // Test the method can be called with the mocked repository
-    BulkSink result = searchRepository.createBulkSink(10, 2, 1000000L);
-    assertNotNull(result);
+  void testCreateBulkSinkForElasticSearch() {
+    // Mock SearchRepository to return ElasticSearch type
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+
+    BulkSink bulkSink = searchRepository.createBulkSink(10, 2, 1000000L);
+
+    assertNotNull(bulkSink);
+    assertInstanceOf(ElasticSearchBulkSink.class, bulkSink);
   }
 
   @Test
-  void testIsVectorEmbeddingEnabledDefaultValue() {
-    // Test the default implementation using the mocked repository
+  void testCreateBulkSinkForOpenSearch() {
+    // Mock SearchRepository to return OpenSearch type
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(openSearchClient);
+
+    BulkSink bulkSink = searchRepository.createBulkSink(10, 2, 1000000L);
+
+    assertNotNull(bulkSink);
+    assertInstanceOf(OpenSearchBulkSink.class, bulkSink);
+  }
+
+  @Test
+  void testCreateBulkSinkWithDifferentParameters() {
+    // Test with different parameter values
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+
+    BulkSink bulkSink1 = searchRepository.createBulkSink(50, 5, 5000000L);
+    assertNotNull(bulkSink1);
+    assertInstanceOf(ElasticSearchBulkSink.class, bulkSink1);
+
+    BulkSink bulkSink2 = searchRepository.createBulkSink(100, 10, 10000000L);
+    assertNotNull(bulkSink2);
+    assertInstanceOf(ElasticSearchBulkSink.class, bulkSink2);
+  }
+
+  @Test
+  void testIsVectorEmbeddingEnabled() {
+    // Test default implementation returns false
     boolean result = searchRepository.isVectorEmbeddingEnabled();
     assertFalse(result);
   }
 
   @Test
-  void testCreateBulkSinkForElasticSearch() {
-    // Test createBulkSink with ElasticSearch configuration
-    SearchRepository esRepo = mock(SearchRepository.class);
+  void testCreateBulkSinkParameterValidation() {
     lenient()
-        .when(esRepo.getSearchType())
+        .when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    lenient()
-        .when(esRepo.createBulkSink(10, 2, 1000000L))
-        .thenReturn(new TestBulkSink("elasticsearch"));
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
-    BulkSink result = esRepo.createBulkSink(10, 2, 1000000L);
-    assertNotNull(result);
-  }
+    // Test with minimum values
+    BulkSink bulkSink1 = searchRepository.createBulkSink(1, 1, 1L);
+    assertNotNull(bulkSink1);
 
-  @Test
-  void testCreateBulkSinkForOpenSearch() {
-    // Test createBulkSink with OpenSearch configuration
-    SearchRepository osRepo = mock(SearchRepository.class);
-    lenient()
-        .when(osRepo.getSearchType())
-        .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
-    lenient()
-        .when(osRepo.createBulkSink(10, 2, 1000000L))
-        .thenReturn(new TestBulkSink("opensearch"));
-
-    BulkSink result = osRepo.createBulkSink(10, 2, 1000000L);
-    assertNotNull(result);
-  }
-
-  @Test
-  void testBulkSinkCreationWithDifferentSearchTypes() {
-    // Test that different search types are supported
-    ElasticSearchConfiguration.SearchType elasticsearch =
-        ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
-    ElasticSearchConfiguration.SearchType opensearch =
-        ElasticSearchConfiguration.SearchType.OPENSEARCH;
-
-    assertNotNull(elasticsearch);
-    assertNotNull(opensearch);
-    assertFalse(elasticsearch.equals(opensearch));
-  }
-
-  @Test
-  void testCreateBulkSinkMethodSignature() throws Exception {
-    // Test that the createBulkSink method exists with correct signature
-    Method method =
-        SearchRepository.class.getDeclaredMethod(
-            "createBulkSink", int.class, int.class, long.class);
-
-    assertNotNull(method);
-    assertEquals(BulkSink.class, method.getReturnType());
-
-    // Test parameter names and types
-    assertEquals(3, method.getParameterCount());
-    assertEquals(int.class, method.getParameterTypes()[0]); // batchSize
-    assertEquals(int.class, method.getParameterTypes()[1]); // maxConcurrentRequests
-    assertEquals(long.class, method.getParameterTypes()[2]); // maxPayloadSizeBytes
-  }
-
-  @Test
-  void testIsVectorEmbeddingEnabledMethodSignature() throws Exception {
-    // Test that the isVectorEmbeddingEnabled method exists with correct signature
-    Method method = SearchRepository.class.getDeclaredMethod("isVectorEmbeddingEnabled");
-
-    assertNotNull(method);
-    assertEquals(boolean.class, method.getReturnType());
-    assertEquals(0, method.getParameterCount());
-  }
-
-  @Test
-  void testBulkSinkInterface() {
-    // Test the BulkSink interface implementation
-    BulkSink testSink = new TestBulkSink("test");
-
-    assertNotNull(testSink);
-    assertNotNull(testSink.getStats());
-
-    // Test that all interface methods can be called without exception
-    try {
-      testSink.write(List.of(), Map.of());
-      testSink.updateStats(1, 0);
-      testSink.close();
-    } catch (Exception e) {
-      // Should not throw exceptions in our test implementation
-      throw new RuntimeException("Unexpected exception in test BulkSink", e);
-    }
-  }
-
-  @Test
-  void testSearchTypeEnum() {
-    // Test that the search type enumeration values exist
-    ElasticSearchConfiguration.SearchType elasticsearch =
-        ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
-    ElasticSearchConfiguration.SearchType opensearch =
-        ElasticSearchConfiguration.SearchType.OPENSEARCH;
-
-    assertNotNull(elasticsearch);
-    assertNotNull(opensearch);
-
-    // Verify they are different values
-    assertFalse(elasticsearch.equals(opensearch));
-  }
-
-  // Simple test implementation of BulkSink
-  private static class TestBulkSink implements BulkSink {
-    private final String type;
-
-    public TestBulkSink(String type) {
-      this.type = type;
-    }
-
-    @Override
-    public void write(List<?> entities, Map<String, Object> contextData) {
-      // No-op for testing
-    }
-
-    @Override
-    public void updateStats(int currentSuccess, int currentFailed) {
-      // No-op for testing
-    }
-
-    @Override
-    public StepStats getStats() {
-      return new StepStats();
-    }
-
-    @Override
-    public void close() {
-      // No-op for testing
-    }
-
-    public String getType() {
-      return type;
-    }
+    // Test with large values
+    BulkSink bulkSink2 = searchRepository.createBulkSink(1000, 100, 100000000L);
+    assertNotNull(bulkSink2);
   }
 }
