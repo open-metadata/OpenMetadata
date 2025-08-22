@@ -19,10 +19,14 @@ import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent
 import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.JsonSchema;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.UpdateColumn;
@@ -35,6 +39,8 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -61,6 +67,9 @@ public class ColumnRepository {
       throw new IllegalArgumentException(
           "Entity type is required. Supported types are: table, dashboardDataModel");
     }
+
+    // Trim the entityType to handle any whitespace issues
+    entityType = entityType.trim();
 
     if (!TABLE.equals(entityType) && !DASHBOARD_DATA_MODEL.equals(entityType)) {
       throw new IllegalArgumentException(
@@ -140,6 +149,14 @@ public class ColumnRepository {
     } else if (updateColumn.getConstraint() != null) {
       column.setConstraint(updateColumn.getConstraint()); // Set new constraint
     }
+    // Handle extension updates (only for table columns)
+    if (updateColumn.getExtension() != null) {
+      LOG.info(
+          "Validating table column extension with {} custom properties",
+          JsonUtils.valueToTree(updateColumn.getExtension()).size());
+      validateColumnExtension(updateColumn.getExtension(), "tableColumn");
+      column.setExtension(updateColumn.getExtension());
+    }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
 
@@ -205,6 +222,14 @@ public class ColumnRepository {
       column.setTags(
           addDerivedTags(
               updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
+    }
+    // Handle extension updates (only for dashboard data model columns)
+    if (updateColumn.getExtension() != null) {
+      LOG.info(
+          "Validating dashboard data model column extension with {} custom properties",
+          JsonUtils.valueToTree(updateColumn.getExtension()).size());
+      validateColumnExtension(updateColumn.getExtension(), "dashboardDataModelColumn");
+      column.setExtension(updateColumn.getExtension());
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
@@ -281,5 +306,56 @@ public class ColumnRepository {
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private void validateColumnExtension(Object extension, String columnEntityType) {
+    if (extension == null) {
+      return;
+    }
+
+    JsonNode jsonNode = JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    LOG.info("Starting validation for columnEntityType: {}", columnEntityType);
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+
+      LOG.info("Validating custom property '{}' for entity type '{}'", fieldName, columnEntityType);
+
+      // Validate that the custom property exists for this specific column entity type
+      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(columnEntityType, fieldName);
+      if (jsonSchema == null) {
+        // Check if the property exists in the other column entity type for better error message
+        String otherColumnEntityType =
+            columnEntityType.equals("tableColumn") ? "dashboardDataModelColumn" : "tableColumn";
+        JsonSchema otherSchema =
+            TypeRegistry.instance().getSchema(otherColumnEntityType, fieldName);
+
+        if (otherSchema != null) {
+          LOG.error(
+              "Custom property '{}' is defined for '{}' but not for '{}'. Column entity types have separate custom property definitions.",
+              fieldName,
+              otherColumnEntityType,
+              columnEntityType);
+          throw new IllegalArgumentException(
+              String.format(
+                  "Custom property '%s' is not defined for entity type '%s'. "
+                      + "It exists for '%s' but column entity types have separate custom property definitions. "
+                      + "Please define this property for '%s' entity type first.",
+                  fieldName, columnEntityType, otherColumnEntityType, columnEntityType));
+        } else {
+          LOG.error(
+              "Custom property '{}' not found for entity type '{}'.", fieldName, columnEntityType);
+          throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+        }
+      }
+
+      LOG.info(
+          "Custom property '{}' validated successfully for entity type '{}'",
+          fieldName,
+          columnEntityType);
+    }
   }
 }

@@ -132,6 +132,8 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void postUpdate(Type original, Type updated) {
     super.postUpdate(original, updated);
+    // Refresh TypeRegistry to ensure custom property changes are reflected
+    updateTypeMap(updated);
   }
 
   public PutResponse<Type> addCustomProperty(
@@ -385,6 +387,9 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+
+      // Remove from TypeRegistry cache
+      TypeRegistry.instance().removeCustomProperty(updated.getName(), property.getName());
     }
 
     private void updateCustomPropertyDescription(

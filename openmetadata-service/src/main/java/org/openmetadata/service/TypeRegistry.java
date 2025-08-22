@@ -95,9 +95,15 @@ public class TypeRegistry {
   }
 
   public void removeType(String typeName) {
-    TYPES.remove(typeName);
+    Type removedType = TYPES.remove(typeName);
     LOG.info("Deleted type {}", typeName);
-    // TODO cleanup custom properties
+
+    // Cleanup custom properties for removed type
+    if (removedType != null && removedType.getCustomProperties() != null) {
+      for (CustomProperty property : removedType.getCustomProperties()) {
+        removeCustomProperty(typeName, property.getName());
+      }
+    }
   }
 
   private void addCustomProperty(
@@ -116,6 +122,13 @@ public class TypeRegistry {
       CUSTOM_PROPERTIES.remove(customPropertyFQN);
       LOG.info("Failed to add custom property {}: {}", customPropertyFQN, e.getMessage());
     }
+  }
+
+  public void removeCustomProperty(String entityType, String propertyName) {
+    String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    CUSTOM_PROPERTIES.remove(customPropertyFQN);
+    CUSTOM_PROPERTY_SCHEMAS.remove(customPropertyFQN);
+    LOG.info("Removed custom property {} from TypeRegistry cache", customPropertyFQN);
   }
 
   public JsonSchema getSchema(String entityType, String propertyName) {
