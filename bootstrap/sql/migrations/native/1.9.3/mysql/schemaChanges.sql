@@ -19,3 +19,8 @@ ALTER TABLE glossary_entity ADD INDEX idx_glossary_entity_deleted (deleted);
 ALTER TABLE glossary_term_entity ADD INDEX idx_glossary_term_entity_deleted (deleted);
 ALTER TABLE user_entity ADD INDEX idx_user_entity_deleted (deleted);
 ALTER TABLE team_entity ADD INDEX idx_team_entity_deleted (deleted);
+
+-- Update the relation between table and dataContract to 0 (CONTAINS)
+UPDATE entity_relationship
+SET relation = 0
+WHERE fromEntity = 'table' AND toEntity = 'dataContract' AND relation = 10;
