@@ -54,6 +54,8 @@ test.describe('SubDomain Pagination', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+    
     const { apiContext, afterAction } = await createNewPage(browser);
 
     // Delete all subdomains in parallel
