@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -54,9 +54,16 @@ function VersionTable<T extends Column | SearchIndexField>({
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
-  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
 
-  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
+  const data = useMemo(() => {
+    if (!searchText) {
+      return makeData<T>(columns);
+    } else {
+      const searchCols = searchInColumns<T>(columns, searchText);
+
+      return makeData<T>(searchCols);
+    }
+  }, [searchText, columns]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
@@ -237,15 +244,6 @@ function VersionTable<T extends Column | SearchIndexField>({
     }),
     [searchText, handleSearchAction]
   );
-
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(columns);
-    } else {
-      const searchCols = searchInColumns<T>(columns, searchText);
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, columns]);
 
   return (
     <Table
