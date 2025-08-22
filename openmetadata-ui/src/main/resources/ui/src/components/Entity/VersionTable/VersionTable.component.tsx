@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -54,16 +54,9 @@ function VersionTable<T extends Column | SearchIndexField>({
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
+  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
 
-  const data = useMemo(() => {
-    if (isEmpty(searchText)) {
-      return makeData<T>(columns);
-    } else {
-      const searchCols = searchInColumns<T>(columns, searchText);
-
-      return makeData<T>(searchCols);
-    }
-  }, [searchText, columns]);
+  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
@@ -145,21 +138,6 @@ function VersionTable<T extends Column | SearchIndexField>({
       addedTableConstraintDiffs,
       deletedTableConstraintDiffs,
     ]
-  );
-
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-    handelSearchCallback?.(searchValue);
-  };
-
-  const searchProps = useMemo(
-    () => ({
-      placeholder: t('message.find-in-table'),
-      value: searchText,
-      typingInterval: 500,
-      onSearch: handleSearchAction,
-    }),
-    [searchText, handleSearchAction]
   );
 
   const versionTableColumns: ColumnsType<T> = useMemo(
@@ -244,6 +222,30 @@ function VersionTable<T extends Column | SearchIndexField>({
     ],
     [columnName, joins, renderColumnName]
   );
+
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+    handelSearchCallback?.(searchValue);
+  };
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      typingInterval: 500,
+      onSearch: handleSearchAction,
+    }),
+    [searchText, handleSearchAction]
+  );
+
+  useEffect(() => {
+    if (!searchText) {
+      setSearchedColumns(columns);
+    } else {
+      const searchCols = searchInColumns<T>(columns, searchText);
+      setSearchedColumns(searchCols);
+    }
+  }, [searchText, columns]);
 
   return (
     <Table
