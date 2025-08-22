@@ -36,6 +36,7 @@ const creationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
   database: true,
   databaseSchema: true,
+  metric: true,
 };
 
 test.describe('Explore Sort Order Filter', () => {
@@ -75,11 +76,29 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
 
+      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
+        state: 'visible',
+      });
       await page.getByTestId(`${filter}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
+
+      await page.getByRole('button', { name: 'Data Assets' }).click();
+
+      await page.waitForSelector(
+        'data-testid="drop-down-menu" data-testid="loader"',
+        {
+          state: 'detached',
+        }
+      );
+
+      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
+        state: 'visible',
+      });
+      await page.getByTestId(`${filter}-checkbox`).uncheck();
+      await page.getByTestId('update-btn').click();
 
       await afterAction();
     });

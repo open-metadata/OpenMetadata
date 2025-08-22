@@ -1,0 +1,421 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Table": {
+        "@id": "om:Table",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Database": {
+        "@id": "om:Database", 
+        "@type": ["om:DataAsset", "dcat:Catalog"]
+      },
+      "DatabaseSchema": {
+        "@id": "om:DatabaseSchema",
+        "@type": ["om:DataAsset", "dcat:Catalog"]
+      },
+      "StoredProcedure": {
+        "@id": "om:StoredProcedure",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Query": {
+        "@id": "om:Query",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Pipeline": {
+        "@id": "om:Pipeline",
+        "@type": ["om:DataAsset", "dcat:DataService"]
+      },
+      "Task": {
+        "@id": "om:Task",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Dashboard": {
+        "@id": "om:Dashboard",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Chart": {
+        "@id": "om:Chart",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "DashboardDataModel": {
+        "@id": "om:DashboardDataModel",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Report": {
+        "@id": "om:Report",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Topic": {
+        "@id": "om:Topic",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Container": {
+        "@id": "om:Container",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "MlModel": {
+        "@id": "om:MlModel",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Metric": {
+        "@id": "om:Metric",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "SearchIndex": {
+        "@id": "om:SearchIndex",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "APICollection": {
+        "@id": "om:APICollection",
+        "@type": ["om:DataAsset", "dcat:DataService"]
+      },
+      "APIEndpoint": {
+        "@id": "om:APIEndpoint",
+        "@type": ["om:DataAsset", "dcat:DataService"]
+      },
+      "Directory": {
+        "@id": "om:Directory",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "File": {
+        "@id": "om:File",
+        "@type": ["om:DataAsset", "dcat:Distribution"]
+      },
+      "Spreadsheet": {
+        "@id": "om:Spreadsheet",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "Worksheet": {
+        "@id": "om:Worksheet",
+        "@type": ["om:DataAsset", "dcat:Dataset"]
+      },
+      "columns": {
+        "@id": "om:hasColumn",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "database": {
+        "@id": "om:belongsToDatabase",
+        "@type": "@id"
+      },
+      "databaseSchema": {
+        "@id": "om:belongsToSchema",
+        "@type": "@id"
+      },
+      "service": {
+        "@id": "om:belongsToService",
+        "@type": "@id"
+      },
+      "serviceType": {
+        "@id": "om:hasServiceType",
+        "@type": "xsd:string"
+      },
+      "tableType": {
+        "@id": "om:hasTableType",
+        "@type": "xsd:string"
+      },
+      "columnNames": {
+        "@id": "om:hasColumnName",
+        "@type": "xsd:string",
+        "@container": "@list"
+      },
+      "tablePartition": {
+        "@id": "om:hasPartition",
+        "@type": "@json"
+      },
+      "tableConstraints": {
+        "@id": "om:hasConstraint",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "sampleData": {
+        "@id": "om:hasSampleData",
+        "@type": "@json"
+      },
+      "tableProfile": {
+        "@id": "om:hasProfile",
+        "@type": "@json"
+      },
+      "location": {
+        "@id": "om:hasLocation",
+        "@type": "xsd:string"
+      },
+      "schemaDefinition": {
+        "@id": "om:hasSchemaDefinition",
+        "@type": "xsd:string"
+      },
+      "dataModel": {
+        "@id": "om:hasDataModel",
+        "@type": "@json"
+      },
+      "fileFormat": {
+        "@id": "om:hasFileFormat",
+        "@type": "xsd:string"
+      },
+      "dataLength": {
+        "@id": "om:hasDataLength",
+        "@type": "xsd:integer"
+      },
+      "isPartitioned": {
+        "@id": "om:isPartitioned",
+        "@type": "xsd:boolean"
+      },
+      "numberOfObjects": {
+        "@id": "void:entities",
+        "@type": "xsd:integer"
+      },
+      "size": {
+        "@id": "dcat:byteSize",
+        "@type": "xsd:double"
+      },
+      "storedProcedureCode": {
+        "@id": "om:hasProcedureCode",
+        "@type": "xsd:string"
+      },
+      "query": {
+        "@id": "om:hasQueryText",
+        "@type": "xsd:string"
+      },
+      "queryUsedIn": {
+        "@id": "om:queryUsedIn",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "queryDate": {
+        "@id": "om:queryExecutedAt",
+        "@type": "xsd:dateTime"
+      },
+      "duration": {
+        "@id": "om:queryDuration",
+        "@type": "xsd:integer"
+      },
+      "users": {
+        "@id": "om:executedBy",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "apiDefinition": {
+        "@id": "om:hasAPIDefinition",
+        "@type": "@json"
+      },
+      "endpointURL": {
+        "@id": "om:hasEndpointURL",
+        "@type": "@id"
+      },
+      "requestMethod": {
+        "@id": "om:hasRequestMethod",
+        "@type": "xsd:string"
+      },
+      "requestBody": {
+        "@id": "om:hasRequestBody",
+        "@type": "@json"
+      },
+      "responseSchema": {
+        "@id": "om:hasResponseSchema",
+        "@type": "@json"
+      },
+      "apiCollection": {
+        "@id": "om:belongsToAPICollection",
+        "@type": "@id"
+      },
+      "path": {
+        "@id": "om:hasPath",
+        "@type": "xsd:string"
+      },
+      "mimeType": {
+        "@id": "dcat:mediaType",
+        "@type": "xsd:string"
+      },
+      "parent": {
+        "@id": "om:hasParent",
+        "@type": "@id"
+      },
+      "children": {
+        "@id": "om:hasChild",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "directoryType": {
+        "@id": "om:hasDirectoryType",
+        "@type": "xsd:string"
+      },
+      "fileSize": {
+        "@id": "dcat:byteSize",
+        "@type": "xsd:long"
+      },
+      "fileChecksum": {
+        "@id": "om:hasChecksum",
+        "@type": "xsd:string"
+      },
+      "worksheets": {
+        "@id": "om:hasWorksheet",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "spreadsheet": {
+        "@id": "om:belongsToSpreadsheet",
+        "@type": "@id"
+      },
+      "rows": {
+        "@id": "om:hasRowCount",
+        "@type": "xsd:integer"
+      },
+      "fields": {
+        "@id": "om:hasField",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "indexType": {
+        "@id": "om:hasIndexType",
+        "@type": "xsd:string"
+      },
+      "searchIndexSettings": {
+        "@id": "om:hasIndexSettings",
+        "@type": "@json"
+      },
+      "mlFeatures": {
+        "@id": "om:hasMLFeature",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "mlHyperParameters": {
+        "@id": "om:hasMLHyperParameter",
+        "@type": "@json"
+      },
+      "mlStore": {
+        "@id": "om:hasMLStore",
+        "@type": "@json"
+      },
+      "algorithm": {
+        "@id": "om:hasAlgorithm",
+        "@type": "xsd:string"
+      },
+      "target": {
+        "@id": "om:hasTarget",
+        "@type": "xsd:string"
+      },
+      "dashboard": {
+        "@id": "om:hasMLDashboard",
+        "@type": "@id"
+      },
+      "server": {
+        "@id": "om:hasServer",
+        "@type": "@json"
+      },
+      "pipelineStatus": {
+        "@id": "om:hasPipelineStatus",
+        "@type": "@json"
+      },
+      "pipelineUrl": {
+        "@id": "om:hasPipelineURL",
+        "@type": "@id"
+      },
+      "tasks": {
+        "@id": "om:hasTask",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "startDate": {
+        "@id": "om:hasStartDate",
+        "@type": "xsd:dateTime"
+      },
+      "scheduleInterval": {
+        "@id": "om:hasScheduleInterval",
+        "@type": "xsd:string"
+      },
+      "topicConfig": {
+        "@id": "om:hasTopicConfig",
+        "@type": "@json"
+      },
+      "partitions": {
+        "@id": "om:hasPartition",
+        "@type": "xsd:integer"
+      },
+      "replicationFactor": {
+        "@id": "om:hasReplicationFactor",
+        "@type": "xsd:integer"
+      },
+      "retentionTime": {
+        "@id": "om:hasRetentionTime",
+        "@type": "xsd:long"
+      },
+      "messageSchema": {
+        "@id": "om:hasMessageSchema",
+        "@type": "@json"
+      },
+      "cleanupPolicies": {
+        "@id": "om:hasCleanupPolicy",
+        "@type": "xsd:string",
+        "@container": "@list"
+      },
+      "containerPrefix": {
+        "@id": "om:hasContainerPrefix",
+        "@type": "xsd:string"
+      },
+      "containerParent": {
+        "@id": "om:hasContainerParent",
+        "@type": "@id"
+      },
+      "objectStore": {
+        "@id": "om:belongsToObjectStore",
+        "@type": "@id"
+      },
+      "metricType": {
+        "@id": "om:hasMetricType",
+        "@type": "xsd:string"
+      },
+      "unitOfMeasurement": {
+        "@id": "om:hasUnitOfMeasurement",
+        "@type": "xsd:string"
+      },
+      "metricExpression": {
+        "@id": "om:hasMetricExpression",
+        "@type": "@json"
+      },
+      "granularity": {
+        "@id": "om:hasGranularity",
+        "@type": "xsd:string"
+      },
+      "relatedMetrics": {
+        "@id": "om:hasRelatedMetric",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "chartType": {
+        "@id": "om:hasChartType",
+        "@type": "xsd:string"
+      },
+      "chartUrl": {
+        "@id": "om:hasChartURL",
+        "@type": "@id"
+      },
+      "chartOf": {
+        "@id": "om:belongsToDashboard",
+        "@type": "@id"
+      },
+      "dashboardUrl": {
+        "@id": "om:hasDashboardURL",
+        "@type": "@id"
+      },
+      "charts": {
+        "@id": "om:hasChart",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "dataModels": {
+        "@id": "om:hasDataModel",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "project": {
+        "@id": "om:belongsToProject",
+        "@type": "xsd:string"
+      },
+      "reportType": {
+        "@id": "om:hasReportType",
+        "@type": "xsd:string"
+      }
+    }
+  ]
+}

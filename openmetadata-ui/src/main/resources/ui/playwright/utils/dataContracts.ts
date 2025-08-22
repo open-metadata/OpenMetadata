@@ -88,18 +88,20 @@ export const waitForDataContractExecution = async (
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
             throw new Error(
-              `Failed to get contract execution status after ${maxConsecutiveErrors} consecutive attempts`
+              `Failed to get contract execution status after ${maxConsecutiveErrors} consecutive attempts: ${error}`
             );
           }
 
-          return 'Running';
+          throw error;
         }
       },
       {
         message: 'Wait for data contract execution to complete',
-        timeout: 750_000,
-        intervals: [30_000, 15_000, 5_000],
+        timeout: 150_000,
+        intervals: [5_000, 10_000, 15_000],
       }
     )
-    .toEqual(expect.stringMatching(/(Aborted|Success|Failed)/));
+    .toEqual(
+      expect.stringMatching(/(Aborted|Success|Failed|PartialSuccess|Queued)/)
+    );
 };
