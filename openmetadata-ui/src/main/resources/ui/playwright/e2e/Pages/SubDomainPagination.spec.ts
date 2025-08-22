@@ -32,11 +32,9 @@ test.describe('SubDomain Pagination', () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
-    const { page, apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     await domain.create(apiContext);
-
-    await redirectToHomePage(page);
 
     const createPromises = [];
     for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {
