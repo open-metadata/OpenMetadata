@@ -14,7 +14,7 @@ Cardinality Distribution Metric definition
 """
 from typing import Any, Dict, Optional
 
-from sqlalchemy import case, column, func
+from sqlalchemy import case, column, func, or_
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.profiler.metrics.core import HybridMetric
@@ -81,7 +81,7 @@ class CardinalityDistribution(HybridMetric):
         col = column(self.col.name, self.col.type)
         threshold = self.threshold_percentage * total_count
 
-        # Build a SQLite-compatible query using CTEs
+        # Build a cross-database compatible query using CTEs
         # Step 1: Get value counts
         value_counts_cte = (
             session.query(  # type: ignore
@@ -92,38 +92,45 @@ class CardinalityDistribution(HybridMetric):
             .cte("value_counts")
         )
 
-        # Step 2: Get top categories (simplified approach)
-        top_categories_subquery = (
+        # Step 2: Get top categories
+        top_categories_cte = (
             session.query(value_counts_cte.c.category)  # type: ignore
             .select_from(value_counts_cte)
             .order_by(value_counts_cte.c.category_count.desc())
             .limit(self.min_buckets)
-            .subquery()
+            .cte("top_categories")
         )
 
-        # Step 3: Final aggregation with proper categorization
-        query = (
+        # Step 3: Create categorization CTE to avoid complex GROUP BY
+        categorized_cte = (
             session.query(  # type: ignore
                 case(
                     (
-                        value_counts_cte.c.category.in_(top_categories_subquery),
+                        or_(
+                            value_counts_cte.c.category.in_(
+                                session.query(top_categories_cte.c.category)  # type: ignore
+                            ),
+                            value_counts_cte.c.category_count >= threshold,
+                        ),
                         value_counts_cte.c.category,
                     ),
                     else_="Others",
                 ).label("category_group"),
-                func.sum(value_counts_cte.c.category_count).label("total_count"),
+                value_counts_cte.c.category_count,
             )
             .select_from(value_counts_cte)
-            .group_by(
-                case(
-                    (
-                        value_counts_cte.c.category.in_(top_categories_subquery),
-                        value_counts_cte.c.category,
-                    ),
-                    else_="Others",
-                )
+            .cte("categorized")
+        )
+
+        # Step 4: Final aggregation with simple GROUP BY
+        query = (
+            session.query(  # type: ignore
+                categorized_cte.c.category_group,
+                func.sum(categorized_cte.c.category_count).label("total_count"),
             )
-            .order_by(func.sum(value_counts_cte.c.category_count).desc())
+            .select_from(categorized_cte)
+            .group_by(categorized_cte.c.category_group)
+            .order_by(func.sum(categorized_cte.c.category_count).desc())
         )
 
         rows = query.all()
