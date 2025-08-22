@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -3439,6 +3440,18 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(testSuite.getTests());
     assertEquals(2, testSuite.getTests().size());
 
+    // Verify test suite exists in search index
+    Map<String, String> searchQueryParams = new HashMap<>();
+    searchQueryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
+    searchQueryParams.put("fields", "tests");
+    ResultList<TestSuite> testSuitesInSearchIndex =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndex);
+    assertFalse(testSuitesInSearchIndex.getData().isEmpty());
+    assertEquals(1, testSuitesInSearchIndex.getData().size());
+    assertEquals(testSuite.getId(), testSuitesInSearchIndex.getData().get(0).getId());
+
     // Verify both test cases exist and are accessible before deletion
     TestCase retrievedTestCase1 =
         testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
@@ -3458,6 +3471,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Verify test suite is no longer in search index
+    ResultList<TestSuite> testSuitesInSearchIndexAfterDeletion =
+        testSuiteResourceTest.listEntitiesFromSearch(searchQueryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuitesInSearchIndexAfterDeletion);
+    assertTrue(testSuitesInSearchIndexAfterDeletion.getData().isEmpty());
 
     // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist
     // independently
@@ -4261,5 +4281,76 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         () -> createDataContract(dashboardWithBoth),
         BAD_REQUEST,
         "Data contract validation failed for dashboard entity");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractOwnerFieldFiltering(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create owners list
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(USER1_REF);
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withOwners(owners);
+
+    DataContract created = createDataContract(create);
+
+    // Verify owner was set during creation
+    assertNotNull(created.getOwners());
+    assertEquals(1, created.getOwners().size());
+
+    // Test 1: Get without specifying fields - should not include owner information
+    DataContract retrievedWithoutFields = getDataContract(created.getId(), null);
+    assertNotNull(retrievedWithoutFields);
+    assertEquals(created.getId(), retrievedWithoutFields.getId());
+    assertNull(retrievedWithoutFields.getOwners());
+
+    // Test 2: Get with "owners" in fields - should include owner information
+    DataContract retrievedWithOwners = getDataContract(created.getId(), "owners");
+    assertNotNull(retrievedWithOwners);
+    assertEquals(created.getId(), retrievedWithOwners.getId());
+    assertNotNull(retrievedWithOwners.getOwners());
+    assertEquals(1, retrievedWithOwners.getOwners().size());
+    assertEquals(USER1_REF.getId(), retrievedWithOwners.getOwners().get(0).getId());
+
+    // Test 3: Get with multiple fields including owners - should include owner information
+    DataContract retrievedWithMultipleFields = getDataContract(created.getId(), "owners,reviewers");
+    assertNotNull(retrievedWithMultipleFields);
+    assertEquals(created.getId(), retrievedWithMultipleFields.getId());
+    assertNotNull(retrievedWithMultipleFields.getOwners());
+    assertEquals(1, retrievedWithMultipleFields.getOwners().size());
+
+    // Test 4: Get with fields that exclude owners - should not include owner information
+    DataContract retrievedWithoutOwnerField = getDataContract(created.getId(), "reviewers");
+    assertNotNull(retrievedWithoutOwnerField);
+    assertEquals(created.getId(), retrievedWithoutOwnerField.getId());
+    assertNull(retrievedWithoutOwnerField.getOwners());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractIsDeletedWhenTableIsDeleted(TestInfo test) throws IOException {
+    // Create a table
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create a data contract for the table
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the data contract was created
+    assertNotNull(dataContract);
+    assertEquals(table.getId(), dataContract.getEntity().getId());
+
+    // Verify we can get the data contract before deletion
+    DataContract retrieved = getDataContract(dataContract.getId(), null);
+    assertNotNull(retrieved);
+
+    // Delete the table
+    deleteTable(table.getId());
+
+    // Verify that the data contract is also deleted (should throw HttpResponseException)
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
   }
 }
