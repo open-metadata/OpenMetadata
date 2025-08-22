@@ -2452,6 +2452,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiCollection: t('label.api-collection'),
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
+    page: t('label.knowledge-page'),
   };
 
   return (
@@ -2655,4 +2656,5 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SERVICE]: t('label.service'),
   [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
 };

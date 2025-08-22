@@ -132,3 +132,31 @@ export const LINEAGE_EXPORT_HEADERS = [
 export const INITIAL_NODE_ITEMS_LENGTH = 50;
 export const NODE_ITEMS_PAGE_SIZE = 50;
 export const DEBOUNCE_TIMEOUT = 300;
+
+export enum LINEAGE_TAB_VIEW {
+  DIAGRAM_VIEW = 'diagram_view',
+  TABLE_VIEW = 'table_view',
+}
+
+export const LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS: Record<string, string> = {
+  fromEntityFQN: t('label.from-entity-fqn'),
+  fromServiceName: t('label.from-service-name'),
+  fromServiceType: t('label.from-service-type'),
+  fromOwners: t('label.from-owner-plural'),
+  fromDomain: t('label.from-domain'),
+  toEntityFQN: t('label.to-entity-fqn'),
+  toServiceName: t('label.to-service-name'),
+  toServiceType: t('label.to-service-type'),
+  toOwners: t('label.to-owner-plural'),
+  toDomain: t('label.to-domain'),
+  fromChildEntityFQN: t('label.from-child-entity-fqn'),
+  toChildEntityFQN: t('label.to-child-entity-fqn'),
+  pipelineName: t('label.pipeline-name'),
+  pipelineDisplayName: t('label.pipeline-display-name'),
+  pipelineType: t('label.pipeline-type'),
+  pipelineDescription: t('label.pipeline-description'),
+  pipelineOwners: t('label.pipeline-owner-plural'),
+  pipelineDomain: t('label.pipeline-domain'),
+  pipelineServiceName: t('label.pipeline-service-name'),
+  pipelineServiceType: t('label.pipeline-service-type'),
+};

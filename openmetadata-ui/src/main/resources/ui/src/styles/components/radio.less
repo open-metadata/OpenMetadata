@@ -79,3 +79,50 @@
   background-color: @white;
   border-radius: @size-sm;
 }
+
+// New Radio Group Styling
+.new-radio-group {
+  border-radius: @size-xs;
+  border: 1px solid @grey-300;
+  overflow: hidden;
+
+  .ant-radio-button-wrapper {
+    color: @grey-600;
+  }
+
+  .ant-radio-button-wrapper,
+  .ant-radio-button-wrapper-checked {
+    border: none;
+  }
+
+  .ant-radio-button-wrapper:first-child {
+    border-radius: @size-xs 0 0 @size-xs;
+    border-left: none;
+  }
+  .ant-radio-button-wrapper:last-child {
+    border-radius: 0 @size-xs @size-xs 0;
+  }
+
+  .ant-radio-button-wrapper-checked {
+    color: @primary-7;
+  }
+
+  .ant-radio-button-wrapper:not(:first-child)::before {
+    width: 2px;
+  }
+
+  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background-color: @primary-50;
+
+    &::before {
+      width: 1px !important;
+      background: @grey-300;
+    }
+
+    &:hover {
+      &::before {
+        background: @grey-300;
+      }
+    }
+  }
+}

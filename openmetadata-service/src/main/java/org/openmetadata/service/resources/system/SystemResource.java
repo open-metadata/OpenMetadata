@@ -480,6 +480,17 @@ public class SystemResource {
   }
 
   @GET
+  @Path("/health")
+  @Operation(
+      operationId = "healthCheck",
+      summary = "Health check endpoint",
+      description = "Simple health check endpoint that returns 200 OK",
+      responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
+  public Response healthCheck() {
+    return Response.ok("OK").build();
+  }
+
+  @GET
   @Path("/security/config")
   @Operation(
       operationId = "getSecurityConfig",

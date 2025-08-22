@@ -11,23 +11,27 @@
  *  limitations under the License.
  */
 
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
 import {
   DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
@@ -72,6 +76,9 @@ export const DashboardChartTable = ({
     chart: ChartType;
     index: number;
   }>();
+  const { filters: chartFilters, setFilters } = useTableFilters(
+    INITIAL_CHART_FILTERS
+  );
 
   const fetchChartPermissions = useCallback(async (id: string) => {
     try {
@@ -120,7 +127,10 @@ export const DashboardChartTable = ({
 
   const initializeCharts = useCallback(async () => {
     try {
-      const res = await fetchCharts(listChartIds);
+      const res = await fetchCharts(
+        listChartIds,
+        chartFilters.showDeletedCharts
+      );
       setCharts(res);
     } catch (error) {
       showErrorToast(
@@ -130,7 +140,7 @@ export const DashboardChartTable = ({
         })
       );
     }
-  }, [listChartIds]);
+  }, [listChartIds, chartFilters.showDeletedCharts]);
 
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
@@ -261,6 +271,13 @@ export const DashboardChartTable = ({
     }
   };
 
+  const handleShowDeletedCharts = useCallback(
+    (value: boolean) => {
+      setFilters({ showDeletedCharts: value });
+    },
+    [setFilters, chartFilters]
+  );
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -390,11 +407,18 @@ export const DashboardChartTable = ({
     }
 
     initializeCharts();
-  }, [listChartIds, isCustomizationPage]);
+  }, [listChartIds, isCustomizationPage, initializeCharts]);
 
-  if (isEmpty(charts)) {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
-  }
+  useEffect(() => {
+    const newShowDeletedValue =
+      chartFilters.showDeletedCharts ?? dashboardDetails?.deleted;
+    // Only update if the value actually changed to prevent unnecessary navigation
+    if (chartFilters.showDeletedCharts !== newShowDeletedValue) {
+      setFilters({
+        showDeletedCharts: newShowDeletedValue,
+      });
+    }
+  }, [dashboardDetails?.deleted, chartFilters.showDeletedCharts, setFilters]);
 
   return (
     <>
@@ -404,6 +428,26 @@ export const DashboardChartTable = ({
         data-testid="charts-table"
         dataSource={charts}
         defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
+        extraTableFilters={
+          <span>
+            <Switch
+              checked={chartFilters.showDeletedCharts}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedCharts}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </span>
+        }
+        locale={{
+          emptyText: (
+            <ErrorPlaceHolder
+              className="border-none mt-0-important"
+              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+            />
+          ),
+        }}
         pagination={false}
         rowKey="fullyQualifiedName"
         scroll={{ x: 1200 }}

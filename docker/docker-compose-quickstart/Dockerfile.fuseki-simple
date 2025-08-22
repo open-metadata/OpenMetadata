@@ -1,0 +1,34 @@
+# Simple multi-platform Fuseki using official image
+FROM --platform=$BUILDPLATFORM alpine:latest AS downloader
+
+RUN apk add --no-cache wget tar
+
+ENV FUSEKI_VERSION=5.0.0
+WORKDIR /tmp
+
+RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    mv apache-jena-fuseki-${FUSEKI_VERSION} /fuseki-dist
+
+# Use OpenJDK base image for runtime
+FROM openjdk:17-slim
+
+ENV FUSEKI_HOME=/fuseki
+ENV FUSEKI_BASE=/fuseki
+
+# Copy Fuseki from builder
+COPY --from=downloader /fuseki-dist ${FUSEKI_HOME}
+
+# Create necessary directories
+RUN mkdir -p ${FUSEKI_HOME}/run ${FUSEKI_HOME}/databases
+
+WORKDIR ${FUSEKI_HOME}
+
+# Expose port
+EXPOSE 3030
+
+# Default JVM options
+ENV JVM_ARGS="-Xmx4g -Xms2g"
+
+# Simple entrypoint
+CMD ["sh", "-c", "mkdir -p ${FUSEKI_HOME}/databases/openmetadata && exec ${FUSEKI_HOME}/fuseki-server --update --loc=${FUSEKI_HOME}/databases/openmetadata /openmetadata"]

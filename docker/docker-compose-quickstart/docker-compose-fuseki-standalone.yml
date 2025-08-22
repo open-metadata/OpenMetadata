@@ -1,0 +1,45 @@
+# Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
+services:
+  fuseki:
+    image: stain/jena-fuseki:5.0.0
+    container_name: fuseki-standalone
+    hostname: fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      # Admin credentials
+      - ADMIN_PASSWORD=admin
+      # JVM memory settings - adjust based on your system
+      - JVM_ARGS=-Xmx4g -Xms2g
+      # Fuseki configuration
+      - FUSEKI_BASE=/fuseki
+    volumes:
+      # Mount directory for persistent storage (configurable via .env)
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki
+    networks:
+      - fuseki-net
+    # Create openmetadata dataset on startup
+    entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+networks:
+  fuseki-net:
+    driver: bridge
+
+# Usage:
+# 1. Create the volume directory: mkdir -p fuseki-volume
+# 2. Start: docker-compose -f docker-compose-fuseki-standalone.yml up -d
+# 3. Access Fuseki UI: http://localhost:3030
+# 4. Login: admin/admin
+# 5. SPARQL endpoint: http://localhost:3030/openmetadata/sparql
