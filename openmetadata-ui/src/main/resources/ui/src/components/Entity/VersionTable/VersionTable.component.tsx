@@ -14,22 +14,13 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
-import { usePaging } from '../../../hooks/paging/usePaging';
-import { useFqn } from '../../../hooks/useFqn';
-import {
-  getTableColumnsByFQN,
-  searchTableColumnsByFQN,
-} from '../../../rest/tableAPI';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -39,10 +30,8 @@ import {
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
-  pruneEmptyChildren,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
@@ -52,34 +41,29 @@ import { VersionTableProps } from './VersionTable.interfaces';
 function VersionTable<T extends Column | SearchIndexField>({
   columnName,
   columns,
+  isLoading,
+  paginationProps,
   joins,
   tableConstraints,
   addedColumnConstraintDiffs,
   deletedColumnConstraintDiffs,
   addedTableConstraintDiffs,
   deletedTableConstraintDiffs,
+  handelSearchCallback,
 }: Readonly<VersionTableProps<T>>) {
-  const { fqn: tableFqn } = useFqn();
-  // Pagination state for columns
-  const [tableColumns, setTableColumns] = useState<Column[]>([]);
-  const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
-
-  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
 
-  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
+  const data = useMemo(() => {
+    if (isEmpty(searchText)) {
+      return makeData<T>(columns);
+    } else {
+      const searchCols = searchInColumns<T>(columns, searchText);
 
-  const {
-    currentPage,
-    pageSize,
-    handlePageChange,
-    handlePageSizeChange,
-    showPagination,
-    paging,
-    handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+      return makeData<T>(searchCols);
+    }
+  }, [searchText, columns]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
@@ -163,76 +147,19 @@ function VersionTable<T extends Column | SearchIndexField>({
     ]
   );
 
-  // Function to fetch paginated columns or search results
-  const fetchPaginatedColumns = useCallback(
-    async (page = 1, searchQuery?: string) => {
-      if (!tableFqn) {
-        return;
-      }
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+    handelSearchCallback?.(searchValue);
+  };
 
-      setColumnsLoading(true);
-      try {
-        const offset = (page - 1) * pageSize;
-
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
-          ? await searchTableColumnsByFQN(tableFqn, {
-              q: searchQuery,
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            })
-          : await getTableColumnsByFQN(tableFqn, {
-              limit: pageSize,
-              offset: offset,
-              fields: 'tags,customMetrics',
-            });
-
-        setTableColumns(pruneEmptyChildren(response.data) || []);
-        handlePagingChange(response.paging);
-      } catch {
-        // Set empty state if API fails
-        setTableColumns([]);
-        handlePagingChange({
-          offset: 1,
-          limit: pageSize,
-          total: 0,
-        });
-      }
-      setColumnsLoading(false);
-    },
-    [tableFqn, pageSize]
-  );
-
-  const handleColumnsPageChange = useCallback(
-    ({ currentPage }: PagingHandlerParams) => {
-      fetchPaginatedColumns(currentPage, searchText);
-      handlePageChange(currentPage);
-    },
-    [paging, fetchPaginatedColumns, searchText]
-  );
-
-  const paginationProps = useMemo(
+  const searchProps = useMemo(
     () => ({
-      currentPage,
-      showPagination,
-      isLoading: columnsLoading,
-      isNumberBased: Boolean(searchText),
-      pageSize,
-      paging,
-      pagingHandler: handleColumnsPageChange,
-      onShowSizeChange: handlePageSizeChange,
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      typingInterval: 500,
+      onSearch: handleSearchAction,
     }),
-    [
-      currentPage,
-      showPagination,
-      columnsLoading,
-      searchText,
-      pageSize,
-      paging,
-      handleColumnsPageChange,
-      handlePageSizeChange,
-    ]
+    [searchText, handleSearchAction]
   );
 
   const versionTableColumns: ColumnsType<T> = useMemo(
@@ -315,39 +242,8 @@ function VersionTable<T extends Column | SearchIndexField>({
         ),
       },
     ],
-    [columnName, joins, data, renderColumnName]
+    [columnName, joins, renderColumnName]
   );
-
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-  };
-
-  const searchProps = useMemo(
-    () => ({
-      placeholder: t('message.find-in-table'),
-      value: searchText,
-      typingInterval: 500,
-      onSearch: handleSearchAction,
-    }),
-    [searchText, handleSearchAction]
-  );
-
-  // Fetch columns when search changes
-  useEffect(() => {
-    if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
-    }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
-
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(tableColumns);
-    } else {
-      const searchCols = searchInColumns<T>(tableColumns, searchText);
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, tableColumns]);
 
   return (
     <Table
@@ -361,7 +257,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         defaultExpandAllRows: true,
       }}
       key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
-      loading={columnsLoading}
+      loading={isLoading}
       locale={{
         emptyText: <FilterTablePlaceHolder />,
       }}
