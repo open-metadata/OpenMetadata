@@ -39,13 +39,21 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
+    try {
+      await adminUser.login(adminPage);
+      await use(adminPage);
+    } finally {
+      await adminPage.close();
+    }
   },
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testUser.login(page);
-    await use(page);
+    try {
+      await testUser.login(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
   },
 });
 
@@ -54,6 +62,13 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
+  await afterAction();
+});
+
+test.afterAll('Cleanup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await testUser.delete(apiContext);
   await afterAction();
 });
 
@@ -80,6 +95,12 @@ Object.entries(entityConfig).forEach(([, config]) => {
       await afterAction();
     });
 
+    test.afterAll('Cleanup entity', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
+      await afterAction();
+    });
+
     // Allow permissions tests
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
@@ -87,6 +108,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await adminUser.login(page);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
+        await page.close();
       });
 
       test(`${entityType} allow common operations permissions`, async ({
@@ -133,6 +155,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await adminUser.login(page);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
+        await page.close();
       });
 
       test(`${entityType} deny common operations permissions`, async ({

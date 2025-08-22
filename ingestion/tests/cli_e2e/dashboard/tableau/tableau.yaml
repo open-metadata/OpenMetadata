@@ -5,16 +5,20 @@ source:
     config:
       type: Tableau
       authType:
-        username: $E2E_TABLEAU_USERNAME
-        password: $E2E_TABLEAU_PASSWORD
+        personalAccessTokenName: $E2E_TABLEAU_PAT_NAME
+        personalAccessTokenSecret: $E2E_TABLEAU_PAT_SECRET
       hostPort: $E2E_TABLEAU_HOST_PORT
       siteName: $E2E_TABLEAU_SITE
+      apiVersion: "3.26"
   sourceConfig:
     config:
       type: DashboardMetadata
       lineageInformation:
         dbServiceNames:
         - local_redshift_tableau
+      projectFilterPattern:
+        includes:
+        - Analytics
 sink:
   type: metadata-rest
   config: {}

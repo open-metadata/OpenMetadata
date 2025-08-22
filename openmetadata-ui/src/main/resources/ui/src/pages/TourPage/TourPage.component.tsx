@@ -41,7 +41,7 @@ const TourPage = () => {
     updateIsTourOpen(true);
 
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 60;
 
     const waitForElement = () => {
       const el = document.querySelector('#feedWidgetData');

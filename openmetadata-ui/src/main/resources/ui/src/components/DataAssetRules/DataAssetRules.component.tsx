@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -29,11 +29,9 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import {
-  ProviderType,
   SemanticsRule,
   Settings,
   SettingType,
@@ -43,6 +41,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
+import jsonLogicSearchClassBase from '../../utils/JSONLogicSearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -134,6 +133,18 @@ export const SemanticsRuleForm: React.FC<{
     form.setFieldsValue(semanticsRule);
   }, [semanticsRule]);
 
+  const queryBuilderFields = useMemo(() => {
+    const fields = jsonLogicSearchClassBase.getMapFields();
+
+    return {
+      [EntityReferenceFields.TAG]: fields[EntityReferenceFields.TAG],
+      [EntityReferenceFields.TIER]: fields[EntityReferenceFields.TIER],
+      [EntityReferenceFields.DOMAIN]: fields[EntityReferenceFields.DOMAIN],
+      [EntityReferenceFields.DATA_PRODUCT]:
+        fields[EntityReferenceFields.DATA_PRODUCT],
+    };
+  }, []);
+
   return (
     <Form form={form} layout="vertical">
       <Form.Item
@@ -167,7 +178,6 @@ export const SemanticsRuleForm: React.FC<{
         <Input.TextArea placeholder={t('label.description')} rows={2} />
       </Form.Item>
       <Form.Item
-        label={t('label.rule')}
         name="rule"
         rules={[
           {
@@ -176,9 +186,13 @@ export const SemanticsRuleForm: React.FC<{
         ]}>
         {/* @ts-expect-error because Form.Item will provide value and onChange */}
         <QueryBuilderWidget
+          defaultField={EntityReferenceFields.TAG}
+          fields={queryBuilderFields}
+          label={t('label.rule')}
           schema={{
             outputType: SearchOutputType.JSONLogic,
           }}
+          subField="tagFQN"
         />
       </Form.Item>
     </Form>
@@ -307,14 +321,6 @@ export const useSemanticsRuleList = ({
     });
   };
 
-  const handleEditSemanticsRule = (semanticsRule: SemanticsRule) => {
-    setAddEditSemanticsRule(semanticsRule);
-  };
-
-  const handleDelete = (semanticsRule: SemanticsRule) => {
-    setDeleteSemanticsRule(semanticsRule);
-  };
-
   const onConfirmDelete = async (semanticsRule: SemanticsRule) => {
     const updatedSemanticsRules = semanticsRules.filter(
       (rule) => rule.name !== semanticsRule.name
@@ -347,28 +353,6 @@ export const useSemanticsRuleList = ({
             handleSave({ ...record, enabled: !enabled });
           }}
         />
-      ),
-    },
-    {
-      title: t('label.action'),
-      dataIndex: 'actions',
-      render: (_: unknown, record: SemanticsRule) => (
-        <Space className="custom-icon-button">
-          <Button
-            className="text-secondary p-0 remove-button-background-hover"
-            disabled={record.provider === ProviderType.System}
-            icon={<Icon component={IconEdit} />}
-            type="text"
-            onClick={() => handleEditSemanticsRule(record)}
-          />
-          <Button
-            className="text-secondary p-0 remove-button-background-hover"
-            disabled={record.provider === ProviderType.System}
-            icon={<Icon component={IconDelete} />}
-            type="text"
-            onClick={() => handleDelete(record)}
-          />
-        </Space>
       ),
     },
   ];
@@ -425,11 +409,7 @@ export const useSemanticsRuleList = ({
   );
 
   return {
-    addSemanticsRuleButton: (
-      <Button type="primary" onClick={handleAddDataAssetRule}>
-        {t('label.add-data-asset-rule')}
-      </Button>
-    ),
+    addSemanticsRuleButton: null,
     semanticsRuleList: (
       <>
         {quickAddSemanticsRule || dataAssetRuleList}

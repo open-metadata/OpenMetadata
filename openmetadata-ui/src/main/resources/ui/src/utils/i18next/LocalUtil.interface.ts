@@ -16,6 +16,7 @@ export enum SupportedLocales {
   한국어 = 'ko-KR',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
+  繁體中文 = 'zh-TW',
   日本語 = 'ja-JP',
   'Português (Brasil)' = 'pt-BR',
   'Português (Portugal)' = 'pt-PT',

@@ -17,6 +17,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
@@ -174,6 +175,51 @@ public class WorkflowInstanceStateRepository
     workflowInstanceState.setStage(stage);
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstanceState), workflowInstanceStateId);
+  }
+
+  /**
+   * Marks all states of a workflow instance as FAILED with the given reason.
+   * Preserves audit trail instead of deleting the states.
+   */
+  public void markInstanceStatesAsFailed(UUID workflowInstanceId, String reason) {
+    try {
+      // Get workflow definition to query states
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      WorkflowInstance instance =
+          JsonUtils.readValue(
+              workflowInstanceRepository.getTimeSeriesDao().getById(workflowInstanceId),
+              WorkflowInstance.class);
+
+      WorkflowDefinitionRepository workflowDefinitionRepository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      WorkflowDefinition workflowDefinition =
+          workflowDefinitionRepository.get(
+              null, instance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
+
+      // Query all states for this workflow instance
+      long endTs = System.currentTimeMillis();
+      long startTs = endTs - (7L * 24 * 60 * 60 * 1000);
+
+      ResultList<WorkflowInstanceState> instanceStates =
+          listWorkflowInstanceStateForInstance(
+              workflowDefinition.getName(), workflowInstanceId, null, startTs, endTs, 1000, false);
+
+      // Mark all states as FAILURE
+      for (WorkflowInstanceState state : instanceStates.getData()) {
+        WorkflowInstanceState updatedState =
+            state.withStatus(WorkflowInstance.WorkflowStatus.FAILURE).withException(reason);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as failed for instance {}: {}",
+          workflowInstanceId,
+          e.getMessage());
+    }
   }
 
   private String buildWorkflowInstanceFqn(

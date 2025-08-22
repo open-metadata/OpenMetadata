@@ -54,12 +54,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -74,15 +73,16 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePipeline> {
   public static List<Task> TASKS;
 
@@ -845,6 +845,101 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     assertEquals(actualStatus, expectedStatus);
   }
 
+  @Test
+  void testPipelineRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create pipeline with owner, tags and tasks
+    CreatePipeline createPipeline =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(listOf(USER1_REF))
+            .withTags(listOf(TIER1_TAG_LABEL))
+            .withTasks(TASKS);
+
+    Pipeline pipeline = createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline exists in RDF
+    RdfTestUtils.verifyEntityInRdf(pipeline, RdfUtils.getRdfType("pipeline"));
+
+    // Verify hierarchical relationship (service CONTAINS pipeline)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), pipeline.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(pipeline.getFullyQualifiedName(), USER1_REF);
+
+    // Verify pipeline tags
+    RdfTestUtils.verifyTagsInRdf(pipeline.getFullyQualifiedName(), pipeline.getTags());
+
+    // Verify task tags (tasks can have individual tags)
+    for (Task task : pipeline.getTasks()) {
+      if (task.getTags() != null && !task.getTags().isEmpty()) {
+        String taskFqn = pipeline.getFullyQualifiedName() + "." + task.getName();
+        RdfTestUtils.verifyTagsInRdf(taskFqn, task.getTags());
+      }
+    }
+  }
+
+  @Test
+  void testPipelineRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create pipeline
+    CreatePipeline createPipeline =
+        createRequest(test).withService(getContainer().getName()).withOwners(listOf(USER1_REF));
+    Pipeline pipeline = createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline exists
+    RdfTestUtils.verifyEntityInRdf(pipeline, RdfUtils.getRdfType("pipeline"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), pipeline.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(pipeline.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the pipeline
+    deleteEntity(pipeline.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(pipeline, RdfUtils.getRdfType("pipeline"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), pipeline.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(pipeline.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the pipeline
+    Pipeline restored =
+        restoreEntity(new RestoreEntity().withId(pipeline.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("pipeline"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testPipelineRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create pipeline
+    CreatePipeline createPipeline = createRequest(test).withService(getContainer().getName());
+    Pipeline pipeline = createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline exists
+    RdfTestUtils.verifyEntityInRdf(pipeline, RdfUtils.getRdfType("pipeline"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), pipeline.getEntityReference());
+
+    // Hard delete the pipeline
+    deleteEntity(pipeline.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify pipeline no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(pipeline.getFullyQualifiedName());
+  }
+
   @Order(1)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
@@ -882,7 +977,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Test pagination with fields=tags (should fetch pipeline-level tags only)
     WebTarget target =
-        getResource("pipelines").queryParam("fields", "tags").queryParam("limit", "10");
+        getResource("pipelines").queryParam("fields", "tags").queryParam("limit", "50");
 
     PipelineList pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(pipelineList.getData());
@@ -915,7 +1010,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
 
     // Test pagination with fields=tasks,tags (should fetch both pipeline and task tags)
-    target = getResource("pipelines").queryParam("fields", "tasks,tags").queryParam("limit", "10");
+    target = getResource("pipelines").queryParam("fields", "tasks,tags").queryParam("limit", "50");
 
     pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(pipelineList.getData());

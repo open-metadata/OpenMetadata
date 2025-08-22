@@ -25,6 +25,7 @@ import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension
 import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
@@ -35,7 +36,7 @@ import {
 } from '../../generated/tests/testDefinition';
 import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
-import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
+import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
 
 /**
