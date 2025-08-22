@@ -213,10 +213,12 @@ export function getNodeClassNames({
   isSelected,
   showDqTracing,
   isTraced,
+  isBaseNode,
 }: {
   isSelected: boolean;
   showDqTracing: boolean;
   isTraced: boolean;
+  isBaseNode: boolean;
 }) {
   return classNames(
     'lineage-node p-0',
@@ -224,6 +226,7 @@ export function getNodeClassNames({
     {
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
+      'lineage-base-node': isBaseNode,
     }
   );
 }

@@ -15,13 +15,15 @@ import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { getFirstRowColumnLink } from '../../utils/entity';
+import {
+  assignTagToChildren,
+  getFirstRowColumnLink,
+  removeTagsFromChildren,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
-
-test.slow(true);
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -437,5 +439,43 @@ test.describe('Table & Data Model columns table pagination', () => {
     expect(
       page.locator('[data-row-key="shop_id"]').getByTestId('expand-icon')
     ).not.toBeVisible();
+  });
+
+  test('expand / collapse should not appear after updating nested fields table', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
   });
 });

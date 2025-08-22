@@ -156,6 +156,8 @@ def create_sqlite_table():
         session.add_all(data)
         session.commit()
 
+    runner.service_connection = sqlite_conn
+    runner.entity = TABLE
     yield runner
     # clean up
     User.__table__.drop(bind=engine)
@@ -636,6 +638,31 @@ def test_case_table_custom_sql_unsafe_query_aborted():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_with_partition_condition():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression",
+                value="SELECT * FROM users WHERE age > 20 AND name = 'John'",
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="ROWS",
+            ),
+            TestCaseParameterValue(
+                name="partitionExpression",
+                value="name = 'John'",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_row_count_to_be_between():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
@@ -705,6 +732,23 @@ def test_case_table_custom_sql_query_success_dl():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="sqlExpression", value="age < 0"),
+        ],
+    )
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_success_dl_with_partition_expression():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age < 0"),
+            TestCaseParameterValue(
+                name="partitionExpression", value="nickname == 'johnny b goode'"
+            ),
         ],
     )
 

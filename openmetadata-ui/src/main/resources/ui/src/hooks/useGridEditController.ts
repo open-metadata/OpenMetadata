@@ -482,6 +482,136 @@ export function useGridEditController({
         return;
       }
 
+      // Handle Delete and Backspace keys to clear cell content
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Only handle if we're in a cell and not in a text input
+        const target = e.target as HTMLElement;
+        const isInInput =
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.contentEditable === 'true';
+
+        // Check if we're in a custom editor (like tag selector, dropdown, etc.)
+        const isInCustomEditor =
+          target.closest('.async-select-list') ||
+          target.closest('.react-grid-select-dropdown') ||
+          target.closest('.ant-select') ||
+          target.closest('.ant-select-dropdown');
+
+        if (!isInInput && !isInCustomEditor) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Check if we're in a column header (whole column selection)
+          const isInColumnHeader =
+            target.closest('.rdg-header-row') ||
+            target.getAttribute('role') === 'columnheader';
+
+          // Check if we're in a row header (whole row selection)
+          const isInRowHeader =
+            target.closest('.rdg-row-header') ||
+            target.getAttribute('role') === 'rowheader';
+
+          if (isInColumnHeader) {
+            // Handle whole column deletion
+            const colAttr = target.getAttribute('aria-colindex');
+            if (colAttr) {
+              const colIndex = parseInt(colAttr, 10) - 1;
+              const column = columns[colIndex];
+
+              if (column && column.editable) {
+                // Clear all cells in the column
+                const newRows = [...dataSource];
+                for (let row = 0; row < newRows.length; row++) {
+                  newRows[row] = { ...newRows[row], [column.key]: '' };
+                }
+                setDataSource(newRows);
+                pushToUndoStack(dataSource);
+              }
+            }
+          } else if (isInRowHeader) {
+            // Handle whole row deletion
+            const rowAttr = target.getAttribute('aria-rowindex');
+            if (rowAttr) {
+              const rowIndex = parseInt(rowAttr, 10) - 2; // -2 for header row offset
+
+              if (rowIndex >= 0 && rowIndex < dataSource.length) {
+                // Clear all cells in the row
+                const newRows = [...dataSource];
+                const row = newRows[rowIndex];
+
+                // Clear all editable columns in the row
+                columns.forEach((column) => {
+                  if (column.editable) {
+                    row[column.key] = '';
+                  }
+                });
+
+                setDataSource(newRows);
+                pushToUndoStack(dataSource);
+              }
+            }
+          } else if (selectedRange) {
+            // Handle range selection deletion
+            const { startRow, endRow, startCol, endCol } = selectedRange;
+            const newRows = [...dataSource];
+
+            for (let row = startRow; row <= endRow; row++) {
+              if (row < newRows.length) {
+                for (let col = startCol; col <= endCol; col++) {
+                  const column = columns[col];
+                  if (column && column.editable) {
+                    newRows[row] = { ...newRows[row], [column.key]: '' };
+                  }
+                }
+              }
+            }
+
+            setDataSource(newRows);
+            pushToUndoStack(dataSource);
+          } else {
+            // Handle single cell deletion
+            const cellIndices = getCellIndices(target);
+            if (cellIndices) {
+              const { row, col } = cellIndices;
+              const column = columns[col];
+
+              if (column && column.editable && row < dataSource.length) {
+                // Clear the cell content
+                const newRows = [...dataSource];
+                newRows[row] = { ...newRows[row], [column.key]: '' };
+                setDataSource(newRows);
+                pushToUndoStack(dataSource);
+              }
+            }
+          }
+
+          return;
+        }
+
+        // For custom editors, we need to handle the case where the event is stopped
+        // but we still want to clear the cell content
+        if (isInCustomEditor) {
+          // Get the cell that contains this custom editor
+          const cellElement = target.closest('.rdg-cell');
+          if (cellElement) {
+            const cellIndices = getCellIndices(cellElement);
+            if (cellIndices) {
+              const { row, col } = cellIndices;
+              const column = columns[col];
+
+              if (column && column.editable && row < dataSource.length) {
+                // Clear the cell content for custom editors
+                const newRows = [...dataSource];
+                newRows[row] = { ...newRows[row], [column.key]: '' };
+                setDataSource(newRows);
+                pushToUndoStack(dataSource);
+              }
+            }
+          }
+        }
+      }
+
       // Shift+Arrow for range selection (Excel-like)
       if (
         selectedRange &&
@@ -568,7 +698,16 @@ export function useGridEditController({
         );
       }
     };
-  }, [undo, redo, gridContainer, dataSource, selectedRange, columns]);
+  }, [
+    undo,
+    redo,
+    gridContainer,
+    dataSource,
+    selectedRange,
+    columns,
+    setDataSource,
+    pushToUndoStack,
+  ]);
 
   useEffect(() => {
     if (!gridContainer) {

@@ -37,12 +37,24 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
 
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
-SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
+SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+"""
+)
+
+SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
+    """
+    select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
+    from {account_usage}.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA IS NULL
+      and OBJECT_NAME IS NOT NULL
+      and COLUMN_NAME IS NULL
+      and DOMAIN = 'SCHEMA'
 """
 )
 
