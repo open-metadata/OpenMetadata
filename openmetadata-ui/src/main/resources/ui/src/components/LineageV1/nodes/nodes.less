@@ -1,0 +1,114 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.lineage-node-v1 {
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+
+  &.selected {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+
+  &.root-node {
+    border-color: #52c41a;
+    background: #f6ffed;
+  }
+
+  &.edit-mode {
+    border-style: dashed;
+  }
+
+  &.new-node {
+    border-color: #faad14;
+    background: #fffbe6;
+  }
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .node-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .node-icon {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+    }
+
+    .node-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+
+      .node-name {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .node-type {
+        font-size: 12px;
+        line-height: 1.2;
+      }
+    }
+  }
+}
+
+.lineage-handle-v1 {
+  width: 8px;
+  height: 8px;
+  background: #1890ff;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+.load-more-node {
+  background: #fafafa;
+  border-style: dashed;
+  padding: 8px;
+  min-width: 150px;
+
+  .load-more-button {
+    width: 100%;
+  }
+}
+
+.input-node {
+  .lineage-handle-v1 {
+    background: #52c41a;
+  }
+}
+
+.output-node {
+  .lineage-handle-v1 {
+    background: #ff4d4f;
+  }
+}
