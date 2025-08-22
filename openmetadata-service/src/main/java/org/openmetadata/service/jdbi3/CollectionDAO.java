@@ -1491,6 +1491,19 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    // Fetch ALL relationships for a single entity (both FROM and TO) - fixes N+1 problem
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'from' as direction "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'to' as direction "
+            + "FROM entity_relationship "
+            + "WHERE toId = :entityId AND toEntity = :entityType AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findAllRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId, @Bind("entityType") String entityType);
+
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "

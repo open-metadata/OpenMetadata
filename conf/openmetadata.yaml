@@ -325,31 +325,6 @@ elasticsearch:
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
-cacheConfiguration:
-  enabled: ${CACHE_ENABLED:-false}
-  provider: ${CACHE_PROVIDER:-ELASTICACHE_STANDALONE} # Possible values are "ELASTICACHE_STANDALONE", "ELASTICACHE_CLUSTER", "REDIS_STANDALONE", "REDIS_CLUSTER", "AZURE_REDIS"
-  host: ${CACHE_HOST:-localhost}
-  port: ${CACHE_PORT:-6379}
-  database: ${CACHE_DATABASE:-0}
-  ttlSeconds: ${CACHE_TTL_SECONDS:-3600}
-  connectionTimeoutSecs: ${CACHE_CONNECTION_TIMEOUT_SECS:-5}
-  socketTimeoutSecs: ${CACHE_SOCKET_TIMEOUT_SECS:-60}
-  maxRetries: ${CACHE_MAX_RETRIES:-3}
-  warmupEnabled: ${CACHE_WARMUP_ENABLED:-true}
-  warmupBatchSize: ${CACHE_WARMUP_BATCH_SIZE:-100}
-  warmupThreads: ${CACHE_WARMUP_THREADS:-10}
-  warmupRateLimit: ${CACHE_WARMUP_RATE_LIMIT:-100.0}
-  authType: ${CACHE_AUTH_TYPE:-"NONE"} # Possible values are "PASSWORD", "IAM", "AZURE_MANAGED_IDENTITY", "NONE"
-  useSsl: ${CACHE_USE_SSL:-false}
-  awsConfig:
-    region: ${CACHE_AWS_REGION:-""}
-    accessKeyId: ${CACHE_AWS_ACCESS_KEY_ID:-""}
-    secretAccessKey: ${CACHE_AWS_SECRET_ACCESS_KEY:-""}
-  azureConfig:
-    resourceGroup: ${CACHE_AZURE_RESOURCE_GROUP:-""}
-    subscriptionId: ${CACHE_AZURE_SUBSCRIPTION_ID:-""}
-    useManagedIdentity: ${CACHE_AZURE_USE_MANAGED_IDENTITY:-false}
-
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
