@@ -57,34 +57,7 @@ export const getAuthContext = async (token: string) => {
 
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
-
-  const startTime = Date.now();
-
-  // Wait for app to determine auth state - either success or failure
-  await page.waitForFunction(
-    () => {
-      return (
-        window.location.pathname.includes('/my-data') ||
-        window.location.pathname.includes('/signin')
-      );
-    },
-    { timeout: 90000 }
-  );
-
-  const elapsedTime = Date.now() - startTime;
-  const currentUrl = page.url();
-
-  // If we ended up on signin, storageState authentication failed
-  if (currentUrl.includes('/signin')) {
-    const isQuickRedirect = elapsedTime < 5000; // Less than 5 seconds = immediate redirect
-    const errorMessage = isQuickRedirect
-      ? `StorageState authentication failed - immediate redirect to signin in ${elapsedTime}ms. Service Worker likely can't read restored tokens.`
-      : `StorageState authentication failed - slow redirect to signin after ${elapsedTime}ms. Possible Service Worker timing issue.`;
-
-    throw new Error(errorMessage);
-  }
-
-  // Success - we're on my-data page
+  await page.waitForURL('**/my-data');
   await page.waitForLoadState('networkidle');
 };
 
