@@ -288,7 +288,7 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
     label: t('label.column'),
-    key: EntityFields.COLUMN,
+    key: EntityFields.COLUMN_DISPLAY_NAME,
   },
 ];
 

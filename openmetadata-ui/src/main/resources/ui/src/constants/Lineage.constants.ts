@@ -87,7 +87,7 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   EntityFields.DOMAINS,
   EntityFields.OWNERS,
   EntityFields.TAG,
-  EntityFields.COLUMN,
+  EntityFields.COLUMN_DISPLAY_NAME,
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {

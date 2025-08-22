@@ -65,6 +65,7 @@ export enum EntityFields {
   DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
   DATABASE_SCHEMA_NAME = 'databaseSchema.name.keyword',
   COLUMN = 'columns.name.keyword',
+  COLUMN_DISPLAY_NAME = 'columns.displayName.keyword',
   API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
