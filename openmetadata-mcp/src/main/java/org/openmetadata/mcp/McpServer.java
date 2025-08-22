@@ -20,6 +20,7 @@ import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
@@ -47,14 +48,17 @@ public class McpServer implements McpServerProvider {
       Limits limits,
       OpenMetadataApplicationConfig config) {
     this.jwtFilter =
-        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+        new JwtFilter(
+            SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
+            SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
     this.authorizer = authorizer;
     this.limits = limits;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     McpAuthFilter authFilter =
         new McpAuthFilter(
             new JwtFilter(
-                config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration()));
+                SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
+                SecurityConfigurationManager.getInstance().getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
     addSSETransport(contextHandler, authFilter, tools, prompts);

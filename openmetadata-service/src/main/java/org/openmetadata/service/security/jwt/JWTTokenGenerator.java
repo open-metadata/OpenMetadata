@@ -44,6 +44,7 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class JWTTokenGenerator {
@@ -88,7 +89,10 @@ public class JWTTokenGenerator {
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
         issuer = jwtTokenConfiguration.getJwtissuer();
         kid = jwtTokenConfiguration.getKeyId();
-        tokenValidationAlgorithm = algorithm;
+        tokenValidationAlgorithm =
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm();
       }
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);

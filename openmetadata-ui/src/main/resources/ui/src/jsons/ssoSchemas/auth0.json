@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Auth0 SSO Configuration",
+  "description": "Auth0 SSO configuration schema for OpenMetadata",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "title": "SSO Provider",
+      "description": "Select the SSO provider to configure",
+      "type": "string",
+      "enum": [
+        "Google",
+        "Auth0",
+        "Azure",
+        "Okta",
+        "CustomOidc",
+        "Saml",
+        "Basic"
+      ],
+      "default": "Auth0"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "The client ID from your Auth0 application",
+      "type": "string",
+      "minLength": 1
+    },
+    "callbackUrl": {
+      "title": "Callback URL",
+      "description": "The callback URL for SSO authentication",
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "domain": {
+      "title": "Auth0 Domain",
+      "description": "Your Auth0 domain (e.g., your-tenant.auth0.com)",
+      "type": "string",
+      "minLength": 1
+    },
+
+    "publicKeyUrls": {
+      "title": "Public Key URLs",
+      "description": "URLs to fetch public keys for token validation",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "default": ["https://dev-3e0nwcqx.us.auth0.com/.well-known/jwks.json"]
+    },
+    "secretKey": {
+      "title": "Secret Key",
+      "description": "The client secret from your Auth0 application",
+      "type": "string",
+      "format": "password",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "provider",
+    "clientId",
+    "callbackUrl",
+    "domain",
+    "publicKeyUrls"
+  ],
+  "additionalProperties": false
+}

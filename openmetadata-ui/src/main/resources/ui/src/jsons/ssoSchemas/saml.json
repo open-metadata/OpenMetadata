@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SAML SSO Configuration",
+  "description": "SAML SSO configuration schema for OpenMetadata",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "title": "SSO Provider",
+      "description": "Select the SSO provider to configure",
+      "type": "string",
+      "enum": [
+        "Google",
+        "Auth0",
+        "Azure",
+        "Okta",
+        "CustomOidc",
+        "Saml",
+        "Basic"
+      ],
+      "default": "Saml"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "The client ID for your SAML application",
+      "type": "string",
+      "minLength": 1
+    },
+    "callbackUrl": {
+      "title": "Callback URL",
+      "description": "The callback URL for SSO authentication",
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "enableSelfSignup": {
+      "title": "Enable Self Signup",
+      "description": "Allow users to sign up automatically through SSO",
+      "type": "boolean",
+      "default": false
+    },
+    "publicKeyUrls": {
+      "title": "Public Key URLs",
+      "description": "URLs to fetch public keys for token validation",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "minItems": 0,
+      "default": []
+    },
+    "idpEntityId": {
+      "title": "IdP Entity ID",
+      "description": "Identity Provider Entity ID",
+      "type": "string",
+      "minLength": 1
+    },
+    "idpSsoLoginUrl": {
+      "title": "IdP SSO Login URL",
+      "description": "Identity Provider SSO login URL",
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "idpX509Certificate": {
+      "title": "IdP X.509 Certificate",
+      "description": "Identity Provider X.509 certificate",
+      "type": "string"
+    },
+    "spEntityId": {
+      "title": "SP Entity ID",
+      "description": "Service Provider Entity ID",
+      "type": "string",
+      "minLength": 1
+    },
+    "spAcs": {
+      "title": "SP ACS URL",
+      "description": "Service Provider Assertion Consumer Service URL",
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "spCallback": {
+      "title": "SP Callback URL",
+      "description": "Service Provider callback URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "spX509Certificate": {
+      "title": "SP X.509 Certificate",
+      "description": "Service Provider X.509 certificate",
+      "type": "string"
+    },
+    "spPrivateKey": {
+      "title": "SP Private Key",
+      "description": "Service Provider private key",
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "clientId",
+    "callbackUrl",
+    "idpEntityId",
+    "idpSsoLoginUrl",
+    "spEntityId",
+    "spAcs"
+  ],
+  "additionalProperties": false
+}
