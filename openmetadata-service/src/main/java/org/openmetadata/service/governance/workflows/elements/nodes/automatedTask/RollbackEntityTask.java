@@ -1,9 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import java.util.HashMap;
 import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -16,6 +15,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RollbackEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -61,34 +61,21 @@ public class RollbackEntityTask implements NodeInterface {
   private ServiceTask getRollbackEntityServiceTask(
       String subProcessId, RollbackEntityTaskDefinition nodeDefinition) {
 
-    FieldExtension relatedEntityVariable =
+    // Pass the input namespace map so RollbackEntityImpl can access namespaced variables
+    FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
-            .fieldName(RELATED_ENTITY_VARIABLE)
-            .fieldValue(RELATED_ENTITY_VARIABLE)
-            .build();
-
-    FieldExtension workflowInstanceExecutionIdVariable =
-        new FieldExtensionBuilder()
-            .fieldName(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE)
-            .fieldValue(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE)
-            .build();
-
-    FieldExtension rollbackToStatusVariable =
-        new FieldExtensionBuilder()
-            .fieldName("rollbackToStatus")
+            .fieldName("inputNamespaceMapExpr")
             .fieldValue(
-                nodeDefinition.getConfig() != null
-                        && nodeDefinition.getConfig().getRollbackToStatus() != null
-                    ? nodeDefinition.getConfig().getRollbackToStatus()
-                    : "Approved")
+                JsonUtils.pojoToJson(
+                    nodeDefinition.getInputNamespaceMap() != null
+                        ? nodeDefinition.getInputNamespaceMap()
+                        : new HashMap<>()))
             .build();
 
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "rollbackEntity"))
         .implementation(RollbackEntityImpl.class.getName())
-        .addFieldExtension(relatedEntityVariable)
-        .addFieldExtension(workflowInstanceExecutionIdVariable)
-        .addFieldExtension(rollbackToStatusVariable)
+        .addFieldExtension(inputNamespaceMapExpr)
         .build();
   }
 

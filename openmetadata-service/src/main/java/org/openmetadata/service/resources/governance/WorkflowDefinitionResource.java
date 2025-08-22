@@ -54,6 +54,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/governance/workflowDefinitions")
@@ -411,28 +412,15 @@ public class WorkflowDefinitionResource
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
 
-    // Check if workflow already exists
-    WorkflowDefinition existing =
-        repository.findByNameOrNull(
-            workflowDefinition.getFullyQualifiedName(), Include.NON_DELETED);
+    // Let the TransactionManager handle all the logic within a single transaction
+    // This avoids cache issues and ensures atomic operations
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    PutResponse<WorkflowDefinition> response =
+        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(workflowDefinition, updatedBy);
 
-    WorkflowDefinition result;
-    Response.Status status;
-
-    if (existing == null) {
-      // Create new workflow with transaction manager
-      result = WorkflowTransactionManager.createWorkflowDefinition(workflowDefinition);
-      status = Response.Status.CREATED;
-    } else {
-      // Update existing workflow with transaction manager
-      String updatedBy = securityContext.getUserPrincipal().getName();
-      result =
-          WorkflowTransactionManager.updateWorkflowDefinition(
-              existing, workflowDefinition, updatedBy);
-      status = Response.Status.OK;
-    }
-
-    return Response.status(status).entity(repository.withHref(uriInfo, result)).build();
+    return Response.status(response.getStatus())
+        .entity(repository.withHref(uriInfo, response.getEntity()))
+        .build();
   }
 
   @DELETE

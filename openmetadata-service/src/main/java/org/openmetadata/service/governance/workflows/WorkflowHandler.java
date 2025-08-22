@@ -602,16 +602,76 @@ public class WorkflowHandler {
               .processVariableValueEquals("customTaskId", customTaskId.toString())
               .list();
       for (Task task : tasks) {
-        Execution execution =
-            runtimeService
-                .createExecutionQuery()
-                .processInstanceId(task.getProcessInstanceId())
-                .messageEventSubscriptionName("terminateProcess")
-                .singleResult();
-        runtimeService.messageEventReceived("terminateProcess", execution.getId());
+        // Find the correct termination message for this task
+        String terminationMessageName = findTerminationMessageName(runtimeService, task);
+        if (terminationMessageName != null) {
+          Execution execution =
+              runtimeService
+                  .createExecutionQuery()
+                  .processInstanceId(task.getProcessInstanceId())
+                  .messageEventSubscriptionName(terminationMessageName)
+                  .singleResult();
+          if (execution != null) {
+            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+            LOG.debug(
+                "Terminated task {} using message '{}'", customTaskId, terminationMessageName);
+          } else {
+            LOG.warn(
+                "No execution found for termination message '{}' for task {}",
+                terminationMessageName,
+                customTaskId);
+          }
+        } else {
+          LOG.warn("No termination message found for task {}", customTaskId);
+        }
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+    }
+  }
+
+  /**
+   * Dynamically find the termination message name for a task.
+   * Supports both legacy hard-coded names and new dynamic names.
+   */
+  private String findTerminationMessageName(RuntimeService runtimeService, Task task) {
+    try {
+      // Strategy 1: Try to find message subscriptions by checking common patterns
+      String[] possibleMessages = {
+        // Try dynamic message names based on task definition key
+        task.getTaskDefinitionKey() + ".terminateProcess",
+        // Try legacy hard-coded name
+        "terminateProcess"
+      };
+
+      for (String messageName : possibleMessages) {
+        try {
+          List<Execution> executions =
+              runtimeService
+                  .createExecutionQuery()
+                  .processInstanceId(task.getProcessInstanceId())
+                  .messageEventSubscriptionName(messageName)
+                  .list();
+
+          if (!executions.isEmpty()) {
+            LOG.debug("Found termination message '{}' for task {}", messageName, task.getId());
+            return messageName;
+          }
+        } catch (Exception e) {
+          // Continue to next possible message name
+          LOG.debug(
+              "Message '{}' not found for task {}: {}", messageName, task.getId(), e.getMessage());
+        }
+      }
+
+      LOG.warn(
+          "No termination message found for task {} with definition key '{}'",
+          task.getId(),
+          task.getTaskDefinitionKey());
+      return null;
+    } catch (Exception e) {
+      LOG.warn("Error finding termination message for task {}: {}", task.getId(), e.getMessage());
+      return null;
     }
   }
 

@@ -1,10 +1,15 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+
+import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -130,6 +135,41 @@ public class WorkflowTransactionManager {
                 "Failed to delete workflow definition: " + e.getMessage(), e);
           }
         });
+  }
+
+  /**
+   * Create or update a workflow definition with distributed transaction coordination.
+   * Handles both creation and update with proper Flowable synchronization.
+   */
+  public static PutResponse<WorkflowDefinition> createOrUpdateWorkflowDefinition(
+      WorkflowDefinition entity, String updatedBy) {
+
+    // Get the repository
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+    // Pre-validate by creating Workflow object
+    Workflow workflow = new Workflow(entity);
+
+    // Check if workflow exists
+    WorkflowDefinition existing = null;
+    try {
+      existing =
+          repository.findByName(
+              entity.getFullyQualifiedName(), org.openmetadata.schema.type.Include.ALL);
+    } catch (EntityNotFoundException e) {
+      // Entity doesn't exist, will create
+    }
+
+    if (existing == null) {
+      // Create new workflow
+      WorkflowDefinition created = createWorkflowDefinition(entity);
+      return new PutResponse<>(Response.Status.CREATED, created, ENTITY_CREATED);
+    } else {
+      // Update existing workflow
+      WorkflowDefinition updated = updateWorkflowDefinition(existing, entity, updatedBy);
+      return new PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
+    }
   }
 
   // Removed deployToFlowableFirst - the postCreate/postUpdate hooks handle deployment

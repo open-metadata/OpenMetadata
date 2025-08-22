@@ -22,6 +22,14 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
 
+  // Thread-local flag to temporarily skip Flowable deployment in post hooks
+  private static final ThreadLocal<Boolean> skipWorkflowDeployment =
+      ThreadLocal.withInitial(() -> false);
+
+  public void setSkipWorkflowDeployment(boolean skip) {
+    skipWorkflowDeployment.set(skip);
+  }
+
   public WorkflowDefinitionRepository() {
     super(
         WorkflowDefinitionResource.COLLECTION_PATH,
@@ -39,18 +47,27 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void postCreate(WorkflowDefinition entity) {
-    WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // Skip deployment if flag is set (used by WorkflowTransactionManager)
+    if (!skipWorkflowDeployment.get() && WorkflowHandler.isInitialized()) {
+      WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    }
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
-    WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    // Skip deployment if flag is set (used by WorkflowTransactionManager)
+    if (!skipWorkflowDeployment.get() && WorkflowHandler.isInitialized()) {
+      WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    }
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    // Skip deployment cleanup if flag is set (used by WorkflowTransactionManager)
+    if (!skipWorkflowDeployment.get() && WorkflowHandler.isInitialized()) {
+      WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    }
   }
 
   @Override
