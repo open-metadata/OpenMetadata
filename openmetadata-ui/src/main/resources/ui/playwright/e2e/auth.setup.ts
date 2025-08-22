@@ -69,14 +69,8 @@ const ownerUser = new UserClass({
   password: 'User@OMD123',
 });
 
-// turn on traces for debugging
-setup.use({
-  trace: 'on',
-});
-
 setup('authenticate all users', async ({ browser }) => {
   setup.setTimeout(120 * 1000);
-
   // Create separate pages for each user
   const [
     adminPage,
@@ -98,8 +92,19 @@ setup('authenticate all users', async ({ browser }) => {
 
   try {
     // Create admin page and context
+    adminPage = await browser.newPage();
     const admin = new AdminClass();
     await loginAsAdmin(adminPage, admin);
+
+    const newAdminPage = await browser.newPage();
+
+    await admin.login(newAdminPage);
+
+    // Close the leftside bar to run tests smoothly
+    await newAdminPage.getByTestId('sidebar-toggle').click();
+
+    await newAdminPage.waitForURL('**/my-data');
+
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
@@ -135,7 +140,7 @@ setup('authenticate all users', async ({ browser }) => {
     ]);
 
     // Save admin state
-    await adminPage.context().storageState({ path: adminFile });
+    await newAdminPage.context().storageState({ path: adminFile });
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
