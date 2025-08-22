@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../../assets/svg/ic-trash.svg';
+import { ReactComponent as TrashIcon } from '../../../../assets/svg/ic-delete-icon.svg';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
