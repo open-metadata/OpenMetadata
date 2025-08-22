@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as setup } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -69,20 +69,35 @@ const ownerUser = new UserClass({
   password: 'User@OMD123',
 });
 
+// turn on traces for debugging
+setup.use({
+  trace: 'on',
+});
+
 setup('authenticate all users', async ({ browser }) => {
   setup.setTimeout(120 * 1000);
 
-  let adminPage: Page;
-  let dataConsumerPage: Page;
-  let dataStewardPage: Page;
-  let editDescriptionPage: Page;
-  let editTagsPage: Page;
-  let editGlossaryTermPage: Page;
-  let ownerPage: Page;
+  // Create separate pages for each user
+  const [
+    adminPage,
+    dataConsumerPage,
+    dataStewardPage,
+    editDescriptionPage,
+    editTagsPage,
+    editGlossaryTermPage,
+    ownerPage,
+  ] = await Promise.all([
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+  ]);
 
   try {
     // Create admin page and context
-    adminPage = await browser.newPage();
     const admin = new AdminClass();
     await loginAsAdmin(adminPage, admin);
     const { apiContext, afterAction } = await getApiContext(adminPage);
@@ -121,23 +136,6 @@ setup('authenticate all users', async ({ browser }) => {
 
     // Save admin state
     await adminPage.context().storageState({ path: adminFile });
-
-    // Create separate pages for each user
-    const [
-      dataConsumerPage,
-      dataStewardPage,
-      editDescriptionPage,
-      editTagsPage,
-      editGlossaryTermPage,
-      ownerPage,
-    ] = await Promise.all([
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-    ]);
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
