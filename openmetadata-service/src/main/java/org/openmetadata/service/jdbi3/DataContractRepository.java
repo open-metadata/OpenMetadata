@@ -82,9 +82,9 @@ import org.openmetadata.service.util.RestUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult,extension";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult,extension";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -486,6 +486,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = getOrCreateTestSuite(dataContract);
     testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
+    testSuiteRepository.deleteFromSearch(testSuite, true);
   }
 
   private TestSuite getOrCreateTestSuite(DataContract dataContract) {
@@ -571,7 +572,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContractResult validateContract(DataContract dataContract) {
+  public RestUtil.PutResponse<DataContractResult> validateContract(DataContract dataContract) {
     // Check if there's a running validation and abort it before starting a new one
     abortRunningValidation(dataContract);
 
@@ -616,8 +617,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // Add the result to the data contract and update the time series
-    addContractResult(dataContract, result);
-    return result;
+    return addContractResult(dataContract, result);
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
@@ -974,7 +974,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         dataContract.getId(),
         dataContract.getEntity().getType(),
         Entity.DATA_CONTRACT,
-        Relationship.HAS);
+        Relationship.CONTAINS);
 
     storeOwners(dataContract, dataContract.getOwners());
     storeReviewers(dataContract, dataContract.getReviewers());
