@@ -15,6 +15,10 @@
  */
 export interface CreateWorkflowDefinition {
     /**
+     * Configuration for the Workflow Definition
+     */
+    config?: WorkflowConfiguration;
+    /**
      * Description of the Workflow Definition. What it has and how to use it.
      */
     description: string;
@@ -40,6 +44,16 @@ export interface CreateWorkflowDefinition {
     owners?:  EntityReference[];
     trigger?: EntityTriggerDefinition;
     type?:    Type;
+}
+
+/**
+ * Configuration for the Workflow Definition
+ */
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
 }
 
 /**
