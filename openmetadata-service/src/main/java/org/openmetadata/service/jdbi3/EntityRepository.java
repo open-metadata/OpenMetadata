@@ -417,6 +417,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
     fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
     fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
+    fieldSupportMap.put(FIELD_EXPERTS, Pair.of(supportsExperts, this::fetchAndSetExperts));
     fieldSupportMap.put(
         FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
     fieldSupportMap.put(
@@ -1140,28 +1141,178 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
-    entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
-    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
-    entity.setCertification(
-        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
-            ? getCertification(entity)
-            : null);
-    entity.setExtension(
-        fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    // Always return domains of entity
-    entity.setDomains(getDomains(entity));
-    entity.setDataProducts(
-        fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
-    entity.setFollowers(
-        fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
-    entity.setChildren(
-        fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
-    entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
-    entity.setReviewers(
-        fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
-    entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
+    // Check if we need to fetch multiple relationships - if so, use optimized single query
+    int relationshipFieldCount = countRelationshipFields(fields);
+    boolean needsMultipleRelationships = relationshipFieldCount > 2;
+
+    LOG.debug(
+        "setFieldsInternal: entity={}, relationshipFields={}, useOptimized={}",
+        entity.getId(),
+        relationshipFieldCount,
+        needsMultipleRelationships);
+
+    if (needsMultipleRelationships) {
+      // OPTIMIZED: Fetch ALL relationships in a SINGLE query to avoid N+1 problem
+      setFieldsInternalOptimized(entity, fields);
+    } else {
+      // For single field requests, use individual fetchers (simpler and cleaner)
+      entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
+      entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
+      entity.setCertification(
+          fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+              ? getCertification(entity)
+              : null);
+      entity.setExtension(
+          fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
+      // Always return domains of entity
+      entity.setDomains(getDomains(entity));
+      entity.setDataProducts(
+          fields.contains(FIELD_DATA_PRODUCTS)
+              ? getDataProducts(entity)
+              : entity.getDataProducts());
+      entity.setFollowers(
+          fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
+      entity.setChildren(
+          fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
+      entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
+      entity.setReviewers(
+          fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+      entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
+    }
     setFields(entity, fields);
     return entity;
+  }
+
+  /**
+   * Optimized version that fetches ALL relationships in a SINGLE database query
+   * and then filters them in memory. This completely solves the N+1 query problem.
+   */
+  private void setFieldsInternalOptimized(T entity, Fields fields) {
+    // Fetch ALL relationships for this entity in ONE query
+    List<CollectionDAO.EntityRelationshipObject> allRelationships =
+        daoCollection.relationshipDAO().findAllRelationshipsForEntity(entity.getId(), entityType);
+    LOG.debug(
+        "Retrieved {} total relationships for entity {}:{}",
+        allRelationships.size(),
+        entityType,
+        entity.getId());
+
+    // Group relationships by type and direction for efficient processing
+    Map<Integer, List<EntityReference>> fromRelationships = new HashMap<>();
+    Map<Integer, List<EntityReference>> toRelationships = new HashMap<>();
+
+    // Process all relationships and group them
+    for (CollectionDAO.EntityRelationshipObject rel : allRelationships) {
+      int relationOrdinal = rel.getRelation();
+
+      // Check if this is a FROM relationship (entity -> other)
+      if (rel.getFromId().equals(entity.getId().toString())) {
+        // This entity points TO another entity
+        UUID targetId = UUID.fromString(rel.getToId());
+        EntityReference ref = Entity.getEntityReferenceById(rel.getToEntity(), targetId, ALL);
+        if (ref != null) {
+          fromRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
+        }
+      } else {
+        // Another entity points TO this entity
+        UUID sourceId = UUID.fromString(rel.getFromId());
+        EntityReference ref = Entity.getEntityReferenceById(rel.getFromEntity(), sourceId, ALL);
+        if (ref != null) {
+          toRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
+        }
+      }
+    }
+
+    // Now set all the fields from the grouped relationships - NO additional queries!
+    if (fields.contains(FIELD_OWNERS)) {
+      entity.setOwners(
+          toRelationships.getOrDefault(Relationship.OWNS.ordinal(), Collections.emptyList()));
+    }
+
+    if (fields.contains(FIELD_FOLLOWERS)) {
+      entity.setFollowers(
+          toRelationships.getOrDefault(Relationship.FOLLOWS.ordinal(), Collections.emptyList()));
+    }
+
+    // Handle domains and data products - both use HAS relationship but are stored as
+    // "domain/dataProduct HAS entity"
+    // So we need to look in toRelationships (where this entity is the target of HAS)
+    List<EntityReference> hasRelationships =
+        toRelationships.getOrDefault(Relationship.HAS.ordinal(), Collections.emptyList());
+
+    // Always set domains (filter HAS relationships for DOMAIN type)
+    List<EntityReference> domains =
+        hasRelationships.stream()
+            .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
+            .collect(Collectors.toList());
+    entity.setDomains(domains);
+
+    if (fields.contains(FIELD_DATA_PRODUCTS)) {
+      // Filter HAS relationships for DATA_PRODUCT type
+      List<EntityReference> dataProducts =
+          hasRelationships.stream()
+              .filter(ref -> Entity.DATA_PRODUCT.equals(ref.getType()))
+              .collect(Collectors.toList());
+      entity.setDataProducts(dataProducts);
+    }
+
+    if (fields.contains(FIELD_CHILDREN)) {
+      List<EntityReference> children = new ArrayList<>();
+      children.addAll(
+          toRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
+      children.addAll(
+          toRelationships.getOrDefault(Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
+      entity.setChildren(children);
+    }
+
+    if (fields.contains(FIELD_EXPERTS)) {
+      entity.setExperts(
+          toRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
+    }
+
+    if (fields.contains(FIELD_REVIEWERS)) {
+      entity.setReviewers(
+          toRelationships.getOrDefault(Relationship.REVIEWS.ordinal(), Collections.emptyList()));
+    }
+
+    // Handle votes separately as it needs special processing
+    if (fields.contains(FIELD_VOTES)) {
+      entity.setVotes(getVotes(entity)); // This one still needs special handling
+    }
+
+    // Handle tags separately as they come from tag_usage table
+    if (fields.contains(FIELD_TAGS)) {
+      entity.setTags(getTags(entity));
+    }
+
+    // Handle certification
+    if (fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)) {
+      entity.setCertification(getCertification(entity));
+    }
+
+    // Handle extension if needed
+    if (fields.contains(FIELD_EXTENSION)) {
+      entity.setExtension(getExtension(entity));
+    }
+  }
+
+  /**
+   * Count how many relationship fields are requested to determine if batch fetching is beneficial
+   */
+  private int countRelationshipFields(Fields fields) {
+    int count = 0;
+    if (fields.contains(FIELD_OWNERS)) count++;
+    if (fields.contains(FIELD_TAGS)) count++;
+    if (fields.contains(FIELD_CERTIFICATION)) count++;
+    if (fields.contains(FIELD_EXTENSION)) count++;
+    if (fields.contains(FIELD_DOMAINS)) count++;
+    if (fields.contains(FIELD_DATA_PRODUCTS)) count++;
+    if (fields.contains(FIELD_FOLLOWERS)) count++;
+    if (fields.contains(FIELD_CHILDREN)) count++;
+    if (fields.contains(FIELD_EXPERTS)) count++;
+    if (fields.contains(FIELD_REVIEWERS)) count++;
+    if (fields.contains(FIELD_VOTES)) count++;
+    return count;
   }
 
   public final void clearFieldsInternal(T entity, Fields fields) {
@@ -5182,6 +5333,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private void fetchAndSetExperts(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_EXPERTS) || !supportsExperts || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> expertsMap = batchFetchExperts(entities);
+
+    for (T entity : entities) {
+      entity.setExperts(expertsMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
   private void fetchAndSetReviewers(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || nullOrEmpty(entities)) {
       return;
@@ -5533,6 +5696,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return result;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<T> entities) {
+    if (!supportsExperts || nullOrEmpty(entities)) {
+      return Collections.emptyMap();
+    }
+
+    // Batch fetch all expert relationships - experts are TO relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(entities), Relationship.EXPERT.ordinal(), USER);
+
+    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+
+    // Collect all expert user IDs
+    List<UUID> expertIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getFromId()))
+            .collect(Collectors.toList());
+
+    // Batch fetch all expert references
+    Map<UUID, EntityReference> expertRefs =
+        Entity.getEntityReferencesByIds(USER, expertIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    // Group experts by entity
+    records.forEach(
+        record -> {
+          UUID entityId = UUID.fromString(record.getToId());
+          UUID expertId = UUID.fromString(record.getFromId());
+          EntityReference expertRef = expertRefs.get(expertId);
+          if (expertRef != null) {
+            expertsMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(expertRef);
+          }
+        });
+
+    LOG.debug(
+        "batchFetchExperts: Found {} expert relationships for {} entities",
+        records.size(),
+        entities.size());
+
+    return expertsMap;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchChildren(List<T> entities) {
