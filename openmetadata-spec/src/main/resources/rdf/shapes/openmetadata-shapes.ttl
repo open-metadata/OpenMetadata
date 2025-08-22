@@ -1,0 +1,299 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix om: <https://open-metadata.org/ontology/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# SHACL Shapes for OpenMetadata Entities
+# These shapes define validation constraints for RDF data
+
+# Base Entity Shape
+om:EntityShape a sh:NodeShape ;
+    sh:targetClass om:Entity ;
+    sh:property [
+        sh:path om:id ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Entity must have exactly one ID"@en ;
+    ] ;
+    sh:property [
+        sh:path om:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^[a-zA-Z0-9_-]+$" ;
+        sh:message "Entity must have exactly one name with alphanumeric characters, hyphens, or underscores"@en ;
+    ] ;
+    sh:property [
+        sh:path om:fullyQualifiedName ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Entity must have exactly one fully qualified name"@en ;
+    ] ;
+    sh:property [
+        sh:path om:description ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:message "Entity can have at most one description"@en ;
+    ] ;
+    sh:property [
+        sh:path om:version ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0.1 ;
+        sh:message "Version must be a positive decimal number"@en ;
+    ] .
+
+# Table Shape
+om:TableShape a sh:NodeShape ;
+    sh:targetClass om:Table ;
+    sh:property [
+        sh:path om:hasColumn ;
+        sh:class om:Column ;
+        sh:minCount 1 ;
+        sh:message "Table must have at least one column"@en ;
+    ] ;
+    sh:property [
+        sh:path om:belongsTo ;
+        sh:class om:DatabaseSchema ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Table must belong to exactly one database schema"@en ;
+    ] ;
+    sh:property [
+        sh:path om:tableType ;
+        sh:datatype xsd:string ;
+        sh:in ("Regular" "External" "View" "SecureView" "MaterializedView" "Iceberg" "DatalakeTable") ;
+        sh:message "Table type must be one of the allowed values"@en ;
+    ] .
+
+# Column Shape
+om:ColumnShape a sh:NodeShape ;
+    sh:targetClass om:Column ;
+    sh:property [
+        sh:path om:dataType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Column must have exactly one data type"@en ;
+    ] ;
+    sh:property [
+        sh:path om:ordinalPosition ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "Ordinal position must be a non-negative integer"@en ;
+    ] ;
+    sh:property [
+        sh:path om:constraint ;
+        sh:datatype xsd:string ;
+        sh:in ("NULL" "NOT_NULL" "UNIQUE" "PRIMARY_KEY") ;
+        sh:message "Column constraint must be one of the allowed values"@en ;
+    ] .
+
+# Database Shape
+om:DatabaseShape a sh:NodeShape ;
+    sh:targetClass om:Database ;
+    sh:property [
+        sh:path om:hasSchema ;
+        sh:class om:DatabaseSchema ;
+        sh:message "Database can only contain database schemas"@en ;
+    ] ;
+    sh:property [
+        sh:path om:belongsTo ;
+        sh:class om:DatabaseService ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Database must belong to exactly one database service"@en ;
+    ] .
+
+# Database Schema Shape
+om:DatabaseSchemaShape a sh:NodeShape ;
+    sh:targetClass om:DatabaseSchema ;
+    sh:property [
+        sh:path om:hasTable ;
+        sh:class om:Table ;
+        sh:message "Database schema can only contain tables"@en ;
+    ] ;
+    sh:property [
+        sh:path om:belongsTo ;
+        sh:class om:Database ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Database schema must belong to exactly one database"@en ;
+    ] .
+
+# Pipeline Shape
+om:PipelineShape a sh:NodeShape ;
+    sh:targetClass om:Pipeline ;
+    sh:property [
+        sh:path om:hasTask ;
+        sh:class om:Task ;
+        sh:message "Pipeline can only contain tasks"@en ;
+    ] ;
+    sh:property [
+        sh:path om:pipelineType ;
+        sh:datatype xsd:string ;
+        sh:in ("airflow" "glue" "airbyte" "fivetran" "dagster" "nifi" "dbtCloud" "domoPipeline" "kafka" "kafkaConnect" "kinesis" "matillion" "domo" "flink" "databricksPipeline" "spline" "spark" "openLineage" "stitch" "dbt") ;
+        sh:message "Pipeline type must be one of the allowed values"@en ;
+    ] .
+
+# Dashboard Shape
+om:DashboardShape a sh:NodeShape ;
+    sh:targetClass om:Dashboard ;
+    sh:property [
+        sh:path om:hasChart ;
+        sh:class om:Chart ;
+        sh:message "Dashboard can only contain charts"@en ;
+    ] ;
+    sh:property [
+        sh:path om:dashboardType ;
+        sh:datatype xsd:string ;
+        sh:in ("tableau" "looker" "superset" "redash" "metabase" "powerbi" "mode" "sigma" "lightdash" "mstr" "qlikSense" "quickSight" "domo" "databricks") ;
+        sh:message "Dashboard type must be one of the allowed values"@en ;
+    ] .
+
+# Lineage Validation
+om:LineageShape a sh:NodeShape ;
+    sh:targetClass om:DataAsset ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Data asset cannot have cyclic lineage (be both upstream and downstream of the same asset)"@en ;
+        sh:prefixes [ sh:declare [
+            sh:prefix "om" ;
+            sh:namespace "https://open-metadata.org/ontology/"^^xsd:anyURI ;
+        ] ] ;
+        sh:select """
+            SELECT $this ?other
+            WHERE {
+                $this om:upstream ?other .
+                $this om:downstream ?other .
+            }
+        """ ;
+    ] .
+
+# Ownership Validation
+om:OwnershipShape a sh:NodeShape ;
+    sh:targetClass om:Entity ;
+    sh:property [
+        sh:path om:ownedBy ;
+        sh:or (
+            [ sh:class om:User ]
+            [ sh:class om:Team ]
+        ) ;
+        sh:maxCount 1 ;
+        sh:message "Entity can be owned by at most one user or team"@en ;
+    ] .
+
+# Tag Application Shape
+om:TagApplicationShape a sh:NodeShape ;
+    sh:targetClass om:Entity ;
+    sh:property [
+        sh:path om:taggedWith ;
+        sh:class om:Tag ;
+        sh:message "Entity can only be tagged with valid tags"@en ;
+    ] ;
+    sh:property [
+        sh:path om:classifiedAs ;
+        sh:class om:Classification ;
+        sh:message "Entity can only be classified with valid classifications"@en ;
+    ] .
+
+# Domain Membership Shape
+om:DomainMembershipShape a sh:NodeShape ;
+    sh:targetClass om:DataAsset ;
+    sh:property [
+        sh:path om:inDomain ;
+        sh:class om:Domain ;
+        sh:maxCount 1 ;
+        sh:message "Data asset can belong to at most one domain"@en ;
+    ] .
+
+# Data Quality Shape
+om:DataQualityShape a sh:NodeShape ;
+    sh:targetClass om:Table ;
+    sh:property [
+        sh:path om:dataQualityScore ;
+        sh:datatype xsd:decimal ;
+        sh:minInclusive 0.0 ;
+        sh:maxInclusive 100.0 ;
+        sh:message "Data quality score must be between 0 and 100"@en ;
+    ] ;
+    sh:property [
+        sh:path om:testCasePassed ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "Number of passed test cases must be non-negative"@en ;
+    ] ;
+    sh:property [
+        sh:path om:testCaseFailed ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "Number of failed test cases must be non-negative"@en ;
+    ] .
+
+# Service Connection Shape
+om:ServiceConnectionShape a sh:NodeShape ;
+    sh:targetClass om:Service ;
+    sh:property [
+        sh:path om:serviceType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Service must have exactly one service type"@en ;
+    ] ;
+    sh:property [
+        sh:path om:connectionConfig ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Service must have exactly one connection configuration"@en ;
+    ] .
+
+# Glossary Term Shape
+om:GlossaryTermShape a sh:NodeShape ;
+    sh:targetClass om:GlossaryTerm ;
+    sh:property [
+        sh:path om:belongsTo ;
+        sh:class om:Glossary ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Glossary term must belong to exactly one glossary"@en ;
+    ] ;
+    sh:property [
+        sh:path om:synonymOf ;
+        sh:class om:GlossaryTerm ;
+        sh:message "Synonym must reference another glossary term"@en ;
+    ] ;
+    sh:property [
+        sh:path om:antonymOf ;
+        sh:class om:GlossaryTerm ;
+        sh:message "Antonym must reference another glossary term"@en ;
+    ] .
+
+# Team Hierarchy Shape
+om:TeamHierarchyShape a sh:NodeShape ;
+    sh:targetClass om:Team ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Team cannot be its own parent"@en ;
+        sh:prefixes [ sh:declare [
+            sh:prefix "om" ;
+            sh:namespace "https://open-metadata.org/ontology/"^^xsd:anyURI ;
+        ] ] ;
+        sh:select """
+            SELECT $this
+            WHERE {
+                $this om:isPartOf+ $this .
+            }
+        """ ;
+    ] .
+
+# User Team Membership Shape
+om:UserTeamMembershipShape a sh:NodeShape ;
+    sh:targetClass om:User ;
+    sh:property [
+        sh:path om:memberOf ;
+        sh:class om:Team ;
+        sh:message "User can only be member of valid teams"@en ;
+    ] .

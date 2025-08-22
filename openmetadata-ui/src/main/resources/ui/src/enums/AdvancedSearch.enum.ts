@@ -98,7 +98,7 @@ export enum EntityReferenceFields {
   DISPLAY_NAME = 'displayName',
   TAG = 'tags',
   TIER = 'tier.tagFQN',
-  DOMAIN = 'domain',
+  DOMAIN = 'domains',
   DATA_PRODUCT = 'dataProduct',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
