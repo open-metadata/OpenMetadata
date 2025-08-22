@@ -13,9 +13,7 @@
   },
   "scripts": {
     "start": "vite",
-    "start:webpack": "webpack serve --config ./webpack.config.dev.js --env development",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' vite build",
-    "build:webpack": "webpack --config ./webpack.config.prod.js --env production",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
@@ -241,7 +239,6 @@
     "tough-cookie": "4.1.3",
     "clean-css": "4.1.11",
     "path-to-regexp": "1.9.0",
-    "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
     "serialize-javascript": "6.0.2",
