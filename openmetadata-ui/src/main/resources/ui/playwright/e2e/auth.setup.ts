@@ -92,12 +92,13 @@ setup('authenticate all users', async ({ browser }) => {
 
   try {
     // Create admin page and context
-    adminPage = await browser.newPage();
     const admin = new AdminClass();
+
     await loginAsAdmin(adminPage, admin);
 
+    // Create a new page to login with admin user after token expiry is set to 4 hours
+    // This is done to avoid logging out the user to get the new token
     const newAdminPage = await browser.newPage();
-
     await admin.login(newAdminPage);
 
     // Close the leftside bar to run tests smoothly
