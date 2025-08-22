@@ -2600,7 +2600,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
   }
 
-
   @Test
   void test_searchGlossaryTerms() throws IOException {
     // Create a glossary for testing
@@ -2720,6 +2719,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     return TestUtils.get(target, GlossaryTermResource.GlossaryTermList.class, authHeaders);
+  }
 
   /**
    * Helper method to get workflow definition by name
@@ -2757,6 +2757,5 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     } catch (Exception e) {
       return false;
     }
-
   }
 }
