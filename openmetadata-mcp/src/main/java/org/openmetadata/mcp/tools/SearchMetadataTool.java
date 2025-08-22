@@ -145,11 +145,11 @@ public class SearchMetadataTool implements McpTool {
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
-      LOG.info("Search returned string response");
+      LOG.debug("Search returned string response");
       JsonNode jsonNode = JsonUtils.readTree(responseStr);
       searchResponse = JsonUtils.convertValue(jsonNode, Map.class);
     } else {
-      LOG.info("Search returned object response: {}", response.getEntity().getClass().getName());
+      LOG.debug("Search returned object response: {}", response.getEntity().getClass().getName());
       searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
     }
 
