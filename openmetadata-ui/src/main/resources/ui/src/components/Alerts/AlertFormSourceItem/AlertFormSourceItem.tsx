@@ -43,7 +43,10 @@ function AlertFormSourceItem({
   const resourcesOptions = useMemo(
     () =>
       getSourceOptionsFromResourceList(
-        (filterResources ?? []).map((r) => r.name ?? '')
+        (filterResources ?? []).map((r) => r.name ?? ''),
+        false,
+        undefined,
+        true
       ),
     [filterResources]
   );

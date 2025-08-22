@@ -187,36 +187,44 @@ class AirflowSource(PipelineServiceSource):
         """
         Return the DagRuns of given dag
         """
-        dag_run_list = (
-            self.session.query(
-                DagRun.dag_id,
-                DagRun.run_id,
-                DagRun.queued_at,
-                DagRun.execution_date,
-                DagRun.start_date,
-                DagRun.state,
+        try:
+            dag_run_list = (
+                self.session.query(
+                    DagRun.dag_id,
+                    DagRun.run_id,
+                    DagRun.queued_at,
+                    DagRun.execution_date,
+                    DagRun.start_date,
+                    DagRun.state,
+                )
+                .filter(DagRun.dag_id == dag_id)
+                .order_by(DagRun.execution_date.desc())
+                .limit(self.config.serviceConnection.root.config.numberOfStatus)
+                .all()
             )
-            .filter(DagRun.dag_id == dag_id)
-            .order_by(DagRun.execution_date.desc())
-            .limit(self.config.serviceConnection.root.config.numberOfStatus)
-            .all()
-        )
 
-        dag_run_dict = [dict(elem) for elem in dag_run_list]
+            dag_run_dict = [dict(elem) for elem in dag_run_list]
 
-        # Build DagRun manually to not fall into new/old columns from
-        # different Airflow versions
-        return [
-            DagRun(
-                dag_id=elem.get("dag_id"),
-                run_id=elem.get("run_id"),
-                queued_at=elem.get("queued_at"),
-                execution_date=elem.get("execution_date"),
-                start_date=elem.get("start_date"),
-                state=elem.get("state"),
+            # Build DagRun manually to not fall into new/old columns from
+            # different Airflow versions
+            return [
+                DagRun(
+                    dag_id=elem.get("dag_id"),
+                    run_id=elem.get("run_id"),
+                    queued_at=elem.get("queued_at"),
+                    execution_date=elem.get("execution_date"),
+                    start_date=elem.get("start_date"),
+                    state=elem.get("state"),
+                )
+                for elem in dag_run_dict
+            ]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not get pipeline status for {dag_id}. "
+                f"This might be due to Airflow version incompatibility - {exc}"
             )
-            for elem in dag_run_dict
-        ]
+            return []
 
     def get_task_instances(
         self, dag_id: str, run_id: str, serialized_tasks: List[AirflowTask]
@@ -369,16 +377,27 @@ class AirflowSource(PipelineServiceSource):
                 break
             for serialized_dag in results:
                 try:
-                    dag_model = (
-                        self.session.query(DagModel)
-                        .filter(DagModel.dag_id == serialized_dag[0])
-                        .one_or_none()
-                    )
-                    pipeline_state = (
-                        PipelineState.Active.value
-                        if dag_model and not dag_model.is_paused
-                        else PipelineState.Inactive.value
-                    )
+                    # Query only the is_paused column from DagModel
+                    try:
+                        is_paused_result = (
+                            self.session.query(DagModel.is_paused)
+                            .filter(DagModel.dag_id == serialized_dag[0])
+                            .scalar()
+                        )
+                        pipeline_state = (
+                            PipelineState.Active.value
+                            if not is_paused_result
+                            else PipelineState.Inactive.value
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Could not query DagModel.is_paused for {serialized_dag[0]}. "
+                            f"Using default pipeline state - {exc}"
+                        )
+                        # If we can't query is_paused, assume the pipeline is active
+                        pipeline_state = PipelineState.Active.value
+
                     data = serialized_dag[1]["dag"]
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],

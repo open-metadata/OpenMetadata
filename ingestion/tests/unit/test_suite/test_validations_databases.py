@@ -19,11 +19,27 @@ from unittest.mock import patch
 
 import pytest
 
+from metadata.data_quality.validations.models import (
+    TableCustomSQLQueryRuntimeParameters,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
+TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
+    "columnValuesLengthToBeBetween",
+    "columnValuesToBeBetween",
+    "columnValuesToBeInSet",
+    "columnValuesToBeNotInSet",
+    "columnValuesToBeNotNull",
+    "columnValuesToBeUnique",
+    "columnValuesToMatchRegex",
+    "columnValuesToNotMatchRegex",
+    "tableCustomSQLQuery",
+}
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
@@ -305,7 +321,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "TABLE",
             (
                 TestCaseResult,
-                "10",
+                "11",
                 None,
                 TestCaseStatus.Success,
                 None,
@@ -318,7 +334,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "10", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
@@ -358,6 +374,12 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "tableCustomSQLQuery",
             "TABLE",
             (TestCaseResult, "0", None, TestCaseStatus.Success, None, None, None, None),
+        ),
+        (
+            "test_case_table_custom_sql_with_partition_condition",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "10", None, TestCaseStatus.Failed, 10, 10, 50.0, 50.0),
         ),
         (
             "test_case_table_row_count_to_be_between",
@@ -431,6 +453,12 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
                 None,
             ),
         ),
+        (
+            "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
+        ),
     ],
 )
 def test_suite_validation_database(
@@ -453,6 +481,22 @@ def test_suite_validation_database(
         passed_percentage,
         failed_percentage,
     ) = expected
+
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED:
+        test_case.computePassedFailedRowCount = True
+    if test_case_type == "tableCustomSQLQuery":
+        runtime_params = TableCustomSQLQueryRuntimeParameters(
+            conn_config=DatabaseConnection(
+                config=create_sqlite_table.service_connection,
+            ),
+            entity=create_sqlite_table.entity,
+        )
+        test_case.parameterValues.append(
+            TestCaseParameterValue(
+                name=TableCustomSQLQueryRuntimeParameters.__name__,
+                value=runtime_params.model_dump_json(),
+            )
+        )
 
     if test_case_name == "test_case_column_values_to_be_between_date":
         with patch(
@@ -519,3 +563,11 @@ def test_suite_validation_database(
     if failed_percentage:
         assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
+    if (
+        test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED
+        and test_case_name != "test_case_table_custom_sql_unsafe_query_aborted"
+    ):
+        assert res.failedRows is not None
+        assert res.failedRowsPercentage is not None
+        assert res.passedRows is not None
+        assert res.passedRowsPercentage is not None

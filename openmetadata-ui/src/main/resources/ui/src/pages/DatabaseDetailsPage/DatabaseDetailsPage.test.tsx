@@ -289,7 +289,7 @@ describe('Test DatabaseDetails page', () => {
     );
 
     expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
-      fields: 'owners,tags,domain,votes,extension,dataProducts,followers',
+      fields: 'owners,tags,domains,votes,extension,dataProducts,followers',
       include: 'all',
     });
     expect(entityHeader).toBeInTheDocument();

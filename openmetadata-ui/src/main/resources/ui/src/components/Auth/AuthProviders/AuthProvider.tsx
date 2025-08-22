@@ -475,7 +475,7 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
           activeDomain
         )}")`;
         queryParams.q = queryParams.q ?? '';
@@ -619,6 +619,7 @@ export const AuthProvider = ({
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
+          // RDF enabled status is already set from system config in App.tsx
           updateAuthInstance(configJson);
           if (!getOidcToken()) {
             handleStoreProtectedRedirectPath();

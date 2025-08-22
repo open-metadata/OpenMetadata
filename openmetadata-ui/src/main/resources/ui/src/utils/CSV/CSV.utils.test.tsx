@@ -88,14 +88,14 @@ describe('CSVUtils', () => {
         { name: 'tags', key: 'tags' },
         { name: 'glossaryTerms', key: 'glossaryTerms' },
         { name: 'description', key: 'description' },
-        { name: 'domain', key: 'domain' },
+        { name: 'domains', key: 'domains' },
       ];
       const dataSource = [
         {
           tags: 'value1',
           glossaryTerms: 'value2',
           description: 'something new',
-          domain: 'domain1',
+          domains: 'domain1',
         },
       ];
       const csvString = getCSVStringFromColumnsAndDataSource(
@@ -104,7 +104,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'tags,glossaryTerms,description,domain\n"value1","value2","something new","domain1"'
+        'tags,glossaryTerms,description,domains\n"value1","value2","something new","domain1"'
       );
     });
 

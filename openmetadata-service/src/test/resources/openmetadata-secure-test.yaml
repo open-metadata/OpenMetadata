@@ -193,6 +193,7 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.governance.workflows.WorkflowEventConsumer"
 
 pipelineServiceClientConfiguration:
   className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"

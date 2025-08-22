@@ -71,9 +71,13 @@
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "domain": {
-      "description": "Fully qualified name of the domain the Spreadsheet belongs to.",
-      "type": "string"
+    "domains": {
+      "description": "Fully qualified names of the domains the Spreadsheet belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": null
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",

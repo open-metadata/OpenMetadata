@@ -19,8 +19,8 @@ import { t } from '../utils/i18next/LocalUtil';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -50,8 +50,8 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -179,8 +179,8 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -202,8 +202,8 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
 
 export const TAG_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.classification'),
@@ -213,8 +213,8 @@ export const TAG_DROPDOWN_ITEMS = [
 
 export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -259,8 +259,8 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -338,7 +338,9 @@ export const CURATED_ASSETS_LIST = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
+  EntityType.DATA_PRODUCT,
   EntityType.GLOSSARY_TERM,
+  EntityType.KNOWLEDGE_PAGE,
   EntityType.METRIC,
   EntityType.MLMODEL,
   EntityType.PIPELINE,

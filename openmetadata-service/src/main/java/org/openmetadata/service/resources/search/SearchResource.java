@@ -180,7 +180,13 @@ public class SearchResource {
                   "Explain the results of the query. Defaults to false. Only for debugging purposes.")
           @DefaultValue("false")
           @QueryParam("explain")
-          boolean explain)
+          boolean explain,
+      @Parameter(
+              description =
+                  "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.")
+          @DefaultValue("false")
+          @QueryParam("semanticSearch")
+          boolean semanticSearch)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -213,7 +219,8 @@ public class SearchResource {
             .withApplyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
-            .withExplain(explain);
+            .withExplain(explain)
+            .withSemanticSearch(semanticSearch);
     return searchRepository.search(request, subjectContext);
   }
 
@@ -536,5 +543,67 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     return searchRepository.aggregate(aggregationRequest);
+  }
+
+  @GET
+  @Path("/entityTypeCounts")
+  @Operation(
+      operationId = "getEntityTypeCounts",
+      summary = "Get exact entity type counts",
+      description =
+          "Get exact counts of entities by type for a given search query. This endpoint provides accurate counts when searching across all entity types.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity type counts response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response getEntityTypeCounts(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query text", required = true) @QueryParam("q") String query,
+      @Parameter(description = "Index to search in (all, dataAsset, table, etc.)")
+          @DefaultValue("dataAsset")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter)
+      throws IOException {
+
+    if (nullOrEmpty(query)) {
+      query = "*";
+    }
+
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
+        new SearchRequest()
+            .withQuery(query)
+            .withSize(0)
+            .withFrom(0)
+            .withDeleted(deleted)
+            .withFetchSource(false)
+            .withTrackTotalHits(true)
+            .withQueryFilter(queryFilter)
+            .withPostFilter(postFilter)
+            .withDomains(domains);
+
+    return searchRepository.getEntityTypeCounts(request, index);
   }
 }

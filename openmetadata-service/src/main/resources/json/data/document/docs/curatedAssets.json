@@ -1,7 +1,7 @@
 {
   "name": "CuratedAssets",
   "displayName": "Curated Assets",
-  "description": "Curated Assets KnowledgePanel shows list of Data Assets that User has curated.",
+  "description": "Allows admins to create customized lists of high-impact asset views by applying filters. Ideal for curating datasets relevant to specific user groups.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.CuratedAssets",
   "data": {

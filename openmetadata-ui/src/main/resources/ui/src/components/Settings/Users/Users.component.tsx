@@ -59,8 +59,10 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
-    useRequiredParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } = useRequiredParams<{
+    tab: UserPageTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const { fqn: decodedUsername } = useFqn();
   const { isAdminUser } = useAuth();
   const navigate = useNavigate();
@@ -320,7 +322,7 @@ const Users = ({
             />
             <DomainLabelNew
               multiple
-              domain={userData?.domains}
+              domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
               entityId={userData.id ?? ''}
               entityType={EntityType.USER}

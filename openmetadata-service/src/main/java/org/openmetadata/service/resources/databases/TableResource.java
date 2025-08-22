@@ -14,8 +14,8 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 
-import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -53,6 +53,9 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -96,7 +99,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
-          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -951,12 +954,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(
             JsonUtils.pojoToJson(
-                repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
+                repository.getLatestTableProfile(
+                    fqn, includeColumnProfile, authorizer, securityContext)))
         .build();
   }
 
@@ -1044,8 +1047,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn); // get table fqn for the resource context (vs column fqn)
     ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-    return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
   }
 
   @GET
@@ -1379,7 +1381,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumns(id, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumns(
+            id, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1438,7 +1441,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumnsByFQN(fqn, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumnsByFQN(
+            fqn, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1457,9 +1461,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class)))
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
       })
-  public Response searchEntityRelationship(
+  public SearchEntityRelationshipResult searchEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
@@ -1474,11 +1478,101 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           @DefaultValue("false")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
       throws IOException {
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
 
     return Entity.getSearchRepository()
-        .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .searchEntityRelationship(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  @GET
+  @Path("/entityRelationship/{direction}")
+  @Operation(
+      operationId = "searchEntityRelationshipWithDirection",
+      summary = "Search entity relationship with Direction",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
+      })
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
+          @PathParam("direction")
+          EntityRelationshipDirection direction,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
+          int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+    // Validate required FQN parameter
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationshipWithDirection(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withDirection(direction)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
   }
 
   @GET
@@ -1532,7 +1626,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
-        repository.searchTableColumnsById(id, query, limitParam, offsetParam, fieldsParam, include);
+        repository.searchTableColumnsById(
+            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1593,7 +1688,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include);
+            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());

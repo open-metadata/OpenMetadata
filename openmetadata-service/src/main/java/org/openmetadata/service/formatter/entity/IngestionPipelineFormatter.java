@@ -19,6 +19,7 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -105,6 +106,21 @@ public class IngestionPipelineFormatter implements EntityFormatter {
                 "ingestions")
             : "";
       }
+    }
+    return "";
+  }
+
+  // Provide the URL of the table the Data Contract belongs to
+  public static String getDataContractUrl(
+      MessageDecorator<?> formatter, String entityType, EntityInterface entityInterface) {
+    if (entityType.equals(Entity.DATA_CONTRACT)) {
+      DataContract contract = (DataContract) entityInterface;
+      EntityReference tableRef = contract.getEntity();
+
+      tableRef = Entity.getEntityReferenceById(tableRef.getType(), tableRef.getId(), Include.ALL);
+      return !nullOrEmpty(tableRef)
+          ? formatter.getEntityUrl(tableRef.getType(), tableRef.getFullyQualifiedName(), "contract")
+          : "";
     }
     return "";
   }

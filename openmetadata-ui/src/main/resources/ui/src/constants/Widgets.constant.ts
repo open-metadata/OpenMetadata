@@ -13,7 +13,7 @@
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { FeedFilter } from '../enums/mydata.enum';
+import { FeedFilter, MyTaskFilter } from '../enums/mydata.enum';
 import { getEntityName } from '../utils/EntityUtils';
 import { t } from '../utils/i18next/LocalUtil';
 
@@ -94,6 +94,24 @@ export const FEED_WIDGET_FILTER_OPTIONS = [
   },
 ];
 
+export const MY_TASK_WIDGET_FILTER_OPTIONS = [
+  {
+    label: t('label.all'),
+    value: MyTaskFilter.OWNER_OR_FOLLOWS,
+    key: MyTaskFilter.OWNER_OR_FOLLOWS,
+  },
+  {
+    label: t('label.assigned'),
+    value: MyTaskFilter.ASSIGNED_TO,
+    key: MyTaskFilter.ASSIGNED_TO,
+  },
+  {
+    label: t('label.mention-plural'),
+    value: MyTaskFilter.MENTIONS,
+    key: MyTaskFilter.MENTIONS,
+  },
+];
+
 // Filter options for entity types
 export const FOLLOWING_WIDGET_FILTER_OPTIONS = [
   {
@@ -130,16 +148,19 @@ export const MY_DATA_WIDGET_FILTER_OPTIONS = [
     key: CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A,
   },
 ];
-export const getSortField = (filterKey: string): string => {
+export const getSortField = (
+  filterKey: string,
+  filterValue?: string
+): string => {
   switch (filterKey) {
     case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
-      return 'updatedAt';
+      return filterValue ?? 'updatedAt';
     case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
-      return 'name.keyword';
+      return filterValue ?? 'name.keyword';
     case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
-      return 'name.keyword';
+      return filterValue ?? 'name.keyword';
     default:
-      return 'updatedAt';
+      return filterValue ?? 'updatedAt';
   }
 };
 
@@ -149,7 +170,7 @@ export const getSortOrder = (filterKey: string): 'asc' | 'desc' => {
       return 'desc';
     case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
       return 'asc';
-    case 'Z to A':
+    case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
       return 'desc';
     default:
       return 'desc';
@@ -188,6 +209,15 @@ export const applySortToData = (
 export const KPI_WIDGET_GRAPH_COLORS = [
   '#7262F6',
   '#6AD2FF',
-  '#E7B85D',
-  '#416BB3',
+  '#2ED3B7',
+  '#E478FA',
+  //   TODO: Add more colors for more KPIs
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
 ];

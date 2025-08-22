@@ -121,6 +121,11 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 jest.mock('../../../rest/testAPI', () => ({
   createTestSuites: jest.fn().mockResolvedValue(mockTestSuite),
   addTestCaseToLogicalTestSuite: jest.fn().mockResolvedValue({}),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../rest/ingestionPipelineAPI', () => ({

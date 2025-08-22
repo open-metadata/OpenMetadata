@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   InputNumber,
   Select,
   Switch,
+  Tooltip,
   Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
@@ -46,6 +47,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../../utils/formUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -53,7 +55,7 @@ import {
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
@@ -100,6 +102,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     if (data.optionValues?.length) {
       Field = (
         <Select
+          getPopupContainer={getPopupContainer}
           placeholder={`${t('label.please-select-entity', {
             entity: label,
           })}`}>
@@ -138,21 +141,35 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={partitionColumnOptions}
                 placeholder={t('message.select-column-name')}
               />
             );
           } else if (data.name === 'sqlExpression') {
             Field = (
-              <SchemaEditor
+              <CodeEditor
+                showCopyButton
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
-                showCopyButton={false}
+                title={
+                  <div className="ant-form-item-label">
+                    <label className="d-flex align-items-center">
+                      <Typography.Text className="form-label-title">
+                        {label}
+                      </Typography.Text>
+                      <Tooltip title={data.description}>
+                        <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                      </Tooltip>
+                    </label>
+                  </div>
+                }
               />
             );
           } else if (data.name === 'column') {
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={table?.columns.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
@@ -294,7 +311,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         <Typography.Text className="font-medium">{label}</Typography.Text>
       </div>
     ) : (
-      <Form.Item {...commonFormItemProps} label={label}>
+      <Form.Item
+        {...commonFormItemProps}
+        label={data.name === 'sqlExpression' ? undefined : label}>
         {DynamicField ?? Field}
       </Form.Item>
     );
@@ -351,6 +370,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               allowClear
               showSearch
               data-testid="table2"
+              getPopupContainer={getPopupContainer}
               loading={isOptionsLoading}
               options={tableOptions}
               placeholder={t('label.table')}
@@ -394,6 +414,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   <Select
                     allowClear
                     showSearch
+                    getPopupContainer={getPopupContainer}
                     options={columns}
                     placeholder={t('label.column')}
                   />

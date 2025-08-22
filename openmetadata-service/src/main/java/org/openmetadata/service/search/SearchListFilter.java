@@ -91,10 +91,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getDomainCondition() {
-    String domain = getQueryParam("domain");
+    String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
       return String.format(
-          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
+          "{\"term\": {\"domains.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }

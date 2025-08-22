@@ -28,9 +28,9 @@ export interface CreateDriveService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Drive Service belongs to.
+     * Fully qualified names of the domains the Drive Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name that identifies this drive service.
      */

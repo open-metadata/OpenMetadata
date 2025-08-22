@@ -38,16 +38,14 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { TestCaseType } from '../../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
-import {
-  ListTestCaseParamsBySearch,
-  TestCaseType,
-} from '../../../../../rest/testAPI';
+import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
@@ -331,7 +329,7 @@ export const QualityTab = () => {
   }
 
   return (
-    <Row gutter={[0, 16]}>
+    <Row className="quality-tab-container" gutter={[0, 16]}>
       <Col span={24}>
         <Row>
           <Col span={10}>

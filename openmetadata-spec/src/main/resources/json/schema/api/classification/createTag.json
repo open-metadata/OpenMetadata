@@ -45,9 +45,12 @@
       "type" : "boolean",
       "default" : false
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Tag belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "owners": {
       "description": "Owners of this glossary term.",

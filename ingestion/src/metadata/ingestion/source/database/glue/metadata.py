@@ -377,12 +377,87 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
+    # pylint: disable=too-many-locals
     def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:
+        """
+        Get columns from Glue.
+        """
+        # Check if this is an Iceberg table
+        table = self.context.get().table_data
+        is_iceberg = table.Parameters and table.Parameters.table_type == "ICEBERG"
+
+        if is_iceberg:
+            # For Iceberg tables, get the full table metadata from Glue to access column parameters
+            try:
+                schema_name = self.context.get().database_schema
+                table_name = table.Name
+
+                # Get full table metadata from Glue API
+                response = self.glue.get_table(
+                    DatabaseName=schema_name, Name=table_name
+                )
+
+                table_info = response["Table"]
+
+                # Filter out non-current Iceberg columns
+                storage_descriptor = table_info.get("StorageDescriptor", {})
+                glue_columns = storage_descriptor.get("Columns", [])
+
+                for glue_col in glue_columns:
+                    col_name = glue_col["Name"]
+                    col_type = glue_col["Type"]
+                    col_comment = glue_col.get("Comment", "")
+                    col_parameters = glue_col.get("Parameters", {})
+
+                    # Check if this is a non-current Iceberg column
+                    iceberg_current = col_parameters.get(
+                        "iceberg.field.current", "true"
+                    )
+                    is_current = iceberg_current != "false"
+
+                    if is_current:
+                        # Create a GlueColumn object for processing
+                        column_obj = GlueColumn(
+                            Name=col_name, Type=col_type, Comment=col_comment
+                        )
+                        yield self._get_column_object(column_obj)
+
+                # Process partition columns
+                partition_keys = table_info.get("PartitionKeys", [])
+                for glue_col in partition_keys:
+                    col_name = glue_col["Name"]
+                    col_type = glue_col["Type"]
+                    col_comment = glue_col.get("Comment", "")
+                    col_parameters = glue_col.get("Parameters", {})
+
+                    # Check if this is a non-current Iceberg column
+                    iceberg_current = col_parameters.get(
+                        "iceberg.field.current", "true"
+                    )
+                    is_current = iceberg_current != "false"
+
+                    if is_current:
+                        # Create a GlueColumn object for processing
+                        column_obj = GlueColumn(
+                            Name=col_name, Type=col_type, Comment=col_comment
+                        )
+                        yield self._get_column_object(column_obj)
+
+                return
+
+            except Exception as e:
+                # If we can't get Glue metadata, fall back to the original method
+                # This ensures backward compatibility
+                logger.warning(
+                    f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}"
+                )
+
+        # For non-Iceberg tables or if Glue access fails, use the original method
         # process table regular columns info
         for column in column_data.Columns:
             yield self._get_column_object(column)
 
-        # process table regular columns info
+        # process table partition columns info
         for column in self.context.get().table_data.PartitionKeys:
             yield self._get_column_object(column)
 

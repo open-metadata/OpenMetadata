@@ -127,8 +127,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   @Override
-  protected void postDelete(TestCaseResult entity) {
-    super.postDelete(entity);
+  protected void postDelete(TestCaseResult entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
@@ -155,7 +155,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
-      postDelete(storedTestCaseResult);
+      postDelete(storedTestCaseResult, true); // Hard delete for specific timestamp
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(
@@ -232,6 +232,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             ? testCase.getTestSuites().stream().map(TestSuite::getFullyQualifiedName).toList()
             : null;
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository();
+    DataContractRepository dataContractRepository =
+        (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
     if (fqns != null) {
       for (String fqn : fqns) {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
@@ -266,6 +268,10 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
               testSuiteRepository.getUpdater(
                   original, testSuite, EntityRepository.Operation.PATCH, null);
           entityUpdater.update();
+          // Propagate test results to the data contract if it exists
+          if (testSuite.getDataContract() != null) {
+            dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+          }
         }
       }
     }

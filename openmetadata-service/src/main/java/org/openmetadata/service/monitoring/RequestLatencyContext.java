@@ -1,5 +1,8 @@
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
+import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
+
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
@@ -48,14 +51,14 @@ public class RequestLatencyContext {
   public static void startRequest(String endpoint) {
     RequestContext context = new RequestContext(endpoint);
     requestContext.set(context);
-
+    String normalizedEndpoint = normalizeUri(endpoint);
     requestTimers.computeIfAbsent(
-        endpoint,
+        normalizedEndpoint,
         k ->
             Timer.builder("request.latency.total")
-                .tag(ENDPOINT, endpoint)
+                .tag(ENDPOINT, normalizedEndpoint)
                 .description("Total request latency")
-                .publishPercentileHistogram()
+                .sla(LATENCY_SLA_BUCKETS)
                 .register(Metrics.globalRegistry));
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos = System.nanoTime();
@@ -128,10 +131,11 @@ public class RequestLatencyContext {
     RequestContext context = requestContext.get();
     if (context == null) return;
 
+    String normalizedEndpoint = normalizeUri(context.endpoint);
     try {
       // Stop request timer
       if (context.requestTimerSample != null) {
-        Timer requestTimer = requestTimers.get(context.endpoint);
+        Timer requestTimer = requestTimers.get(normalizedEndpoint);
         if (requestTimer != null) {
           context.totalTime = context.requestTimerSample.stop(requestTimer);
         }
@@ -145,47 +149,47 @@ public class RequestLatencyContext {
       // This gives us the total DB time for THIS request
       Timer dbTimer =
           databaseTimers.computeIfAbsent(
-              context.endpoint,
+              normalizedEndpoint,
               k ->
                   Timer.builder("request.latency.database")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total database latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 
       // Record total search time for THIS request
       Timer searchTimer =
           searchTimers.computeIfAbsent(
-              context.endpoint,
+              normalizedEndpoint,
               k ->
                   Timer.builder("request.latency.search")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total search latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 
       // Record internal processing time for THIS request
       Timer internalTimer =
           internalTimers.computeIfAbsent(
-              context.endpoint,
+              normalizedEndpoint,
               k ->
                   Timer.builder("request.latency.internal")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Internal processing latency per request")
-                      .publishPercentileHistogram()
+                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
       internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
 
       // Record operation counts as distribution summaries to get avg/max/percentiles
       if (context.dbOperationCount > 0) {
-        Metrics.summary("request.operations.database", ENDPOINT, context.endpoint)
+        Metrics.summary("request.operations.database", ENDPOINT, normalizedEndpoint)
             .record(context.dbOperationCount);
       }
 
       if (context.searchOperationCount > 0) {
-        Metrics.summary("request.operations.search", ENDPOINT, context.endpoint)
+        Metrics.summary("request.operations.search", ENDPOINT, normalizedEndpoint)
             .record(context.searchOperationCount);
       }
 
@@ -198,23 +202,23 @@ public class RequestLatencyContext {
         // Get or create percentage holder for this endpoint
         PercentageHolder holder =
             percentageHolders.computeIfAbsent(
-                context.endpoint,
+                normalizedEndpoint,
                 k -> {
                   PercentageHolder newHolder = new PercentageHolder();
 
                   // Register gauges that read from the atomic references
                   Gauge.builder("request.percentage.database", newHolder.databasePercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Percentage of request time spent in database operations")
                       .register(Metrics.globalRegistry);
 
                   Gauge.builder("request.percentage.search", newHolder.searchPercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Percentage of request time spent in search operations")
                       .register(Metrics.globalRegistry);
 
                   Gauge.builder("request.percentage.internal", newHolder.internalPercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
                       .description("Percentage of request time spent in internal processing")
                       .register(Metrics.globalRegistry);
 

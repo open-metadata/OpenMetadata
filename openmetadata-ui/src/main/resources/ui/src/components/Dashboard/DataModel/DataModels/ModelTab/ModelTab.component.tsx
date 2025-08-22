@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { groupBy, omit, uniqBy } from 'lodash';
+import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
+import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -108,7 +109,7 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(response.data || []);
+        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch (error) {
         setPaginatedColumns([]);
@@ -176,12 +177,15 @@ const ModelTab = () => {
     field?: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setPaginatedColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );

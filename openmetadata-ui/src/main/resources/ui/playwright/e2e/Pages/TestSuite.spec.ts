@@ -22,7 +22,6 @@ import {
   redirectToHomePage,
   removeDomain,
   toastNotification,
-  updateDomain,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
@@ -97,19 +96,7 @@ test('Logical TestSuite', async ({ page }) => {
     await page.click('[data-testid="submit-button"]');
     await createTestSuiteResponse;
     await toastNotification(page, 'Test Suite created successfully.');
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
 
-    const searchTestSuiteResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testSuites/search/list?*${NEW_TEST_SUITE.name}*testSuiteType=logical*`
-    );
-    await page.getByTestId('searchbar').fill(NEW_TEST_SUITE.name);
-    await searchTestSuiteResponse;
-
-    await page.click(`[data-testid="${NEW_TEST_SUITE.name}"]`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -118,8 +105,9 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Domain Add, Update and Remove', async () => {
     await assignDomain(page, domain1.responseData);
-    await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain2.responseData);
+    // TODO: Add domain update
+    // await updateDomain(page, domain2.responseData);
+    await removeDomain(page, domain1.responseData);
   });
 
   await test.step(

@@ -18,7 +18,7 @@ import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
-  columns: Column<Record<string, string>>[];
+  columns: Column<Record<string, string>[]>[];
   breadcrumbList: TitleBreadcrumbProps['titleLinks'];
   activeStep: VALIDATION_STEP;
   activeAsyncImportJob?: CSVImportJobType;
@@ -31,9 +31,9 @@ export interface BulkEditEntityProps {
   handleBack: () => void;
   handleValidate: () => Promise<void>;
   onCSVReadComplete: (results: { data: string[][] }) => void;
-  onEditComplete: (data: Record<string, string>[]) => void;
-  gridContainerRef: React.RefObject<HTMLDivElement>;
+  setGridContainer: (container: HTMLElement | null) => void;
   handleCopy: (event: CopyEvent<Record<string, string>>) => void;
   handlePaste: (event: PasteEvent<Record<string, string>>) => void;
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
+  handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
 }

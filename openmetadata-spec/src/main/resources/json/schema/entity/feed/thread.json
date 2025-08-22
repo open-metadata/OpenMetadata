@@ -215,9 +215,13 @@
       "description": "Link to the entity in `about` that the thread belongs to.",
       "type": "string"
     },
-    "domain": {
+    "domains": {
       "description": "Domain the entity belongs to.",
-      "$ref": "../../type/basic.json#/definitions/uuid"
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
     },
     "generatedBy": {
       "description": "User or team that generated the thread.",

@@ -50,7 +50,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: MetricVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -66,9 +66,9 @@ const MetricVersion: FC<MetricVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -138,7 +138,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />

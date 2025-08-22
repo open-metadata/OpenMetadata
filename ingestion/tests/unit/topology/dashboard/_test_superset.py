@@ -176,20 +176,10 @@ EXPECTED_DASH = CreateDashboardRequest(
 EXPECTED_API_DASHBOARD = CreateDashboardRequest(
     name=EntityName("10"),
     displayName="Unicode Test",
-    description=None,
     dashboardType=DashboardType.Dashboard.value,
     sourceUrl=SourceUrl("http://localhost:54510/superset/dashboard/unicode-test/"),
-    project=None,
     charts=[],
-    dataModels=None,
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
-    extension=None,
-    domain=None,
-    dataProducts=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_CHART = CreateChartRequest(
@@ -203,16 +193,9 @@ EXPECTED_CHART = CreateChartRequest(
 EXPECTED_CHART_2 = CreateChartRequest(
     name=EntityName("69"),
     displayName="Unicode Cloud",
-    description=None,
     chartType=ChartType.Other.value,
     sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
-    domain=None,
-    dataProducts=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 MOCK_DATASOURCE = [
     FetchColumn(

@@ -14,9 +14,10 @@ import { Col, Row, Space, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -45,13 +46,18 @@ const DataProductSummary = ({
             <Typography.Text
               className="summary-panel-section-title"
               data-testid="domain-header">
-              {t('label.domain')}
+              {t('label.domain-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <Typography.Text data-testid="domain-header">
-              {getEntityName(entityDetails.domain)}
-            </Typography.Text>
+            <DomainLabel
+              domains={entityDetails.domains ?? []}
+              entityFqn={entityDetails.fullyQualifiedName ?? ''}
+              entityId={entityDetails.id ?? ''}
+              entityType={EntityType.DATA_PRODUCT}
+              hasPermission={false}
+              showDomainHeading={false}
+            />
           </Col>
         </Row>
 

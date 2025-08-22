@@ -29,6 +29,7 @@ export interface AdvanceSearchProviderProps {
   updateURL?: boolean;
   fieldOverrides?: { field: string; type: string }[];
   searchOutputType?: SearchOutputType;
+  entityType?: string; // Optional entity type to filter custom properties
 }
 
 export interface AdvanceSearchContext {

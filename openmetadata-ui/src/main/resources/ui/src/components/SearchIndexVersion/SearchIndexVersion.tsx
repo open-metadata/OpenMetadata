@@ -48,7 +48,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   breadCrumbList,
@@ -77,9 +77,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const fields = useMemo(() => {
@@ -161,7 +161,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

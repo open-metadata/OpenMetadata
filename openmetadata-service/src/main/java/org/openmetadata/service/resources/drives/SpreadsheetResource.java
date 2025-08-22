@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class SpreadsheetResource extends EntityResource<Spreadsheet, SpreadsheetRepository> {
   public static final String COLLECTION_PATH = "v1/drives/spreadsheets/";
   static final String FIELDS =
-      "owners,directory,worksheets,usageSummary,tags,extension,domain,sourceHash,lifeCycle,votes,followers";
+      "owners,directory,worksheets,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
   private final SpreadsheetMapper mapper = new SpreadsheetMapper();
 
   @Override

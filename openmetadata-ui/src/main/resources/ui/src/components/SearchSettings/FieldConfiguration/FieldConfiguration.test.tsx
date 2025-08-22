@@ -12,12 +12,14 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
+import { MatchType } from '../../../generated/settings/settings';
 import FieldConfiguration from './FieldConfiguration';
 
 const mockProps = {
   field: {
     fieldName: 'description',
     weight: 5,
+    matchType: MatchType.Exact,
   },
   index: 0,
   searchSettings: {
@@ -28,6 +30,7 @@ const mockProps = {
   onHighlightFieldsChange: jest.fn(),
   onFieldWeightChange: jest.fn(),
   onDeleteSearchField: jest.fn(),
+  onMatchTypeChange: jest.fn(),
   entityFields: [],
 };
 

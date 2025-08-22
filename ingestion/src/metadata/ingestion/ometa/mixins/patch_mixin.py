@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
-from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -34,7 +33,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngesti
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink, Markdown
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
@@ -130,6 +128,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Given an Entity type and Source entity and Destination entity,
         generate a JSON Patch and apply it.
 
+        This method provides fine-grained control over entity updates and can
+        override fields that create_or_update() cannot due to server-side restrictions
+        across various entity types. Use override_metadata=True to force updates of
+        protected metadata fields.
+
         Args
             entity (T): Entity Type
             source: Source payload which is current state of the source in OpenMetadata
@@ -137,7 +140,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
             array_entity_fields: List of array fields to sort for consistent patching
-            override_metadata: Whether to override existing metadata fields
+            override_metadata: Whether to override existing metadata fields. Set to True
+                to force updates of protected fields across various entity types.
             skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
         Returns
@@ -190,12 +194,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         Given an Entity type and ID, JSON PATCH the description.
 
+        This method is useful when you need to update descriptions that cannot be
+        overridden through create_or_update() due to server-side business rules
+        across various entity types. Use force=True to override existing descriptions.
+
         Args
             entity (T): Entity Type
             source: source entity object
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
+                the existing data. Set to True to override existing descriptions across entity types.
             skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
@@ -612,17 +620,37 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             return None
 
-    def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
-        """Patch domain data for an Entity"""
-        try:
-            destination: Entity = entity.model_copy(deep=True)
-            destination.domain = EntityReference(id=domain.id, type="domain")
-            return self.patch(
-                entity=type(entity), source=entity, destination=destination
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to Patch Domain for {entity.fullyQualifiedName.root}: {exc}"
-            )
+    def patch_domain(
+        self,
+        entity: Type[T],
+        source: T,
+        domains: EntityReferenceList = None,
+        force: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
+        not owner ID are provided, the owner is removed.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            entity_id: ID of the entity to be patched
+            owner: Entity Reference of the owner. If None, the owner will be removed
+            force: if True, we will patch any existing owner. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["domains"]
+        )
+
+        if not instance:
             return None
+
+        if instance.domains and instance.domains.root and not force:
+            return None
+
+        destination = deepcopy(instance)
+        destination.domains = domains
+
+        return self.patch(entity=entity, source=instance, destination=destination)

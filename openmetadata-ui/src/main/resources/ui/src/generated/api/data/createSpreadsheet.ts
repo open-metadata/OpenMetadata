@@ -27,9 +27,9 @@ export interface CreateSpreadsheet {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Spreadsheet belongs to.
+     * Fully qualified names of the domains the Spreadsheet belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Native file ID in the source system
      */

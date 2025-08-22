@@ -23,6 +23,7 @@ import {
   getApiEndPointByFQN,
   patchApiEndPoint,
 } from '../../rest/apiEndpointsAPI';
+import { getChartByFqn, patchChartDetails } from '../../rest/chartsAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -87,6 +88,8 @@ export const getAPIfromSource = (
       return patchTableDetails;
     case EntityType.DASHBOARD:
       return patchDashboardDetails;
+    case EntityType.CHART:
+      return patchChartDetails;
     case EntityType.MLMODEL:
       return patchMlModelDetails;
     case EntityType.PIPELINE:
@@ -133,6 +136,7 @@ export const getAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -152,6 +156,8 @@ export const getEntityAPIfromSource = (
       return getTableDetailsByFQN;
     case EntityType.DASHBOARD:
       return getDashboardByFqn;
+    case EntityType.CHART:
+      return getChartByFqn;
     case EntityType.MLMODEL:
       return getMlModelByFQN;
     case EntityType.PIPELINE:
@@ -198,6 +204,7 @@ export const getEntityAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

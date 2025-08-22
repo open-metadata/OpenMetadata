@@ -27,7 +27,8 @@ export interface DataContractResult {
      */
     executionTime?: number;
     /**
-     * Unique identifier of this data contract result instance.
+     * Unique Data Contract validation execution identifier of this data contract result
+     * instance.
      */
     id?: string;
     /**
@@ -70,6 +71,7 @@ export enum ContractExecutionStatus {
     Failed = "Failed",
     PartialSuccess = "PartialSuccess",
     Queued = "Queued",
+    Running = "Running",
     Success = "Success",
 }
 

@@ -112,6 +112,11 @@ jest.mock('../../rest/testAPI', () => {
     ListTestCaseParamsBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
+    TestCaseType: {
+      all: 'all',
+      table: 'table',
+      column: 'column',
+    },
   };
 });
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -191,7 +196,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: ['owners', 'domain'],
+      fields: ['owners', 'domains'],
       include: 'all',
     });
   });

@@ -94,6 +94,12 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
+    if (ex.getChangeEventWithSubscription() == null) {
+      LOG.error(
+          "Change Event with Subscription is null in EventPublisherException: {}", ex.getMessage());
+      return;
+    }
+
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
     ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(
@@ -188,13 +194,12 @@ public abstract class AbstractEventConsumer
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
       for (UUID receiverId : eventWithReceivers.getValue()) {
-        try {
-          sendAlert(receiverId, eventWithReceivers.getKey());
+        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
+        if (status) {
           recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
-        } catch (EventPublisherException e) {
+        } else {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-          handleFailedEvent(e, false);
         }
       }
     }

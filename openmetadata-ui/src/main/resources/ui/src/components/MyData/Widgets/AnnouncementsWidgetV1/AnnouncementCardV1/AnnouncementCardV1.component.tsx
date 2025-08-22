@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -19,7 +20,7 @@ import {
   Thread,
 } from '../../../../../generated/entity/feed/thread';
 import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
-import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getEntityFQN, getEntityType } from '../../../../../utils/FeedUtils';
 import { getUserPath } from '../../../../../utils/RouterUtils';
@@ -29,14 +30,16 @@ import './announcement-card-v1.less';
 
 interface AnnouncementCardV1Props {
   announcement: Thread;
-  onClick: () => void;
   currentBackgroundColor?: string;
+  disabled?: boolean;
+  onClick: () => void;
 }
 
 const AnnouncementCardV1 = ({
   announcement,
-  onClick,
   currentBackgroundColor,
+  disabled,
+  onClick,
 }: AnnouncementCardV1Props) => {
   const { t } = useTranslation();
 
@@ -118,7 +121,7 @@ const AnnouncementCardV1 = ({
 
   return (
     <Card
-      className="announcement-card-v1"
+      className={classNames('announcement-card-v1', disabled ? 'disabled' : '')}
       data-testid={`announcement-card-v1-${announcement.id}`}
       onClick={handleCardClick}>
       <div className="announcement-card-v1-content">
@@ -198,7 +201,7 @@ const AnnouncementCardV1 = ({
               </Typography.Text>
             )}
             <Typography.Text className="timestamp" style={timeStampStyle}>
-              {getRelativeTime(timestamp)}
+              {getShortRelativeTime(timestamp)}
             </Typography.Text>
           </div>
         </div>

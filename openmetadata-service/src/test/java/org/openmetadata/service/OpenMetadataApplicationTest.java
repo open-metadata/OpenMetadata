@@ -15,16 +15,26 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
+import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
@@ -53,6 +63,11 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -63,10 +78,13 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
 import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -98,6 +116,7 @@ public abstract class OpenMetadataApplicationTest {
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
+  private static GenericContainer<?> RDF_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -131,7 +150,7 @@ public abstract class OpenMetadataApplicationTest {
     if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
       elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
     }
-    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    OpenMetadataApplicationConfig config = readTestAppConfig(CONFIG_PATH);
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info(
         "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
@@ -215,6 +234,9 @@ public abstract class OpenMetadataApplicationTest {
     // Redis cache configuration (if enabled by system properties)
     setupRedisIfEnabled();
 
+    // RDF configuration (if enabled by system properties)
+    setupRdfIfEnabled();
+
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
     // Run System Migrations
@@ -261,7 +283,25 @@ public abstract class OpenMetadataApplicationTest {
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
+    WorkflowHandler.initialize(config);
+    SettingsCache.initialize(config);
+    ApplicationHandler.initialize(config);
+    ApplicationContext.initialize();
     Entity.cleanup();
+  }
+
+  protected OpenMetadataApplicationConfig readTestAppConfig(String path)
+      throws ConfigurationException, IOException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    Validator validator = Validators.newValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    return factory.build(
+        new SubstitutingSourceProvider(
+            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+        path);
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -330,6 +370,16 @@ public abstract class OpenMetadataApplicationTest {
       }
     }
 
+    // Stop RDF container if it was started
+    if (RDF_CONTAINER != null) {
+      try {
+        RDF_CONTAINER.stop();
+        LOG.info("RDF container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping RDF container", e);
+      }
+    }
+
     if (client != null) {
       client.close();
     }
@@ -337,7 +387,9 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig, 50);
+    SearchRepository searchRepository =
+        SearchRepositoryFactory.createSearchRepository(esConfig, 50);
+    Entity.setSearchRepository(searchRepository);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }
@@ -449,6 +501,55 @@ public abstract class OpenMetadataApplicationTest {
           "Redis cache not enabled for tests (enableCache={}, cacheType={})",
           enableCache,
           cacheType);
+    }
+  }
+
+  private static void setupRdfIfEnabled() {
+    String enableRdf = System.getProperty("enableRdf");
+    String rdfContainerImage = System.getProperty("rdfContainerImage");
+    if ("true".equals(enableRdf)) {
+      LOG.info("RDF is enabled for tests. Starting Fuseki container...");
+      if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
+        rdfContainerImage = "stain/jena-fuseki:latest";
+      }
+
+      try {
+        RDF_CONTAINER =
+            new GenericContainer<>(DockerImageName.parse(rdfContainerImage))
+                .withExposedPorts(3030)
+                .withEnv("ADMIN_PASSWORD", "test-admin")
+                .withEnv("FUSEKI_DATASET_1", "openmetadata")
+                .waitingFor(
+                    Wait.forHttp("/$/ping")
+                        .forPort(3030)
+                        .forStatusCode(200)
+                        .withStartupTimeout(Duration.ofMinutes(2)));
+
+        RDF_CONTAINER.start();
+        String rdfHost = RDF_CONTAINER.getHost();
+        Integer rdfPort = RDF_CONTAINER.getMappedPort(3030);
+
+        LOG.info("Fuseki container started at {}:{}", rdfHost, rdfPort);
+
+        // Add RDF configuration overrides
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "true"));
+        configOverrides.add(ConfigOverride.config("rdf.storageType", "FUSEKI"));
+        configOverrides.add(
+            ConfigOverride.config(
+                "rdf.remoteEndpoint",
+                String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
+        configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
+        configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
+        configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
+
+        LOG.info("RDF configuration overrides added");
+      } catch (Exception e) {
+        LOG.warn("Failed to start RDF container, disabling RDF for tests", e);
+        // If container fails to start, disable RDF but continue tests
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
+      }
+    } else {
+      LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
     }
   }
 

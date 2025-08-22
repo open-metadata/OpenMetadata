@@ -129,9 +129,9 @@
       "description": "Link to the service this query belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "query", "service"],

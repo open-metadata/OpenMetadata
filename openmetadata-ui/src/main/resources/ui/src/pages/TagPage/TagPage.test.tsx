@@ -159,7 +159,7 @@ describe('TagPage', () => {
     // Verify initial API calls
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('PII.NonSensitive', {
-        fields: ['domain', 'owners'],
+        fields: ['domains', 'owners'],
       });
       expect(searchData).toHaveBeenCalled();
     });
@@ -178,7 +178,7 @@ describe('TagPage', () => {
 
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('Certification.Gold', {
-        fields: ['domain', 'owners'],
+        fields: ['domains', 'owners'],
       });
       expect(searchData).toHaveBeenCalled();
     });

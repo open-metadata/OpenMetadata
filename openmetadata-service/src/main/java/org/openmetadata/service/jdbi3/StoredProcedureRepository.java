@@ -91,9 +91,9 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   public void setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     DatabaseSchema schema =
         Entity.getEntity(
-            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owners,domain", ALL);
+            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owners,domains", ALL);
     inheritOwners(storedProcedure, fields, schema);
-    inheritDomain(storedProcedure, fields, schema);
+    inheritDomains(storedProcedure, fields, schema);
   }
 
   @Override
@@ -149,12 +149,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       }
     }
 
-    // Bulk fetch followers if needed
-    if (fields.contains(FIELD_FOLLOWERS)) {
-      for (StoredProcedure sp : storedProcedures) {
-        sp.setFollowers(getFollowers(sp));
-      }
-    }
+    super.setFieldsInBulk(fields, storedProcedures);
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {

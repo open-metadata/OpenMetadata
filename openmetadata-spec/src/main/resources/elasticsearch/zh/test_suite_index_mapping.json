@@ -17,12 +17,32 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_compound_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "compound_word_delimiter_graph",
+            "flatten_graph"
+          ]
         }
       },
       "filter": {
         "om_stemmer": {
           "type": "stemmer",
           "name": "english"
+        },
+        "compound_word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "catenate_words": false,
+          "catenate_numbers": false,
+          "catenate_all": false,
+          "preserve_original": true,
+          "stem_english_possessive": true
         }
       }
     }
@@ -41,6 +61,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -61,6 +85,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -169,7 +197,7 @@
           }
         }
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

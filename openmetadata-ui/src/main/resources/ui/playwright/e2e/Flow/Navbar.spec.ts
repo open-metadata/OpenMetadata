@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,8 +22,10 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 for (const searchItem of navbarSearchItems) {
   const { label, searchIndex, isScrollRequired } = searchItem;
 
-  test.skip(`Search Term - ${label}`, async ({ page }) => {
+  test(`Search Term - ${label}`, async ({ page }) => {
     await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
 
     await selectOption(
       page,

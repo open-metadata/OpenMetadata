@@ -100,6 +100,7 @@ import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -144,8 +145,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -889,8 +890,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
-      Set<String> entities =
-          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
+      // Handle entityStr with or without quotes
+      String cleanEntityStr = entityStr;
+      if (entityStr.startsWith("'") && entityStr.endsWith("'")) {
+        cleanEntityStr = entityStr.substring(1, entityStr.length() - 1);
+      }
+      Set<String> entities = new HashSet<>(Arrays.asList(cleanEntityStr.split(",")));
       return executeSearchReindexApp(
           appName,
           entities,
@@ -1269,6 +1274,80 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
+  @Command(name = "reindex-rdf", description = "Re-index all entities into RDF triple store.")
+  public Integer reIndexRdf(
+      @Option(
+              names = {"-r", "--recreate"},
+              defaultValue = "true",
+              description = "Clear and recreate all RDF data.")
+          boolean recreate,
+      @Option(
+              names = {"-e", "--entity-type"},
+              description =
+                  "Specific entity type to process (optional). Use 'all' for all entities.")
+          String entityType,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize) {
+    try {
+      LOG.info("Starting RDF reindexing...");
+      parseConfig();
+
+      // Check if RDF is enabled
+      if (config.getRdfConfiguration() == null
+          || !Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
+        LOG.error("RDF is not enabled in configuration. Please set rdf.enabled=true");
+        return 1;
+      }
+
+      // Get entities to process
+      Set<String> entities = new HashSet<>();
+      if (entityType == null || "all".equalsIgnoreCase(entityType)) {
+        entities.add("all");
+      } else {
+        entities.add(entityType);
+      }
+
+      return executeRdfReindexApp(entities, batchSize, recreate);
+    } catch (Exception e) {
+      LOG.error("Failed to reindex RDF due to", e);
+      return 1;
+    }
+  }
+
+  private int executeRdfReindexApp(Set<String> entities, int batchSize, boolean recreateIndexes) {
+    try {
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      App app = appRepository.getByName(null, "RdfIndexApp", appRepository.getFields("id"));
+
+      EventPublisherJob config =
+          new EventPublisherJob()
+              .withEntities(entities)
+              .withBatchSize(batchSize)
+              .withRecreateIndex(recreateIndexes);
+
+      LOG.info("Triggering RDF reindex application");
+      LOG.info("  Entities: {}", entities);
+      LOG.info("  Batch size: {}", batchSize);
+      LOG.info("  Recreate indexes: {}", recreateIndexes);
+
+      // Trigger Application
+      long currentTime = System.currentTimeMillis();
+      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+
+      // Wait for completion and return status
+      return waitAndReturnReindexingAppStatus(app, currentTime, null);
+    } catch (EntityNotFoundException e) {
+      LOG.error("RdfIndexApp not found. Please ensure the RDF indexing application is registered.");
+      return 1;
+    } catch (Exception e) {
+      LOG.error("Failed to execute RDF reindex app", e);
+      return 1;
+    }
+  }
+
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
   public Integer deployPipelines() {
     try {
@@ -1311,6 +1390,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to migrate secrets due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "drop-indexes", description = "Drop all indexes from Elasticsearch/OpenSearch.")
+  public Integer dropIndexes() {
+    try {
+      LOG.info("Dropping all indexes from search engine...");
+      parseConfig();
+      for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
+        LOG.info("Dropping index for entity type: {}", entityType);
+        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+      }
+      LOG.info("All indexes dropped successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop indexes due to ", e);
       return 1;
     }
   }
@@ -1435,7 +1531,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
     searchRepository =
-        new SearchRepository(
+        SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
 
     // Initialize secrets manager

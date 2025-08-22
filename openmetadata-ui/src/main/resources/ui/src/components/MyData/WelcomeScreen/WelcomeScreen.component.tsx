@@ -47,6 +47,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   return (
     <Card
       className="welcome-screen-container card-body-border-none card-padding-0"
+      data-testid="welcome-screen"
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"

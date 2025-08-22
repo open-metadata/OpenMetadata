@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +51,11 @@ const CustomiseHomeModal = ({
   );
 
   const [widgets, setWidgets] = useState<Document[]>([]);
-  const [selectedWidgets, setSelectedWidgets] = useState<string[]>([]);
+  const [selectedWidgets, setSelectedWidgets] = useState<string[]>([
+    ...(addedWidgetsList ?? []).filter(
+      (widget) => !widget.includes(LandingPageWidgetKeys.CURATED_ASSETS)
+    ),
+  ]);
   const [selectedKey, setSelectedKey] = useState(defaultSelectedKey);
   const [isFetchingWidgets, setIsFetchingWidgets] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -65,7 +70,11 @@ const CustomiseHomeModal = ({
       setWidgets(
         data.filter(
           (widget) =>
-            widget.fullyQualifiedName !== LandingPageWidgetKeys.RECENTLY_VIEWED
+            ![
+              LandingPageWidgetKeys.RECENTLY_VIEWED,
+              LandingPageWidgetKeys.PIPELINE,
+              LandingPageWidgetKeys.ANNOUNCEMENTS,
+            ].includes(widget.fullyQualifiedName as LandingPageWidgetKeys)
         )
       );
     } catch (error) {
@@ -165,11 +174,12 @@ const CustomiseHomeModal = ({
 
   const sidebarItems = useMemo(() => {
     return [
-      ...customiseOptions.map(({ key, label }) => ({ key, label })),
+      ...customiseOptions.map(({ key, label }) => ({ key, label, id: '' })),
       ...(!onHomePage
         ? widgets.map((widget) => ({
             key: widget.fullyQualifiedName,
             label: widget.name,
+            id: widget.id,
           }))
         : []),
     ];
@@ -181,35 +191,55 @@ const CustomiseHomeModal = ({
 
   const sidebarOptions = useMemo(() => {
     return (
-      <>
+      <div className="sidebar-options-container d-flex flex-column gap-2">
         {sidebarItems.map((item) => {
           const isWidgetItem = ![
             CustomiseHomeModalSelectedKey.HEADER_THEME,
             CustomiseHomeModalSelectedKey.ALL_WIDGETS,
           ].includes(item.key as CustomiseHomeModalSelectedKey);
 
-          const isAllWidgets = item.key === 'all-widgets';
+          const isAllWidgetsTab =
+            item.key === CustomiseHomeModalSelectedKey.ALL_WIDGETS;
+
+          const isAllWidgetsSelected =
+            selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS;
+
+          const isSelectedWidget =
+            isAllWidgetsSelected &&
+            selectedWidgets.some(
+              (widget) => widget.startsWith(item.key) || widget === item.id
+            );
 
           return (
             <div
-              className={`sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center
-          ${isWidgetItem ? 'sidebar-widget-item' : ''}
-          ${selectedKey === item.key ? 'active' : ''}`}
+              className={classNames(
+                'sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center',
+                isWidgetItem ? 'sidebar-widget-item' : '',
+                selectedKey === item.key ? 'active' : '',
+                isSelectedWidget ? 'selected' : ''
+              )}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
+              role="button"
+              tabIndex={0}
               onClick={() => handleSidebarClick(item.key)}>
               <span>{startCase(item.label)}</span>
-              {isAllWidgets && (
+              {isAllWidgetsTab && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
                   {widgets.length}
+                </span>
+              )}
+              {isSelectedWidget && (
+                <span className="selected-widget-icon">
+                  <CheckOutlined />
                 </span>
               )}
             </div>
           );
         })}
-      </>
+      </div>
     );
-  }, [sidebarItems, selectedKey, handleSidebarClick]);
+  }, [sidebarItems, selectedKey, handleSidebarClick, selectedWidgets]);
 
   const handleApply = async () => {
     try {
@@ -236,7 +266,7 @@ const CustomiseHomeModal = ({
       setSelectedWidgets([]);
       onClose();
     } catch (error) {
-      return;
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }

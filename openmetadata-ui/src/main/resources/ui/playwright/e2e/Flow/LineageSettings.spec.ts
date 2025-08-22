@@ -167,7 +167,7 @@ test.describe('Lineage Settings Tests', () => {
         'Verify Upstream and Downstream expand collapse buttons',
         async () => {
           await redirectToHomePage(page);
-          await dashboard.visitEntityPageWithCustomSearchBox(page);
+          await dashboard.visitEntityPage(page);
           await visitLineageTab(page);
           const closeIcon = page.getByTestId('entity-panel-close-icon');
           if (await closeIcon.isVisible()) {

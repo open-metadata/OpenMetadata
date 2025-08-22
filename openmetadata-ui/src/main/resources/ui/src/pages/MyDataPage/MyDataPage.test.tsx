@@ -154,10 +154,6 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
   }),
 }));
 
-jest.mock('../../components/AppRouter/withActivityFeed', () => ({
-  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
-}));
-
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {
     __esModule: true,

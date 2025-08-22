@@ -424,12 +424,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     // When domain is not set for an ML Model, carry it forward from the ML Model Service
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
     CreateMlModelService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     MlModelService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a ML Model without domain and ensure it inherits domain from the parent
     CreateMlModel create = createRequest("model").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test

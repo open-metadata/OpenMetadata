@@ -44,11 +44,7 @@ import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/As
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ERROR_MESSAGE,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -71,7 +67,6 @@ import { addDataProducts } from '../../../rest/dataProductAPI';
 import { addDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -129,8 +124,10 @@ const DomainDetailsPage = ({
   const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
-  const { tab: activeTab, version } =
-    useRequiredParams<{ tab: EntityTabs; version: string }>();
+  const { tab: activeTab, version } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+  }>();
   const { fqn: domainFqn } = useFqn();
   const { currentUser } = useApplicationStore();
 
@@ -150,9 +147,7 @@ const DomainDetailsPage = ({
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const [dataProductsCount, setDataProductsCount] = useState<number>(0);
-  const [subDomains, setSubDomains] = useState<Domain[]>([]);
-  const [isSubDomainsLoading, setIsSubDomainsLoading] =
-    useState<boolean>(false);
+  const [subDomainsCount, setSubDomainsCount] = useState<number>(0);
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -243,32 +238,31 @@ const DomainDetailsPage = ({
       : []),
   ];
 
-  const fetchSubDomains = useCallback(async () => {
+  const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
       try {
-        setIsSubDomainsLoading(true);
         const res = await searchData(
           '',
-          1,
-          PAGE_SIZE_LARGE,
+          0,
+          0,
           `(parent.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
-          SearchIndex.DOMAIN
+          SearchIndex.DOMAIN,
+          false,
+          true
         );
 
-        const data = formatDomainsResponse(res.data.hits.hits);
-        setSubDomains(data);
+        const totalCount = res.data.hits.total.value ?? 0;
+        setSubDomainsCount(totalCount);
       } catch (error) {
-        setSubDomains([]);
+        setSubDomainsCount(0);
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
           })
         );
-      } finally {
-        setIsSubDomainsLoading(false);
       }
     }
   }, [isVersionsView, encodedFqn]);
@@ -282,7 +276,7 @@ const DomainDetailsPage = ({
 
       try {
         await addDomains(data as CreateDomain);
-        fetchSubDomains();
+        fetchSubDomainsCount();
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -300,18 +294,22 @@ const DomainDetailsPage = ({
         setShowAddSubDomainModal(false);
       }
     },
-    [domain, fetchSubDomains]
+    [domain, fetchSubDomainsCount]
   );
 
   const addDataProduct = useCallback(
     async (formData: CreateDataProduct | CreateDomain) => {
+      if (!domain.fullyQualifiedName) {
+        return;
+      }
+
       const data = {
         ...formData,
-        domain: domain.fullyQualifiedName,
+        domains: [domain.fullyQualifiedName],
       };
 
       try {
-        const res = await addDataProducts(data as CreateDataProduct);
+        const res = await addDataProducts(data);
         navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
@@ -353,7 +351,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
+          `(domains.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -553,12 +551,11 @@ const DomainDetailsPage = ({
       domain,
       isVersionsView,
       domainPermission,
-      subDomains,
+      subDomainsCount,
       dataProductsCount,
       assetCount,
       activeTab,
       onAddDataProduct,
-      isSubDomainsLoading,
       queryFilter,
       assetTabRef,
       dataProductsTabRef,
@@ -587,8 +584,7 @@ const DomainDetailsPage = ({
     assetCount,
     dataProductsCount,
     activeTab,
-    subDomains,
-    isSubDomainsLoading,
+    subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
   ]);
@@ -600,8 +596,8 @@ const DomainDetailsPage = ({
   }, [domain.fullyQualifiedName]);
 
   useEffect(() => {
-    fetchSubDomains();
-  }, [domainFqn]);
+    fetchSubDomainsCount();
+  }, [domainFqn, fetchSubDomainsCount]);
 
   const iconData = useMemo(() => {
     if (domain.style?.iconURL) {

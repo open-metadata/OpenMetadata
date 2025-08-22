@@ -12,15 +12,16 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { toastNotification, visitOwnProfilePage } from './common';
+import {
+  redirectToHomePage,
+  toastNotification,
+  visitOwnProfilePage,
+} from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
   page: Page,
-  {
-    personaName,
-    customPageDataResponse,
-  }: { personaName: string; customPageDataResponse: number }
+  { personaName }: { personaName: string }
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
@@ -38,60 +39,32 @@ export const navigateToCustomizeLandingPage = async (
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
   await page.getByTestId('LandingPage').click();
+  await getCustomPageDataResponse;
 
-  expect((await getCustomPageDataResponse).status()).toBe(
-    customPageDataResponse
-  );
+  await page.waitForLoadState('networkidle');
 };
 
 export const removeAndCheckWidget = async (
   page: Page,
-  { widgetTestId, widgetKey }: { widgetTestId: string; widgetKey: string }
+  { widgetKey }: { widgetKey: string }
 ) => {
   // Click on remove widget button
-  await page.click(
-    `[data-testid="${widgetTestId}"] [data-testid="remove-widget-button"]`
-  );
+  await page
+    .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
+    .click();
 
-  // Check if widget does not exist
-  await page.waitForSelector(`[data-testid="${widgetTestId}"]`, {
-    state: 'detached',
-  });
+  await page.getByText('Remove').click();
 
-  // Check if empty widget placeholder is displayed in place of removed widget
-  await page.waitForSelector(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"]`
-  );
-
-  // Remove empty widget placeholder
-  await page.click(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"] [data-testid="remove-widget-button"]`
-  );
-
-  // Check if empty widget placeholder does not exist
-  await page.waitForSelector(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"]`,
-    { state: 'detached' }
-  );
+  await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
-export const checkAllDefaultWidgets = async (
-  page: Page,
-  checkEmptyWidgetPlaceholder = false
-) => {
-  await expect(page.getByTestId('activity-feed-widget')).toBeVisible();
-  await expect(page.getByTestId('following-widget')).toBeVisible();
-  await expect(page.getByTestId('recently-viewed-widget')).toBeVisible();
-  await expect(page.getByTestId('data-assets-widget')).toBeVisible();
-  await expect(page.getByTestId('my-data-widget')).toBeVisible();
-  await expect(page.getByTestId('kpi-widget')).toBeVisible();
-  await expect(page.getByTestId('total-assets-widget')).toBeVisible();
-
-  if (checkEmptyWidgetPlaceholder) {
-    await expect(
-      page.getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-    ).toBeVisible();
-  }
+export const checkAllDefaultWidgets = async (page: Page) => {
+  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
 };
 
 export const setUserDefaultPersona = async (
@@ -101,9 +74,12 @@ export const setUserDefaultPersona = async (
   await visitOwnProfilePage(page);
 
   await page.locator('[data-testid="edit-user-persona"]').nth(1).click();
-  await page.locator('[data-testid="persona-popover"]').isVisible();
-  await page.locator('input[role="combobox"]').nth(1).click();
-  await page.waitForSelector('[data-testid="persona-select-list"]');
+
+  await expect(
+    page.locator('[data-testid="persona-select-list"]')
+  ).toBeVisible();
+
+  await page.locator('[data-testid="persona-select-list"]').click();
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
@@ -123,7 +99,7 @@ export const openAddCustomizeWidgetModal = async (page: Page) => {
   );
   await page
     .locator(
-      '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+      '[data-testid="customize-landing-page-header"] [data-testid="add-widget-button"]'
     )
     .click();
 
@@ -144,4 +120,82 @@ export const saveCustomizeLayoutPage = async (
     page,
     `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
   );
+};
+
+export const removeAndVerifyWidget = async (
+  page: Page,
+  widgetKey: string,
+  personaName: string
+) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+  });
+
+  await removeAndCheckWidget(page, {
+    widgetKey,
+  });
+
+  await page.locator('[data-testid="save-button"]').click();
+  await page.waitForLoadState('networkidle');
+
+  await redirectToHomePage(page);
+
+  await expect(page.getByTestId(widgetKey)).not.toBeVisible();
+};
+
+export const addAndVerifyWidget = async (
+  page: Page,
+  widgetKey: string,
+  personaName: string
+) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+  });
+
+  await openAddCustomizeWidgetModal(page);
+  await page.locator('[data-testid="loader"]').waitFor({
+    state: 'detached',
+  });
+
+  await page.locator(`[data-testid="${widgetKey}"]`).click();
+
+  await page.locator('[data-testid="apply-btn"]').click();
+
+  await expect(page.getByTestId(widgetKey)).toBeVisible();
+
+  await page.locator('[data-testid="save-button"]').click();
+  await page.waitForLoadState('networkidle');
+
+  await redirectToHomePage(page);
+
+  await expect(page.getByTestId(widgetKey)).toBeVisible();
+};
+
+export const addCuratedAssetPlaceholder = async ({
+  page,
+  personaName,
+}: {
+  page: Page;
+  personaName: string;
+}) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+  });
+
+  await openAddCustomizeWidgetModal(page);
+  await page.locator('[data-testid="loader"]').waitFor({
+    state: 'detached',
+  });
+
+  await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
+
+  await page.locator('[data-testid="apply-btn"]').click();
+
+  await page.waitForTimeout(1000);
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.CuratedAssets')
+      .getByTestId('widget-empty-state')
+  ).toBeVisible();
 };

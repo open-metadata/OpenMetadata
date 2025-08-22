@@ -13,24 +13,17 @@
 
 @import (reference) '../../../../styles/variables.less';
 
-.ant-card.ant-card-bordered.total-data-insight-card {
-  border-radius: 10px;
-  box-shadow: none;
+.total-data-assets-widget-container {
+  display: flex;
+  flex-direction: column;
   height: 100%;
-}
-.total-data-insight-card {
-  .ant-card-body {
-    height: 100%;
-  }
 
-  .total-entity-insight-summary-container {
-    scrollbar-width: none;
-    height: 100%;
-    overflow-y: auto;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 }
 
@@ -48,7 +41,7 @@
     }
 
     .data-value {
-      border-radius: @border-radius-md;
+      border-radius: @border-rad-md;
       background-color: @grey-31;
     }
   }
@@ -80,7 +73,7 @@
       border: 1px solid @grey-2;
       background: @grey-29;
       padding: @padding-xs @padding-sm;
-      border-radius: @border-radius-sm;
+      border-radius: @border-rad-sm;
       text-align: center;
       cursor: pointer;
       flex: 1 1 0;
@@ -100,13 +93,20 @@
 
   .recharts-tooltip-item-name,
   .recharts-tooltip-item-value {
-    color: @white !important;
+    color: @black;
   }
 
   .recharts-default-tooltip {
-    background-color: @tag-text !important;
-    border-radius: @border-radius-md;
+    background-color: @white;
+    border-radius: @border-rad-md;
     padding: @padding-sm;
     border: none !important;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+  }
+
+  .recharts-responsive-container {
+    svg {
+      margin-top: @margin-lg;
+    }
   }
 }

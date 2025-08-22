@@ -14,10 +14,14 @@ import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
 const validateTourSteps = async (page: Page) => {
+  await page.waitForTimeout(1000);
+  await page.waitForSelector(`[data-tour-elem="badge"]`);
+
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
 
   // step 1
@@ -30,8 +34,8 @@ const validateTourSteps = async (page: Page) => {
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
 
-  await page.getByTestId('customise-searchbox').fill('dim_a');
-  await page.getByTestId('customise-searchbox').press('Enter');
+  await page.getByTestId('searchBox').fill('dim_a');
+  await page.getByTestId('searchBox').press('Enter');
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
 
@@ -108,7 +112,7 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('saveButton').click();
 };
 
-test.describe.skip('Tour should work properly', () => {
+test.describe('Tour should work properly', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -129,7 +133,11 @@ test.describe.skip('Tour should work properly', () => {
   test('Tour should work from help section', async ({ page }) => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
+
     await validateTourSteps(page);
   });
 
@@ -139,16 +147,21 @@ test.describe.skip('Tour should work properly', () => {
       .locator('.whats-new-alert-close')
       .click();
     await page.getByText('Take a product tour to get started!').click();
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
 
     await validateTourSteps(page);
   });
 
   test('Tour should work from URL directly', async ({ page }) => {
-    await expect(page.getByTestId('global-search-selector')).toBeVisible();
-
     await page.goto('/tour');
+    await waitForAllLoadersToDisappear(page);
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
+
     await validateTourSteps(page);
   });
 });

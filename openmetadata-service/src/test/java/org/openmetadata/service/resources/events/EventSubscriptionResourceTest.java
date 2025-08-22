@@ -768,7 +768,7 @@ public class EventSubscriptionResourceTest
     CreateDomain createDomain2 = domainResourceTest.createRequest("Engineering_2");
     Domain domainSecond = domainResourceTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
     CreateTable createTable =
-        tableResourceTest.createRequest(test).withDomain(domainSecond.getName());
+        tableResourceTest.createRequest(test).withDomains(List.of(domainSecond.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     // changeEvent on the table with correct domain will result in alerts
@@ -777,7 +777,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable2 =
         tableResourceTest
             .createRequest(test.getClass().getName() + "_secondTable")
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
@@ -915,7 +915,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
@@ -929,7 +929,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain2.getName());
+            .withDomains(List.of(domain2.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
@@ -939,7 +939,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
 
     Table table = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
 
@@ -1096,7 +1096,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest =
         topicResourceTest
             .createRequest(test)
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
@@ -1189,7 +1189,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1_REF))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
@@ -1204,7 +1204,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "2")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain2.getName())
+            .withDomains(List.of(domain2.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
@@ -1215,7 +1215,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "3")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest3, ADMIN_AUTH_HEADERS);
 
@@ -2216,6 +2216,9 @@ public class EventSubscriptionResourceTest
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2228,6 +2231,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredSlack(endpoint));
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("SlackCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2240,6 +2246,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredMSTeams(endpoint));
     MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("MSTeamsCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 

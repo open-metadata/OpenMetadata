@@ -72,6 +72,13 @@ export const fillTableColumnInputDetails = async (
 ) => {
   await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
+  const isInputVisible = await page
+    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
+    .isVisible();
+
+  if (!isInputVisible) {
+    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+  }
   await page
     .getByTestId('edit-table-type-property-modal')
     .getByRole('textbox')
@@ -227,6 +234,9 @@ export const setValueForProperty = async (data: {
     case 'table-cp': {
       const values = value.split(',');
       await page.locator('[data-testid="add-new-row"]').click();
+
+      // Editor grid to be visible
+      await page.waitForSelector('.om-rdg', { state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 

@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../variables.less');
+@import (reference) '../variables.less';
 
 .om-rdg {
   border-radius: 12px;
   border: 1px solid @om-rdg-border-color;
   overflow: hidden;
+  user-select: none;
+
+  .rdg-cell-range-selections {
+    background-color: @rdg-cell-range-selections-background-color;
+  }
 
   .rdg {
     border: none;

@@ -127,11 +127,9 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   };
 
   const popoverContent = useMemo(() => {
-    if (isTourOpen || !searchValue || !isSearchBoxOpen) {
-      return null;
-    }
-
-    return isInPageSearchAllowed(pathname) ? (
+    return !isTourOpen &&
+      (searchValue || isNLPActive) &&
+      isInPageSearchAllowed(pathname) ? (
       <SearchOptions
         isOpen={isSearchBoxOpen}
         options={inPageSearchOptions(pathname)}
@@ -195,7 +193,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
                 component={
                   isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
                 }
-                style={{ fontSize: '20px' }}
               />
             }
             type="text"
@@ -213,14 +210,16 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
         placement="bottom"
         showArrow={false}
         trigger={['click']}
-        onOpenChange={setIsSearchBoxOpen}>
+        onOpenChange={(open) => {
+          setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);
+        }}>
         <Input
           autoComplete="off"
           bordered={false}
           className="rounded-4 appbar-search"
-          data-testid="customise-searchbox"
+          data-testid="searchBox"
           disabled={disabled}
-          id="customise-searchbox"
+          id="searchBox"
           placeholder={t('label.search-for-type', {
             type: 'Tables, Database, Schema...',
           })}

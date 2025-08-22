@@ -23,9 +23,9 @@ export interface CreateWorkflow {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Workflow belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name of the workflow.
      */
@@ -176,6 +176,8 @@ export interface TestServiceConnectionRequest {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface RequestConnection {
     config?: ConfigClass;
@@ -275,6 +277,8 @@ export interface RequestConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -309,6 +313,8 @@ export interface RequestConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Kafka Connection Config
  *
@@ -396,6 +402,8 @@ export interface RequestConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -451,7 +459,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
     /**
      * Billing Project ID
      */
@@ -560,6 +568,8 @@ export interface ConfigClass {
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
+     * URL to the Grafana instance.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -582,11 +592,15 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -614,6 +628,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -633,6 +649,9 @@ export interface ConfigClass {
     awsConfig?:     AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -654,8 +673,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -978,6 +998,8 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the tableau instance
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
@@ -1120,6 +1142,8 @@ export interface ConfigClass {
     /**
      * Client ID for DOMO
      *
+     * Azure Application (client) ID for service principal authentication.
+     *
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -1217,6 +1241,11 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * Fivetran API Secret.
      */
     apiKey?: string;
@@ -1229,12 +1258,30 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      */
     verifySSL?: boolean | VerifySSL;
+    /**
+     * Azure Application client secret for service principal authentication.
+     *
+     * User's Client Secret.
+     *
+     * clientSecret for PowerBI.
+     *
+     * clientSecret for Sigma.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Tenant ID for PowerBI.
+     */
+    tenantId?: string;
     /**
      * Client SSL/TLS settings.
      */
@@ -1244,17 +1291,17 @@ export interface ConfigClass {
      */
     httpConnection?: string;
     /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
-    /**
-     * User's Client Secret.
-     *
-     * clientSecret for PowerBI.
-     *
-     * clientSecret for Sigma.
-     */
-    clientSecret?: string;
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
@@ -1292,10 +1339,6 @@ export interface ConfigClass {
      * PowerBI secrets.
      */
     scope?: string[];
-    /**
-     * Tenant ID for PowerBI.
-     */
-    tenantId?: string;
     /**
      * Fetch the PowerBI metadata using admin APIs
      */
@@ -1409,6 +1452,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1826,6 +1873,10 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
+ *
  * Regex exclude or include charts that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
@@ -1928,6 +1979,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthConfigurationType {
     /**
@@ -1936,6 +1991,8 @@ export interface AuthConfigurationType {
      * Password to access the service.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -1952,6 +2009,8 @@ export interface AuthConfigurationType {
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -2191,6 +2250,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -3246,6 +3306,15 @@ export interface ElasticsSearch {
 }
 
 /**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
+}
+
+/**
  * Credentials to extract the .lkml files from a repository. This is required to get all the
  * lineage and definitions.
  *
@@ -3691,6 +3760,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -3867,6 +3937,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3900,8 +3972,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3939,12 +4013,14 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3978,6 +4054,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -4184,6 +4261,7 @@ export enum ServiceType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }
 

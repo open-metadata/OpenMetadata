@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { searchQuery } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -119,7 +120,7 @@ describe('FollowingWidget component', () => {
     });
 
     expect(searchQuery).toHaveBeenCalledWith({
-      pageSize: 8,
+      pageSize: PAGE_SIZE_MEDIUM,
       searchIndex: 'all',
       query: '*',
       filters: 'followers:113',
@@ -150,23 +151,6 @@ describe('FollowingWidget component', () => {
     });
 
     expect(screen.queryByTestId('view-more-link')).not.toBeInTheDocument();
-  });
-
-  it('should render view all for data present', async () => {
-    (searchQuery as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockSearchAPIResponse)
-    );
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <FollowingWidget widgetKey="widgetKey" />
-        </MemoryRouter>
-      );
-    });
-
-    expect(
-      await screen.findByText('label.view-more-count')
-    ).toBeInTheDocument();
   });
 
   it('should render table names', async () => {

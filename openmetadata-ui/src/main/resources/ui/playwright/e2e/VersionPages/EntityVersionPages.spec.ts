@@ -113,7 +113,7 @@ test.describe('Entity Version pages', () => {
           },
           {
             op: 'add',
-            path: '/domain',
+            path: '/domains/0',
             value: {
               id: domain.id,
               type: 'domain',
@@ -158,8 +158,13 @@ test.describe('Entity Version pages', () => {
     test(`${entity.getType()}`, async ({ page }) => {
       test.slow();
 
-      await entity.visitEntityPageWithCustomSearchBox(page);
-      const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+      await entity.visitEntityPage(page);
+
+      await page.waitForLoadState('networkidle');
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions/0.2') && response.status() === 200
+      );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
 

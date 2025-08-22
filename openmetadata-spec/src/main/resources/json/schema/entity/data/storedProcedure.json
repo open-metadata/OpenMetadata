@@ -187,9 +187,9 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",

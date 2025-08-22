@@ -76,6 +76,7 @@ const TagsContainerV2 = ({
   newLook = false,
   sizeCap = LIST_SIZE,
   useGenericControls,
+  tagNewLook = false,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
@@ -231,6 +232,7 @@ const TagsContainerV2 = ({
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
+            newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
             sizeCap={sizeCap}
             tagType={tagType}
@@ -388,6 +390,7 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
+          newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
           tags={tags?.[tagType] ?? []}

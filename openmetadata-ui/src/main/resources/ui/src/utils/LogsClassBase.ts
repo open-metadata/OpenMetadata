@@ -17,7 +17,7 @@ import { OPEN_METADATA } from '../constants/service-guide.constant';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { getNameFromFQN } from './CommonUtils';
+import { getNameFromFQN, getTableFQNFromColumnFQN } from './CommonUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
@@ -95,8 +95,10 @@ class LogsClassBase {
             isExecutableTestSuite,
             fullyQualifiedName:
               (isExecutableTestSuite
-                ? (ingestionDetails.sourceConfig.config as Pipeline)
-                    ?.entityFullyQualifiedName
+                ? getTableFQNFromColumnFQN(
+                    (ingestionDetails.sourceConfig.config as Pipeline)
+                      ?.entityFullyQualifiedName ?? ''
+                  )
                 : ingestionDetails.service?.fullyQualifiedName) ?? '',
           }),
         },

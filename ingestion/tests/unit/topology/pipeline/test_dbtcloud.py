@@ -436,24 +436,12 @@ EXPECTED_JOB_DETAILS = DBTJob(
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name=EntityName(root="New job"),
-    displayName=None,
     description=Markdown(root="Example Job Description"),
-    dataProducts=None,
     sourceUrl=SourceUrl(
         root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/jobs/70403103936332"
     ),
-    concurrency=None,
-    pipelineLocation=None,
-    startDate=None,
-    tasks=None,
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName(root="dbtcloud_pipeline_test"),
-    extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
@@ -470,57 +458,31 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="dbtcloud_pipeline_test.New job",
     displayName="OpenMetadata DBTCloud Workflow",
     description=Markdown(root="Example Job Description"),
-    dataProducts=None,
     sourceUrl=SourceUrl(
         root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/jobs/70403103936332"
     ),
-    concurrency=None,
-    pipelineLocation=None,
-    startDate=None,
     tasks=[
         Task(
             name="70403110257794",
-            displayName=None,
-            fullyQualifiedName=None,
-            description=None,
             sourceUrl=SourceUrl(
                 root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403110257794/"
             ),
-            downstreamTasks=None,
-            taskType=None,
-            taskSQL=None,
             startDate="2024-05-27 10:42:20.621788+00:00",
             endDate="2024-05-28 10:42:52.622408+00:00",
-            tags=None,
-            owners=None,
         ),
         Task(
             name="70403111615088",
-            displayName=None,
-            fullyQualifiedName=None,
-            description=None,
             sourceUrl=SourceUrl(
                 root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403111615088/"
             ),
-            downstreamTasks=None,
-            taskType=None,
-            taskSQL=None,
             startDate="None",
             endDate="None",
-            tags=None,
-            owners=None,
         ),
     ],
-    tags=None,
-    owners=None,
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
     ),
-    extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_JOB_FILTERS = ["70403103922125", "70403103922126"]

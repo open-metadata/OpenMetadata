@@ -481,7 +481,7 @@ const ClassificationDetails = forwardRef(
             </Col>
             <Col span={6}>
               <div className="d-flex flex-column gap-5">
-                <DomainLabelV2 showDomainHeading />
+                <DomainLabelV2 multiple showDomainHeading />
                 <OwnerLabelV2 dataTestId="classification-owner-name" />
               </div>
             </Col>

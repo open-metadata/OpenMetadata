@@ -1,11 +1,11 @@
 import { DateRangeObject } from 'Models';
 import { SVGAttributes } from 'react';
 import { LinkProps } from 'react-router-dom';
+import { TestCaseType } from '../../enums/TestSuite.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
-import { TestCaseType } from '../../rest/testAPI';
 import { AreaChartColorScheme } from '../Visualisations/Chart/Chart.interface';
 
 /*

@@ -151,9 +151,9 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
-      "description": "Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

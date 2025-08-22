@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { filter, startCase } from 'lodash';
 import {
   SubscriptionCategory,
@@ -73,3 +74,22 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
 };
 
 export const DEFAULT_READ_TIMEOUT = 12;
+
+export const DATA_CONTRACT_ALERT_FILTERS = [
+  'filterByFqn',
+  'filterByDomain',
+  'filterByOwner',
+  'filterByEntityName',
+];
+
+export const DATA_CONTRACT_ALERT_ACTIONS = [
+  'GetDataContractStatusUpdates',
+  'GetDataContractValidationFailures',
+];
+
+export const DATA_CONTRACT_STATUS_OPTIONS = [
+  { label: i18next.t('label.success'), value: 'Success' },
+  { label: i18next.t('label.failed'), value: 'Failed' },
+  { label: i18next.t('label.running'), value: 'Running' },
+  { label: i18next.t('label.aborted'), value: 'Aborted' },
+];

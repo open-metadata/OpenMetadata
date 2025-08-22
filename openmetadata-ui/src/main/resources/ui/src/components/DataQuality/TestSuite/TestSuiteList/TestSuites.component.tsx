@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
+import { TEST_SUITE_DOCS } from '../../../../constants/docs.constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -39,6 +40,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { TestSuiteType } from '../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -52,9 +54,9 @@ import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualit
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
-  TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../../utils/formUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import {
   getDataQualityPagePath,
@@ -298,6 +300,26 @@ export const TestSuites = () => {
     ]
   );
 
+  const noDataPlaceholder = useMemo(() => {
+    if (
+      isEmpty(params) &&
+      isEmpty(testSuites) &&
+      subTab === DataQualitySubTabs.BUNDLE_SUITES
+    ) {
+      return (
+        <ErrorPlaceHolder
+          permission
+          className="border-none"
+          doc={TEST_SUITE_DOCS}
+          heading={t('label.bundle-suite')}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        />
+      );
+    }
+
+    return <FilterTablePlaceHolder />;
+  }, [params, testSuites, subTab]);
+
   useEffect(() => {
     if (
       getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
@@ -325,12 +347,15 @@ export const TestSuites = () => {
   return (
     <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Form layout="inline">
+        <Form className="new-form-style" layout="inline">
           <Space align="center" className="w-full justify-between" size={16}>
             <Form.Item className="m-0" label={t('label.owner')} name="owner">
               <UserTeamSelectableList
                 hasPermission
                 owner={selectedOwner}
+                popoverProps={{
+                  getPopupContainer: getPopupContainer,
+                }}
                 onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
                 <Select
                   data-testid="owner-select-filter"
@@ -392,7 +417,7 @@ export const TestSuites = () => {
             dataSource={testSuites}
             loading={isLoading}
             locale={{
-              emptyText: <FilterTablePlaceHolder />,
+              emptyText: noDataPlaceholder,
             }}
             pagination={false}
             scroll={{

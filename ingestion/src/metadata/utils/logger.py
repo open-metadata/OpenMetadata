@@ -25,6 +25,9 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
@@ -33,6 +36,7 @@ from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.user import OMetaUserProfile
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -299,6 +303,21 @@ def _(record: TableQueries) -> str:
 def _(record: QueryParserData) -> str:
     """Get the log of the ParsedData"""
     return f"Usage ParsedData [{len(record.parsedData)}]"
+
+
+@get_log_name.register
+def _(record: DataContractResult) -> str:
+    """Get the log of the DataContractResult"""
+    return f"DataContractResult for [{record.dataContractFQN.root}]; status: {record.contractExecutionStatus.value}]"
+
+
+@get_log_name.register
+def _(record: OMetaUserProfile) -> str:
+    """Get the log of the new entity"""
+    return (
+        f"User Profile: {get_log_name(record.user)},"
+        f"Teams: {record.teams if record.teams else 'None'}, \nRoles: {record.roles if record.roles else 'None'}"
+    )
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

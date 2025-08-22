@@ -22,11 +22,6 @@ ingestion:
   - "ingestion/**/*"
   - "ingestion-core/**/*"
 
-# Label for documentation , when source file is in docs
-documentation:
-  - "openmetadata-docs/**/*"
-  - "openmetadata-docs-v1/**/*"
-
 # Label to help us track spec changes
 spec:
   - "openmetadata-spec/**/*"

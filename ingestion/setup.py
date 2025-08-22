@@ -140,6 +140,7 @@ base_requirements = {
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
+    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
@@ -253,7 +254,10 @@ plugins: Dict[str, Set[str]] = {
         "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
-    "exasol": {"sqlalchemy_exasol>=5,<6"},
+    "exasol": {
+        "sqlalchemy_exasol>=5,<6",
+        "exasol-integration-test-docker-environment>=3.1.0,<4",
+    },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
@@ -455,6 +459,8 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
+    *plugins["exasol"],
+    VERSIONS["opensearch"],
 }
 
 if sys.version_info >= (3, 9):

@@ -23,9 +23,9 @@ export interface CreateWebAnalyticEvent {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Web Analytic Event belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * dimension(s) and metric(s) for a report
      */

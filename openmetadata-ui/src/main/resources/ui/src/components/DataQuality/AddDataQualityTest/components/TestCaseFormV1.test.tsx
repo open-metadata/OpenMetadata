@@ -165,6 +165,11 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
   createTestCase: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -797,6 +802,184 @@ describe('TestCaseFormV1 Component', () => {
       render(<TestCaseFormV1 {...mockProps} drawerProps={drawerProps} />);
 
       expect(document.body).toBeInTheDocument();
+    });
+  });
+
+  describe('Custom Query Functionality', () => {
+    it('should render custom query button for table level tests', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Custom query button should be visible for table level
+      await waitFor(() => {
+        const customQueryButton = screen.getByTestId('custom-query');
+
+        expect(customQueryButton).toBeInTheDocument();
+      });
+    });
+
+    it('should toggle to custom query mode when custom query button is clicked', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Click custom query button
+      const customQueryButton = await screen.findByTestId('custom-query');
+      await act(async () => {
+        fireEvent.click(customQueryButton);
+      });
+
+      // Should show the edit button to go back to test type selection
+      await waitFor(() => {
+        const editButton = screen.getByTestId('test-type-btn');
+
+        expect(editButton).toBeInTheDocument();
+      });
+    });
+
+    it('should switch back to test type selection from custom query mode', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // First switch to custom query mode
+      const customQueryButton = await screen.findByTestId('custom-query');
+      await act(async () => {
+        fireEvent.click(customQueryButton);
+      });
+
+      // Wait for mode to change
+      await waitFor(() => {
+        const editButton = screen.getByTestId('test-type-btn');
+
+        expect(editButton).toBeInTheDocument();
+      });
+
+      // Now click the select test type button to go back
+      const selectTestTypeButton = screen.getByTestId('test-type-btn');
+
+      await act(async () => {
+        fireEvent.click(selectTestTypeButton);
+      });
+
+      // Should show custom query button again
+      await waitFor(() => {
+        expect(screen.getByTestId('custom-query')).toBeInTheDocument();
+      });
+    });
+
+    it('should hide test type dropdown when in custom query mode', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Initially test type dropdown should be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('test-type')).toBeInTheDocument();
+      });
+
+      // Switch to custom query mode
+      const customQueryButton = await screen.findByTestId('custom-query');
+      await act(async () => {
+        fireEvent.click(customQueryButton);
+      });
+
+      // Test type dropdown should not be easily accessible in custom query mode
+      await waitFor(() => {
+        expect(screen.getByText('label.test-type')).toBeInTheDocument();
+
+        // The dropdown should exist but be hidden from view
+        const testTypeSelect = document.querySelector(
+          '[data-testid="test-type"]'
+        );
+
+        expect(testTypeSelect).toBeInTheDocument();
+      });
+    });
+
+    it('should not show custom query button for column level tests', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Switch to column level
+      const columnButton = await screen.findByTestId('test-level-column');
+      await act(async () => {
+        fireEvent.click(columnButton);
+      });
+
+      // Custom query button should not be present for column level
+      await waitFor(() => {
+        expect(screen.queryByTestId('custom-query')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show test type label when in custom query mode', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Switch to custom query mode
+      const customQueryButton = await screen.findByTestId('custom-query');
+      await act(async () => {
+        fireEvent.click(customQueryButton);
+      });
+
+      // Should show test type label
+      await waitFor(() => {
+        expect(screen.getByText('label.test-type')).toBeInTheDocument();
+      });
+    });
+
+    it('should properly handle form field updates when switching modes', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      // Wait for component to render
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      // Switch to custom query mode
+      const customQueryButton = await screen.findByTestId('custom-query');
+      await act(async () => {
+        fireEvent.click(customQueryButton);
+      });
+
+      // Verify the form field is set correctly (tableCustomSQLQuery)
+      await waitFor(() => {
+        expect(screen.getByText('label.test-type')).toBeInTheDocument();
+      });
+
+      // Switch back to regular mode
+      const selectTestTypeButton = screen.getByTestId('test-type-btn');
+
+      await act(async () => {
+        fireEvent.click(selectTestTypeButton);
+      });
+
+      // Verify we're back to normal mode
+      await waitFor(() => {
+        expect(screen.getByTestId('custom-query')).toBeInTheDocument();
+      });
     });
   });
 });

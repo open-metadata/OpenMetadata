@@ -444,8 +444,13 @@ class ColumnTypeParser:
         if not data_type:
             return {"dataType": "NULL", "dataTypeDisplay": dtype}
         data_length = 1
-        if re.match(r".*(\([\w]*\))", dtype):
-            data_length = re.match(r".*\(([\w]*)\)", dtype).groups()[0]
+        match = re.match(r".*\(([\w]*)\)", dtype)
+        if match:
+            try:
+                data_length = int(match.groups()[0])
+            except ValueError:
+                # If conversion fails, keep it as 1 (default)
+                data_length = 1
         return {
             "dataType": data_type,
             "dataTypeDisplay": data_type,

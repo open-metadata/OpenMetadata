@@ -17,6 +17,7 @@ from typing import Optional
 
 from databricks.sdk import WorkspaceClient
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -34,13 +35,13 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
+    UNITY_CATALOG_SQL_STATEMENT_TEST,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
@@ -93,21 +94,32 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    client = UnityCatalogClient(service_connection)
     table_obj = DatabricksTable()
+    engine = get_sqlalchemy_connection(service_connection)
+
+    def test_database_query(engine: Engine, statement: str):
+        """
+        Method used to execute the given query and fetch a result
+        to test if user has access to the tables specified
+        in the sql statement
+        """
+        try:
+            connection = engine.connect()
+            connection.execute(statement).fetchone()
+        except DatabaseError as soe:
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
     def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
         for catalog in connection.catalogs.list():
-            table_obj.catalog_name = catalog.name
-            break
+            if catalog.name != "__databricks_internal":
+                table_obj.catalog_name = catalog.name
+                return
 
     def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for catalog in connection.catalogs.list():
-            for schema in connection.schemas.list(catalog_name=catalog.name):
-                if schema.name:
-                    table_obj.schema_name = schema.name
-                    table_obj.catalog_name = catalog.name
-                    return
+        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+            if schema.name:
+                table_obj.schema_name = schema.name
+                return
 
     def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
         if table_obj.catalog_name and table_obj.schema_name:
@@ -149,7 +161,11 @@ def test_connection(
         "GetSchemas": partial(get_schemas, connection, table_obj),
         "GetTables": partial(get_tables, connection, table_obj),
         "GetViews": partial(get_tables, connection, table_obj),
-        "GetQueries": client.test_query_api_access,
+        "GetQueries": partial(
+            test_database_query,
+            engine=engine,
+            statement=UNITY_CATALOG_SQL_STATEMENT_TEST,
+        ),
         "GetTags": partial(get_tags, service_connection, table_obj),
     }
 

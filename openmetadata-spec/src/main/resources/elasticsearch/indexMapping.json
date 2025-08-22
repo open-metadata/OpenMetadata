@@ -3,190 +3,335 @@
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
     "alias": "table",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
-    "childAliases": ["testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "database",
+      "databaseSchema",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "storedProcedure": {
     "indexName": "stored_procedure_search_index",
     "indexMappingFile": "/elasticsearch/%s/stored_procedure_index_mapping.json",
     "alias": "storedProcedure",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
+    "parentAliases": [
+      "database",
+      "databaseSchema",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "databaseSchema": {
     "indexName": "database_schema_search_index",
     "indexMappingFile": "/elasticsearch/%s/database_schema_index_mapping.json",
     "alias": "databaseSchema",
-    "parentAliases": ["database", "databaseService", "all", "dataAsset"],
-    "childAliases": ["table", "storedProcedure", "testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "database",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "table",
+      "storedProcedure",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "database": {
     "indexName": "database_search_index",
     "alias": "database",
     "indexMappingFile": "/elasticsearch/%s/database_index_mapping.json",
-    "parentAliases": ["databaseService", "all", "dataAsset"],
-    "childAliases": ["databaseSchema", "table", "storedProcedure", "testSuite","testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "databaseSchema",
+      "table",
+      "storedProcedure",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "chart": {
     "indexName": "chart_search_index",
     "alias": "chart",
     "indexMappingFile": "/elasticsearch/%s/chart_index_mapping.json",
-    "parentAliases": ["dashboard", "dashboardService", "all", "dataAsset"],
+    "parentAliases": [
+      "dashboard",
+      "dashboardService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "dashboard": {
     "indexName": "dashboard_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_index_mapping.json",
     "alias": "dashboard",
-    "parentAliases": ["dashboardService", "all", "dataAsset"],
-    "childAliases": ["chart"]
+    "parentAliases": [
+      "dashboardService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "chart"
+    ]
   },
   "dashboardDataModel": {
     "indexName": "dashboard_data_model_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_data_model_index_mapping.json",
     "alias": "dashboardDataModel",
-    "parentAliases": ["dashboardService", "all", "dataAsset"],
+    "parentAliases": [
+      "dashboardService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "pipeline": {
     "indexName": "pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/pipeline_index_mapping.json",
     "alias": "pipeline",
-    "parentAliases": ["pipelineService", "all", "dataAsset"],
+    "parentAliases": [
+      "pipelineService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "topic": {
     "indexName": "topic_search_index",
     "indexMappingFile": "/elasticsearch/%s/topic_index_mapping.json",
     "alias": "topic",
-    "parentAliases": ["messagingService", "all", "dataAsset"],
+    "parentAliases": [
+      "messagingService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "container": {
     "indexName": "container_search_index",
     "indexMappingFile": "/elasticsearch/%s/container_index_mapping.json",
     "alias": "container",
-    "parentAliases": ["storageService", "all", "dataAsset"],
+    "parentAliases": [
+      "storageService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "directory": {
     "indexName": "directory_search_index",
     "indexMappingFile": "/elasticsearch/%s/directory_index_mapping.json",
     "alias": "directory",
-    "parentAliases": ["driveService", "all", "dataAsset"],
-    "childAliases": ["file", "spreadsheet", "directory"]
+    "parentAliases": [
+      "driveService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "file",
+      "spreadsheet",
+      "directory"
+    ]
   },
   "file": {
     "indexName": "file_search_index",
     "indexMappingFile": "/elasticsearch/%s/file_index_mapping.json",
     "alias": "file",
-    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "parentAliases": [
+      "driveService",
+      "directory",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "spreadsheet": {
     "indexName": "spreadsheet_search_index",
     "indexMappingFile": "/elasticsearch/%s/spreadsheet_index_mapping.json",
     "alias": "spreadsheet",
-    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
-    "childAliases": ["worksheet"]
+    "parentAliases": [
+      "driveService",
+      "directory",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "worksheet"
+    ]
   },
   "worksheet": {
     "indexName": "worksheet_search_index",
     "indexMappingFile": "/elasticsearch/%s/worksheet_index_mapping.json",
     "alias": "worksheet",
-    "parentAliases": ["driveService", "spreadsheet", "all", "dataAsset"],
+    "parentAliases": [
+      "driveService",
+      "spreadsheet",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "searchIndex": {
     "indexName": "search_entity_search_index",
     "indexMappingFile": "/elasticsearch/%s/search_entity_index_mapping.json",
     "alias": "searchIndex",
-    "parentAliases": ["searchService", "all", "dataAsset"],
+    "parentAliases": [
+      "searchService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "query": {
     "indexName": "query_search_index",
     "indexMappingFile": "/elasticsearch/%s/query_index_mapping.json",
     "alias": "query",
-    "parentAliases": ["all"],
+    "parentAliases": [
+      "all"
+    ],
     "childAliases": []
   },
   "mlmodel": {
     "indexName": "mlmodel_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_index_mapping.json",
     "alias": "mlmodel",
-    "parentAliases": ["all", "dataAsset", "mlModelService"],
+    "parentAliases": [
+      "all",
+      "dataAsset",
+      "mlModelService"
+    ],
     "childAliases": []
   },
   "testCase": {
     "indexName": "test_case_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
-    "parentAliases": ["testSuite", "all"],
-    "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "testSuite",
+      "all"
+    ],
+    "childAliases": [
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "testCaseResult": {
     "indexName": "test_case_result_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_result_index_mapping.json",
     "alias": "testCaseResult",
-    "parentAliases": ["testSuite", "testCase"],
+    "parentAliases": [
+      "testSuite",
+      "testCase"
+    ],
     "childAliases": []
   },
   "testSuite": {
     "indexName": "test_suite_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_suite_index_mapping.json",
     "alias": "testSuite",
-    "parentAliases": ["all"],
-    "childAliases": ["testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": [
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "dataProduct": {
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": ["domain","all", "dataAsset"],
+    "parentAliases": [
+      "domain",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "domain": {
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all"],
-    "childAliases": ["dataProduct"]
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": [
+      "dataProduct"
+    ]
   },
   "metric": {
     "indexName": "metric_search_index",
     "indexMappingFile": "/elasticsearch/%s/metric_index_mapping.json",
     "alias": "metric",
-    "parentAliases": ["all", "dataAsset"],
+    "parentAliases": [
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "glossary": {
     "indexName": "glossary_search_index",
     "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",
     "alias": "glossary",
-    "parentAliases": ["all"],
-    "childAliases": ["glossaryTerm"]
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": [
+      "glossaryTerm"
+    ]
   },
   "glossaryTerm": {
     "indexName": "glossary_term_search_index",
     "indexMappingFile": "/elasticsearch/%s/glossary_term_index_mapping.json",
     "alias": "glossaryTerm",
-    "parentAliases": ["all", "glossary", "dataAsset"],
+    "parentAliases": [
+      "all",
+      "glossary",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "tag": {
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",
     "alias": "tag",
-    "parentAliases": ["classification", "all", "dataAsset"],
+    "parentAliases": [
+      "classification",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "classification": {
     "indexName": "classification_search_index",
     "indexMappingFile": "/elasticsearch/%s/classification_index_mapping.json",
     "alias": "classification",
-    "parentAliases": ["all"],
-    "childAliases": ["tag"]
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": [
+      "tag"
+    ]
   },
   "user": {
     "indexName": "user_search_index",
@@ -241,50 +386,107 @@
     "indexName": "database_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/database_service_index_mapping.json",
     "alias": "databaseService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["database", "databaseSchema", "storedProcedure", "table", "testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "database",
+      "databaseSchema",
+      "storedProcedure",
+      "table",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "messagingService": {
     "indexName": "messaging_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/messaging_service_index_mapping.json",
     "alias": "messagingService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["topic"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "topic"
+    ]
   },
   "pipelineService": {
     "indexName": "pipeline_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/pipeline_service_index_mapping.json",
     "alias": "pipelineService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["pipeline"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "pipeline"
+    ]
   },
   "dashboardService": {
     "indexName": "dashboard_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_service_index_mapping.json",
     "alias": "dashboardService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["dashboard", "dashboardDataModel", "chart"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "dashboard",
+      "dashboardDataModel",
+      "chart"
+    ]
   },
   "searchService": {
     "indexName": "search_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/search_service_index_mapping.json",
     "alias": "searchService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["searchIndex"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "searchIndex"
+    ]
   },
   "driveService": {
     "indexName": "drive_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/drive_service_index_mapping.json",
     "alias": "driveService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["directory", "file", "spreadsheet", "worksheet"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "directory",
+      "file",
+      "spreadsheet",
+      "worksheet"
+    ]
+  },
+  "securityService": {
+    "indexName": "security_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/security_service_index_mapping.json",
+    "alias": "securityService",
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": []
   },
   "storageService": {
     "indexName": "storage_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/storage_service_index_mapping.json",
     "alias": "storageService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["container"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "container"
+    ]
   },
   "metadataService": {
     "indexName": "metadata_service_search_index",
@@ -297,63 +499,117 @@
     "indexName": "mlmodel_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["mlmodel"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "mlmodel"
+    ]
   },
   "apiService": {
     "indexName": "api_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/api_service_index_mapping.json",
     "alias": "apiService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["apiCollection", "apiEndpoint"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "apiCollection",
+      "apiEndpoint"
+    ]
   },
   "apiCollection": {
     "indexName": "api_collection_search_index",
     "alias": "apiCollection",
     "indexMappingFile": "/elasticsearch/%s/api_collection_index_mapping.json",
-    "parentAliases": ["apiService", "all", "dataAsset"],
-    "childAliases": ["apiEndpoint"]
+    "parentAliases": [
+      "apiService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "apiEndpoint"
+    ]
   },
   "apiEndpoint": {
     "indexName": "api_endpoint_search_index",
     "alias": "apiEndpoint",
     "indexMappingFile": "/elasticsearch/%s/api_endpoint_index_mapping.json",
-    "parentAliases": ["apiService", "apiCollection", "all", "dataAsset"],
+    "parentAliases": [
+      "apiService",
+      "apiCollection",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "driveService": {
     "indexName": "drive_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/drive_service_index_mapping.json",
     "alias": "driveService",
-    "parentAliases": ["all", "service"],
-    "childAliases": ["directory", "file", "spreadsheet", "worksheet"]
+    "parentAliases": [
+      "all",
+      "service"
+    ],
+    "childAliases": [
+      "directory",
+      "file",
+      "spreadsheet",
+      "worksheet"
+    ]
   },
   "directory": {
     "indexName": "directory_search_index",
     "indexMappingFile": "/elasticsearch/%s/directory_index_mapping.json",
     "alias": "directory",
-    "parentAliases": ["driveService", "all", "dataAsset"],
-    "childAliases": ["file", "spreadsheet"]
+    "parentAliases": [
+      "driveService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "file",
+      "spreadsheet"
+    ]
   },
   "file": {
     "indexName": "file_search_index",
     "indexMappingFile": "/elasticsearch/%s/file_index_mapping.json",
     "alias": "file",
-    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
+    "parentAliases": [
+      "driveService",
+      "directory",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "spreadsheet": {
     "indexName": "spreadsheet_search_index",
     "indexMappingFile": "/elasticsearch/%s/spreadsheet_index_mapping.json",
     "alias": "spreadsheet",
-    "parentAliases": ["driveService", "directory", "all", "dataAsset"],
-    "childAliases": ["worksheet"]
+    "parentAliases": [
+      "driveService",
+      "directory",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "worksheet"
+    ]
   },
   "worksheet": {
     "indexName": "worksheet_search_index",
     "indexMappingFile": "/elasticsearch/%s/worksheet_index_mapping.json",
     "alias": "worksheet",
-    "parentAliases": ["driveService", "spreadsheet", "all", "dataAsset"],
+    "parentAliases": [
+      "driveService",
+      "spreadsheet",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "testCaseResolutionStatus": {

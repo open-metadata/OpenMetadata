@@ -83,7 +83,7 @@ public class OmAppJobListener implements JobListener {
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
             repository.getLatestExtensionById(
-                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
         if (latestRunRecord != null) {
           runRecord = latestRunRecord;
         }

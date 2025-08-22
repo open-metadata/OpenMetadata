@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
@@ -663,6 +663,285 @@ class DbtUnitTest(TestCase):
         self.assertEqual(
             "70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__()
         )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_1_openmetadata_owner(self, get_reference_by_name):
+        """
+        Test Priority 1: meta.openmetadata.owner (new format)
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with openmetadata.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="test_owner", is_owner=True)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_2_old_format_owner(self, get_reference_by_name):
+        """
+        Test Priority 2: meta.owner (old format) when openmetadata.owner is not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with old format owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"owner": "old_format_owner"}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="old_format_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_3_catalog_node_owner(self, get_reference_by_name):
+        """
+        Test Priority 3: catalog_node.metadata.owner when manifest node owners are not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "catalog_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="catalog_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_order(self, get_reference_by_name):
+        """
+        Test that priorities are respected in order: openmetadata.owner > meta.owner > catalog.owner
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node with both openmetadata.owner and meta.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": "priority_1_owner"},
+            "owner": "priority_2_owner",
+        }
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "priority_3_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        # Should use priority 1 (openmetadata.owner)
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="priority_1_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_list_owners(self, get_reference_by_name):
+        """
+        Test handling of list of owners
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": ["owner1", "owner2", "owner3"]}
+        }
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_list_owners_partial_failure(self, get_reference_by_name):
+        """
+        Test handling of list of owners where some owners are not found
+        """
+        # First two owners found, third one not found
+        get_reference_by_name.side_effect = [MOCK_USER, MOCK_USER, None]
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": ["owner1", "owner2", "owner3"]}
+        }
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_catalog_node_exception(self, get_reference_by_name):
+        """
+        Test handling of catalog node access exception
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node that raises exception when accessing metadata.owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = PropertyMock(
+            side_effect=AttributeError("No attribute")
+        )
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_no_owner_found(self, get_reference_by_name):
+        """
+        Test when no owner is found in any source
+        """
+        get_reference_by_name.return_value = None
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_email_lookup(self, get_reference_by_name):
+        """
+        Test email lookup when name lookup fails
+        """
+        # First call (name lookup) returns None, second call (email lookup) returns user
+        get_reference_by_name.side_effect = [None, MOCK_USER]
+
+        # Mock get_reference_by_email method
+        with patch.object(
+            self.dbt_source_obj.metadata,
+            "get_reference_by_email",
+            return_value=MOCK_USER,
+        ):
+            mock_manifest_node = MagicMock()
+            mock_manifest_node.meta = {"openmetadata": {"owner": "test@example.com"}}
+
+            result = self.dbt_source_obj.get_dbt_owner(
+                manifest_node=mock_manifest_node, catalog_node=None
+            )
+
+            self.assertEqual(result, MOCK_USER)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_general_exception(self, get_reference_by_name):
+        """
+        Test handling of general exceptions in get_dbt_owner
+        """
+        get_reference_by_name.side_effect = Exception("General error")
+
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_none_manifest_node(self, get_reference_by_name):
+        """
+        Test handling when manifest_node is None
+        """
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=None, catalog_node=None
+        )
+
+        # Should return None
+        self.assertIsNone(result)
+        # Should not call get_reference_by_name
+        get_reference_by_name.assert_not_called()
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_empty_meta(self, get_reference_by_name):
+        """
+        Test handling when manifest_node.meta is empty or None
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Test with empty meta
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
+
+        # Test with None meta
+        mock_manifest_node.meta = None
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
         dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)

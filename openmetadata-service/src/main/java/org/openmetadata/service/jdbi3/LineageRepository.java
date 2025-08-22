@@ -27,7 +27,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -85,6 +85,7 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -100,6 +101,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -179,6 +181,18 @@ public class LineageRepository {
             detailsJson);
     addLineageToSearch(from, to, lineageDetails);
 
+    // Add lineage to RDF
+    if (RdfUpdater.isEnabled()) {
+      EntityRelationship lineageRelationship =
+          new EntityRelationship()
+              .withFromEntity(from.getType())
+              .withFromId(from.getId())
+              .withToEntity(to.getType())
+              .withToId(to.getId())
+              .withRelationshipType(Relationship.UPSTREAM);
+      RdfUpdater.addRelationship(lineageRelationship);
+    }
+
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
   }
@@ -192,8 +206,8 @@ public class LineageRepository {
         Entity.entityHasField(from.getType(), FIELD_SERVICE)
             && Entity.entityHasField(to.getType(), FIELD_SERVICE);
     boolean addDomain =
-        Entity.entityHasField(from.getType(), FIELD_DOMAIN)
-            && Entity.entityHasField(to.getType(), FIELD_DOMAIN);
+        Entity.entityHasField(from.getType(), FIELD_DOMAINS)
+            && Entity.entityHasField(to.getType(), FIELD_DOMAINS);
     boolean addDataProduct =
         Entity.entityHasField(from.getType(), FIELD_DATA_PRODUCTS)
             && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
@@ -237,13 +251,18 @@ public class LineageRepository {
       return;
     }
 
-    EntityReference fromDomain = fromEntity.getDomain();
-    EntityReference toDomain = toEntity.getDomain();
-    if (Boolean.FALSE.equals(fromDomain.getId().equals(toDomain.getId()))) {
-      LineageDetails domainLineageDetails =
-          getOrCreateLineageDetails(
-              fromDomain.getId(), toDomain.getId(), entityLineageDetails, childRelationExists);
-      insertLineage(fromDomain, toDomain, domainLineageDetails);
+    List<EntityReference> fromDomains = listOrEmpty(fromEntity.getDomains());
+    List<EntityReference> toDomains = listOrEmpty(toEntity.getDomains());
+
+    for (EntityReference fromDomain : fromDomains) {
+      for (EntityReference toDomain : toDomains) {
+        if (!fromDomain.getId().equals(toDomain.getId())) {
+          LineageDetails domainLineageDetails =
+              getOrCreateLineageDetails(
+                  fromDomain.getId(), toDomain.getId(), entityLineageDetails, childRelationExists);
+          insertLineage(fromDomain, toDomain, domainLineageDetails);
+        }
+      }
     }
   }
 
@@ -282,10 +301,10 @@ public class LineageRepository {
   }
 
   private boolean shouldAddDomainsLineage(EntityInterface fromEntity, EntityInterface toEntity) {
-    return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAIN)
-        && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAIN)
-        && fromEntity.getDomain() != null
-        && toEntity.getDomain() != null;
+    return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAINS)
+        && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAINS)
+        && !nullOrEmpty(fromEntity.getDomains())
+        && !nullOrEmpty(toEntity.getDomains());
   }
 
   private boolean shouldAddServiceLineage(EntityInterface fromEntity, EntityInterface toEntity) {
@@ -332,6 +351,18 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal(),
             JsonUtils.pojoToJson(lineageDetails));
     addLineageToSearch(from, to, lineageDetails);
+
+    // Add lineage to RDF
+    if (RdfUpdater.isEnabled()) {
+      EntityRelationship lineageRelationship =
+          new EntityRelationship()
+              .withFromEntity(from.getType())
+              .withFromId(from.getId())
+              .withToEntity(to.getType())
+              .withToId(to.getId())
+              .withRelationshipType(Relationship.UPSTREAM);
+      RdfUpdater.addRelationship(lineageRelationship);
+    }
   }
 
   private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {
@@ -342,7 +373,7 @@ public class LineageRepository {
       fieldsBuilder.append(",");
     }
     if (domain) {
-      fieldsBuilder.append(FIELD_DOMAIN);
+      fieldsBuilder.append(FIELD_DOMAINS);
       fieldsBuilder.append(",");
     }
     if (dataProducts) {
@@ -593,13 +624,13 @@ public class LineageRepository {
       baseRow.put("fromServiceName", getText(fromEntity.path(FIELD_SERVICE), FIELD_NAME));
       baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
       baseRow.put("fromOwners", getOwners(fromEntity.path(FIELD_OWNERS)));
-      baseRow.put("fromDomain", getDomainFQN(fromEntity.path(FIELD_DOMAIN)));
+      baseRow.put("fromDomain", getDomainFQN(fromEntity.path(FIELD_DOMAINS)));
 
       baseRow.put("toEntityFQN", getText(toEntity, FIELD_FULLY_QUALIFIED_NAME));
       baseRow.put("toServiceName", getText(toEntity.path(FIELD_SERVICE), FIELD_NAME));
       baseRow.put("toServiceType", getText(toEntity, "serviceType"));
       baseRow.put("toOwners", getOwners(toEntity.path(FIELD_OWNERS)));
-      baseRow.put("toDomain", getDomainFQN(toEntity.path(FIELD_DOMAIN)));
+      baseRow.put("toDomain", getDomainFQN(toEntity.path(FIELD_DOMAINS)));
 
       JsonNode columns = edge.path("columns");
       JsonNode pipeline = edge.path("pipeline");
@@ -643,7 +674,7 @@ public class LineageRepository {
     String pipelineOwners = getOwners(pipeline.path(FIELD_OWNERS));
     String pipelineServiceName = getText(pipeline.path(FIELD_SERVICE), FIELD_NAME);
     String pipelineServiceType = getText(pipeline, "serviceType");
-    String pipelineDomain = getDomainFQN(pipeline.path(FIELD_DOMAIN));
+    String pipelineDomain = getDomainFQN(pipeline.path(FIELD_DOMAINS));
 
     writeCsvRow(
         csvWriter,
@@ -931,6 +962,19 @@ public class LineageRepository {
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
+
+      // Remove lineage from RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(from.getType())
+                .withFromId(from.getId())
+                .withToEntity(to.getType())
+                .withToId(to.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.removeRelationship(lineageRelationship);
+      }
+
       return result;
     }
     return false;
@@ -984,6 +1028,19 @@ public class LineageRepository {
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
+
+      // Remove lineage from RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(from.getType())
+                .withFromId(from.getId())
+                .withToEntity(to.getType())
+                .withToId(to.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.removeRelationship(lineageRelationship);
+      }
+
       if (result) {
         cleanUpExtendedLineage(from, to);
       }
@@ -994,7 +1051,7 @@ public class LineageRepository {
 
   private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
     boolean addService = hasField(from, FIELD_SERVICE) && hasField(to, FIELD_SERVICE);
-    boolean addDomain = hasField(from, FIELD_DOMAIN) && hasField(to, FIELD_DOMAIN);
+    boolean addDomain = hasField(from, FIELD_DOMAINS) && hasField(to, FIELD_DOMAINS);
     boolean addDataProduct =
         hasField(from, FIELD_DATA_PRODUCTS) && hasField(to, FIELD_DATA_PRODUCTS);
 
@@ -1004,7 +1061,7 @@ public class LineageRepository {
     EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
     cleanUpLineage(fromEntity, toEntity, FIELD_SERVICE, EntityInterface::getService);
-    cleanUpLineage(fromEntity, toEntity, FIELD_DOMAIN, EntityInterface::getDomain);
+    cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface::getDomains);
     cleanUpLineageForDataProducts(
         fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
   }
@@ -1026,6 +1083,28 @@ public class LineageRepository {
     EntityReference fromRef = getter.apply(fromEntity);
     EntityReference toRef = getter.apply(toEntity);
     processExtendedLineageCleanup(fromRef, toRef);
+  }
+
+  private void cleanupListLineage(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      String field,
+      Function<EntityInterface, List<EntityReference>> getter) {
+    boolean hasField =
+        hasField(fromEntity.getEntityReference(), field)
+            && hasField(toEntity.getEntityReference(), field);
+    if (!hasField) return;
+
+    List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
+    List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
+
+    for (EntityReference fromRef : fromRefs) {
+      for (EntityReference toRef : toRefs) {
+        if (fromRef != null && toRef != null) {
+          processExtendedLineageCleanup(fromRef, toRef);
+        }
+      }
+    }
   }
 
   private void cleanUpLineageForDataProducts(
@@ -1075,6 +1154,18 @@ public class LineageRepository {
               Relationship.UPSTREAM.ordinal(),
               JsonUtils.pojoToJson(lineageDetails));
       addLineageToSearch(fromRef, toRef, lineageDetails);
+
+      // Add lineage to RDF
+      if (RdfUpdater.isEnabled()) {
+        EntityRelationship lineageRelationship =
+            new EntityRelationship()
+                .withFromEntity(fromRef.getType())
+                .withFromId(fromRef.getId())
+                .withToEntity(toRef.getType())
+                .withToId(toRef.getId())
+                .withRelationshipType(Relationship.UPSTREAM);
+        RdfUpdater.addRelationship(lineageRelationship);
+      }
     }
   }
 

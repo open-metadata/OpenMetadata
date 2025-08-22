@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS = "domain,owners,experts,assets,extension,tags,followers";
+  static final String FIELDS = "domains,owners,experts,assets,extension,tags,followers";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -287,7 +287,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateDataProduct create) {
+      @RequestBody(
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
@@ -312,7 +319,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateDataProduct create) {
+      @RequestBody(
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);

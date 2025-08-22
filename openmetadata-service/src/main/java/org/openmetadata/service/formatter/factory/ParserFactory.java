@@ -15,7 +15,7 @@ package org.openmetadata.service.formatter.factory;
 
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -69,7 +69,7 @@ public final class ParserFactory {
       case FIELD_FOLLOWERS -> new FollowersFormatter(decorator, thread, fieldChange);
       case FIELD_OWNERS -> new OwnerFormatter(decorator, thread, fieldChange);
       case FIELD_DESCRIPTION -> new DescriptionFormatter(decorator, thread, fieldChange);
-      case FIELD_DOMAIN -> new DomainFormatter(decorator, thread, fieldChange);
+      case FIELD_DOMAINS -> new DomainFormatter(decorator, thread, fieldChange);
       case FIELD_EXTENSION -> new CustomPropertiesFormatter(decorator, thread, fieldChange);
       case TEST_RESULT_FIELD -> new TestCaseResultFormatter(decorator, thread, fieldChange);
       case FIELD_ASSETS -> new AssetsFieldFormatter(decorator, thread, fieldChange);

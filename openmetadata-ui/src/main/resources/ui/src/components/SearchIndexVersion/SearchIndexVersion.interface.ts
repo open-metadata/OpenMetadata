@@ -21,7 +21,7 @@ export interface SearchIndexVersionProps {
   currentVersionData: SearchIndex;
   isVersionLoading: boolean;
   owners: SearchIndex['owners'];
-  domain: SearchIndex['domain'];
+  domains: SearchIndex['domains'];
   dataProducts: SearchIndex['dataProducts'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];

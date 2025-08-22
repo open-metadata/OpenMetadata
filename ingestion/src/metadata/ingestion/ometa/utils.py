@@ -12,9 +12,11 @@
 Helper functions to handle OpenMetadata Entities' properties
 """
 
+import base64
+import json
 import re
 import string
-from typing import Any, Type, TypeVar, Union
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.utils import quote as url_quote
@@ -98,3 +100,32 @@ def build_entity_reference(entity: T) -> EntityReference:
         description=entity.description,
         href=entity.href,
     )
+
+
+def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Decode JWT token to extract payload without verification.
+    JWT tokens have three parts: header.payload.signature
+    We only decode the payload part to get user information.
+    """
+    from metadata.utils.logger import ometa_logger
+
+    logger = ometa_logger()
+    try:
+        # Split the JWT token into its three parts
+        parts = jwt_token.split(".")
+        if len(parts) != 3:
+            logger.debug("Invalid JWT token format: expected 3 parts")
+            return None
+
+        # Decode the payload (second part)
+        payload = parts[1]
+        # Add padding if needed for base64 decoding
+        payload += "=" * (4 - len(payload) % 4) if len(payload) % 4 else ""
+
+        # Decode base64 and parse JSON
+        decoded_payload = base64.urlsafe_b64decode(payload)
+        return json.loads(decoded_payload.decode("utf-8"))
+    except Exception as e:
+        logger.debug(f"Failed to decode JWT token: {e}")
+        return None

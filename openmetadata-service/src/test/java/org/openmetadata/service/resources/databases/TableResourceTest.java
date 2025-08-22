@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -175,6 +176,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
@@ -193,6 +195,7 @@ import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -242,7 +245,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     };
 
     for (ColumnDataType dataType : columnDataTypes) {
-      create.getColumns().get(0).withDataType(dataType);
+      create.getColumns().getFirst().withDataType(dataType);
       assertResponse(
           () -> createEntity(create, ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -261,7 +264,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         "Scale is set but precision is not set for the column " + C1);
 
     // Scale (decimal digits) larger than precision (total number of digits)
-    columns.get(0).withScale(2).withPrecision(1);
+    columns.getFirst().withScale(2).withPrecision(1);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -315,14 +318,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TableConstraint constraint =
         new TableConstraint()
             .withConstraintType(ConstraintType.UNIQUE)
-            .withColumns(List.of(columns.get(0).getName()));
+            .withColumns(List.of(columns.getFirst().getName()));
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    Column column = created.getColumns().get(0);
+    Column column = created.getColumns().getFirst();
     assertEquals("col.umn", column.getName());
     assertTrue(column.getFullyQualifiedName().contains("col.umn"));
-    assertEquals("col.umn", created.getTableConstraints().get(0).getColumns().get(0));
+    assertEquals("col.umn", created.getTableConstraints().getFirst().getColumns().getFirst());
   }
 
   @Test
@@ -538,8 +541,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
     c2_c.getChildren().add(c2_c_e); // Add c2.c.e
     fieldAdded(change, build("columns", C2, "c"), List.of(c2_c_e));
-    fieldDeleted(change, build("columns", C2), List.of(c2.getChildren().get(0)));
-    c2.getChildren().remove(0); // Remove c2.a from struct
+    fieldDeleted(change, build("columns", C2), List.of(c2.getChildren().getFirst()));
+    c2.getChildren().removeFirst(); // Remove c2.a from struct
 
     Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
     c2.getChildren().add(c2_f); // Add c2.f
@@ -605,14 +608,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update Request
-    request.getColumns().get(0).withDataType(CHAR).withDataLength(200).withDescription(null);
+    request.getColumns().getFirst().withDataType(CHAR).withDataLength(200).withDescription(null);
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(
-        table.getColumns().get(0).getDescription(),
-        updatedTable.getColumns().get(0).getDescription());
-    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
-    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
+        table.getColumns().getFirst().getDescription(),
+        updatedTable.getColumns().getFirst().getDescription());
+    assertEquals(CHAR, updatedTable.getColumns().getFirst().getDataType());
+    assertEquals(200, updatedTable.getColumns().getFirst().getDataLength());
   }
 
   @Test
@@ -1444,7 +1447,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         TABLE,
         TestUtils.dateToTimestamp("2021-10-11"),
         authHeaders);
-    table1ProfileList.remove(0);
+    table1ProfileList.removeFirst();
     tableProfiles =
         getTableProfiles(
             table1.getFullyQualifiedName(),
@@ -1818,7 +1821,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
+      assertReferenceList(Lists.newArrayList(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2497,24 +2500,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
-        dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        dbServiceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
 
     // Ensure database domain is inherited from database service
     CreateDatabase createDb =
         dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
-    Database db = dbTest.assertDomainInheritance(createDb, DOMAIN.getEntityReference());
+    Database db = dbTest.assertSingleDomainInheritance(createDb, DOMAIN.getEntityReference());
 
     // Ensure databaseSchema domain is inherited from database
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaTest.assertDomainInheritance(createSchema, DOMAIN.getEntityReference());
+        schemaTest.assertSingleDomainInheritance(createSchema, DOMAIN.getEntityReference());
 
     // Ensure table domain is inherited from databaseSchema
     CreateTable createTable =
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+    Table table = assertSingleDomainInheritance(createTable, DOMAIN.getEntityReference());
 
     // Ensure test case domain is inherited from table
     CreateTestSuite createTestSuite =
@@ -2528,39 +2531,85 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
-        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
+        testCaseResourceTest.assertSingleDomainInheritance(
+            createTestCase, DOMAIN.getEntityReference());
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN.getEntityReference()));
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
-    fieldUpdated(change, "domain", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    fieldAdded(change, "domains", List.of(DOMAIN1.getEntityReference()));
+    fieldDeleted(change, "domains", List.of(DOMAIN.getEntityReference()));
     dbService =
         dbServiceTest.updateAndCheckEntity(
-            createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),
+            createDbService.withDomains(List.of(DOMAIN1.getFullyQualifiedName())),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
-    assertDomainInheritanceOverride(
-        table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+    assertSingleDomainInheritanceOverride(
+        table, createTable.withDomains(null), SUB_DOMAIN.getEntityReference());
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
-    schemaTest.assertDomainInheritanceOverride(
-        schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
+    schemaTest.assertSingleDomainInheritanceOverride(
+        schema, createSchema.withDomains(null), SUB_DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
+    // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
+    CreateDatabaseService createDbService =
+        dbServiceTest
+            .createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName(), DOMAIN1.getFullyQualifiedName()));
+    DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+
+    // Ensure database domains are inherited from database service
+    CreateDatabase createDb =
+        dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db =
+        dbTest.assertMultipleDomainInheritance(
+            createDb, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure databaseSchema domains are inherited from database
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest.assertMultipleDomainInheritance(
+            createSchema, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure table domains are inherited from databaseSchema
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table =
+        assertMultipleDomainInheritance(
+            createTable, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Verify multiple domains are properly updated in search
+    verifyDomainsInSearch(
+        db.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        schema.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        table.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -2576,26 +2625,30 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withDomain(DOMAIN.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    Table createdTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
+    Table createdTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), createdTable.getDomains().get(0).getFullyQualifiedName());
 
     // update table entity domain w/ PUT request w/ bot auth and check update is ignored
-    CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
+    CreateTable updateTablePayload =
+        createTable.withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
-    Table updatedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
+    Table updatedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), updatedTable.getDomains().get(0).getFullyQualifiedName());
 
     // patch domain w/ bot auth and check update is applied
     patchEntity(
         table.getId(),
-        JsonUtils.pojoToJson(createTable),
-        createdTable.withDomain(DOMAIN1.getEntityReference()),
+        JsonUtils.pojoToJson(updatedTable),
+        updatedTable.withDomains(List.of(DOMAIN1.getEntityReference())),
         INGESTION_BOT_AUTH_HEADERS);
-    Table patchedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
+    Table patchedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN1.getFullyQualifiedName(), patchedTable.getDomains().get(0).getFullyQualifiedName());
   }
 
   @Test
@@ -2877,6 +2930,72 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertNull(columnProfile.getMin());
     }
     assertEquals(maskedColumnProfiles.getData().size(), columnProfiles.getData().size());
+  }
+
+  @Test
+  void test_sensitivePIIColumnProfile_byGetColumns(TestInfo test) throws Exception {
+    // Arrange: create 2 profiled tables owned by USER1
+    Table table =
+        createEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table1 =
+        createEntity(
+            createRequest(test, 1).withOwners(List.of(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    // Seed table/column profiles (C1, C2, C3)
+    putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
+
+    // Tag C3 as PII.Sensitive and persist
+    Column c3 =
+        table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().orElseThrow();
+    String c3FQN = c3.getFullyQualifiedName();
+    List<TagLabel> c3Tags = new ArrayList<>(listOrEmpty(c3.getTags()));
+    c3Tags.add(
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION));
+    c3.setTags(c3Tags);
+    patchEntity(table.getId(), JsonUtils.pojoToJson(table), table, ADMIN_AUTH_HEADERS);
+
+    // Build the base target to fetch columns (requesting tags + profile fields)
+    WebTarget baseColumnsTarget =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "1000")
+            .queryParam("offset", "0")
+            .queryParam("fields", "tags,profile")
+            .queryParam("include", "non-deleted");
+
+    // --- Owner call: USER1 should see C3 profile values
+    TableResource.TableColumnList ownerResp =
+        TestUtils.get(
+            baseColumnsTarget, TableResource.TableColumnList.class, authHeaders(USER1.getName()));
+
+    Column ownerC3 =
+        ownerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for owner in /{id}/columns"));
+
+    assertNotNull(ownerC3.getProfile(), "Owner should see a column profile object for C3");
+    assertNotNull(ownerC3.getProfile().getMin(), "Owner should see min for PII column");
+    assertNotNull(ownerC3.getProfile().getMax(), "Owner should see max for PII column");
+
+    // --- Non-owner call: USER2 should get masked stats for C3
+    TableResource.TableColumnList nonOwnerResp =
+        TestUtils.get(
+            baseColumnsTarget,
+            TableResource.TableColumnList.class,
+            authHeaders(USER2_REF.getName()));
+
+    Column nonOwnerC3 =
+        nonOwnerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for non-owner in /{id}/columns"));
+
+    assertNull(
+        nonOwnerC3.getProfile(),
+        "Non-owner should NOT receive a profile object for PII-sensitive column");
   }
 
   @Test
@@ -3717,7 +3836,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -4704,7 +4823,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create schemas with different inheritance scenarios
@@ -4750,7 +4869,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             schemaTest
                 .createRequest(test.getDisplayName() + "_schema2")
                 .withDatabase(database.getFullyQualifiedName())
-                .withDomain(schemaDomain.getFullyQualifiedName()),
+                .withDomains(List.of(schemaDomain.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
     schemas.add(schema2);
 
@@ -4799,7 +4918,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 1: Fetch all tables with pagination including inherited fields
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("database", database.getFullyQualifiedName());
-    queryParams.put("fields", "owners,domain");
+    queryParams.put("fields", "owners,domains");
 
     ResultList<Table> tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
 
@@ -4811,11 +4930,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         // Tables in schema0
         if (tableName.endsWith("0")) {
           // Inherits from database
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(
@@ -4827,11 +4948,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                       assertTrue(owner.getInherited(), "Owners should be inherited from database"));
         } else {
           // Has its own owner but inherits domain
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(1, fetchedTable.getOwners().size(), "Should have its own owner");
@@ -4842,11 +4965,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         }
       } else if (tableName.contains("_s1_table")) {
         // Tables in schema1 - inherit domain from database, owners from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from database");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(1, fetchedTable.getOwners().size(), "Should inherit owner from schema");
@@ -4856,11 +4981,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             "Owners should be inherited from schema");
       } else if (tableName.contains("_s2_table")) {
         // Tables in schema2 - inherit owners from database, domain from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            schemaDomain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            schemaDomain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from schema");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from schema");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(
@@ -4876,12 +5003,213 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 2: Verify individual table fetch also shows correct inheritance
     Table individualTable =
         getEntityByName(
-            tables.getFirst().getFullyQualifiedName(), "owners,domain", ADMIN_AUTH_HEADERS);
+            tables.getFirst().getFullyQualifiedName(), "owners,domains", ADMIN_AUTH_HEADERS);
 
-    assertNotNull(individualTable.getDomain());
-    assertTrue(individualTable.getDomain().getInherited());
+    assertListNotNull(individualTable.getDomains());
+    assertTrue(individualTable.getDomains().get(0).getInherited());
     assertListNotNull(individualTable.getOwners());
     assertEquals(2, individualTable.getOwners().size());
     individualTable.getOwners().forEach(owner -> assertTrue(owner.getInherited()));
+  }
+
+  @Test
+  void testTableRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table with owner and tags
+    CreateTable createTable =
+        createRequest(test)
+            .withTableConstraints(null)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                listOf(
+                    getColumn("id", ColumnDataType.INT, null),
+                    getColumn("name", ColumnDataType.VARCHAR, null).withDataLength(100)))
+            .withOwners(listOf(USER1_REF))
+            .withTags(listOf(TIER1_TAG_LABEL));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists in RDF
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+
+    // Verify hierarchical relationship
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Verify table tags
+    RdfTestUtils.verifyTagsInRdf(table.getFullyQualifiedName(), table.getTags());
+  }
+
+  @Test
+  void testTableRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table
+    CreateTable createTable =
+        createRequest(test)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withOwners(listOf(USER1_REF));
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the table
+    deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify table still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the table
+    Table restored =
+        restoreEntity(new RestoreEntity().withId(table.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify table still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testTableRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+
+    // Hard delete the table
+    deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify table no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getColumnsForSoftDeletedTable_200() throws IOException {
+    // Create database and schema with simple names for clean FQN
+    Database db =
+        dbTest.createEntity(
+            dbTest
+                .createRequest("test_soft_delete_db")
+                .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest("test_soft_delete_schema")
+                .withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a table with columns for testing soft-delete column retrieval
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      columns.add(getColumn("col" + i, STRING, null).withOrdinalPosition(i));
+    }
+
+    CreateTable create =
+        new CreateTable()
+            .withName("test_soft_delete_columns")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify columns can be retrieved for active table
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Soft delete the table
+    deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify columns can still be retrieved for soft-deleted table using include=all
+    target = getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Also test by FQN for soft-deleted table (now with clean FQN)
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Verify that without include=all parameter, it should fail
+    WebTarget targetWithoutInclude = getResource("tables/" + table.getId() + "/columns");
+    assertResponse(
+        () ->
+            TestUtils.get(
+                targetWithoutInclude, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", table.getId()));
+
+    // Cleanup: Hard delete the test entities we created to avoid affecting other tests
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+    schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
+    dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

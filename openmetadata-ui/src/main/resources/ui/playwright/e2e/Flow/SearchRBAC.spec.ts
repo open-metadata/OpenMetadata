@@ -71,18 +71,16 @@ const searchForEntityShouldWork = async (
 ) => {
   // Wait for welcome screen and close it if visible
   const isWelcomeScreenVisible = await page
-    .waitForSelector('[data-testid="welcome-screen-img"]', {
-      state: 'visible',
-      timeout: 5000,
-    })
-    .catch(() => false);
+    .getByTestId('welcome-screen')
+    .isVisible();
 
   if (isWelcomeScreenVisible) {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
-  await page.getByTestId('customise-searchbox').click();
-  await page.getByTestId('customise-searchbox').fill(fqn);
-  await page.getByTestId('customise-searchbox').press('Enter');
+
+  await page.getByTestId('searchBox').click();
+  await page.getByTestId('searchBox').fill(fqn);
+  await page.getByTestId('searchBox').press('Enter');
 
   await expect(page.getByTestId('entity-header-display-name')).toContainText(
     displayName
@@ -102,18 +100,16 @@ const searchForEntityShouldWorkShowNoResult = async (
 ) => {
   // Wait for welcome screen and close it if visible
   const isWelcomeScreenVisible = await page
-    .waitForSelector('[data-testid="welcome-screen-img"]', {
-      state: 'visible',
-      timeout: 5000,
-    })
-    .catch(() => false);
+    .getByTestId('welcome-screen')
+    .isVisible();
 
   if (isWelcomeScreenVisible) {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
-  await page.getByTestId('customise-searchbox').click();
-  await page.getByTestId('customise-searchbox').fill(fqn);
-  await page.getByTestId('customise-searchbox').press('Enter');
+
+  await page.getByTestId('searchBox').click();
+  await page.getByTestId('searchBox').fill(fqn);
+  await page.getByTestId('searchBox').press('Enter');
 
   await page.waitForResponse(`api/v1/search/query?**`);
 
