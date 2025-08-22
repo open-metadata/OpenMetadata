@@ -123,11 +123,7 @@ public class McpServer implements McpServerProvider {
         (context, req) -> {
           CatalogSecurityContext securityContext =
               jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
-          McpSchema.Content content =
-              new McpSchema.TextContent(
-                  JsonUtils.pojoToJson(
-                      toolContext.callTool(authorizer, limits, tool.name(), securityContext, req)));
-          return new McpSchema.CallToolResult(List.of(content), false);
+          return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
         });
   }
 
