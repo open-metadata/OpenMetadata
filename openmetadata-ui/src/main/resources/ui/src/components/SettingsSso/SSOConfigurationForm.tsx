@@ -121,34 +121,34 @@ const SSOConfigurationFormRJSF = ({
   const navigate = useNavigate();
 
   const getProviderDisplayName = (provider: string) => {
-    return provider === 'azure'
+    return provider === AuthProvider.Azure
       ? 'Azure AD'
-      : provider === 'google'
+      : provider === AuthProvider.Google
       ? 'Google'
-      : provider === 'okta'
+      : provider === AuthProvider.Okta
       ? 'Okta'
-      : provider === 'auth0'
+      : provider === AuthProvider.Auth0
       ? 'Auth0'
-      : provider === 'awsCognito'
+      : provider === AuthProvider.AwsCognito
       ? 'AWS Cognito'
       : provider?.charAt(0).toUpperCase() + provider?.slice(1);
   };
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
-      case 'azure':
+      case AuthProvider.Azure:
         return AzureIcon;
-      case 'google':
+      case AuthProvider.Google:
         return GoogleIcon;
-      case 'okta':
+      case AuthProvider.Okta:
         return OktaIcon;
-      case 'auth0':
+      case AuthProvider.Auth0:
         return Auth0Icon;
-      case 'awsCognito':
+      case AuthProvider.AwsCognito:
         return CognitoIcon;
-      case 'ldap':
+      case AuthProvider.LDAP:
         return SSOIcon;
-      case 'saml':
+      case AuthProvider.Saml:
         return SSOIcon;
       default:
         return null;
@@ -171,7 +171,7 @@ const SSOConfigurationFormRJSF = ({
 
         if (
           config?.authenticationConfiguration?.provider &&
-          config.authenticationConfiguration.provider !== 'basic'
+          config.authenticationConfiguration.provider !== AuthProvider.Basic
         ) {
           setHasExistingConfig(true);
           setCurrentProvider(config.authenticationConfiguration.provider);
@@ -205,8 +205,8 @@ const SSOConfigurationFormRJSF = ({
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
     if (selectedProvider) {
-      // If provider is 'basic', show provider selector instead
-      if (selectedProvider === 'basic') {
+      // If provider is Basic, show provider selector instead
+      if (selectedProvider === AuthProvider.Basic) {
         setShowProviderSelector(true);
         setShowForm(false);
         setIsEditMode(false);

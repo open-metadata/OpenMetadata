@@ -42,34 +42,34 @@ const SettingsSso = () => {
   const [ssoEnabled, setSsoEnabled] = useState<boolean>(true);
 
   const getProviderDisplayName = (provider: string) => {
-    return provider === 'azure'
+    return provider === AuthProvider.Azure
       ? 'Azure AD'
-      : provider === 'google'
+      : provider === AuthProvider.Google
       ? 'Google'
-      : provider === 'okta'
+      : provider === AuthProvider.Okta
       ? 'Okta'
-      : provider === 'auth0'
+      : provider === AuthProvider.Auth0
       ? 'Auth0'
-      : provider === 'awsCognito'
+      : provider === AuthProvider.AwsCognito
       ? 'AWS Cognito'
       : provider?.charAt(0).toUpperCase() + provider?.slice(1);
   };
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
-      case 'azure':
+      case AuthProvider.Azure:
         return AzureIcon;
-      case 'google':
+      case AuthProvider.Google:
         return GoogleIcon;
-      case 'okta':
+      case AuthProvider.Okta:
         return OktaIcon;
-      case 'auth0':
+      case AuthProvider.Auth0:
         return Auth0Icon;
-      case 'awsCognito':
+      case AuthProvider.AwsCognito:
         return CognitoIcon;
-      case 'ldap':
+      case AuthProvider.LDAP:
         return SSOIcon;
-      case 'saml':
+      case AuthProvider.Saml:
         return SSOIcon;
       default:
         return null;
@@ -82,7 +82,7 @@ const SettingsSso = () => {
     );
 
     // Add provider name to breadcrumb if we have a current provider (existing or newly selected)
-    if (currentProvider && currentProvider !== 'basic') {
+    if (currentProvider && currentProvider !== AuthProvider.Basic) {
       const providerDisplayName = getProviderDisplayName(currentProvider);
 
       return [
@@ -106,19 +106,20 @@ const SettingsSso = () => {
         const config = response.data;
 
         if (config?.authenticationConfiguration?.provider) {
-          if (config.authenticationConfiguration.provider !== 'basic') {
+          if (
+            config.authenticationConfiguration.provider !== AuthProvider.Basic
+          ) {
             setHasExistingConfig(true);
             setSsoEnabled(
               config.authenticationConfiguration.enableSelfSignup || false
             );
 
             // Set default tab based on provider - Overview for Google, Azure and Okta
-            const provider =
-              config.authenticationConfiguration.provider.toLowerCase();
+            const provider = config.authenticationConfiguration.provider;
             if (
-              provider === 'azure' ||
-              provider === 'okta' ||
-              provider === 'google'
+              provider === AuthProvider.Azure ||
+              provider === AuthProvider.Okta ||
+              provider === AuthProvider.Google
             ) {
               setActiveTab('overview');
             } else {
@@ -245,11 +246,10 @@ const SettingsSso = () => {
   const tabItems = [];
 
   // Overview tab for Google, Azure and Okta providers
-  const providerLower = currentProvider.toLowerCase();
   if (
-    providerLower === 'azure' ||
-    providerLower === 'okta' ||
-    providerLower === 'google'
+    currentProvider === AuthProvider.Azure ||
+    currentProvider === AuthProvider.Okta ||
+    currentProvider === AuthProvider.Google
   ) {
     const renderOverviewContent = () => {
       // Get the SCIM access token card component
@@ -313,7 +313,7 @@ const SettingsSso = () => {
 
       <div className="settings-sso" style={{ background: 'white' }}>
         {/* Provider Header - Outside tabs */}
-        {currentProvider && currentProvider !== 'basic' && (
+        {currentProvider && currentProvider !== AuthProvider.Basic && (
           <div className="sso-provider-header">
             <div className="flex align-items-center gap-3">
               <div className="provider-icon-container">

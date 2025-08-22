@@ -24,6 +24,7 @@ import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
 } from '../../constants/regex.constants';
+import { AuthProvider } from '../../generated/settings/settings';
 import { fetchMarkdownFile } from '../../rest/miscAPI';
 import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import Loader from '../common/Loader/Loader';
@@ -52,21 +53,21 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
   };
 
   const getProviderDisplayName = (provider: string) => {
-    return provider === 'azure'
+    return provider === AuthProvider.Azure
       ? 'Azure AD'
-      : provider === 'google'
+      : provider === AuthProvider.Google
       ? 'Google'
-      : provider === 'okta'
+      : provider === AuthProvider.Okta
       ? 'Okta'
-      : provider === 'auth0'
+      : provider === AuthProvider.Auth0
       ? 'Auth0'
-      : provider === 'aws-cognito'
+      : provider === AuthProvider.AwsCognito
       ? 'AWS Cognito'
-      : provider === 'saml'
+      : provider === AuthProvider.Saml
       ? 'SAML'
-      : provider === 'custom-oidc'
+      : provider === AuthProvider.CustomOidc
       ? 'Custom OIDC'
-      : provider === 'basic'
+      : provider === AuthProvider.Basic
       ? 'Basic Authentication'
       : provider?.charAt(0).toUpperCase() + provider?.slice(1);
   };
@@ -144,14 +145,14 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     setIsLoading(true);
     try {
       const providerFileMap: Record<string, string> = {
-        google: 'googleSSOClientConfig',
-        azure: 'azureSSOClientConfig',
-        okta: 'oktaSSOClientConfig',
-        auth0: 'auth0SSOClientConfig',
-        saml: 'samlSSOClientConfig',
-        'custom-oidc': 'customOidcSSOClientConfig',
-        'aws-cognito': 'awsCognitoSSOClientConfig',
-        basic: 'basic',
+        [AuthProvider.Google]: 'googleSSOClientConfig',
+        [AuthProvider.Azure]: 'azureSSOClientConfig',
+        [AuthProvider.Okta]: 'oktaSSOClientConfig',
+        [AuthProvider.Auth0]: 'auth0SSOClientConfig',
+        [AuthProvider.Saml]: 'samlSSOClientConfig',
+        [AuthProvider.CustomOidc]: 'customOidcSSOClientConfig',
+        [AuthProvider.AwsCognito]: 'awsCognitoSSOClientConfig',
+        [AuthProvider.Basic]: 'basic',
         general: 'general',
       };
 
@@ -307,7 +308,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             </div>
           )}
           <Typography.Title className="sso-provider-title text-md">
-            {serviceName === 'basic'
+            {serviceName === AuthProvider.Basic
               ? t('label.basic-configuration')
               : `${getProviderDisplayName(serviceName)} ${t(
                   'label.sso-configuration'
