@@ -1601,8 +1601,6 @@ test.describe('Glossary tests', () => {
 
     try {
       await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-
       await glossary.patch(apiContext, [
         {
           op: 'add',
@@ -1616,6 +1614,8 @@ test.describe('Glossary tests', () => {
           },
         },
       ]);
+
+      await glossaryTerm.create(apiContext);
 
       await test.step(
         'Navigate to glossary and verify workflow widget',
