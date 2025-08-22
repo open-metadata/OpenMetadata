@@ -86,3 +86,53 @@ CREATE STATISTICS IF NOT EXISTS stat_tag_usage
 (dependencies, ndistinct, mcv)
 ON targetFQNHash, tagFQN, state 
 FROM tag_usage;
+
+-- ========================================
+-- Table-Specific Autovacuum Optimizations
+-- ========================================
+-- These settings optimize autovacuum behavior and storage for frequently updated tables
+
+-- Optimize entity_relationship table (high update frequency)
+ALTER TABLE entity_relationship SET (
+  autovacuum_vacuum_scale_factor = 0.1,     -- Vacuum when 10% of rows are dead (default 20%)
+  autovacuum_analyze_scale_factor = 0.05,   -- Analyze when 5% of rows change (default 10%)
+  autovacuum_vacuum_threshold = 500,        -- Minimum 500 rows before vacuum (prevents thrashing)
+  autovacuum_analyze_threshold = 250,       -- Minimum 250 rows before analyze
+  autovacuum_vacuum_cost_delay = 2,         -- 2ms delay between work (reduces I/O impact)
+  autovacuum_vacuum_cost_limit = 200,       -- Cost limit before sleeping
+  fillfactor = 90                           -- Leave 10% free space for HOT updates
+);
+
+-- Optimize change_event table (append-heavy with occasional updates)
+ALTER TABLE change_event SET (
+  autovacuum_enabled = true,
+  autovacuum_vacuum_scale_factor = 0.1,     -- Less aggressive than entity_relationship
+  autovacuum_analyze_scale_factor = 0.05,
+  autovacuum_vacuum_threshold = 100,
+  autovacuum_analyze_threshold = 50
+);
+
+-- Optimize tag_usage table (frequent updates)
+ALTER TABLE tag_usage SET (
+  autovacuum_vacuum_scale_factor = 0.1,
+  autovacuum_analyze_scale_factor = 0.05,
+  autovacuum_vacuum_threshold = 200,
+  autovacuum_analyze_threshold = 100,
+  autovacuum_vacuum_cost_delay = 2,
+  fillfactor = 90
+);
+
+-- Optimize field_relationship table (frequent updates)
+ALTER TABLE field_relationship SET (
+  autovacuum_vacuum_scale_factor = 0.1,
+  autovacuum_analyze_scale_factor = 0.05,
+  autovacuum_vacuum_threshold = 300,
+  autovacuum_analyze_threshold = 150,
+  autovacuum_vacuum_cost_delay = 2,
+  fillfactor = 90
+);
+
+-- Add comments to track optimizations
+COMMENT ON TABLE entity_relationship IS 'High-frequency relationship table with optimized autovacuum settings and indexes for N+1 query prevention';
+COMMENT ON TABLE change_event IS 'Event log table with optimized autovacuum for append-heavy workload';
+COMMENT ON TABLE tag_usage IS 'Tag usage tracking with aggressive autovacuum for frequent updates';
