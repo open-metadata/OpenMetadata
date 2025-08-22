@@ -54,14 +54,9 @@ class CardinalityDistribution(HybridMetric):
         """
         Build the Cardinality Distribution metric query
         """
-        if not session:
+        if not session or self.col:
             raise AttributeError(
-                "We are missing the session attribute to compute the CardinalityDistribution."
-            )
-
-        if self.col is None:
-            raise AttributeError(
-                "We are missing the column attribute to compute the CardinalityDistribution."
+                f"We are missing the {'session' if not session else 'column'} attribute to compute the CardinalityDistribution."
             )
 
         if not (is_concatenable(self.col.type) or is_enum(self.col.type)):
