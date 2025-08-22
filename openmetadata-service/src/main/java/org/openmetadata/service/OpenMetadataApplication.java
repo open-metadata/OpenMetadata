@@ -70,6 +70,7 @@ import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -113,6 +114,7 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
@@ -445,6 +447,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
+
+    // Initialize RDF if enabled
+    RdfConfiguration rdfConfig = config.getRdfConfiguration();
+    if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
+      RdfUpdater.initialize(rdfConfig);
+      LOG.info("RDF knowledge graph support initialized");
+    }
   }
 
   private void registerHealthCheck(Environment environment) {
@@ -735,6 +744,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
+
+    // RDF resources are now automatically registered via @Collection annotation
+    if (config.getRdfConfiguration() != null
+        && config.getRdfConfiguration().getEnabled() != null
+        && Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
+      LOG.info("RDF support is enabled and resources will be registered via CollectionRegistry");
+    } else {
+      LOG.info(
+          "RDF support is disabled - config: {}, enabled: {}",
+          config.getRdfConfiguration(),
+          config.getRdfConfiguration() != null
+              ? config.getRdfConfiguration().getEnabled()
+              : "null");
+    }
+
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);

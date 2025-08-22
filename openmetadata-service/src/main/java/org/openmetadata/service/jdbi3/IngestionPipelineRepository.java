@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -30,9 +31,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
@@ -233,9 +236,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
-    ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
+    EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
+
+    ingestionPipeline
+        .withService(null)
+        .withOpenMetadataServerConnection(null)
+        .withProcessingEngine(null);
     store(ingestionPipeline, update);
-    ingestionPipeline.withService(service).withOpenMetadataServerConnection(openmetadataConnection);
+    ingestionPipeline
+        .withService(service)
+        .withOpenMetadataServerConnection(openmetadataConnection)
+        .withProcessingEngine(processingEngine);
   }
 
   @Override
@@ -247,6 +258,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           ingestionPipeline.getIngestionRunner().getId(),
           entityType,
           ingestionPipeline.getIngestionRunner().getType(),
+          Relationship.USES);
+    }
+
+    if (ingestionPipeline.getProcessingEngine() != null) {
+      addRelationship(
+          ingestionPipeline.getId(),
+          ingestionPipeline.getProcessingEngine().getId(),
+          entityType,
+          ingestionPipeline.getProcessingEngine().getType(),
           Relationship.USES);
     }
   }
@@ -261,7 +281,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected void postDelete(IngestionPipeline entity) {
+  protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Delete deployed pipeline in the Pipeline Service Client
     pipelineServiceClient.deletePipeline(entity);
     // Clean pipeline status
@@ -462,12 +483,34 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updateProcessingEngine(original, updated);
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
+    }
+
+    protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
+      String entityType =
+          original.getProcessingEngine() != null
+              ? original.getProcessingEngine().getType()
+              : updated.getProcessingEngine() != null
+                  ? updated.getProcessingEngine().getType()
+                  : null;
+      if (entityType == null) {
+        return;
+      }
+      updateToRelationship(
+          "processingEngine",
+          INGESTION_PIPELINE,
+          original.getId(),
+          Relationship.USES,
+          entityType,
+          original.getProcessingEngine(),
+          updated.getProcessingEngine(),
+          false);
     }
 
     private void updateSourceConfig() {
@@ -513,7 +556,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
+  protected static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted =
         JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
     SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
@@ -544,5 +587,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     } else {
       return ingestionPipeline.getPipelineType().value();
     }
+  }
+
+  public PipelineServiceClientResponse deployIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
 }

@@ -127,7 +127,6 @@ export class EntityDataClass {
             this.certificationTag1.create(apiContext),
             this.certificationTag2.create(apiContext),
             this.classification1.create(apiContext),
-            this.metric1.create(apiContext),
           ]
         : [];
 
@@ -205,6 +204,9 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.create(apiContext));
     }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.create(apiContext));
+    }
 
     await Promise.allSettled(promises);
 
@@ -246,7 +248,6 @@ export class EntityDataClass {
             this.dataProduct1.delete(apiContext),
             this.dataProduct2.delete(apiContext),
             this.dataProduct3.delete(apiContext),
-            this.metric1.delete(apiContext),
           ]
         : [];
 
@@ -323,6 +324,9 @@ export class EntityDataClass {
     }
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.delete(apiContext));
     }
 
     return await Promise.allSettled(promises);

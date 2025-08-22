@@ -19,15 +19,21 @@
     height: calc(
       100vh - @om-navbar-height - @platform-page-header-height - @size-md
     );
+
+    .ant-card-body {
+      height: 100%;
+    }
   }
 
   .full-screen-lineage {
+    height: calc(100vh - @om-navbar-height - @size-md);
+
     .lineage-card {
       height: calc(100vh - @om-navbar-height - @size-md);
     }
 
     .lineage-container {
-      height: calc(100vh - @om-navbar-height);
+      height: calc(100vh - @om-navbar-height - @size-md);
     }
   }
 }

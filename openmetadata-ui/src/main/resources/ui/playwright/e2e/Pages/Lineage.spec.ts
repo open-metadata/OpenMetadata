@@ -168,22 +168,9 @@ for (const EntityClass of entities) {
         await verifyExportLineagePNG(page);
       });
 
-      await test.step('Verify Lineage Table', async () => {
-        await page.getByTestId('lineage-table-view-icon').click();
-
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await expect(page.getByTestId('lineage-table')).toBeVisible();
-
-        await expect(page.locator('.ant-table-row')).toHaveCount(9);
-      });
-
       await test.step(
         'Remove lineage between nodes for the entity',
         async () => {
-          await page.getByTestId('lineage-diagram-view-icon').click();
           await editLineage(page);
           await performZoomOut(page);
 

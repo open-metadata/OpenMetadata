@@ -13,6 +13,7 @@
 import { FC } from 'react';
 import { RouteProps } from 'react-router-dom';
 import { App } from '../../../../generated/entity/applications/app';
+import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
@@ -39,14 +40,15 @@ export interface AppPlugin {
   isInstalled: boolean;
 
   /**
-   * Optional method that returns a React component for plugin configuration.
-   * It is the responsibility of this component to update application data using patchApplication API
+   * Optional method that returns a React component for the entire app details view.
+   * If provided, this component will replace the default tabs interface.
+   * It is the responsibility of this component to handle all app details functionality.
    *
    * @param app - The App entity containing application details and configuration
-   * @returns A React functional component for plugin settings/configuration,
-   *          or null if no configuration is needed.
+   * @returns A React functional component for the complete app details view,
+   *          or null if the default tabs interface should be used.
    */
-  getConfigComponent?(app: App): FC | null;
+  getAppDetails?(app: App): FC | null;
 
   /**
    * Optional method that provides custom routes for the plugin.
@@ -63,4 +65,15 @@ export interface AppPlugin {
    *          left sidebar when the plugin is active.
    */
   getSidebarActions?(): Array<LeftSidebarItemExample>;
+
+  /**
+   * Optional method that returns a React component for the app installation page.
+   * If provided, this component will replace the default stepper and tabs interface
+   * in the App Installation page.
+   *
+   * @param app - The AppMarketPlaceDefinition entity containing application details and configuration
+   * @returns A React functional component for the complete app installation view,
+   *          or null if the default installation interface should be used.
+   */
+  getAppInstallComponent?(app: AppMarketPlaceDefinition): FC | null;
 }
