@@ -50,8 +50,13 @@ public class DataCompletenessTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), dataCompletenessTask.getId()));
     subProcess.addFlowElement(new SequenceFlow(dataCompletenessTask.getId(), endEvent.getId()));
 
+    if (workflowConfig.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
+
     this.subProcess = subProcess;
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(dataCompletenessTask);
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, workflowConfig.getStoreStageStatus());
   }
 
   private ServiceTask getDataCompletenessServiceTask(
@@ -112,18 +117,5 @@ public class DataCompletenessTask implements NodeInterface {
   @Override
   public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
     return runtimeExceptionBoundaryEvent;
-  }
-
-  private BoundaryEvent getRuntimeExceptionBoundaryEvent(ServiceTask serviceTask) {
-    BoundaryEvent boundaryEvent = new BoundaryEvent();
-    boundaryEvent.setId(getFlowableElementId(serviceTask.getId(), "runtimeExceptionBoundaryEvent"));
-    boundaryEvent.setAttachedToRefId(serviceTask.getId());
-
-    org.flowable.bpmn.model.ErrorEventDefinition errorEventDef =
-        new org.flowable.bpmn.model.ErrorEventDefinition();
-    errorEventDef.setErrorCode("workflowRuntimeException");
-    boundaryEvent.addEventDefinition(errorEventDef);
-
-    return boundaryEvent;
   }
 }
