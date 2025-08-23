@@ -36,6 +36,10 @@ export interface CreateDataContract {
     entity:        EntityReference;
     entityStatus?: EntityStatus;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Name of the data contract.
      */
     name: string;
