@@ -16,7 +16,12 @@ import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
 } from '../../constant/permission';
-import { generateRandomUsername, uuid } from '../../utils/common';
+import {
+  ensureServiceWorkerReady,
+  generateRandomUsername,
+  uuid,
+  waitForTokenAvailability,
+} from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
@@ -202,6 +207,9 @@ export class UserClass {
     userName = this.data.email,
     password = this.data.password
   ) {
+    // Ensure Service Worker is ready before navigation
+    await ensureServiceWorkerReady(page);
+
     await page.goto('/');
     await page.fill('input[id="email"]', userName);
     await page.locator('#email').press('Tab');
@@ -209,6 +217,10 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
     await loginRes;
+
+    // Wait for token to be stored in IndexedDB via Service Worker
+    await page.waitForTimeout(1000);
+    await waitForTokenAvailability(page);
 
     const modal = await page
       .getByRole('dialog')
