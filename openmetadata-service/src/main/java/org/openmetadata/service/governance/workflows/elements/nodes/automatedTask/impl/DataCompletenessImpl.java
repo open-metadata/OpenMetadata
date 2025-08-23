@@ -111,20 +111,34 @@ public class DataCompletenessImpl implements JavaDelegate {
       boolean treatEmptyArrayAsNull) {
 
     DataCompletenessResult result = new DataCompletenessResult();
-    result.totalFieldsCount = fieldsToCheck.size();
     result.missingFields = new ArrayList<>();
     result.filledFields = new ArrayList<>();
 
-    for (String fieldPath : fieldsToCheck) {
-      Object value = getFieldValue(entityMap, fieldPath);
+    int totalFieldsToCheck = 0;
+    int totalFieldsFilled = 0;
 
-      if (isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull)) {
-        result.filledFieldsCount++;
-        result.filledFields.add(fieldPath);
+    for (String fieldPath : fieldsToCheck) {
+      FieldCompletenessInfo fieldInfo =
+          evaluateFieldCompleteness(
+              entityMap, fieldPath, treatEmptyStringAsNull, treatEmptyArrayAsNull);
+
+      totalFieldsToCheck += fieldInfo.totalCount;
+      totalFieldsFilled += fieldInfo.filledCount;
+
+      // Record detailed results
+      if (fieldInfo.isFullyComplete()) {
+        result.filledFields.add(
+            fieldPath + " (" + fieldInfo.filledCount + "/" + fieldInfo.totalCount + ")");
+      } else if (fieldInfo.isPartiallyComplete()) {
+        result.missingFields.add(
+            fieldPath + " (partial: " + fieldInfo.filledCount + "/" + fieldInfo.totalCount + ")");
       } else {
-        result.missingFields.add(fieldPath);
+        result.missingFields.add(fieldPath + " (0/" + fieldInfo.totalCount + ")");
       }
     }
+
+    result.totalFieldsCount = totalFieldsToCheck;
+    result.filledFieldsCount = totalFieldsFilled;
 
     // Calculate percentage
     result.score =
@@ -138,28 +152,90 @@ public class DataCompletenessImpl implements JavaDelegate {
     return result;
   }
 
-  private Object getFieldValue(Map<String, Object> entityMap, String fieldPath) {
+  /**
+   * Evaluates the completeness of a field, handling nested arrays properly.
+   * For example, "columns.description" checks description field in ALL column objects.
+   */
+  private FieldCompletenessInfo evaluateFieldCompleteness(
+      Map<String, Object> entityMap,
+      String fieldPath,
+      boolean treatEmptyStringAsNull,
+      boolean treatEmptyArrayAsNull) {
+
+    FieldCompletenessInfo info = new FieldCompletenessInfo();
+
     // Handle nested fields with dot notation
     String[] parts = fieldPath.split("\\.");
-    Object current = entityMap;
+
+    // Check if this is an array field check (e.g., "columns.description")
+    boolean isArrayFieldCheck = parts.length > 1 && !parts[0].endsWith("[]");
+
+    if (isArrayFieldCheck) {
+      // Handle array field checks like "columns.description"
+      Object arrayField = getNestedValue(entityMap, parts[0]);
+
+      if (arrayField instanceof List) {
+        List<?> arrayList = (List<?>) arrayField;
+        if (arrayList.isEmpty()) {
+          // Empty array - no items to check
+          info.totalCount = 1;
+          info.filledCount = treatEmptyArrayAsNull ? 0 : 1;
+        } else {
+          // Check the nested field in each array element
+          String nestedPath = fieldPath.substring(parts[0].length() + 1);
+          info.totalCount = arrayList.size();
+
+          for (Object item : arrayList) {
+            if (item instanceof Map) {
+              Object nestedValue = getNestedValue((Map<String, Object>) item, nestedPath);
+              if (isFieldFilled(nestedValue, treatEmptyStringAsNull, treatEmptyArrayAsNull)) {
+                info.filledCount++;
+              }
+            }
+          }
+        }
+      } else {
+        // Field should be an array but isn't - treat as missing
+        info.totalCount = 1;
+        info.filledCount = 0;
+      }
+    } else {
+      // Handle simple field or array existence check (e.g., "description" or "columns[]")
+      Object value = getNestedValue(entityMap, fieldPath);
+      info.totalCount = 1;
+
+      if (fieldPath.endsWith("[]")) {
+        // Check if array exists and is non-empty
+        String arrayFieldName = fieldPath.substring(0, fieldPath.length() - 2);
+        value = getNestedValue(entityMap, arrayFieldName);
+        info.filledCount = (value instanceof List && !((List<?>) value).isEmpty()) ? 1 : 0;
+      } else {
+        // Check if simple field is filled
+        info.filledCount =
+            isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull) ? 1 : 0;
+      }
+    }
+
+    return info;
+  }
+
+  /**
+   * Gets a nested value from a map using dot notation.
+   */
+  private Object getNestedValue(Map<String, Object> map, String path) {
+    if (map == null || path == null) {
+      return null;
+    }
+
+    String[] parts = path.split("\\.");
+    Object current = map;
 
     for (String part : parts) {
       if (current == null) {
         return null;
       }
 
-      // Handle array notation like "columns[]"
-      if (part.endsWith("[]")) {
-        String fieldName = part.substring(0, part.length() - 2);
-        if (current instanceof Map) {
-          current = ((Map<?, ?>) current).get(fieldName);
-          // For arrays, check if any element exists
-          if (current instanceof List && !((List<?>) current).isEmpty()) {
-            return current; // Return the list itself if non-empty
-          }
-        }
-        return null;
-      } else if (current instanceof Map) {
+      if (current instanceof Map) {
         current = ((Map<?, ?>) current).get(part);
       } else {
         return null;
@@ -225,5 +301,18 @@ public class DataCompletenessImpl implements JavaDelegate {
     List<String> missingFields;
     List<String> filledFields;
     String qualityBand = "undefined";
+  }
+
+  private static class FieldCompletenessInfo {
+    int totalCount = 0;
+    int filledCount = 0;
+
+    boolean isFullyComplete() {
+      return totalCount > 0 && filledCount == totalCount;
+    }
+
+    boolean isPartiallyComplete() {
+      return filledCount > 0 && filledCount < totalCount;
+    }
   }
 }

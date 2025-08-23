@@ -8,11 +8,9 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -20,141 +18,131 @@ import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
- * Universal entity attribute setter implementation for OpenMetadata workflows.
+ * Universal entity attribute setter for OpenMetadata workflows.
  *
- * This class provides a generic way to set any field on any entity type using a map-based approach.
- * It follows OpenMetadata's schema-first design pattern and uses JSON deep copy for safe entity modification.
+ * Sets top-level entity fields properly by fetching actual entities from repositories.
  *
- * <h2>Features:</h2>
+ * <h2>Supported Field Types:</h2>
  * <ul>
- *   <li>Works with ALL 43+ supported entity types (tables, dashboards, pipelines, etc.)</li>
- *   <li>Supports simple fields: status, description, displayName</li>
- *   <li>Supports nested fields using dot notation: certification.tagLabel.tagFQN</li>
- *   <li>Uses JSON deep copy pattern (no reflection)</li>
- *   <li>Thread-safe and follows OpenMetadata conventions</li>
+ *   <li><strong>Simple fields:</strong> description, displayName - direct value setting</li>
+ *   <li><strong>Tags:</strong> Fetches Tag entities and creates proper TagLabels (APPENDS)</li>
+ *   <li><strong>GlossaryTerms:</strong> Fetches GlossaryTerm entities and creates TagLabels (APPENDS)</li>
+ *   <li><strong>Certification:</strong> Creates AssetCertification with proper TagLabel (REPLACES)</li>
+ *   <li><strong>Tier:</strong> Manages Tier.* tags in tags array (REPLACES existing tier)</li>
+ *   <li><strong>Owners:</strong> Fetches User/Team entities and creates EntityReferences</li>
+ *   <li><strong>Reviewers:</strong> Fetches User/Team entities and creates EntityReferences</li>
  * </ul>
  *
  * <h2>Configuration Examples:</h2>
  * <pre>{@code
- * // Simple field setting
+ * // Simple field
  * {
  *   "config": {
- *     "fieldName": "status",
- *     "fieldValue": "Approved"
+ *     "fieldName": "description",
+ *     "fieldValue": "Updated description"
  *   }
  * }
  *
- * // Nested field setting
+ * // Tags - provide FQN(s), will fetch actual Tag entities
  * {
  *   "config": {
- *     "fieldName": "certification.tagLabel.tagFQN",
+ *     "fieldName": "tags",
+ *     "fieldValue": "PII.Sensitive"  // or "PII.Sensitive, Quality.High"
+ *   }
+ * }
+ *
+ * // GlossaryTerms - provide FQN(s), will fetch actual GlossaryTerm entities
+ * {
+ *   "config": {
+ *     "fieldName": "glossaryTerms",
+ *     "fieldValue": "BusinessGlossary.Customer"
+ *   }
+ * }
+ *
+ * // Certification
+ * {
+ *   "config": {
+ *     "fieldName": "certification",
  *     "fieldValue": "Certification.Gold"
  *   }
  * }
  *
- * // Array field setting (replaces entire array)
+ * // Tier
  * {
  *   "config": {
- *     "fieldName": "tags",
- *     "fieldValue": "[{\"tagFQN\": \"Quality.High\"}]"
+ *     "fieldName": "tier",
+ *     "fieldValue": "Tier.Tier1"
+ *   }
+ * }
+ *
+ * // Owners - use format "user:name" or "team:name"
+ * {
+ *   "config": {
+ *     "fieldName": "owners",
+ *     "fieldValue": "user:john.doe, team:data-team"
+ *   }
+ * }
+ *
+ * // Reviewers - use format "user:name" or "team:name"
+ * {
+ *   "config": {
+ *     "fieldName": "reviewers",
+ *     "fieldValue": "user:jane.smith, user:bob.jones"
  *   }
  * }
  * }</pre>
- *
- * <h2>Input Variables:</h2>
- * <ul>
- *   <li><strong>relatedEntity</strong> (required): Entity to modify from workflow context</li>
- *   <li><strong>updatedBy</strong> (optional): User who should be credited for the change</li>
- * </ul>
- *
- * <h2>Workflow Integration:</h2>
- * <pre>{@code
- * {
- *   "type": "automatedTask",
- *   "subType": "setEntityAttributeTask",
- *   "name": "SetTableStatus",
- *   "config": {
- *     "fieldName": "status",
- *     "fieldValue": "Approved"
- *   },
- *   "input": ["relatedEntity", "updatedBy"],
- *   "output": [],
- *   "inputNamespaceMap": {
- *     "relatedEntity": "global",
- *     "updatedBy": null
- *   }
- * }
- * }</pre>
- *
- * @author OpenMetadata Workflow Engine
- * @version 1.0
- * @since 1.9.0
  */
 @Slf4j
 public class SetEntityAttributeImpl implements JavaDelegate {
-  /** Expression for the field name to set (supports dot notation for nested fields) */
   private Expression fieldNameExpr;
-
-  /** Expression for the value to set in the specified field */
   private Expression fieldValueExpr;
-
-  /** Expression for input namespace mapping configuration */
   private Expression inputNamespaceMapExpr;
 
-  /**
-   * Main execution method called by Flowable BPM engine.
-   *
-   * This method performs the following steps:
-   * 1. Extracts configuration from Flowable field expressions
-   * 2. Retrieves the target entity from workflow variables
-   * 3. Applies the field modification using JSON deep copy pattern
-   * 4. Creates and applies a JSON patch to update the entity in the database
-   *
-   * @param execution The Flowable execution context containing all workflow variables and configuration
-   * @throws BpmnError if any error occurs during field setting (wrapped with workflow exception details)
-   *
-   * @see #setEntityField(EntityInterface, String, String, String, String) for the core field setting logic
-   */
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      // Extract input namespace mapping to understand where variables come from
-      Map<String, String> inputNamespaceMap =
+      // Extract entity from workflow context
+      Map<String, Object> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-
-      // Parse entity link from workflow variables (e.g., "table::database.schema.tableName")
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+      String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+      String relatedEntityValue =
+          (String)
+              varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
 
       String entityType = entityLink.getEntityType();
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-      // Extract field name and value from Flowable expressions
       String fieldName = (String) fieldNameExpr.getValue(execution);
       String fieldValue = (String) fieldValueExpr.getValue(execution);
 
-      // Get user for audit trail (defaults to governance-bot if not provided)
+      String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
       String user =
-          Optional.ofNullable(
-                  (String)
-                      varHandler.getNamespacedVariable(
-                          inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
+          Optional.ofNullable(updatedByNamespace)
+              .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
 
-      // Perform the actual field modification
+      // Apply the field change
       setEntityField(entity, entityType, user, fieldName, fieldValue);
+
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -166,329 +154,337 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   }
 
   /**
-   * Core method that safely modifies any field on any entity using OpenMetadata's JSON deep copy pattern.
-   *
-   * This method follows OpenMetadata's best practices:
-   * - Uses JSON serialization for deep copying (no reflection)
-   * - Works with the map representation for generic field access
-   * - Supports nested field paths with dot notation
-   * - Creates proper JSON patches for database updates
-   * - Uses the correct non-deprecated patch method signature
-   *
-   * <h3>Supported Field Types:</h3>
-   * <ul>
-   *   <li><strong>Simple fields:</strong> status, description, displayName</li>
-   *   <li><strong>Nested objects:</strong> certification.tagLabel.tagFQN</li>
-   *   <li><strong>Array fields:</strong> tags, owners (replaces entire array)</li>
-   *   <li><strong>Any JSON field:</strong> Dynamic access via map manipulation</li>
-   * </ul>
-   *
-   * <h3>Field Examples:</h3>
-   * <pre>{@code
-   * setEntityField(table, "table", "user", "status", "Approved");
-   * setEntityField(dashboard, "dashboard", "user", "certification.tagLabel.tagFQN", "Certification.Gold");
-   * setEntityField(pipeline, "pipeline", "user", "description", "Updated description");
-   * }</pre>
-   *
-   * @param entity The entity to modify (original entity remains unchanged)
-   * @param entityType The type of entity (e.g., "table", "dashboard", "pipeline")
-   * @param user The user to be credited with this change for audit trail
-   * @param fieldName The field to set, supports dot notation for nested fields (e.g., "certification.tagLabel.tagFQN")
-   * @param fieldValue The value to set in the specified field
-   *
-   * @throws RuntimeException if JSON processing fails or entity repository is not found
-   * @see #setNestedField(Map, String, Object) for nested field handling details
+   * Sets a top-level field on an entity by creating the proper object structure.
    */
   private void setEntityField(
       EntityInterface entity, String entityType, String user, String fieldName, String fieldValue) {
-    // Step 1: Get original JSON for patch creation
+
+    // Store original state for patch creation
     String originalJson = JsonUtils.pojoToJson(entity);
 
-    // Step 2: Create a deep copy by converting to JSON and back - this is the OpenMetadata way
-    EntityInterface entityCopy = JsonUtils.readValue(originalJson, entity.getClass());
+    // Handle different field types
+    switch (fieldName) {
+      case "description":
+      case "displayName":
+        // Simple string fields
+        setSimpleField(entity, fieldName, fieldValue);
+        break;
 
-    // Step 3: Convert copy to map for generic field manipulation
-    Map<String, Object> entityMap = JsonUtils.getMap(entityCopy);
+      case "tags":
+        // Fetch Tag entities and append to existing tags
+        appendTags(entity, fieldValue);
+        break;
 
-    // Step 4: Parse field value - could be JSON object/array or simple string
-    Object parsedValue = parseFieldValue(fieldValue);
+      case "glossaryTerms":
+        // Fetch GlossaryTerm entities and append to existing glossaryTerms
+        appendGlossaryTerms(entity, fieldValue);
+        break;
 
-    // Step 5: Set the field value in the map - supports nested fields with dot notation
-    setNestedField(entityMap, fieldName, parsedValue);
+      case "certification":
+        // Set certification (replaces existing)
+        setCertification(entity, fieldValue);
+        break;
 
-    // Step 6: Convert the modified map back to entity
-    String modifiedJson = JsonUtils.pojoToJson(entityMap);
-    EntityInterface modifiedEntity = JsonUtils.readValue(modifiedJson, entity.getClass());
+      case "tier":
+        // Set tier (replaces existing tier tag)
+        setTier(entity, fieldValue);
+        break;
 
-    // Step 7: Get the updated JSON from the modified entity
-    String updatedJson = JsonUtils.pojoToJson(modifiedEntity);
+      case "owners":
+        // Fetch User/Team entities and set as owners
+        setOwners(entity, fieldValue);
+        break;
 
-    // Step 8: Create patch from original to updated
+      case "reviewers":
+        // Fetch User/Team entities and set as reviewers
+        setReviewers(entity, fieldValue);
+        break;
+
+      default:
+        // For other simple fields, try direct setting
+        setSimpleField(entity, fieldName, fieldValue);
+        break;
+    }
+
+    // Create and apply patch
+    String updatedJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
-    // Step 9: Apply patch using the non-deprecated repository method
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     entityRepository.patch(null, entity.getId(), user, patch, null);
   }
 
   /**
-   * Parses field value from string to appropriate object type.
-   * Handles JSON objects, arrays, booleans, numbers, and plain strings.
-   *
-   * @param fieldValue The string value to parse
-   * @return Parsed object (Map, List, Boolean, Number, or String)
+   * Sets a simple field value using reflection.
    */
-  private Object parseFieldValue(String fieldValue) {
-    if (fieldValue == null || fieldValue.isEmpty()) {
-      return null;
-    }
-
-    // Try to parse as JSON object or array
-    if ((fieldValue.startsWith("{") && fieldValue.endsWith("}"))
-        || (fieldValue.startsWith("[") && fieldValue.endsWith("]"))) {
-      try {
-        return JsonUtils.readValue(fieldValue, Object.class);
-      } catch (Exception e) {
-        // Not valid JSON, treat as string
-      }
-    }
-
-    // Try to parse as boolean
-    if ("true".equalsIgnoreCase(fieldValue) || "false".equalsIgnoreCase(fieldValue)) {
-      return Boolean.parseBoolean(fieldValue);
-    }
-
-    // Try to parse as number
+  private void setSimpleField(EntityInterface entity, String fieldName, String fieldValue) {
     try {
-      if (fieldValue.contains(".")) {
-        return Double.parseDouble(fieldValue);
-      } else {
-        return Long.parseLong(fieldValue);
-      }
-    } catch (NumberFormatException e) {
-      // Not a number, return as string
+      // Use reflection to set the field
+      java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
+      field.setAccessible(true);
+      field.set(entity, fieldValue);
+    } catch (Exception e) {
+      LOG.warn("Could not set field {} directly: {}", fieldName, e.getMessage());
     }
-
-    return fieldValue;
   }
 
   /**
-   * Sets a field value in a nested map structure using dot notation path navigation.
-   *
-   * This method enables setting deeply nested fields by splitting the field name on dots
-   * and navigating through the map hierarchy. If intermediate maps don't exist, they are
-   * created automatically. This allows for flexible field manipulation without knowing
-   * the exact entity structure at compile time.
-   *
-   * <h3>Special Handling for Common Patterns:</h3>
-   * <ul>
-   *   <li><strong>Tags:</strong> "tags.tagFQN" automatically finds/creates tag with specified FQN</li>
-   *   <li><strong>Owners:</strong> "owners.name" automatically finds/creates owner with specified name</li>
-   *   <li><strong>Array Operations:</strong> Smart handling of array fields without requiring indices</li>
-   * </ul>
-   *
-   * <h3>Supported Patterns:</h3>
-   * <ul>
-   *   <li><strong>Simple fields:</strong> "name", "status", "description"</li>
-   *   <li><strong>Nested objects:</strong> "certification.tagLabel.tagFQN"</li>
-   *   <li><strong>Smart tags:</strong> "tags.tagFQN" (adds/updates tag without index)</li>
-   *   <li><strong>Smart owners:</strong> "owners.name" (adds/updates owner without index)</li>
-   *   <li><strong>Multiple levels:</strong> "lifeCycle.created.time"</li>
-   *   <li><strong>Auto-creation:</strong> Missing intermediate maps are created</li>
-   * </ul>
-   *
-   * <h3>Examples:</h3>
-   * <pre>{@code
-   * // Simple field
-   * setNestedField(entityMap, "status", "Approved");
-   * // Result: entityMap.put("status", "Approved")
-   *
-   * // Nested field
-   * setNestedField(entityMap, "certification.tagLabel.tagFQN", "Certification.Gold");
-   * // Result: entityMap.certification.tagLabel.tagFQN = "Certification.Gold"
-   *
-   * // Smart tag handling (NO INDEX NEEDED!)
-   * setNestedField(entityMap, "tags.tagFQN", "PII.Sensitive");
-   * // Result: Finds existing tag with FQN "PII.Sensitive" or creates new one
-   * // User doesn't need to know it's tags[0].tagFQN or tags[1].tagFQN
-   *
-   * // Smart owner handling
-   * setNestedField(entityMap, "owners.name", "john.doe");
-   * // Result: Finds existing owner "john.doe" or creates new one
-   *
-   * // Auto-creation of intermediate maps
-   * setNestedField(entityMap, "newSection.subsection.value", "test");
-   * // Creates: entityMap -> newSection -> subsection -> value = "test"
-   *
-   * // Removal (null or empty value)
-   * setNestedField(entityMap, "status", null);
-   * // Result: removes "status" key from entityMap
-   * }</pre>
-   *
-   * <h3>Behavior:</h3>
-   * <ul>
-   *   <li>Creates missing intermediate maps automatically</li>
-   *   <li>Removes the field if value is null or empty string</li>
-   *   <li>Handles array fields intelligently without requiring indices</li>
-   *   <li>Overwrites existing values</li>
-   *   <li>Thread-safe for map operations</li>
-   * </ul>
-   *
-   * @param map The root map to modify (typically an entity converted to map)
-   * @param fieldName The field path using dot notation (e.g., "tags.tagFQN", "certification.tagLabel.tagFQN")
-   * @param fieldValue The value to set, or null/empty to remove the field
-   *
-   * @throws ClassCastException if an intermediate value is not a Map when expected
+   * Appends tags to the entity by fetching actual Tag entities.
    */
-  @SuppressWarnings("unchecked")
-  private void setNestedField(Map<String, Object> map, String fieldName, Object fieldValue) {
-    // Handle special array patterns intelligently
-    if (isSmartArrayPattern(fieldName) && fieldValue instanceof String) {
-      handleSmartArrayField(map, fieldName, (String) fieldValue);
+  private void appendTags(EntityInterface entity, String tagFQNs) {
+    if (tagFQNs == null || tagFQNs.isEmpty()) {
       return;
     }
 
-    // Direct array replacement (when fieldValue is already a List)
-    if ((fieldName.equals("tags") || fieldName.equals("owners") || fieldName.equals("reviewers"))
-        && (fieldValue instanceof List || fieldValue == null)) {
-      if (fieldValue == null) {
-        map.remove(fieldName);
-      } else {
-        map.put(fieldName, fieldValue);
+    List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
+    List<TagLabel> newTags = new ArrayList<>(existingTags);
+
+    String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
+
+    for (String fqn : fqns) {
+      String trimmedFQN = fqn.trim();
+      if (!trimmedFQN.isEmpty()) {
+        // Check if tag already exists
+        boolean exists = existingTags.stream().anyMatch(tag -> trimmedFQN.equals(tag.getTagFQN()));
+
+        if (!exists) {
+          try {
+            // Fetch the actual Tag entity
+            Tag tag = TagLabelUtil.getTag(trimmedFQN);
+            if (tag != null) {
+              // Convert to TagLabel and add
+              TagLabel tagLabel = EntityUtil.toTagLabel(tag);
+              tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
+              tagLabel.setState(TagLabel.State.CONFIRMED);
+              newTags.add(tagLabel);
+            }
+          } catch (Exception e) {
+            LOG.warn("Could not fetch tag {}: {}", trimmedFQN, e.getMessage());
+          }
+        }
       }
+    }
+
+    // Validate mutual exclusivity
+    try {
+      TagLabelUtil.checkMutuallyExclusive(newTags);
+    } catch (IllegalArgumentException e) {
+      throw new RuntimeException(
+          "Cannot add tags due to mutual exclusivity constraint: " + e.getMessage(), e);
+    }
+
+    entity.setTags(newTags);
+  }
+
+  /**
+   * Appends glossary terms to the entity by fetching actual GlossaryTerm entities.
+   */
+  private void appendGlossaryTerms(EntityInterface entity, String termFQNs) {
+    if (termFQNs == null || termFQNs.isEmpty()) {
       return;
     }
 
-    // Handle nested fields with dot notation (e.g., "certification.tagLabel.tagFQN")
-    String[] parts = fieldName.split("\\.");
-    Map<String, Object> currentMap = map;
+    // Get existing tags (glossary terms are stored as tags with source=GLOSSARY)
+    List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
+    List<TagLabel> newTags = new ArrayList<>(existingTags);
 
-    // Navigate to the parent map - create intermediate maps if needed
-    for (int i = 0; i < parts.length - 1; i++) {
-      Object value = currentMap.get(parts[i]);
-      if (value instanceof Map) {
-        // Navigate to existing nested map
-        currentMap = (Map<String, Object>) value;
-      } else {
-        // Create intermediate maps if they don't exist
-        Map<String, Object> newMap = new HashMap<>();
-        currentMap.put(parts[i], newMap);
-        currentMap = newMap;
+    String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
+
+    for (String fqn : fqns) {
+      String trimmedFQN = fqn.trim();
+      if (!trimmedFQN.isEmpty()) {
+        // Check if term already exists
+        boolean exists =
+            existingTags.stream()
+                .anyMatch(
+                    tag ->
+                        trimmedFQN.equals(tag.getTagFQN())
+                            && TagLabel.TagSource.GLOSSARY.equals(tag.getSource()));
+
+        if (!exists) {
+          try {
+            // Fetch the actual GlossaryTerm entity
+            GlossaryTerm term = TagLabelUtil.getGlossaryTerm(trimmedFQN);
+            if (term != null) {
+              // Convert to TagLabel and add
+              TagLabel tagLabel = EntityUtil.toTagLabel(term);
+              tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
+              tagLabel.setState(TagLabel.State.CONFIRMED);
+              newTags.add(tagLabel);
+            }
+          } catch (Exception e) {
+            LOG.warn("Could not fetch glossary term {}: {}", trimmedFQN, e.getMessage());
+          }
+        }
       }
     }
 
-    // Set the final value or remove if null
-    String finalKey = parts[parts.length - 1];
-    if (fieldValue == null || (fieldValue instanceof String && ((String) fieldValue).isEmpty())) {
-      currentMap.remove(finalKey);
-    } else {
-      currentMap.put(finalKey, fieldValue);
+    // Validate mutual exclusivity
+    try {
+      TagLabelUtil.checkMutuallyExclusive(newTags);
+    } catch (IllegalArgumentException e) {
+      throw new RuntimeException(
+          "Cannot add glossary terms due to mutual exclusivity constraint: " + e.getMessage(), e);
+    }
+
+    entity.setTags(newTags);
+  }
+
+  /**
+   * Sets certification on the entity (replaces existing).
+   */
+  private void setCertification(EntityInterface entity, String certificationFQN) {
+    if (certificationFQN == null || certificationFQN.isEmpty()) {
+      entity.setCertification(null);
+      return;
+    }
+
+    try {
+      // Fetch the certification tag
+      Tag certTag = TagLabelUtil.getTag(certificationFQN);
+      if (certTag != null) {
+        TagLabel tagLabel = EntityUtil.toTagLabel(certTag);
+        tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
+        tagLabel.setState(TagLabel.State.CONFIRMED);
+
+        AssetCertification certification = new AssetCertification();
+        certification.setTagLabel(tagLabel);
+        entity.setCertification(certification);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not set certification {}: {}", certificationFQN, e.getMessage());
     }
   }
 
   /**
-   * Checks if the field pattern requires smart array handling.
-   *
-   * @param fieldName The field name to check
-   * @return true if this is a smart array pattern like "tags.tagFQN", "owners.name"
+   * Sets tier on the entity by managing Tier.* tags (replaces existing tier).
    */
-  private boolean isSmartArrayPattern(String fieldName) {
-    return fieldName.equals("tags.tagFQN")
-        || fieldName.equals("tags.name")
-        || fieldName.equals("owners.name")
-        || fieldName.equals("owners.displayName")
-        || fieldName.equals("reviewers.name")
-        || fieldName.equals("reviewers.displayName");
+  private void setTier(EntityInterface entity, String tierFQN) {
+    if (tierFQN == null || tierFQN.isEmpty()) {
+      return;
+    }
+
+    List<TagLabel> tags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
+
+    // Remove existing Tier.* tags
+    tags.removeIf(tag -> tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier."));
+
+    // Add new tier tag
+    try {
+      Tag tierTag = TagLabelUtil.getTag(tierFQN);
+      if (tierTag != null) {
+        TagLabel tagLabel = EntityUtil.toTagLabel(tierTag);
+        tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
+        tagLabel.setState(TagLabel.State.CONFIRMED);
+        tags.add(tagLabel);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not set tier {}: {}", tierFQN, e.getMessage());
+    }
+
+    entity.setTags(tags);
   }
 
   /**
-   * Handles smart array field operations like tags and owners without requiring array indices.
-   * This makes the API user-friendly for UI development.
-   *
-   * @param map The entity map
-   * @param fieldName The smart field name (e.g., "tags.tagFQN")
-   * @param fieldValue The value to set
+   * Sets owners on the entity by fetching User/Team entities.
+   * Format: "user:userName" or "team:teamName"
    */
-  @SuppressWarnings("unchecked")
-  private void handleSmartArrayField(Map<String, Object> map, String fieldName, String fieldValue) {
-    String[] parts = fieldName.split("\\.");
-    String arrayFieldName = parts[0]; // e.g., "tags"
-    String propertyName = parts[1]; // e.g., "tagFQN"
-
-    // Get or create the array
-    List<Map<String, Object>> arrayList = (List<Map<String, Object>>) map.get(arrayFieldName);
-    if (arrayList == null) {
-      arrayList = new ArrayList<>();
-      map.put(arrayFieldName, arrayList);
+  private void setOwners(EntityInterface entity, String ownerNames) {
+    if (ownerNames == null || ownerNames.isEmpty()) {
+      entity.setOwners(null);
+      return;
     }
 
-    if (fieldValue == null || fieldValue.isEmpty()) {
-      // Remove items where the property value is null or empty
-      arrayList.removeIf(
-          item -> {
-            Object value = item.get(propertyName);
-            return value == null || (value instanceof String && ((String) value).isEmpty());
-          });
-    } else {
-      // Find existing item or create new one
-      Map<String, Object> targetItem =
-          arrayList.stream()
-              .filter(item -> fieldValue.equals(item.get(propertyName)))
-              .findFirst()
-              .orElse(null);
+    List<EntityReference> owners = new ArrayList<>();
+    String[] names = ownerNames.contains(",") ? ownerNames.split(",") : new String[] {ownerNames};
 
-      if (targetItem == null) {
-        // Create new item with appropriate defaults
-        targetItem = createDefaultArrayItem(arrayFieldName, propertyName, fieldValue);
-        arrayList.add(targetItem);
-      } else {
-        // Update existing item
-        targetItem.put(propertyName, fieldValue);
+    for (String ownerSpec : names) {
+      String trimmedSpec = ownerSpec.trim();
+      if (!trimmedSpec.isEmpty()) {
+        // Parse format like "user:john.doe" or "team:data-team"
+        String[] parts = trimmedSpec.split(":", 2);
+        if (parts.length != 2) {
+          LOG.warn("Invalid owner format: {}. Expected 'user:name' or 'team:name'", trimmedSpec);
+          continue;
+        }
+
+        String type = parts[0].trim().toLowerCase();
+        String name = parts[1].trim();
+
+        try {
+          if ("user".equals(type)) {
+            User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
+            if (user != null) {
+              owners.add(user.getEntityReference());
+            }
+          } else if ("team".equals(type)) {
+            Team team = Entity.getEntityByName(Entity.TEAM, name, "", Include.NON_DELETED);
+            if (team != null) {
+              owners.add(team.getEntityReference());
+            }
+          } else {
+            LOG.warn("Unknown owner type: {}. Expected 'user' or 'team'", type);
+          }
+        } catch (Exception e) {
+          LOG.warn("Could not find {} with name: {}", type, name);
+        }
       }
     }
+
+    if (!owners.isEmpty()) {
+      entity.setOwners(owners);
+    }
   }
 
   /**
-   * Creates a default array item with required fields based on the array type.
-   *
-   * @param arrayFieldName The array field name (e.g., "tags", "owners")
-   * @param propertyName The property being set (e.g., "tagFQN", "name")
-   * @param propertyValue The value for the property
-   * @return A new map representing the array item with defaults
+   * Sets reviewers on the entity by fetching User entities.
+   * Format: "user:userName" or "team:teamName" (though typically only users are reviewers)
    */
-  private Map<String, Object> createDefaultArrayItem(
-      String arrayFieldName, String propertyName, String propertyValue) {
-    Map<String, Object> item = new HashMap<>();
-
-    switch (arrayFieldName) {
-      case "tags":
-        // Create a valid TagLabel with required fields
-        item.put("tagFQN", propertyValue);
-        item.put("source", "Classification"); // Default source
-        item.put("labelType", "Manual"); // Default label type
-        item.put("state", "Confirmed"); // Default state
-        if ("name".equals(propertyName)) {
-          item.put("name", propertyValue);
-        }
-        break;
-
-      case "owners":
-      case "reviewers":
-        // Create a valid EntityReference
-        item.put("name", propertyValue);
-        item.put("type", "user"); // Default type
-        item.put("id", UUID.randomUUID().toString()); // Generate UUID for now
-        if ("displayName".equals(propertyName)) {
-          item.put("displayName", propertyValue);
-        }
-        break;
-
-      default:
-        // Generic array item
-        item.put(propertyName, propertyValue);
-        break;
+  private void setReviewers(EntityInterface entity, String reviewerNames) {
+    if (reviewerNames == null || reviewerNames.isEmpty()) {
+      entity.setReviewers(null);
+      return;
     }
 
-    return item;
+    List<EntityReference> reviewers = new ArrayList<>();
+    String[] names =
+        reviewerNames.contains(",") ? reviewerNames.split(",") : new String[] {reviewerNames};
+
+    for (String reviewerSpec : names) {
+      String trimmedSpec = reviewerSpec.trim();
+      if (!trimmedSpec.isEmpty()) {
+        // Parse format like "user:john.doe" or "team:data-team"
+        String[] parts = trimmedSpec.split(":", 2);
+        if (parts.length != 2) {
+          LOG.warn("Invalid reviewer format: {}. Expected 'user:name' or 'team:name'", trimmedSpec);
+          continue;
+        }
+
+        String type = parts[0].trim().toLowerCase();
+        String name = parts[1].trim();
+
+        try {
+          if ("user".equals(type)) {
+            User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
+            if (user != null) {
+              reviewers.add(user.getEntityReference());
+            }
+          } else if ("team".equals(type)) {
+            Team team = Entity.getEntityByName(Entity.TEAM, name, "", Include.NON_DELETED);
+            if (team != null) {
+              reviewers.add(team.getEntityReference());
+            }
+          } else {
+            LOG.warn("Unknown reviewer type: {}. Expected 'user' or 'team'", type);
+          }
+        } catch (Exception e) {
+          LOG.warn("Could not find {} with name: {}", type, name);
+        }
+      }
+    }
+
+    if (!reviewers.isEmpty()) {
+      entity.setReviewers(reviewers);
+    }
   }
 }

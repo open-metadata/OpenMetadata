@@ -57,6 +57,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     // Skip deployment if flag is set (used by WorkflowTransactionManager)
     if (!skipWorkflowDeployment.get() && WorkflowHandler.isInitialized()) {
+      // For PeriodicBatchEntityTrigger workflows, we need to undeploy the old version first
+      // to avoid having multiple timer events triggering simultaneously
+      if (original.getTrigger() != null
+          && "periodicBatchEntityTrigger".equals(original.getTrigger().getType())) {
+        LOG.info(
+            "Undeploying old periodic batch workflow before redeployment: {}", original.getName());
+        WorkflowHandler.getInstance().deleteWorkflowDefinition(original);
+      }
+
+      // Deploy the updated workflow
       WorkflowHandler.getInstance().deploy(new Workflow(updated));
     }
   }

@@ -148,8 +148,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       String workflowTriggerId,
       String entityType,
       PeriodicBatchEntityTriggerDefinition triggerDefinition) {
-    FieldExtension entityTypeExpr =
-        new FieldExtensionBuilder().fieldName("entityTypeExpr").fieldValue(entityType).build();
+    FieldExtension entityTypesExpr =
+        new FieldExtensionBuilder().fieldName("entityTypesExpr").fieldValue(entityType).build();
 
     FieldExtension searchFilterExpr =
         new FieldExtensionBuilder(false)
@@ -169,7 +169,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .implementation(FetchEntitiesImpl.class.getName())
             .build();
 
-    serviceTask.getFieldExtensions().add(entityTypeExpr);
+    serviceTask.getFieldExtensions().add(entityTypesExpr);
     serviceTask.getFieldExtensions().add(searchFilterExpr);
     serviceTask.getFieldExtensions().add(batchSizeExpr);
 

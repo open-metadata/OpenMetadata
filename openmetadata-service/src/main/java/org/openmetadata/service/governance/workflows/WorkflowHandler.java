@@ -718,11 +718,39 @@ public class WorkflowHandler {
 
   public boolean triggerWorkflow(String workflowName) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    try {
-      runtimeService.startProcessInstanceByKey(getTriggerWorkflowId(workflowName));
-      return true;
-    } catch (FlowableObjectNotFoundException ex) {
-      return false;
+    RepositoryService repositoryService = processEngine.getRepositoryService();
+
+    String baseProcessKey = getTriggerWorkflowId(workflowName);
+
+    // For PeriodicBatchEntityTrigger, find all processes that start with the base key
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(baseProcessKey + "%")
+            .latestVersion()
+            .list();
+
+    if (!processDefinitions.isEmpty()) {
+      boolean anyStarted = false;
+      for (ProcessDefinition pd : processDefinitions) {
+        try {
+          LOG.info("Triggering process with key: {}", pd.getKey());
+          runtimeService.startProcessInstanceByKey(pd.getKey());
+          anyStarted = true;
+        } catch (Exception e) {
+          LOG.error("Failed to start process: {}", pd.getKey(), e);
+        }
+      }
+      return anyStarted;
+    } else {
+      // Fallback to original behavior for other trigger types
+      try {
+        runtimeService.startProcessInstanceByKey(baseProcessKey);
+        return true;
+      } catch (FlowableObjectNotFoundException ex) {
+        LOG.error("No process definition found for key: {}", baseProcessKey);
+        return false;
+      }
     }
   }
 
