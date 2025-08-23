@@ -11,299 +11,119 @@
  *  limitations under the License.
  */
 /**
- * A `DataContract` entity defines the schema and quality guarantees for a data asset.
+ * Response object for MCP search tool containing search results and metadata
  */
-export interface DataContract {
+export interface MCPSearchResponse {
     /**
-     * Change that led to this version of the entity.
+     * Whether there are more results available
      */
-    changeDescription?: ChangeDescription;
+    hasMore?: boolean;
     /**
-     * History of updates to the data contract.
+     * Informational message about the search results
      */
-    contractUpdates?: ContractUpdate[];
+    message?: string;
     /**
-     * When `true` indicates the entity has been soft deleted.
+     * The original search query used
      */
-    deleted?: boolean;
+    query: string;
     /**
-     * Description of the data contract.
+     * Array of search result entities
+     */
+    results: SearchResultEntity[];
+    /**
+     * Number of entities returned in this response
+     */
+    returnedCount: number;
+    /**
+     * Total number of entities found matching the search criteria
+     */
+    totalFound: number;
+}
+
+/**
+ * Individual search result entity with configurable fields
+ */
+export interface SearchResultEntity {
+    /**
+     * List of column names (for table entities)
+     */
+    columnNames?: string[];
+    /**
+     * Detailed column information (when requested)
+     */
+    columns?: Column[];
+    /**
+     * Database reference (for table entities)
+     */
+    database?: EntityReference;
+    /**
+     * Database schema reference (for table entities)
+     */
+    databaseSchema?: EntityReference;
+    /**
+     * Description of the entity
      */
     description?: string;
     /**
-     * Display name of the data contract.
+     * Display name of the entity
      */
     displayName?: string;
     /**
-     * Date from which this data contract is effective.
+     * Entity relationships (when requested)
      */
-    effectiveFrom?: Date;
+    entityRelationship?: { [key: string]: any };
     /**
-     * Date until which this data contract is effective.
+     * Type of the entity (table, topic, dashboard, etc.)
      */
-    effectiveUntil?: Date;
+    entityType?: string;
     /**
-     * Reference to the data entity (table, topic, etc.) this contract applies to.
-     */
-    entity: EntityReference;
-    /**
-     * Approval status of the data contract.
-     */
-    entityStatus?: EntityStatus;
-    /**
-     * Entity extension data with custom attributes added to the entity.
-     */
-    extension?: any;
-    /**
-     * Fully qualified name of the data contract.
+     * Fully qualified name of the entity
      */
     fullyQualifiedName?: string;
     /**
-     * Link to this data contract resource.
+     * Link to the entity in OpenMetadata UI
      */
     href?: string;
     /**
-     * Unique identifier of this data contract instance.
+     * Name of the entity
      */
-    id: string;
+    name?: string;
     /**
-     * Incremental change description of the entity.
-     */
-    incrementalChangeDescription?: ChangeDescription;
-    /**
-     * Latest validation result for this data contract.
-     */
-    latestResult?: LatestResult;
-    /**
-     * Name of the data contract.
-     */
-    name: string;
-    /**
-     * Owners of this data contract.
+     * Owners of the entity
      */
     owners?: EntityReference[];
     /**
-     * Quality expectations defined in the data contract.
+     * Sample queries (when requested)
      */
-    qualityExpectations?: EntityReference[];
+    queries?: string[];
     /**
-     * User references of the reviewers for this data contract.
+     * Schema definition (when requested)
      */
-    reviewers?: EntityReference[];
+    schemaDefinition?: string;
     /**
-     * Schema definition for the data contract.
+     * Service reference containing the entity
      */
-    schema?: Column[];
+    service?: EntityReference;
     /**
-     * Semantics rules defined in the data contract.
+     * Type of the service
      */
-    semantics?: SemanticsRule[];
+    serviceType?: string;
     /**
-     * Source URL of the data contract.
+     * Type of table (for table entities)
      */
-    sourceUrl?: string;
+    tableType?: string;
     /**
-     * Reference to the test suite that contains tests related to this data contract.
+     * Tags associated with the entity
      */
-    testSuite?: EntityReference;
+    tags?: TagLabel[];
     /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
+     * Tier information for the entity
      */
-    updatedAt?: number;
+    tier?: TagLabel;
     /**
-     * User who made the update.
+     * Upstream lineage information (when requested)
      */
-    updatedBy?: string;
-    /**
-     * Metadata version of the entity.
-     */
-    version?: number;
-}
-
-/**
- * Change that led to this version of the entity.
- *
- * Description of the change.
- *
- * Incremental change description of the entity.
- */
-export interface ChangeDescription {
-    changeSummary?: { [key: string]: ChangeSummary };
-    /**
-     * Names of fields added during the version changes.
-     */
-    fieldsAdded?: FieldChange[];
-    /**
-     * Fields deleted during the version changes with old value before deleted.
-     */
-    fieldsDeleted?: FieldChange[];
-    /**
-     * Fields modified during the version changes with old and new values.
-     */
-    fieldsUpdated?: FieldChange[];
-    /**
-     * When a change did not result in change, this could be same as the current version.
-     */
-    previousVersion?: number;
-}
-
-export interface ChangeSummary {
-    changedAt?: number;
-    /**
-     * Name of the user or bot who made this change
-     */
-    changedBy?:    string;
-    changeSource?: ChangeSource;
-    [property: string]: any;
-}
-
-/**
- * The source of the change. This will change based on the context of the change (example:
- * manual vs programmatic)
- */
-export enum ChangeSource {
-    Automated = "Automated",
-    Derived = "Derived",
-    Ingested = "Ingested",
-    Manual = "Manual",
-    Propagated = "Propagated",
-    Suggested = "Suggested",
-}
-
-export interface FieldChange {
-    /**
-     * Name of the entity field that changed.
-     */
-    name?: string;
-    /**
-     * New value of the field. Note that this is a JSON string and use the corresponding field
-     * type to deserialize it.
-     */
-    newValue?: any;
-    /**
-     * Previous value of the field. Note that this is a JSON string and use the corresponding
-     * field type to deserialize it.
-     */
-    oldValue?: any;
-}
-
-/**
- * Record of updates to the data contract.
- */
-export interface ContractUpdate {
-    /**
-     * Description of changes made to the contract.
-     */
-    changeDescription?: string;
-    /**
-     * Timestamp when the contract was updated.
-     */
-    timestamp: number;
-    /**
-     * User who updated the contract.
-     */
-    updatedBy: string;
-    /**
-     * Version number of the contract after the update.
-     */
-    version: string;
-}
-
-/**
- * Reference to the data entity (table, topic, etc.) this contract applies to.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Owners of this data contract.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Reference to the test suite that contains tests related to this data contract.
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
-}
-
-/**
- * Approval status of the data contract.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-}
-
-/**
- * Latest validation result for this data contract.
- */
-export interface LatestResult {
-    message?:   string;
-    resultId?:  string;
-    status?:    ContractExecutionStatus;
-    timestamp?: number;
-}
-
-/**
- * Status of the data contract execution.
- */
-export enum ContractExecutionStatus {
-    Aborted = "Aborted",
-    Failed = "Failed",
-    PartialSuccess = "PartialSuccess",
-    Queued = "Queued",
-    Running = "Running",
-    Success = "Success",
+    upstreamLineage?: { [key: string]: any };
 }
 
 /**
@@ -530,6 +350,68 @@ export interface CustomMetric {
 }
 
 /**
+ * Owners of this Custom Metric.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Database reference (for table entities)
+ *
+ * Database schema reference (for table entities)
+ *
+ * Service reference containing the entity
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
  * Latest Data profile for a Column.
  *
  * This schema defines the type to capture the table's column profile.
@@ -680,6 +562,8 @@ export interface HistogramClass {
 
 /**
  * This schema defines the type for labeling an entity with a Tag.
+ *
+ * Tier information for the entity
  */
 export interface TagLabel {
     /**
@@ -764,47 +648,4 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
-}
-
-/**
- * Semantics rule defined in the data contract.
- */
-export interface SemanticsRule {
-    /**
-     * Description of the semantics rule.
-     */
-    description: string;
-    /**
-     * Indicates if the semantics rule is enabled.
-     */
-    enabled: boolean;
-    /**
-     * Type of the entity to which this semantics rule applies.
-     */
-    entityType?: string;
-    /**
-     * List of entities to ignore for this semantics rule.
-     */
-    ignoredEntities?: string[];
-    /**
-     * Name of the semantics rule.
-     */
-    name:      string;
-    provider?: ProviderType;
-    /**
-     * Definition of the semantics rule.
-     */
-    rule: string;
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
 }
