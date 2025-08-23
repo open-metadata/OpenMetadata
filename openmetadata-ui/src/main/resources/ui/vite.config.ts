@@ -26,9 +26,19 @@ export default defineConfig(({ mode }) => {
     env.DEV_SERVER_TARGET ||
     'http://localhost:8585/';
 
+  // Dynamically set base path from environment variable or use '/' as default
+  const basePath = env.BASE_PATH || '/';
+
   return {
-    base: '/',
+    base: basePath,
     plugins: [
+      {
+        name: 'html-transform',
+        transformIndexHtml(html: string) {
+          // Replace ${basePath} in all places except script src (handled by Vite's base config)
+          return html.replace(/\$\{basePath\}/g, basePath);
+        },
+      },
       react(),
       svgr(),
       tsconfigPaths(),
