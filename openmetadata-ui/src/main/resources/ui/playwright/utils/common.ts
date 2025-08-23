@@ -129,13 +129,13 @@ export const safeNavigate = async (
 
 export const redirectToHomePage = async (page: Page) => {
   await safeNavigate(page, '/');
-  await page.waitForURL('**/my-data', { timeout: 60000 });
+  await page.waitForURL('**/my-data');
   await page.waitForLoadState('networkidle');
 };
 
 export const redirectToExplorePage = async (page: Page) => {
   await safeNavigate(page, '/explore');
-  await page.waitForURL('**/explore', { timeout: 60000 });
+  await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };
 
