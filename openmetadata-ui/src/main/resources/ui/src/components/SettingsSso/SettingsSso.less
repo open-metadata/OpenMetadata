@@ -139,6 +139,17 @@
   border-radius: @size-sm;
   margin: @size-xs 0px @size-lg 0px;
   border: 1px solid @grey-15;
+  .enable-self-signup-header {
+    color: @grey-700;
+    font-weight: 600px;
+    line-height: 20px;
+    font-size: @font-size-base;
+    margin: 0;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
+    font-weight: 400;
+  }
 
   // Custom toggle styling to match design
   .ant-switch {
@@ -206,26 +217,24 @@
   align-items: center;
   margin-bottom: @size-lg;
 
-  .provider-icon-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-
-    img {
-      border-radius: @size-xxs;
-    }
+  color: @grey-900;
+  .sso-form-header {
+    color: @grey-900;
   }
 }
 
 // SSO-specific breadcrumb styling - only applies within SSO settings page
 .sso-settings-page {
+  .content-height-with-resizable-panel {
+    height: calc(100vh - var(--ant-navbar-height) - 32px);
+  }
+  .right-panel-splitter {
+    margin-left: 12px;
+  }
   .breadcrumb-container {
     ol .breadcrumb-item {
       a.link-title {
         color: @navigation-text-color;
-        font-family: 'Inter', sans-serif;
         font-size: @font-size-base;
         font-weight: 400;
         line-height: @size-mlg;
@@ -240,7 +249,7 @@
       span.inactive-link,
       span.inactive-link.cursor-text,
       span.link-title.inactive-link {
-        color: @primary-6 !important;
+        color: @blue-41 !important;
 
         font-size: @font-size-base;
         font-weight: 400;
@@ -248,7 +257,7 @@
 
         &.font-medium {
           font-weight: 400;
-          color: @primary-6;
+          color: @blue-41;
         }
       }
 

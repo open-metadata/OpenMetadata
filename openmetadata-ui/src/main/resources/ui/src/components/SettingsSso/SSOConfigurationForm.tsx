@@ -836,19 +836,6 @@ const SSOConfigurationFormRJSF = ({
     });
   };
 
-  const handleChangeProvider = () => {
-    if (onChangeProvider) {
-      onChangeProvider();
-    } else {
-      // When changing provider without parent callback, reset to provider selector
-      setShowForm(false);
-      setShowProviderSelector(true);
-      setIsEditMode(false);
-      setInternalData(undefined);
-      setCurrentProvider(undefined);
-    }
-  };
-
   if (isInitializing) {
     return <Loader />;
   }
@@ -949,8 +936,8 @@ const SSOConfigurationFormRJSF = ({
       data-testid="sso-configuration-form-card">
       {/* SSO Provider Header */}
       {currentProvider && (
-        <div className="sso-provider-form-header flex items-center">
-          <div className="flex align-items-center gap-3 flex items-center">
+        <div className="sso-provider-form-header flex items-center justify-between">
+          <div className="flex align-items-center gap-2 flex items-center">
             <div className="provider-icon-container">
               {getProviderIcon(currentProvider) && (
                 <img
@@ -961,10 +948,18 @@ const SSOConfigurationFormRJSF = ({
                 />
               )}
             </div>
-            <Typography.Title className="m-0 text-md" level={4}>
+            <Typography.Title className="m-0 text-md">
               {getProviderDisplayName(currentProvider)} {t('label.set-up')}
             </Typography.Title>
           </div>
+          {hasExistingConfig && onChangeProvider && (
+            <Button
+              data-testid="change-provider-button"
+              type="link"
+              onClick={onChangeProvider}>
+              {t('label.change-provider')}
+            </Button>
+          )}
         </div>
       )}
       {formContent}

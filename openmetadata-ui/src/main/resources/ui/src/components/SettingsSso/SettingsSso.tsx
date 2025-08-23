@@ -13,6 +13,7 @@
 import { Switch, Tabs, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import Auth0Icon from '../../assets/img/icon-auth0.png';
 import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../../assets/img/icon-azure.png';
@@ -24,6 +25,7 @@ import { AuthProvider } from '../../generated/settings/settings';
 import { getSecurityConfiguration } from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -33,6 +35,7 @@ import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [hasExistingConfig, setHasExistingConfig] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('configure');
@@ -81,12 +84,46 @@ const SettingsSso = () => {
       GlobalSettingsMenuCategory.SSO
     );
 
-    // Add provider name to breadcrumb if we have a current provider (existing or newly selected)
-    if (currentProvider && currentProvider !== AuthProvider.Basic) {
+    // For configured SSO providers, show "Settings > Provider Name"
+    if (
+      currentProvider &&
+      currentProvider !== AuthProvider.Basic &&
+      hasExistingConfig
+    ) {
       const providerDisplayName = getProviderDisplayName(currentProvider);
 
+      const updatedBreadcrumb = [...baseBreadcrumb];
+      updatedBreadcrumb[updatedBreadcrumb.length - 1] = {
+        name: providerDisplayName,
+        url: '',
+        activeTitle: true,
+      };
+
+      return updatedBreadcrumb;
+    }
+
+    // For new provider configuration, show "Settings > SSO > Provider Name"
+    if (
+      currentProvider &&
+      currentProvider !== AuthProvider.Basic &&
+      !hasExistingConfig
+    ) {
+      const providerDisplayName = getProviderDisplayName(currentProvider);
+
+      const updatedBaseBreadcrumb = baseBreadcrumb.map((item, index) => {
+        if (index === baseBreadcrumb.length - 1) {
+          return {
+            ...item,
+            url: getSettingPath(GlobalSettingsMenuCategory.SSO),
+            activeTitle: false,
+          };
+        }
+
+        return item;
+      });
+
       return [
-        ...baseBreadcrumb,
+        ...updatedBaseBreadcrumb,
         {
           name: providerDisplayName,
           url: '',
@@ -96,7 +133,22 @@ const SettingsSso = () => {
     }
 
     return baseBreadcrumb;
-  }, [currentProvider]);
+  }, [currentProvider, hasExistingConfig]);
+
+  // Check URL parameters for provider selection
+  useEffect(() => {
+    const providerParam = searchParams.get('provider');
+    if (
+      providerParam &&
+      Object.values(AuthProvider).includes(providerParam as AuthProvider)
+    ) {
+      setCurrentProvider(providerParam);
+      setShowProviderSelector(false);
+    } else {
+      setShowProviderSelector(false);
+      setCurrentProvider('');
+    }
+  }, [searchParams]);
 
   // Check for existing SSO configuration
   useEffect(() => {
@@ -129,22 +181,31 @@ const SettingsSso = () => {
             setHasExistingConfig(false);
             setActiveTab('configure');
           }
-          // Always set current provider for breadcrumb display
-          setCurrentProvider(config.authenticationConfiguration.provider);
+          // Set current provider for breadcrumb display only if no URL parameter
+          const providerParam = searchParams.get('provider');
+          if (!providerParam) {
+            setCurrentProvider(config.authenticationConfiguration.provider);
+            setSearchParams({
+              provider: config.authenticationConfiguration.provider,
+            });
+          }
+          setShowProviderSelector(false);
         } else {
           setHasExistingConfig(false);
           setActiveTab('configure');
+          setShowProviderSelector(true);
         }
       } catch (error) {
         setHasExistingConfig(false);
         setActiveTab('configure');
+        setShowProviderSelector(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkExistingConfig();
-  }, []);
+  }, [searchParams]);
 
   const renderAccessTokenCard = () => {
     const AccessTokenCardComponent =
@@ -164,13 +225,17 @@ const SettingsSso = () => {
     setActiveTab(key);
   }, []);
 
-  const handleProviderSelect = useCallback((provider: AuthProvider) => {
-    setCurrentProvider(provider);
-    setShowProviderSelector(false);
+  const handleProviderSelect = useCallback(
+    (provider: AuthProvider) => {
+      setCurrentProvider(provider);
+      setShowProviderSelector(false);
 
-    // Clear existing configuration state since we're changing providers
-    setHasExistingConfig(false);
-  }, []);
+      setSearchParams({ provider });
+
+      setHasExistingConfig(false);
+    },
+    [setSearchParams]
+  );
 
   const handleSSOToggle = useCallback(async (checked: boolean) => {
     setSsoEnabled(checked);
@@ -199,15 +264,25 @@ const SettingsSso = () => {
     }
   }, []);
 
+  const handleChangeProvider = useCallback(() => {
+    setSearchParams({});
+
+    setShowProviderSelector(true);
+    setCurrentProvider('');
+    setHasExistingConfig(false);
+    setActiveTab('configure');
+    setSsoEnabled(true);
+  }, [setSearchParams]);
+
   // If showing provider selector
   if (showProviderSelector) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
         {renderAccessTokenCard()}
-        <div className="m-t-lg">
+        <div className="m-t-lg sso-provider-selection">
           <ProviderSelector
-            selectedProvider={currentProvider as AuthProvider}
+            selectedProvider={currentProvider as AuthProvider | undefined}
             onProviderSelect={handleProviderSelect}
           />
         </div>
@@ -261,11 +336,11 @@ const SettingsSso = () => {
           {/* Enable SSO section */}
           <div className="enable-sso-card-container">
             <div className="flex justify-between items-center">
-              <div>
-                <Typography.Title className="m-b-xs" level={5}>
+              <div className="flex flex-col  gap-2">
+                <Typography.Title className="enable-self-signup-header m-b-xs">
                   {t('label.enable-sso')}
                 </Typography.Title>
-                <Typography.Text type="secondary">
+                <Typography.Text className="enable-self-signup-desc">
                   {t('message.allow-user-to-login-via-sso')}
                 </Typography.Text>
               </div>
@@ -301,34 +376,35 @@ const SettingsSso = () => {
         <SSOConfigurationFormRJSF
           hideBorder
           forceEditMode={activeTab === 'configure'}
+          onChangeProvider={handleChangeProvider}
         />
       </div>
     ),
   });
 
-  // For all configured SSO providers, show tabs
   return (
     <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
       <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
 
       <div className="settings-sso" style={{ background: 'white' }}>
-        {/* Provider Header - Outside tabs */}
         {currentProvider && currentProvider !== AuthProvider.Basic && (
           <div className="sso-provider-header">
-            <div className="flex align-items-center gap-3">
-              <div className="provider-icon-container">
-                {getProviderIcon(currentProvider) && (
-                  <img
-                    alt={getProviderDisplayName(currentProvider)}
-                    height="32"
-                    src={getProviderIcon(currentProvider)}
-                    width="32"
-                  />
-                )}
+            <div className="flex align-items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="provider-icon-container">
+                  {getProviderIcon(currentProvider) && (
+                    <img
+                      alt={getProviderDisplayName(currentProvider)}
+                      height="22"
+                      src={getProviderIcon(currentProvider)}
+                      width="22"
+                    />
+                  )}
+                </div>
+                <Typography.Title className="m-0 sso-form-header text-md">
+                  {getProviderDisplayName(currentProvider)}
+                </Typography.Title>
               </div>
-              <Typography.Title className="m-0" level={4}>
-                {getProviderDisplayName(currentProvider)}
-              </Typography.Title>
             </div>
           </div>
         )}

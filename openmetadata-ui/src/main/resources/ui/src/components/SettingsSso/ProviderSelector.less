@@ -14,6 +14,11 @@
 @import (reference) '../../styles/variables.less';
 .sso-provider-selection {
   height: calc(100vh - (@om-navbar-height + 50px));
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: @size-sm;
+  margin-top: @size-xs;
+
   .ant-card-body {
     padding: @padding-lg;
 
@@ -30,14 +35,15 @@
       h5 {
         font-size: 18px;
         font-weight: 600;
-        color: @grey-900;
+        color: @grey-700;
         margin: 0;
       }
     }
 
     .provider-selection-container {
-      gap: @size-lg;
+      gap: 32px;
       flex: 1;
+      padding: 4px; // Add padding to prevent outline from being cut off
     }
 
     .provider-item {
@@ -46,19 +52,20 @@
       gap: @padding-mlg;
       padding: @padding-sm @padding-mlg;
       background: @background-color;
-      border: 1px solid @border-color;
+      border: 1px solid @grey-200;
       width: 340px;
       border-radius: @border-rad-sm;
       cursor: pointer;
+      box-shadow: 0px 1px 2px 0px #0a0d120d;
 
       &.selected {
         outline: 2px solid @primary-color;
-        outline-offset: 4px;
+        outline-offset: @size-xxs;
       }
 
       &:hover {
         outline: 2px solid @primary-color;
-        outline-offset: 4px;
+        outline-offset: @size-xxs;
       }
     }
 

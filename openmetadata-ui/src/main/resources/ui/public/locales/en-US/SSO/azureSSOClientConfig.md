@@ -4,8 +4,6 @@ description: Configure Azure Active Directory Single Sign-On for OpenMetadata wi
 slug: /main-concepts/metadata-standard/schemas/security/client/azure-ad-sso
 ---
 
-# Azure AD SSO Configuration
-
 Azure Active Directory (Azure AD) SSO enables users to log in with their Microsoft 365 / Entra ID accounts using OAuth 2.0 and OpenID Connect (OIDC).
 
 ## Authentication Configuration

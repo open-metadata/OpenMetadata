@@ -98,7 +98,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
   info(node) {
     return getHTMLTokens(node);
   },
-  htmlInline(node, { origin }) {
+  htmlInline(_, { origin }) {
     // This handles inline HTML elements like <span data-id="value">
     const originResult = origin && origin();
 

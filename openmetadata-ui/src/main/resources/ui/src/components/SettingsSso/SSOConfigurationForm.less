@@ -95,6 +95,7 @@
 
     .ant-typography {
       font-weight: 600;
+      color: @grey-900;
     }
   }
 
@@ -131,8 +132,8 @@
     margin-bottom: 0;
     padding: @size-md @size-lg;
     border-top: 1px solid @grey-200;
-    background-color: @grey-9;
-    box-shadow: @box-shadow-base;
+    background-color: @white;
+    box-shadow: 0px -13px 16px -4px #0a0d1214;
     box-sizing: border-box;
   }
 
@@ -153,7 +154,7 @@
   height: calc(100vh - var(--ant-navbar-height) - 216px);
 
   .right-panel-splitter {
-    margin-left: 42px;
+    margin-left: @size-lg;
   }
 
   .content-resizable-panel-container {
@@ -169,7 +170,7 @@
       margin-top: @size-lg;
       margin-bottom: 0;
       padding: @size-md @size-lg;
-      border-top: 0.5px solid @grey-100;
+      border-top: 1px solid @grey-200;
       background-color: @white;
       box-shadow: @box-shadow-base;
       box-sizing: border-box;
@@ -235,7 +236,7 @@
 
     .required {
       color: @red-21;
-      margin-left: @size-xxs;
+      margin-left: 2px;
     }
   }
 }
