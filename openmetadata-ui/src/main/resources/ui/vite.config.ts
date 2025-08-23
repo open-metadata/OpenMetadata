@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       copyPublicDir: true,
-      sourcemap: true,
+      sourcemap: false,
       minify: mode === 'production' ? 'terser' : false,
       rollupOptions: {
         output: {
