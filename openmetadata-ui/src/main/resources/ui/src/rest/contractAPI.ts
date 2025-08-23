@@ -18,6 +18,7 @@ import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import { DataContract } from '../generated/entity/data/dataContract';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
+import { EntityStatus } from '../generated/entity/entity';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
@@ -27,7 +28,7 @@ interface ListContractsParams extends ListParams {
   /**
    * status of the contract
    */
-  status?: 'Active';
+  status?: EntityStatus;
   /**
    * entity ID to filter by
    */

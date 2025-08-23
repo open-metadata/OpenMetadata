@@ -166,7 +166,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
         self.assertEqual(res.entity.id, self.table_entity.id)
         self.assertEqual(res.entity.type, "table")
         self.assertEqual(len(res.schema_), 2)
@@ -182,7 +182,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
 
     def test_get_data_contract_by_id(self):
         """We can fetch DataContract by ID"""
@@ -195,7 +195,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.id, created_contract.id)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
 
     def test_put_data_contract_result(self):
         """We can create and store DataContract execution results"""
