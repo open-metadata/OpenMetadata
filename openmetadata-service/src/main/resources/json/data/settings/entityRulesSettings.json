@@ -32,7 +32,7 @@
     },
     {
       "name": "Data Product Domain Validation",
-      "description": "Validates that entities assigned to Data Products have matching domains.",
+      "description": "Validates that Data Products assigned to an entity match the entity's domains.",
       "rule": "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}",
       "enabled": true,
       "provider": "system"

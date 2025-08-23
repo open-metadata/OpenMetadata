@@ -13,10 +13,12 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 public class LogicOps {
 
@@ -122,20 +124,19 @@ public class LogicOps {
           List<EntityReference> domains =
               JsonUtils.convertValue(args[1], new TypeReference<List<EntityReference>>() {});
 
-          if (nullOrEmpty(dataProducts) || nullOrEmpty(domains)) {
-            return true; // If no data products or domains, validation passes
+          if (nullOrEmpty(dataProducts)) {
+            return true; // If no data products, validation passes
+          } else if (nullOrEmpty(domains)) {
+            return false; // If data products but no domains, validation fails
           }
 
-          // For each data product, check if its domain matches any entity domain
+          // For each data product, check if its domain matches any entity assigned domain
           for (EntityReference dataProduct : dataProducts) {
             try {
               // Get the data product entity to access its domains
-              EntityInterface dpEntity =
-                  org.openmetadata.service.Entity.getEntity(
-                      org.openmetadata.service.Entity.DATA_PRODUCT,
-                      dataProduct.getId(),
-                      "domains",
-                      org.openmetadata.schema.type.Include.NON_DELETED);
+              DataProduct dpEntity =
+                  Entity.getEntity(
+                      Entity.DATA_PRODUCT, dataProduct.getId(), "domains", Include.NON_DELETED);
               List<EntityReference> dpDomains = dpEntity.getDomains();
 
               if (nullOrEmpty(dpDomains)) {
@@ -160,7 +161,6 @@ public class LogicOps {
               return false;
             }
           }
-
           return true; // All data products have matching domains
         });
 
