@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -2932,6 +2933,72 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_sensitivePIIColumnProfile_byGetColumns(TestInfo test) throws Exception {
+    // Arrange: create 2 profiled tables owned by USER1
+    Table table =
+        createEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table1 =
+        createEntity(
+            createRequest(test, 1).withOwners(List.of(USER1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    // Seed table/column profiles (C1, C2, C3)
+    putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
+
+    // Tag C3 as PII.Sensitive and persist
+    Column c3 =
+        table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().orElseThrow();
+    String c3FQN = c3.getFullyQualifiedName();
+    List<TagLabel> c3Tags = new ArrayList<>(listOrEmpty(c3.getTags()));
+    c3Tags.add(
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION));
+    c3.setTags(c3Tags);
+    patchEntity(table.getId(), JsonUtils.pojoToJson(table), table, ADMIN_AUTH_HEADERS);
+
+    // Build the base target to fetch columns (requesting tags + profile fields)
+    WebTarget baseColumnsTarget =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "1000")
+            .queryParam("offset", "0")
+            .queryParam("fields", "tags,profile")
+            .queryParam("include", "non-deleted");
+
+    // --- Owner call: USER1 should see C3 profile values
+    TableResource.TableColumnList ownerResp =
+        TestUtils.get(
+            baseColumnsTarget, TableResource.TableColumnList.class, authHeaders(USER1.getName()));
+
+    Column ownerC3 =
+        ownerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for owner in /{id}/columns"));
+
+    assertNotNull(ownerC3.getProfile(), "Owner should see a column profile object for C3");
+    assertNotNull(ownerC3.getProfile().getMin(), "Owner should see min for PII column");
+    assertNotNull(ownerC3.getProfile().getMax(), "Owner should see max for PII column");
+
+    // --- Non-owner call: USER2 should get masked stats for C3
+    TableResource.TableColumnList nonOwnerResp =
+        TestUtils.get(
+            baseColumnsTarget,
+            TableResource.TableColumnList.class,
+            authHeaders(USER2_REF.getName()));
+
+    Column nonOwnerC3 =
+        nonOwnerResp.getData().stream()
+            .filter(col -> c3FQN.equals(col.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("C3 not found for non-owner in /{id}/columns"));
+
+    assertNull(
+        nonOwnerC3.getProfile(),
+        "Non-owner should NOT receive a profile object for PII-sensitive column");
+  }
+
+  @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // DatabaseService has owner dataConsumer
     CreateDatabaseService createDatabaseService =
@@ -5072,5 +5139,77 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Verify table no longer exists in RDF after hard delete
     RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getColumnsForSoftDeletedTable_200() throws IOException {
+    // Create database and schema with simple names for clean FQN
+    Database db =
+        dbTest.createEntity(
+            dbTest
+                .createRequest("test_soft_delete_db")
+                .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest("test_soft_delete_schema")
+                .withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a table with columns for testing soft-delete column retrieval
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      columns.add(getColumn("col" + i, STRING, null).withOrdinalPosition(i));
+    }
+
+    CreateTable create =
+        new CreateTable()
+            .withName("test_soft_delete_columns")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(columns);
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify columns can be retrieved for active table
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Soft delete the table
+    deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify columns can still be retrieved for soft-deleted table using include=all
+    target = getResource("tables/" + table.getId() + "/columns").queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Also test by FQN for soft-deleted table (now with clean FQN)
+    target =
+        getResource(
+                "tables/name/"
+                    + URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("include", "all");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Verify that without include=all parameter, it should fail
+    WebTarget targetWithoutInclude = getResource("tables/" + table.getId() + "/columns");
+    assertResponse(
+        () ->
+            TestUtils.get(
+                targetWithoutInclude, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("table", table.getId()));
+
+    // Cleanup: Hard delete the test entities we created to avoid affecting other tests
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+    schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
+    dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

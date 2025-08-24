@@ -103,7 +103,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 8 })) {
+    for (const _ of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
