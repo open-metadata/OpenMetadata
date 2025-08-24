@@ -35,6 +35,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -126,6 +127,11 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_owners",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=PatchRequest,
+                processor="process_dbt_custom_properties",
                 nullable=True,
             ),
             NodeStage(
@@ -369,6 +375,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_domain(self, data_model_link: DataModelLink):
         """
         Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_custom_properties(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT custom properties using patch APIs
         """
 
     def is_filtered(

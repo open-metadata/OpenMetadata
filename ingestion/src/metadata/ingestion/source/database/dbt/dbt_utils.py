@@ -229,7 +229,9 @@ def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
         custom_properties = openmetadata.get("custom_properties", {})
 
         if not isinstance(custom_properties, dict):
-            logger.warning(f"custom_properties is not a dictionary: {type(custom_properties)}")
+            logger.warning(
+                f"custom_properties is not a dictionary: {type(custom_properties)}"
+            )
             return {}
 
         if custom_properties:
@@ -239,7 +241,9 @@ def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
 
         return custom_properties
     except Exception as exc:
-        logger.warning(f"Error extracting custom_properties from meta.openmetadata: {exc}")
+        logger.warning(
+            f"Error extracting custom_properties from meta.openmetadata: {exc}"
+        )
         return {}
 
 
