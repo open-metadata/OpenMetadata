@@ -24,7 +24,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
-from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Table,
+    TableConstraint,
+    TableData,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -557,7 +562,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        result: Union[TestConnectionResult, ReverseIngestionResponse],
+        result: Union[TestConnectionResult, ReverseIngestionResponse, TableData],
         workflow_status: WorkflowStatus,
     ) -> None:
         """

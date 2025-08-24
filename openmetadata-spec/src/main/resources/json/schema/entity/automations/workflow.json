@@ -15,7 +15,8 @@
       "type": "string",
       "enum": [
         "TEST_CONNECTION",
-        "REVERSE_INGESTION"
+        "REVERSE_INGESTION",
+        "QUERY_RUNNER"
       ]
     },
     "workflowStatus": {
@@ -68,6 +69,9 @@
         },
         {
           "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
+        },
+        {
+          "$ref": "queryRunnerRequest.json"
         }
       ]
     },
@@ -79,6 +83,9 @@
         },
         {
           "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
+        },
+        {
+          "$ref": "../data/table.json#/definitions/tableData"
         }
       ]
     },
