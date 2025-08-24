@@ -151,6 +151,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
         [AuthProvider.Okta]: 'oktaSSOClientConfig',
         [AuthProvider.Auth0]: 'auth0SSOClientConfig',
         [AuthProvider.Saml]: 'samlSSOClientConfig',
+        [AuthProvider.LDAP]: 'ldapSSOClientConfig',
         [AuthProvider.CustomOidc]: 'customOidcSSOClientConfig',
         [AuthProvider.AwsCognito]: 'awsCognitoSSOClientConfig',
         [AuthProvider.Basic]: 'basic',
