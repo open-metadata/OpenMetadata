@@ -118,7 +118,7 @@ module.exports = {
 
       // Images to be handled by file-loader + image-webpack-loader
       {
-        test: /\.(png|jpe?g)$/i,
+        test: /\.(png|jpe?g|webp)$/i,
         use: [
           {
             loader: 'file-loader',

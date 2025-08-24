@@ -91,7 +91,7 @@ module.exports = {
       },
       // images files to be handled by file-loader
       {
-        test: /\.png$/,
+        test: /\.(png|jpe?g|webp)$/,
         use: [
           {
             loader: 'file-loader',

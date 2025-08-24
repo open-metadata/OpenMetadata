@@ -56,6 +56,9 @@ src/generated/
 *.ico
 *.ttf
 *.md
+*.webp
+*.jpg
+*.jpeg
 
 # Snapshots
 *.snap

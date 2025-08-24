@@ -187,6 +187,9 @@
                 <nonFilteredFileExtension>eot</nonFilteredFileExtension>
                 <nonFilteredFileExtension>svg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>png</nonFilteredFileExtension>
+                <nonFilteredFileExtension>webp</nonFilteredFileExtension>
+                <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
               </nonFilteredFileExtensions>
             </configuration>
           </execution>
