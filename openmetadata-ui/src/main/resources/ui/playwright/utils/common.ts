@@ -55,86 +55,14 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const ensureServiceWorkerReady = async (page: Page): Promise<void> => {
-  // Ensure service worker is ready to read IndexedDB storage state
-  await page.evaluate(async () => {
-    if ('serviceWorker' in navigator && 'indexedDB' in window) {
-      await navigator.serviceWorker.ready;
-      // Give service worker time to initialize token access
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  });
-};
-
-export const waitForTokenAvailability = async (
-  page: Page,
-  maxAttempts = 5
-): Promise<boolean> => {
-  for (let i = 0; i < maxAttempts; i++) {
-    const token = await getToken(page);
-    if (token) {
-      return true;
-    }
-    // Wait before checking again
-    await page.waitForTimeout(500);
-  }
-
-  return false;
-};
-
-/**
- * Navigate to a URL with proper Service Worker and token handling
- * @param page - Playwright page instance
- * @param url - URL to navigate to
- * @param options - Navigation options
- */
-export const safeNavigate = async (
-  page: Page,
-  url: string,
-  options?: {
-    waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
-    timeout?: number;
-    skipTokenCheck?: boolean;
-  }
-) => {
-  const {
-    waitUntil = 'domcontentloaded',
-    timeout = 30000,
-    skipTokenCheck = false,
-  } = options || {};
-
-  // Ensure Service Worker is ready first
-  await ensureServiceWorkerReady(page);
-
-  // Ensure token is available unless explicitly skipped
-  if (!skipTokenCheck) {
-    await waitForTokenAvailability(page);
-  }
-
-  // Navigate to the URL
-  await page.goto(url, { waitUntil, timeout });
-
-  // Check if we were redirected to signin (auth failure)
-  const currentUrl = page.url();
-  if (
-    !skipTokenCheck &&
-    (currentUrl.includes('/signin') || currentUrl.includes('/login'))
-  ) {
-    // Token might not have been ready, wait and retry
-    await page.waitForTimeout(2000);
-    await waitForTokenAvailability(page);
-    await page.goto(url, { waitUntil, timeout });
-  }
-};
-
 export const redirectToHomePage = async (page: Page) => {
-  await safeNavigate(page, '/');
+  await page.goto('/');
   await page.waitForURL('**/my-data');
   await page.waitForLoadState('networkidle');
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await safeNavigate(page, '/explore');
+  await page.goto('/explore');
   await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };
