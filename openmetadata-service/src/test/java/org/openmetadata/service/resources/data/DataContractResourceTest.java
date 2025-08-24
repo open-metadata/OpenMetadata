@@ -1296,7 +1296,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(created.getId(), patched.getId());
 
     // Verify that GET returns the correct status after PATCH
-    DataContract retrieved = getDataContract(patched.getId(), "");
+    DataContract retrieved = getDataContract(patched.getId(), "entityStatus");
     assertEquals(EntityStatus.APPROVED, retrieved.getEntityStatus());
     assertEquals(created.getId(), retrieved.getId());
   }
@@ -1319,7 +1319,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(created.getId(), patched.getId());
 
     // Verify that GET returns the correct status after PATCH
-    DataContract retrieved = getDataContract(patched.getId(), "");
+    DataContract retrieved = getDataContract(patched.getId(), "entityStatus");
     assertEquals(EntityStatus.APPROVED, retrieved.getEntityStatus());
     assertEquals(created.getId(), retrieved.getId());
   }
