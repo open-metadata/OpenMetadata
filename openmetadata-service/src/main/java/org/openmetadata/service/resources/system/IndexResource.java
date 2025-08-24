@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.stream.Collectors;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.util.UIUtils;
 
 @Path("/")
 public class IndexResource {
@@ -24,7 +25,9 @@ public class IndexResource {
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.indexHtml = this.indexHtml.replace("${basePath}", config.getBasePath());
+    // Use utility method to format basePath for UI assets
+    String basePath = UIUtils.formatBasePathForUI(config.getBasePath());
+    this.indexHtml = this.indexHtml.replace("${basePath}", basePath);
   }
 
   public static String getIndexFile(String basePath) {
@@ -35,7 +38,9 @@ public class IndexResource {
             .lines()
             .collect(Collectors.joining("\n"));
 
-    return indexHtml.replace("${basePath}", basePath);
+    // Use utility method to format basePath for UI assets  
+    String formattedBasePath = UIUtils.formatBasePathForUI(basePath);
+    return indexHtml.replace("${basePath}", formattedBasePath);
   }
 
   @GET
