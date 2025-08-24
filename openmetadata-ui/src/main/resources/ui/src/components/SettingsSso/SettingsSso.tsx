@@ -303,14 +303,13 @@ const SettingsSso = () => {
   // If existing configuration, show tabs
   const tabItems = [];
 
-  // Overview tab for Google, Azure and Okta providers
-  if (
-    currentProvider === AuthProvider.Azure ||
-    currentProvider === AuthProvider.Okta
-  ) {
+  // Overview tab for all SSO providers
+  if (currentProvider && currentProvider !== AuthProvider.Basic) {
     const renderOverviewContent = () => {
-      // Get the SCIM access token card component
+      // Get the SCIM access token card component - only for Azure and Okta
       const SCIMAccessTokenCard =
+        (currentProvider === AuthProvider.Azure ||
+          currentProvider === AuthProvider.Okta) &&
         ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
 
       return (
@@ -334,9 +333,9 @@ const SettingsSso = () => {
             </div>
           </div>
 
-          {/* SCIM Provisioning section */}
+          {/* SCIM Provisioning section - only for Azure and Okta */}
 
-          {/* SCIM Access Token Card - only show if available */}
+          {/* SCIM Access Token Card - only show if available and for Azure/Okta */}
           {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
         </div>
       );
