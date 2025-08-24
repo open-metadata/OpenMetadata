@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 import { RJSFSchema } from '@rjsf/utils';
-import { cloneDeep, isEmpty, isString } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
   PipelineType as WorkflowType,
-  ProcessingEngineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionWorkflowData } from '../interface/service.interface';
 import apiServiceMetadataPipeline from '../jsons/ingestionSchemas/apiServiceMetadataPipeline.json';
 import dashboardMetadataPipeline from '../jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
 import databaseAutoClassificationPipeline from '../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import databaseMetadataPipeline from '../jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
+import databaseProfilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import databaseLineagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
 import databaseUsagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
 import dataInsightPipeline from '../jsons/ingestionSchemas/dataInsightPipeline.json';
@@ -34,7 +33,7 @@ import pipelineMetadataPipeline from '../jsons/ingestionSchemas/pipelineServiceM
 import searchMetadataPipeline from '../jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
 import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
 import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
-import serviceUtilClassBase from './ServiceUtilClassBase';
+import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 
 export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
@@ -71,7 +70,7 @@ export const getSchemaByWorkflowType = (
   workflowType: WorkflowType,
   serviceCategory: ServiceCategory
 ) => {
-  const customProperties = {
+  const customProperties: RJSFSchema = {
     displayName: {
       description: 'Display Name of the workflow',
       type: 'string',
@@ -87,6 +86,28 @@ export const getSchemaByWorkflowType = (
       default: false,
     },
   };
+
+  if (
+    workflowType === WorkflowType.Profiler &&
+    !isUndefined(ProfilerConfigurationClassBase.getSparkAgentField())
+  ) {
+    customProperties.rootProcessingEngine = {
+      type: 'object',
+      $id: '/schemas/rootProcessingEngine',
+      title: 'Processing Engine',
+      description: 'Select the processing engine for the profiler workflow',
+      properties: {
+        type: {
+          type: 'string',
+          default: 'ingestionRunner',
+        },
+        id: {
+          type: 'string',
+        },
+      },
+      required: ['type', 'id'],
+    };
+  }
   let schema = {};
 
   switch (workflowType) {
@@ -97,11 +118,9 @@ export const getSchemaByWorkflowType = (
 
       break;
     case WorkflowType.Profiler:
-      {
-        const profilerConfig = serviceUtilClassBase.getProfilerConfig();
-
-        schema = profilerConfig.schema;
-      }
+      schema = {
+        ...databaseProfilerPipeline,
+      };
 
       break;
     case WorkflowType.AutoClassification:
@@ -193,68 +212,4 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
   });
 
   return cleanedWorkFlowData;
-};
-
-/**
- * Transforms profiler processing engine data to handle different formats
- * @param formData - The form data containing processingEngine
- * @returns Transformed form data with properly formatted processingEngine
- */
-export const transformProfilerProcessingEngine = (
-  formData: IngestionWorkflowData
-): IngestionWorkflowData => {
-  if (!formData.processingEngine) {
-    return formData;
-  }
-
-  // Check if processingEngine is a JSON string (from our custom component)
-  if (isString(formData.processingEngine)) {
-    try {
-      // Parse the JSON string back to object
-      const engineConfig = JSON.parse(formData.processingEngine);
-      formData.processingEngine = engineConfig;
-    } catch (error) {
-      // If parsing fails, it might be the old format
-      if (formData.processingEngine?.type === 'Spark') {
-        formData.processingEngine = {
-          type: ProcessingEngineType.Spark,
-          remote: '', // This will be required for Spark
-          config: {
-            tempPath: '/tmp/openmetadata',
-            extraConfig: {},
-          },
-        };
-      } else {
-        // For Native engine, set the type
-        formData.processingEngine = {
-          type: ProcessingEngineType.Native,
-        };
-      }
-    }
-  } else if (formData.processingEngine.type === ProcessingEngineType.Spark) {
-    // Ensure Spark engine has required fields with defaults
-    formData.processingEngine = {
-      type: ProcessingEngineType.Spark,
-      remote: formData.processingEngine.remote || '', // This will be required for Spark
-      config: formData.processingEngine.config || {
-        tempPath: '/tmp/openmetadata',
-        extraConfig: {},
-      },
-    };
-  }
-
-  // Force override processingEngine based on our hidden input
-  const hiddenInput = document.querySelector(
-    'input[name="processingEngine"]'
-  ) as HTMLInputElement;
-  if (hiddenInput && hiddenInput.value) {
-    try {
-      const engineConfig = JSON.parse(hiddenInput.value);
-      formData.processingEngine = engineConfig;
-    } catch (_error) {
-      // Do nothing
-    }
-  }
-
-  return formData;
 };

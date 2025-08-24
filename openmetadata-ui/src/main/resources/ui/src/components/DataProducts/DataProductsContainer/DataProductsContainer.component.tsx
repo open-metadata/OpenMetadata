@@ -75,8 +75,23 @@ const DataProductsContainer = ({
     [navigate]
   );
 
-  const handleSave = async (dataProducts: DataProduct[]) => {
-    await onSave?.(dataProducts);
+  const handleSave = async (udpatedValues: DataProduct[]) => {
+    const finalData = udpatedValues.reduce((acc, item) => {
+      if (!item.id) {
+        const existingItem = dataProducts.find(
+          (dp) => dp.fullyQualifiedName === item.fullyQualifiedName
+        );
+        if (existingItem) {
+          acc.push(existingItem as unknown as DataProduct);
+        }
+      } else {
+        acc.push(item);
+      }
+
+      return acc;
+    }, [] as DataProduct[]);
+
+    await onSave?.(finalData);
     setIsEditMode(false);
   };
 

@@ -580,9 +580,12 @@ export const fillRowDetails = async (
     };
   },
   page: Page,
-  customPropertyRecord?: Record<string, string>
+  customPropertyRecord?: Record<string, string>,
+  isFirstCellClick?: boolean
 ) => {
-  await page.locator('.rdg-cell-name').last().click();
+  if (!isFirstCellClick) {
+    await page.locator('.rdg-cell-name').last().click();
+  }
 
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
   const isActive = await activeCell.isVisible();
@@ -959,4 +962,87 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
     .first();
 
   await expect(lastRowFirstCell).toBeFocused();
+};
+
+export const performDeleteOperationOnEntity = async (page: Page) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
+
+  // Description Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Owner Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tag Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Glossary Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tier Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Certification Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Retention Period Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Source URL Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Domains Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+};
+
+export const performColumnSelectAndDeleteOperation = async (page: Page) => {
+  const displayNameHeader = page.getByRole('columnheader', {
+    name: 'Display Name',
+  });
+
+  const firstRow = page.locator('.rdg-row').first();
+  const firstCell = firstRow.locator('.rdg-cell').nth(1);
+
+  await displayNameHeader.click();
+
+  await expect(firstCell).not.toBeFocused();
+
+  await expect(displayNameHeader).toBeFocused();
+
+  await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(9);
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  await expect(
+    page.getByRole('gridcell', { name: 'Playwright,Database', exact: true })
+  ).not.toBeVisible(); // Display Name cell should be deleted
 };

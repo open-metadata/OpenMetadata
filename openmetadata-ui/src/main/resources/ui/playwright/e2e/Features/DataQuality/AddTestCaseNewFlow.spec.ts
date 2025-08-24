@@ -172,6 +172,10 @@ test.describe('Add TestCase New Flow', () => {
       await selectTable(page, table1.entity.name);
 
       await page.click('#testCaseFormV1_selectedColumn');
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector(
+        `.ant-select-dropdown [title="${table1.entity.columns[0].name}"]`
+      );
       await page
         .locator(
           `.ant-select-dropdown [title="${table1.entity.columns[0].name}"]`

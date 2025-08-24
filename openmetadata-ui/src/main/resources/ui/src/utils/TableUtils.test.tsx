@@ -17,9 +17,15 @@ import {
   ExtraTableDropdownOptions,
   findColumnByEntityLink,
   getEntityIcon,
+  getExpandAllKeysToDepth,
+  getSafeExpandAllKeys,
+  getSchemaDepth,
+  getSchemaFieldCount,
   getTagsWithoutTier,
   getTierTags,
+  isLargeSchema,
   pruneEmptyChildren,
+  shouldCollapseSchema,
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
@@ -662,6 +668,249 @@ describe('TableUtils', () => {
       expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
         'children'
       );
+    });
+  });
+
+  describe('Schema Performance Functions', () => {
+    // Mock field structure for testing
+    type MockField = { name?: string; children?: MockField[] };
+
+    const mockNestedFields: MockField[] = [
+      {
+        name: 'level1_field1',
+        children: [
+          {
+            name: 'level2_field1',
+            children: [{ name: 'level3_field1' }, { name: 'level3_field2' }],
+          },
+          {
+            name: 'level2_field2',
+            children: [{ name: 'level3_field3' }],
+          },
+        ],
+      },
+      {
+        name: 'level1_field2',
+        children: [
+          {
+            name: 'level2_field3',
+            children: [{ name: 'level3_field4' }, { name: 'level3_field5' }],
+          },
+        ],
+      },
+      {
+        name: 'level1_field3',
+      },
+    ];
+
+    describe('getSchemaFieldCount', () => {
+      it('should count all fields in a flat structure', () => {
+        const flatFields: MockField[] = [
+          { name: 'field1' },
+          { name: 'field2' },
+          { name: 'field3' },
+        ];
+
+        expect(getSchemaFieldCount(flatFields)).toBe(3);
+      });
+
+      it('should count all fields recursively in nested structure', () => {
+        expect(getSchemaFieldCount(mockNestedFields)).toBe(11); // 3 level1 + 3 level2 + 5 level3 = 11 total fields
+      });
+
+      it('should return 0 for empty array', () => {
+        expect(getSchemaFieldCount([])).toBe(0);
+      });
+
+      it('should handle fields without children property', () => {
+        const fieldsWithoutChildren: MockField[] = [
+          { name: 'field1' },
+          { name: 'field2', children: undefined },
+        ];
+
+        expect(getSchemaFieldCount(fieldsWithoutChildren)).toBe(2);
+      });
+    });
+
+    describe('getSchemaDepth', () => {
+      it('should return 0 for empty array', () => {
+        expect(getSchemaDepth([])).toBe(0);
+      });
+
+      it('should return 1 for flat structure', () => {
+        const flatFields: MockField[] = [
+          { name: 'field1' },
+          { name: 'field2' },
+        ];
+
+        expect(getSchemaDepth(flatFields)).toBe(1);
+      });
+
+      it('should calculate correct depth for nested structure', () => {
+        expect(getSchemaDepth(mockNestedFields)).toBe(3); // 3 levels deep
+      });
+
+      it('should handle mixed depth structure correctly', () => {
+        const mixedDepthFields: MockField[] = [
+          {
+            name: 'shallow',
+            children: [{ name: 'level2' }],
+          },
+          {
+            name: 'deep',
+            children: [
+              {
+                name: 'level2',
+                children: [
+                  {
+                    name: 'level3',
+                    children: [{ name: 'level4' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ];
+
+        expect(getSchemaDepth(mixedDepthFields)).toBe(4); // Should return maximum depth
+      });
+    });
+
+    describe('isLargeSchema', () => {
+      it('should return false for small schemas', () => {
+        const smallFields: MockField[] = Array.from({ length: 10 }, (_, i) => ({
+          name: `field${i}`,
+        }));
+
+        expect(isLargeSchema(smallFields)).toBe(false);
+      });
+
+      it('should return true for large schemas with default threshold', () => {
+        const largeFields: MockField[] = Array.from(
+          { length: 600 },
+          (_, i) => ({
+            name: `field${i}`,
+          })
+        );
+
+        expect(isLargeSchema(largeFields)).toBe(true);
+      });
+
+      it('should respect custom threshold', () => {
+        const fields: MockField[] = Array.from({ length: 100 }, (_, i) => ({
+          name: `field${i}`,
+        }));
+
+        expect(isLargeSchema(fields, 50)).toBe(true);
+        expect(isLargeSchema(fields, 150)).toBe(false);
+      });
+    });
+
+    describe('shouldCollapseSchema', () => {
+      it('should return false for small schemas', () => {
+        const smallFields: MockField[] = Array.from({ length: 10 }, (_, i) => ({
+          name: `field${i}`,
+        }));
+
+        expect(shouldCollapseSchema(smallFields)).toBe(false);
+      });
+
+      it('should return true for schemas above default threshold', () => {
+        const largeFields: MockField[] = Array.from({ length: 60 }, (_, i) => ({
+          name: `field${i}`,
+        }));
+
+        expect(shouldCollapseSchema(largeFields)).toBe(true);
+      });
+
+      it('should respect custom threshold', () => {
+        const fields: MockField[] = Array.from({ length: 30 }, (_, i) => ({
+          name: `field${i}`,
+        }));
+
+        expect(shouldCollapseSchema(fields, 20)).toBe(true);
+        expect(shouldCollapseSchema(fields, 40)).toBe(false);
+      });
+    });
+
+    describe('getExpandAllKeysToDepth', () => {
+      it('should return empty array for empty fields', () => {
+        expect(getExpandAllKeysToDepth([], 2)).toEqual([]);
+      });
+
+      it('should return all expandable keys up to specified depth', () => {
+        const result = getExpandAllKeysToDepth(mockNestedFields, 2);
+
+        // Should include level 1 and level 2 fields that have children
+        expect(result).toContain('level1_field1');
+        expect(result).toContain('level1_field2');
+        expect(result).toContain('level2_field1');
+        expect(result).toContain('level2_field2');
+        expect(result).toContain('level2_field3');
+
+        // Should not include level 3 fields (depth 2 stops before level 3)
+        expect(result).not.toContain('level3_field1');
+        expect(result).not.toContain('level3_field2');
+      });
+
+      it('should respect depth limit', () => {
+        const result1 = getExpandAllKeysToDepth(mockNestedFields, 1);
+        const result2 = getExpandAllKeysToDepth(mockNestedFields, 3);
+
+        // Depth 1 should only include top-level expandable fields
+        expect(result1).toContain('level1_field1');
+        expect(result1).toContain('level1_field2');
+        expect(result1).not.toContain('level2_field1');
+
+        // Depth 3 should include all expandable fields
+        expect(result2).toContain('level1_field1');
+        expect(result2).toContain('level2_field1');
+        expect(result2.length).toBeGreaterThan(result1.length);
+      });
+
+      it('should not include fields without children', () => {
+        const result = getExpandAllKeysToDepth(mockNestedFields, 2);
+
+        // level1_field3 has no children, so should not be included
+        expect(result).not.toContain('level1_field3');
+      });
+    });
+
+    describe('getSafeExpandAllKeys', () => {
+      it('should return all keys for small schemas', () => {
+        const allKeys = ['key1', 'key2', 'key3'];
+        const smallFields: MockField[] = [{ name: 'field1' }];
+
+        const result = getSafeExpandAllKeys(smallFields, false, allKeys);
+
+        expect(result).toEqual(allKeys);
+      });
+
+      it('should return limited keys for large schemas', () => {
+        const allKeys = ['key1', 'key2', 'key3', 'key4', 'key5'];
+
+        const result = getSafeExpandAllKeys(mockNestedFields, true, allKeys);
+
+        // Should return depth-limited keys, not all keys
+        expect(result).not.toEqual(allKeys);
+        expect(result.length).toBeLessThanOrEqual(allKeys.length);
+      });
+
+      it('should use depth-based expansion for large schemas', () => {
+        const allKeys = [
+          'level1_field1',
+          'level1_field2',
+          'level2_field1',
+          'level2_field2',
+        ];
+
+        const result = getSafeExpandAllKeys(mockNestedFields, true, allKeys);
+
+        // Should include top-level and second-level expandable fields
+        expect(result).toContain('level1_field1');
+        expect(result).toContain('level1_field2');
+        expect(result).toContain('level2_field1');
+      });
     });
   });
 });
