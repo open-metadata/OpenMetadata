@@ -65,6 +65,7 @@ import Table from '../../common/Table/Table';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -483,6 +484,7 @@ const ClassificationDetails = forwardRef(
               <div className="d-flex flex-column gap-5">
                 <DomainLabelV2 multiple showDomainHeading />
                 <OwnerLabelV2 dataTestId="classification-owner-name" />
+                <ReviewerLabelV2 />
               </div>
             </Col>
           </Row>

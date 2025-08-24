@@ -46,6 +46,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -222,7 +223,11 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: [TabSpecificField.DOMAINS, TabSpecificField.OWNERS],
+          fields: [
+            TabSpecificField.DOMAINS,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+          ],
         });
         setTagItem(response);
       }
@@ -470,6 +475,7 @@ const TagPage = () => {
                 <div className="d-flex flex-column gap-5">
                   <DomainLabelV2 multiple showDomainHeading />
                   <OwnerLabelV2 dataTestId="tag-owner-name" />
+                  <ReviewerLabelV2 />
                 </div>
               </Col>
             </Row>

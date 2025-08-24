@@ -138,6 +138,7 @@ const TagsPage = () => {
           TabSpecificField.TERM_COUNT,
           TabSpecificField.OWNERS,
           TabSpecificField.DOMAINS,
+          TabSpecificField.REVIEWERS,
         ],
         limit: 1000,
       });
@@ -171,6 +172,7 @@ const TagsPage = () => {
             TabSpecificField.USAGE_COUNT,
             TabSpecificField.TERM_COUNT,
             TabSpecificField.DOMAINS,
+            TabSpecificField.REVIEWERS,
           ],
         });
         if (currentClassification) {
