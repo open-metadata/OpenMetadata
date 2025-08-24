@@ -19,6 +19,9 @@
   .ant-card-body {
     padding: 0px;
   }
+  .ant-input-affix-wrapper {
+    border-radius: @size-xs;
+  }
   .card-title {
     color: @grey-700;
     font-style: normal;
@@ -63,14 +66,18 @@
 .scim-modal-delete {
   .ant-modal-content {
     width: 400px !important;
-    padding: 0px;
+    padding-bottom: 0px;
+    border-radius: @size-sm;
+  }
+  .ant-modal-body {
+    padding-bottom: 32px;
   }
 
   .scim-modal-header {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    margin-bottom: @size-lg;
+    margin-bottom: @size-md;
   }
 
   .scim-modal-icon {
@@ -80,8 +87,7 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background-color: @red-1;
-    color: @red-14;
+    background-color: @red-22;
   }
 
   .scim-modal-delete-title {
@@ -89,17 +95,20 @@
   }
 
   .scim-modal-delete-desc {
-    font-size: @size-sm;
     font-weight: 400;
     color: @grey-600;
+  }
+  .ant-modal-footer {
+    padding: 0px;
   }
 
   .ant-modal-footer,
   .ant-modal-footer .ant-btn-group {
     display: flex;
     justify-content: center;
-    gap: 16px;
+    gap: @size-md;
     border-top: none !important;
+    padding-bottom: @size-lg;
   }
   .ant-btn {
     height: 44px;
@@ -116,6 +125,7 @@
     justify-content: center;
     align-items: center;
     border-top: none !important;
+    padding: 0;
   }
   .scim-modal-cancel-button {
     background-color: @white;
@@ -149,6 +159,13 @@
   .enable-self-signup-desc {
     color: @grey-600;
     font-weight: 400;
+  }
+
+  .enable-self-signup-text {
+    color: @grey-700;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
   }
 
   // Custom toggle styling to match design

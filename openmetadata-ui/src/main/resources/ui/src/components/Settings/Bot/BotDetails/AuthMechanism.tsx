@@ -117,14 +117,7 @@ const AuthMechanism: FC<Props> = ({
           )}
         </Space>
       </Space>
-      <Divider
-        className={isSCIMBot ? 'scim-divider' : ''}
-        style={
-          isSCIMBot
-            ? { margin: '16px 24px 16px -24px', width: 'calc(100% + 48px)' }
-            : { margin: '8px 0px' }
-        }
-      />
+      <Divider className={isSCIMBot ? 'scim-divider' : ''} />
 
       {!isSCIMBot && (
         <Typography.Paragraph>{t('message.jwt-token')}</Typography.Paragraph>

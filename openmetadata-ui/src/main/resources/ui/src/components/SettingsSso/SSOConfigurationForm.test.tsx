@@ -20,13 +20,13 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   applySecurityConfiguration,
   validateSecurityConfiguration,
-} from '../../../rest/securityConfigAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import SSOConfigurationFormRJSF from '../SSOConfigurationForm';
+} from '../../rest/securityConfigAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
+import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 
 // Mock dependencies
 jest.mock('../../../utils/ToastUtils');
@@ -54,7 +54,7 @@ const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
 
-describe('SSOConfigurationFormRJSF', () => {
+describe('SSOConfigurationForm', () => {
   const mockSetIsAuthenticated = jest.fn();
   const mockSetAuthConfig = jest.fn();
   const mockSetAuthorizerConfig = jest.fn();

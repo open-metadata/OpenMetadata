@@ -267,14 +267,14 @@ const AccessTokenCard: FC<MockProps> = ({
             <div className="scim-token-delete-modal">
               <div className="scim-modal-header  mb-4">
                 <span className="scim-modal-icon">
-                  <TrashIcon height={20} width={20} />
+                  <TrashIcon height={22} />
                 </span>
               </div>
               <div className="flex flex-col gap-2">
-                <Typography.Text className="scim-modal-delete-title">
+                <Typography.Text className="scim-modal-delete-title text-md">
                   {t('message.delete-scim-token')}
                 </Typography.Text>
-                <Typography.Text className="scim-modal-delete-desc">
+                <Typography.Text className="scim-modal-delete-desc text-sm">
                   {t('message.are-you-sure-to-delete-scim-token')}
                 </Typography.Text>
               </div>

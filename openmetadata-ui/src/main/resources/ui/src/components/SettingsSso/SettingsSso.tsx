@@ -31,7 +31,7 @@ import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import ProviderSelector from './ProviderSelector';
 import './SettingsSso.less';
-import SSOConfigurationFormRJSF from './SSOConfigurationForm';
+import SSOConfigurationForm from './SSOConfigurationForm';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
@@ -279,7 +279,7 @@ const SettingsSso = () => {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
-        {renderAccessTokenCard()}
+
         <div className="m-t-lg sso-provider-selection">
           <ProviderSelector
             selectedProvider={currentProvider as AuthProvider | undefined}
@@ -295,9 +295,8 @@ const SettingsSso = () => {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
-        {renderAccessTokenCard()}
 
-        <SSOConfigurationFormRJSF
+        <SSOConfigurationForm
           selectedProvider={currentProvider}
           onProviderSelect={handleProviderSelect}
         />
@@ -305,14 +304,12 @@ const SettingsSso = () => {
     );
   }
 
-  // If loading, show loading state
   if (isLoading) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
-        {renderAccessTokenCard()}
 
-        <SSOConfigurationFormRJSF />
+        <SSOConfigurationForm />
       </PageLayoutV1>
     );
   }
@@ -323,8 +320,7 @@ const SettingsSso = () => {
   // Overview tab for Google, Azure and Okta providers
   if (
     currentProvider === AuthProvider.Azure ||
-    currentProvider === AuthProvider.Okta ||
-    currentProvider === AuthProvider.Google
+    currentProvider === AuthProvider.Okta
   ) {
     const renderOverviewContent = () => {
       // Get the SCIM access token card component
@@ -373,7 +369,7 @@ const SettingsSso = () => {
     label: t('label.configure'),
     children: (
       <div>
-        <SSOConfigurationFormRJSF
+        <SSOConfigurationForm
           hideBorder
           forceEditMode={activeTab === 'configure'}
           onChangeProvider={handleChangeProvider}
