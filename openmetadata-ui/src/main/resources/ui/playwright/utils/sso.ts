@@ -52,8 +52,10 @@ export const navigateToSSOConfiguration = async (page: Page) => {
   // Use existing settingClick function to navigate to SSO settings
   await settingClick(page, GlobalSettingOptions.SSO);
 
-  // Wait for SSO configuration page to load
-  await page.waitForSelector('[data-testid="sso-configuration-form-card"]');
+  // Wait for either provider selector or SSO configuration form to load
+  await page.waitForSelector(
+    '.provider-selector-container, [data-testid="sso-configuration-form-card"]'
+  );
 };
 
 /**
@@ -61,20 +63,70 @@ export const navigateToSSOConfiguration = async (page: Page) => {
  */
 export const enableSSOEditMode = async (page: Page) => {
   await navigateToSSOConfiguration(page);
-  await page.getByTestId('edit-sso-configuration').click();
 
-  // Wait for form to be in edit mode
-  await page.getByTestId('save-sso-configuration').isVisible();
-  await page.getByTestId('cancel-sso-configuration').isVisible();
+  // Check if we're on the provider selection screen or configuration form
+  const providerSelectorExists = await page
+    .locator('.provider-selector-container')
+    .count();
+  if (providerSelectorExists === 0) {
+    // We have an existing config, click edit button
+    const editButton = page.getByTestId('edit-sso-configuration');
+    if (await editButton.isVisible()) {
+      await editButton.click();
+      // Wait for form to be in edit mode
+      await page.getByTestId('save-sso-configuration').isVisible();
+      await page.getByTestId('cancel-sso-configuration').isVisible();
+    }
+  }
+  // If provider selector exists, we're already in configuration mode
 };
 
 /**
  * Select SSO provider
  */
 export const selectSSOProvider = async (page: Page, provider: string) => {
-  await page.getByTestId('select-widget').nth(1).click();
+  // Wait for provider selector to be visible
+  await page.waitForSelector('.provider-selector-container');
 
-  await page.getByTestId(`select-option-${provider}`).click();
+  // Click on the provider card in the selection screen
+  const providerLabel = getProviderLabel(provider);
+  const providerCard = page
+    .locator('.provider-item')
+    .filter({ hasText: providerLabel });
+  await providerCard.click();
+
+  // Wait for the card to be selected
+  await page.waitForSelector(
+    `.provider-item.selected:has-text("${providerLabel}")`
+  );
+
+  // Click the Configure button to proceed to the form
+  const configureButton = page.getByRole('button', { name: /configure/i });
+  await configureButton.waitFor({ state: 'visible' });
+  await configureButton.click();
+
+  // Wait for the SSO configuration form to load
+  await page.waitForSelector('[data-testid="sso-configuration-form-card"]', {
+    timeout: 10000,
+  });
+};
+
+/**
+ * Helper function to get provider label from provider key
+ */
+const getProviderLabel = (provider: string): string => {
+  const providerLabels: Record<string, string> = {
+    google: 'Google',
+    azure: 'Azure AD',
+    okta: 'Okta',
+    auth0: 'Auth0',
+    'aws-cognito': 'AWS-Cognito',
+    'custom-oidc': 'Custom-OIDC',
+    ldap: 'LDAP',
+    saml: 'SAML',
+  };
+
+  return providerLabels[provider] || provider;
 };
 
 export const fillSSOAuthConfig = async (
@@ -179,6 +231,35 @@ export const fillSSOConfig = async (page: Page, config: SSOConfig) => {
   await selectSSOProvider(page, config.authenticationConfiguration.provider);
   await fillSSOAuthConfig(page, config.authenticationConfiguration);
   await fillSSOAuthorizerConfig(page, config.authorizerConfiguration);
+};
+
+/**
+ * Check if provider selector is visible
+ */
+export const isProviderSelectorVisible = async (
+  page: Page
+): Promise<boolean> => {
+  const providerSelector = page.locator('.provider-selector-container');
+
+  return (await providerSelector.count()) > 0;
+};
+
+/**
+ * Reset SSO configuration to show provider selector
+ */
+export const resetToProviderSelector = async (page: Page) => {
+  // Check if we have an existing configuration
+  const editButton = page.getByTestId('edit-sso-configuration');
+  if (await editButton.isVisible()) {
+    // Click on Change Provider button if it exists
+    const changeProviderButton = page.getByRole('button', {
+      name: /change provider/i,
+    });
+    if (await changeProviderButton.isVisible()) {
+      await changeProviderButton.click();
+      await page.waitForSelector('.provider-selector-container');
+    }
+  }
 };
 
 /**
@@ -338,118 +419,4 @@ export const verifyProviderFields = async (
       }
     }
   }
-};
-
-/**
- * Fill basic SSO fields for testing
- */
-export const fillBasicSSOFields = async (page: Page, providerName: string) => {
-  await page.getByLabel('Provider Name').fill(providerName);
-  await page.getByLabel('Authority').fill('https://test.com');
-  await page.getByLabel('Client ID').fill('test-client-id');
-  await page.getByLabel('Callback URL').fill('http://localhost:8585/callback');
-};
-
-/**
- * Test data for Google SSO configuration
- */
-export const GOOGLE_SSO_TEST_CONFIG: SSOConfig = {
-  authenticationConfiguration: {
-    provider: 'google',
-    providerName: 'google',
-    clientType: 'public',
-    authority: 'https://accounts.google.com',
-    clientId:
-      '709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com',
-    callbackUrl: 'http://localhost:8585/callback',
-    publicKeyUrls: [
-      'https://www.googleapis.com/oauth2/v3/certs',
-      'http://localhost:8585/api/v1/config/jwks',
-    ],
-    tokenValidationAlgorithm: 'RS256',
-    jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-    enableSelfSignup: true,
-  },
-  authorizerConfiguration: {
-    className: 'org.openmetadata.service.security.DefaultAuthorizer',
-    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
-    adminPrincipals: ['admin'],
-    principalDomain: 'openmetadata.org',
-    enforcePrincipalDomain: false,
-    enableSecureSocketConnection: false,
-  },
-};
-
-/**
- * Test data for Auth0 SSO configuration
- */
-export const AUTH0_SSO_TEST_CONFIG: SSOConfig = {
-  authenticationConfiguration: {
-    provider: 'auth0',
-    providerName: 'auth0',
-    publicKeyUrls: [
-      'https://dev-fm6plpomp4ugra64.us.auth0.com/.well-known/jwks.json',
-    ],
-    authority: 'https://dev-fm6plpomp4ugra64.us.auth0.com',
-    clientId: 'qtOjswIB35z0w2ziJDKgOMLBsh9hQvoQ',
-    callbackUrl: 'http://localhost:8585/callback',
-    clientType: 'public',
-    jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-    tokenValidationAlgorithm: 'RS256',
-    enableSelfSignup: true,
-    oidcConfiguration: {
-      id: 'qtOjswIB35z0w2ziJDKgOMLBsh9hQvoQ',
-      type: 'auth0',
-      discoveryUri:
-        'https://dev-fm6plpomp4ugra64.us.auth0.com/.well-known/openid-configuration',
-      scope: 'openid email profile',
-      responseType: 'id_token',
-      useNonce: true,
-      preferredJwsAlgorithm: 'RS256',
-      disablePkce: false,
-      callbackUrl: 'http://localhost:8585/callback',
-      serverUrl: 'http://localhost:8585',
-      maxClockSkew: '',
-      tokenValidity: '3600',
-      maxAge: '0',
-      prompt: 'consent',
-      sessionExpiry: '604800',
-    },
-  },
-  authorizerConfiguration: {
-    className: 'org.openmetadata.service.security.DefaultAuthorizer',
-    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
-    adminPrincipals: ['admin'],
-    principalDomain: 'open-metadata.org',
-    enforcePrincipalDomain: false,
-    enableSecureSocketConnection: false,
-  },
-};
-
-/**
- * Test data for Okta SSO configuration
- */
-export const OKTA_SSO_TEST_CONFIG: SSOConfig = {
-  authenticationConfiguration: {
-    provider: 'okta',
-    providerName: 'okta',
-    publicKeyUrls: [
-      'https://dev-86341365.okta.com/oauth2/v1/keys',
-      'https://dev-86341365.okta.com/oauth2/default/v1/keys',
-    ],
-    authority: 'https://dev-86341365.okta.com/oauth2/default',
-    clientId: '0oa64ehcb2BAwXtuF5d7',
-    callbackUrl: 'http://localhost:8585/callback',
-    jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-    enableSelfSignup: true,
-  },
-  authorizerConfiguration: {
-    className: 'org.openmetadata.service.security.DefaultAuthorizer',
-    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
-    adminPrincipals: ['admin'],
-    botPrincipals: ['ingestion-bot'],
-    principalDomain: 'open-metadata.org',
-    enforcePrincipalDomain: false,
-    enableSecureSocketConnection: false,
-  },
 };
