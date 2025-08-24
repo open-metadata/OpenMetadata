@@ -13,14 +13,9 @@
 import { ComponentType } from 'react';
 
 class SSOUtilClassBase {
-  public isAccessTokenCardEnabled(): boolean {
-    return false;
-  }
-
-  public getAccessTokenCardComponent(): ComponentType<any> | null {
-    return null;
-  }
-  public getSCIMAccessTokenCardComponent(): ComponentType<any> | null {
+  public getSCIMAccessTokenCardComponent(): ComponentType<
+    Record<string, never>
+  > | null {
     return null;
   }
 }

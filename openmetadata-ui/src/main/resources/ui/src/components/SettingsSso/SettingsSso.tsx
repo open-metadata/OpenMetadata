@@ -207,20 +207,6 @@ const SettingsSso = () => {
     checkExistingConfig();
   }, [searchParams]);
 
-  const renderAccessTokenCard = () => {
-    const AccessTokenCardComponent =
-      ssoUtilClassBase.getAccessTokenCardComponent();
-    if (!AccessTokenCardComponent) {
-      return null;
-    }
-
-    return (
-      <div className="m-t-md m-b-md">
-        <AccessTokenCardComponent />
-      </div>
-    );
-  };
-
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
   }, []);
