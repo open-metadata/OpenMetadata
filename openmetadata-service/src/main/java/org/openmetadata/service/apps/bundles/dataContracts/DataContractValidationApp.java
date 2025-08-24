@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.dataContracts;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 
 import java.util.HashMap;
@@ -14,14 +15,18 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.JobExecutionContext;
 
@@ -70,8 +75,15 @@ public class DataContractValidationApp extends AbstractNativeApplication {
         for (DataContract dataContract : contractBatch) {
           try {
             LOG.debug("Validating data contract: {}", dataContract.getFullyQualifiedName());
-            DataContractResult validationResult = repository.validateContract(dataContract);
+            RestUtil.PutResponse<DataContractResult> validationResponse =
+                repository.validateContract(dataContract);
+            DataContractResult validationResult = validationResponse.getEntity();
 
+            ChangeEvent changeEvent =
+                FormatterUtil.getDataContractResultEvent(
+                    validationResult, ADMIN_USER_NAME, EventType.ENTITY_UPDATED);
+            changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
+            Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
             LOG.debug(
                 "Validation completed for {}: Status = {}",
                 dataContract.getFullyQualifiedName(),

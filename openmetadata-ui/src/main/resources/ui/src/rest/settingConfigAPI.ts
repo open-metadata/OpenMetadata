@@ -84,7 +84,7 @@ export const getSystemConfig = async () => {
   const response = await axiosClient.get<{
     basePath: string;
     rdfEnabled: boolean;
-  }>(`system/config`);
+  }>(`system/config/rdf`);
 
   return response.data;
 };

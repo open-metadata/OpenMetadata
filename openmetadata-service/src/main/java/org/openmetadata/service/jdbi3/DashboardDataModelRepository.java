@@ -284,21 +284,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public ResultList<Column> getDataModelColumns(
       UUID dataModelId, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel = find(dataModelId, include);
-    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
   public ResultList<Column> getDataModelColumnsByFQN(
       String fqn, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel = findByName(fqn, include);
-    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
   private ResultList<Column> getDataModelColumnsInternal(
-      DashboardDataModel dataModel, int limit, int offset, String fieldsParam) {
+      DashboardDataModel dataModel, int limit, int offset, String fieldsParam, Include include) {
     // For paginated column access, we need to load the data model with columns
     // but we'll optimize the field loading to only process what we need
     DashboardDataModel fullDataModel =
-        get(null, dataModel.getId(), getFields(Set.of("columns")), Include.NON_DELETED, false);
+        get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
 
     List<Column> allColumns = fullDataModel.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {

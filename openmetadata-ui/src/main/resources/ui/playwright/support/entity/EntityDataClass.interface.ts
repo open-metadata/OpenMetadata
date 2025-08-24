@@ -34,4 +34,5 @@ export interface EntityDataClassCreationConfig {
   pipelineService?: boolean;
   searchIndexService?: boolean;
   storageService?: boolean;
+  metric?: boolean;
 }
