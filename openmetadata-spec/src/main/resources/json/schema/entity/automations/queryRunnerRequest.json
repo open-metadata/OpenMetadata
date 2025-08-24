@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/automations/workflow/queryRunnerRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryRunnerRequest",
+  "javaType": "org.openmetadata.schema.entity.automations.QueryRunnerRequest",
+  "description": "Query Runner Request",
+  "type": "object",
+  "properties": {
+    "connectionType": {
+      "description": "Type of the connection to test such as Snowflake, MySQL, Looker, etc.",
+      "type": "string"
+    },
+    "serviceName": {
+      "description": "Optional value that identifies this service name.",
+      "$ref": "../../type/basic.json#/definitions/entityName",
+      "default": null
+    },
+    "query": {
+      "description": "Query to be executed.",
+      "type": "string"
+    },
+    "transpile": {
+      "description": "Optional value to indicate if the query should be transpiled.",
+      "type": "boolean"
+    },
+    "ingestionRunner": {
+      "description": "Optional value of the ingestion runner name responsible for running the test",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
