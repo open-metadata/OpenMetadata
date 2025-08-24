@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.metadata;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -87,9 +89,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
     TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
     TABLE_TYPE = getEntityByName("table-cp", "", ADMIN_AUTH_HEADERS);
-    TABLE_COLUMN_TYPE = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    TABLE_COLUMN_TYPE = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
     DASHBOARD_DATA_MODEL_COLUMN_TYPE =
-        getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
+        getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -429,7 +431,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   @Test
   void put_patch_tableColumnCustomProperty_200() throws IOException {
-    Type tableColumnEntity = getEntityByName("tableColumn", "customProperties", ADMIN_AUTH_HEADERS);
+    Type tableColumnEntity = getEntityByName(TABLE_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
     assertTrue(listOrEmpty(tableColumnEntity.getCustomProperties()).isEmpty());
 
     // Add a custom property with name tcProp1 with type string with PUT
@@ -487,7 +489,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   void put_patch_dashboardDataModelColumnCustomProperty_200() throws IOException {
     Type dashboardColumnEntity =
-        getEntityByName("dashboardDataModelColumn", "customProperties", ADMIN_AUTH_HEADERS);
+        getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
     assertTrue(listOrEmpty(dashboardColumnEntity.getCustomProperties()).isEmpty());
 
     // Add a custom property with name dashboardProp1 with type string with PUT
@@ -546,11 +548,11 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   void put_customPropertyToColumnContextTypes_200() throws IOException {
     // Test that tableColumn type allows custom properties (should not throw exception)
-    Type tableColumnType = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    Type tableColumnType = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
     assertEquals(Category.Entity, tableColumnType.getCategory());
 
     // Test that dashboardDataModelColumn type allows custom properties (should not throw exception)
-    Type dashboardColumnType = getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
+    Type dashboardColumnType = getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
     assertEquals(Category.Entity, dashboardColumnType.getCategory());
   }
 
@@ -574,13 +576,13 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   void test_columnTypesExist() throws IOException {
     // Verify that our column types can be retrieved
-    Type tableColumnType = getEntityByName("tableColumn", "", ADMIN_AUTH_HEADERS);
+    Type tableColumnType = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
     assertEquals(Category.Entity, tableColumnType.getCategory());
-    assertEquals("tableColumn", tableColumnType.getName());
+    assertEquals(TABLE_COLUMN, tableColumnType.getName());
 
-    Type dashboardColumnType = getEntityByName("dashboardDataModelColumn", "", ADMIN_AUTH_HEADERS);
+    Type dashboardColumnType = getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
     assertEquals(Category.Entity, dashboardColumnType.getCategory());
-    assertEquals("dashboardDataModelColumn", dashboardColumnType.getName());
+    assertEquals(DASHBOARD_DATA_MODEL_COLUMN, dashboardColumnType.getName());
   }
 
   @Override

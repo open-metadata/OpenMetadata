@@ -2162,6 +2162,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Public utility method to validate custom properties extension for any entity type.
+   * This method can be used by other repositories that need to validate extensions
+   * without extending EntityRepository.
+   *
+   * @param extension The extension object containing custom properties
+   * @param entityTypeName The entity type name (e.g., "tableColumn", "dashboardDataModelColumn")
+   */
+  public static void validateExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
+      return;
+    }
+
+    JsonNode jsonNode = JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      // Validate that the custom property exists for this entity type
+      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
+      if (jsonSchema == null) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+
+      // Validate against JSON schema - this handles all validation including type-specific rules
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+      if (!validationMessages.isEmpty()) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
+    }
+  }
+
   private void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
