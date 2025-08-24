@@ -3612,6 +3612,7 @@ export enum ConfigScheme {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 

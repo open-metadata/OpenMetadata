@@ -21,7 +21,7 @@
           "char_filter": [],
           "filter": [
             "lowercase",
-            "icu_folding"
+            "asciifolding"
           ]
         }
       },
@@ -31,7 +31,7 @@
           "filter": [
             "word_delimiter_filter",
             "lowercase",
-            "icu_folding",
+            "asciifolding",
             "russian_stop",
             "russian_snowball",
             "english_stop",
@@ -86,8 +86,8 @@
         "om_kstem": {
           "type": "kstem"
         },
-        "icu_folding": {
-          "type": "icu_folding"
+        "asciifolding": {
+          "type": "asciifolding"
         }
       }
     }
