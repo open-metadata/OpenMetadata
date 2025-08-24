@@ -101,7 +101,7 @@ class OpenMetadataSettings(BaseSettings):
     """OpenMetadataConnection settings wrapper"""
 
     model_config = SettingsConfigDict(
-        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=False
     )
 
     connection: OpenMetadataConnection
