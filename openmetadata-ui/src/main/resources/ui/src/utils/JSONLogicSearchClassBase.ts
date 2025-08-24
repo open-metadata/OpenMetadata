@@ -546,7 +546,7 @@ class JSONLogicSearchClassBase {
         renderSize: 'medium',
         fieldLabel: t('label.field-plural') + ':',
         operatorLabel: t('label.condition') + ':',
-        showNot: false,
+        showNot: true,
         valueLabel: t('label.criteria') + ':',
         renderButton: renderJSONLogicQueryBuilderButtons,
         customFieldSelectProps: {
