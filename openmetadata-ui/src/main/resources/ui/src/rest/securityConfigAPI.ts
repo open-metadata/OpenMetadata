@@ -35,6 +35,18 @@ export interface SecurityValidationResponse {
   results: ValidationResult[];
 }
 
+export interface JsonPatchOperation {
+  op: 'replace' | 'add' | 'remove';
+  path: string;
+  value?:
+    | string
+    | number
+    | boolean
+    | Record<string, unknown>
+    | unknown[]
+    | null;
+}
+
 /**
  * Validate security configuration
  * @param data - Security configuration data
@@ -85,4 +97,40 @@ export const testSecurityConfiguration = async (
     '/security/config/test',
     data
   );
+};
+
+/**
+ * Patch authentication configuration with partial updates
+ * @param patches - Array of JSON Patch operations
+ * @returns Promise with updated configuration
+ */
+export const patchAuthenticationConfiguration = async (
+  patches: JsonPatchOperation[]
+): Promise<AxiosResponse<AuthenticationConfiguration>> => {
+  return APIClient.patch<
+    JsonPatchOperation[],
+    AxiosResponse<AuthenticationConfiguration>
+  >('/system/settings/authenticationConfiguration', patches, {
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};
+
+/**
+ * Patch authorizer configuration with partial updates
+ * @param patches - Array of JSON Patch operations
+ * @returns Promise with updated configuration
+ */
+export const patchAuthorizerConfiguration = async (
+  patches: JsonPatchOperation[]
+): Promise<AxiosResponse<AuthorizerConfiguration>> => {
+  return APIClient.patch<
+    JsonPatchOperation[],
+    AxiosResponse<AuthorizerConfiguration>
+  >('/system/settings/authorizerConfiguration', patches, {
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
 };

@@ -50,6 +50,9 @@ import {
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
+  JsonPatchOperation,
+  patchAuthenticationConfiguration,
+  patchAuthorizerConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
   validateSecurityConfiguration,
@@ -314,8 +317,153 @@ const SSOConfigurationFormRJSF = ({
     },
     []
   );
+  const toRecord = (obj: unknown): Record<string, unknown> => {
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      return obj as unknown as Record<string, unknown>;
+    }
 
+    return {};
+  };
   // Clean up provider-specific fields based on selected provider
+  // Generate JSON Patch operations by comparing old and new data
+  const generatePatches = (
+    oldData: FormData | undefined,
+    newData: FormData | undefined
+  ): JsonPatchOperation[] => {
+    const patches: JsonPatchOperation[] = [];
+
+    if (!oldData || !newData) {
+      return patches;
+    }
+
+    const compareObjects = (
+      oldObj: Record<string, unknown>,
+      newObj: Record<string, unknown>,
+      basePath: string
+    ) => {
+      // Handle authentication configuration
+      if (basePath === '/authenticationConfiguration') {
+        // Compare top-level authentication fields
+        Object.keys(newObj).forEach((key) => {
+          if (
+            key === 'oidcConfiguration' ||
+            key === 'ldapConfiguration' ||
+            key === 'samlConfiguration'
+          ) {
+            // Handle nested configuration objects
+            const newNestedObj = newObj[key] as
+              | Record<string, unknown>
+              | undefined;
+            const oldNestedObj = oldObj[key] as
+              | Record<string, unknown>
+              | undefined;
+
+            if (newNestedObj && oldNestedObj) {
+              Object.keys(newNestedObj).forEach((nestedKey) => {
+                const oldValue = oldNestedObj[nestedKey];
+                const newValue = newNestedObj[nestedKey];
+
+                // Generate patch if values are different
+                const shouldPatch =
+                  JSON.stringify(oldValue) !== JSON.stringify(newValue);
+
+                if (shouldPatch) {
+                  patches.push({
+                    op: 'replace',
+                    path: `${basePath}/${key}/${nestedKey}`,
+                    value: newValue as
+                      | string
+                      | number
+                      | boolean
+                      | Record<string, unknown>
+                      | unknown[]
+                      | null,
+                  });
+                }
+              });
+            } else if (newNestedObj && !oldNestedObj) {
+              // Add new nested configuration
+              patches.push({
+                op: 'add',
+                path: `${basePath}/${key}`,
+                value: newNestedObj,
+              });
+            }
+          } else {
+            // Handle top-level fields
+            const oldValue = oldObj[key];
+            const newValue = newObj[key];
+
+            // Generate patch if values are different
+            const shouldPatch =
+              JSON.stringify(oldValue) !== JSON.stringify(newValue);
+
+            if (shouldPatch) {
+              patches.push({
+                op: 'replace',
+                path: `${basePath}/${key}`,
+                value: newValue as
+                  | string
+                  | number
+                  | boolean
+                  | Record<string, unknown>
+                  | unknown[]
+                  | null,
+              });
+            }
+          }
+        });
+      } else {
+        // Handle authorizer configuration - simple field comparison
+        Object.keys(newObj).forEach((key) => {
+          const oldValue = oldObj[key];
+          const newValue = newObj[key];
+
+          // Generate patch if values are different
+          const shouldPatch =
+            JSON.stringify(oldValue) !== JSON.stringify(newValue);
+
+          if (shouldPatch) {
+            patches.push({
+              op: 'replace',
+              path: `${basePath}/${key}`,
+              value: newValue as
+                | string
+                | number
+                | boolean
+                | Record<string, unknown>
+                | unknown[]
+                | null,
+            });
+          }
+        });
+      }
+    };
+
+    // Generate patches for authentication configuration
+    if (
+      oldData.authenticationConfiguration &&
+      newData.authenticationConfiguration
+    ) {
+      compareObjects(
+        toRecord(oldData.authenticationConfiguration as unknown),
+        toRecord(newData.authenticationConfiguration as unknown),
+        '/authenticationConfiguration'
+      );
+    }
+
+    // Generate patches for authorizer configuration
+    if (oldData.authorizerConfiguration && newData.authorizerConfiguration) {
+      compareObjects(
+        toRecord(oldData.authorizerConfiguration as unknown),
+        toRecord(newData.authorizerConfiguration as unknown),
+        '/authorizerConfiguration'
+      );
+    }
+
+    return patches;
+  };
+
   const cleanupProviderSpecificFields = (
     data: FormData | undefined,
     provider: string
@@ -721,7 +869,39 @@ const SSOConfigurationFormRJSF = ({
       }
 
       try {
-        await applySecurityConfiguration(payload);
+        // Use PATCH for existing configurations, PUT for new ones
+        if (hasExistingConfig && savedData) {
+          // Generate patches for existing configuration
+          const allPatches = generatePatches(savedData, cleanedFormData);
+
+          const authPatches = allPatches.filter((patch) =>
+            patch.path.startsWith('/authenticationConfiguration')
+          );
+          const authorizerPatches = allPatches.filter((patch) =>
+            patch.path.startsWith('/authorizerConfiguration')
+          );
+
+          // Apply authentication patches if any
+          if (authPatches.length > 0) {
+            const cleanAuthPatches = authPatches.map((patch) => ({
+              ...patch,
+              path: patch.path.replace('/authenticationConfiguration', ''),
+            }));
+            await patchAuthenticationConfiguration(cleanAuthPatches);
+          }
+
+          // Apply authorizer patches if any
+          if (authorizerPatches.length > 0) {
+            const cleanAuthorizerPatches = authorizerPatches.map((patch) => ({
+              ...patch,
+              path: patch.path.replace('/authorizerConfiguration', ''),
+            }));
+            await patchAuthorizerConfiguration(cleanAuthorizerPatches);
+          }
+        } else {
+          // Use full PUT for new configurations
+          await applySecurityConfiguration(payload);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
 
