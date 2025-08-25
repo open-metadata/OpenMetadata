@@ -252,6 +252,95 @@ class ProfilerTest(TestCase):
             ),
         )
 
+    def test_cardinality_distribution(self):
+        """
+        Check cardinality distribution computation for pandas
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.datalake_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with string column that has repeated values
+        name_cardinality = res.get("name")[Metrics.CARDINALITY_DISTRIBUTION.name]
+
+        assert name_cardinality
+        assert "categories" in name_cardinality
+        assert "counts" in name_cardinality
+        assert "percentages" in name_cardinality
+        assert len(name_cardinality["categories"]) > 0
+        assert len(name_cardinality["counts"]) > 0
+        assert len(name_cardinality["percentages"]) > 0
+
+        # Check that percentages sum to approximately 100%
+        assert abs(sum(name_cardinality["percentages"]) - 100.0) < 0.1
+
+    def test_cardinality_distribution_all_distinct_pandas(self):
+        """
+        Check cardinality distribution when all values are distinct for pandas
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.datalake_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with fullname column - it has repeated values ("John Doe", "Jone Doe" appear twice each)
+        # but since it's a string column, it should return a distribution
+        fullname_cardinality = res.get("fullname")[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        # Should return a distribution for string columns with repeated values
+        assert fullname_cardinality is not None
+        assert "categories" in fullname_cardinality
+        assert "counts" in fullname_cardinality
+        assert "percentages" in fullname_cardinality
+
+    def test_cardinality_distribution_unsupported_type_pandas(self):
+        """
+        Check cardinality distribution with unsupported data types for pandas
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.datalake_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with integer column (not concatenable)
+        age_cardinality = res.get("age")[Metrics.CARDINALITY_DISTRIBUTION.name]
+
+        # Should return None for unsupported types
+        assert age_cardinality is None
+
     def test_required_metrics(self):
         """
         Check that we raise properly MissingMetricException
