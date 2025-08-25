@@ -43,6 +43,12 @@
           "$ref": "automator/removeTagsAction.json"
         },
         {
+          "$ref": "automator/addTermsAction.json"
+        },
+        {
+          "$ref": "automator/removeTermsAction.json"
+        },
+        {
           "$ref": "automator/addDomainAction.json"
         },
         {

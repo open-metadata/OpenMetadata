@@ -11,39 +11,27 @@
  *  limitations under the License.
  */
 /**
- * Remove Classification Tags Action Type
+ * Apply Glossary Terms to the selected assets.
  */
-export interface RemoveTagsAction {
+export interface AddTermsAction {
     /**
-     * Remove tags from all the children and parent of the selected assets.
-     */
-    applyToAll?: boolean;
-    /**
-     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
-     * fields,...
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
      */
     applyToChildren?: string[];
     /**
-     * Remove tags by its label type
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
      */
-    labels?: LabelElement[];
+    overwriteMetadata?: boolean;
     /**
-     * Classification Tags to remove (source must be 'Classification')
+     * Glossary Terms to apply
      */
-    tags?: TagLabel[];
+    terms: TagLabel[];
     /**
      * Application Type
      */
-    type: RemoveTagsActionType;
-}
-
-/**
- * Remove tags by its label type
- */
-export enum LabelElement {
-    Automated = "Automated",
-    Manual = "Manual",
-    Propagated = "Propagated",
+    type: AddTermsActionType;
 }
 
 /**
@@ -69,7 +57,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelTypeEnum;
+    labelType: LabelType;
     /**
      * Name of the tag or glossary term.
      */
@@ -94,7 +82,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelTypeEnum {
+export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
     Generated = "Generated",
@@ -137,8 +125,8 @@ export interface Style {
 /**
  * Application Type
  *
- * Remove Classification Tags Action Type.
+ * Add Terms action type.
  */
-export enum RemoveTagsActionType {
-    RemoveTagsAction = "RemoveTagsAction",
+export enum AddTermsActionType {
+    AddTermsAction = "AddTermsAction",
 }
