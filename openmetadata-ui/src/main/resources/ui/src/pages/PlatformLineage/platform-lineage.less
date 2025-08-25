@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 @platform-page-header-height: 114px;
 
@@ -19,15 +19,21 @@
     height: calc(
       100vh - @om-navbar-height - @platform-page-header-height - @size-md
     );
+
+    .ant-card-body {
+      height: 100%;
+    }
   }
 
   .full-screen-lineage {
+    height: calc(100vh - @om-navbar-height - @size-md);
+
     .lineage-card {
       height: calc(100vh - @om-navbar-height - @size-md);
     }
 
     .lineage-container {
-      height: calc(100vh - @om-navbar-height);
+      height: calc(100vh - @om-navbar-height - @size-md);
     }
   }
 }
