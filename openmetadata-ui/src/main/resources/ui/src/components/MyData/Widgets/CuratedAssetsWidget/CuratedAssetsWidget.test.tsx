@@ -377,7 +377,7 @@ describe('CuratedAssetsWidget', () => {
         query: '',
         pageNumber: 1,
         pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: 'table',
+        searchIndex: ['table'],
         sortField: 'updatedAt',
         sortOrder: 'desc',
         includeDeleted: false,
