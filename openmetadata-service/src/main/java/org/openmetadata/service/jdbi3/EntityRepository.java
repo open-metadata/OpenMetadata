@@ -1259,15 +1259,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (fields.contains(FIELD_CHILDREN)) {
       List<EntityReference> children = new ArrayList<>();
       children.addAll(
-          toRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
+          fromRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
       children.addAll(
-          toRelationships.getOrDefault(Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
+          fromRelationships.getOrDefault(
+              Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
       entity.setChildren(children);
     }
 
     if (fields.contains(FIELD_EXPERTS)) {
       entity.setExperts(
-          toRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
+          fromRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
     }
 
     if (fields.contains(FIELD_REVIEWERS)) {
