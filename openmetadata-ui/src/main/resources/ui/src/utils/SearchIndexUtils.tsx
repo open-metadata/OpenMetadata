@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { uniqueId } from 'lodash';
+import { get, uniqueId } from 'lodash';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -21,6 +21,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
@@ -161,6 +162,17 @@ export const getSearchIndexDetailsTabs = ({
           title={t('label.search-index-setting-plural')}
         />
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
     },
     {
       label: (

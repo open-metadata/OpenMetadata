@@ -34,6 +34,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
@@ -49,13 +50,23 @@ export interface FormStepProps {
   prevLabel?: string;
   isNextVisible?: boolean;
   isPrevVisible?: boolean;
+  supportsDQ?: boolean;
+  supportsSchema?: boolean;
 }
 
 const AddDataContract: React.FC<{
   onCancel: () => void;
   onSave: () => void;
   contract?: DataContract;
-}> = ({ onCancel, onSave, contract }) => {
+  supportsDQ?: boolean;
+  supportsSchema?: boolean;
+}> = ({
+  onCancel,
+  onSave,
+  contract,
+  supportsDQ = true,
+  supportsSchema = true,
+}) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
@@ -63,7 +74,8 @@ const AddDataContract: React.FC<{
     EDataContractTab.CONTRACT_DETAIL.toString()
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: table } = useGenericContext<Table>();
+  const { data: entityData } = useGenericContext<Table>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const [formValues, setFormValues] = useState<DataContract>(
     contract || ({} as DataContract)
@@ -89,8 +101,8 @@ const AddDataContract: React.FC<{
         : createContract({
             ...formValues,
             entity: {
-              id: table.id,
-              type: EntityType.TABLE,
+              id: entityData.id,
+              type: entityType,
             },
             semantics: validSemantics,
             status: ContractStatus.Active,
@@ -103,7 +115,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table.id]);
+  }, [contract, formValues, entityData.id, entityType]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -120,8 +132,8 @@ const AddDataContract: React.FC<{
     setActiveTab((prev) => (Number(prev) - 1).toString());
   }, [setActiveTab]);
 
-  const items = useMemo(
-    () => [
+  const items = useMemo(() => {
+    const tabs = [
       {
         label: (
           <div className="d-flex items-center">
@@ -200,9 +212,21 @@ const AddDataContract: React.FC<{
           />
         ),
       },
-    ],
-    [contract, onFormChange, onNext, onPrev]
-  );
+    ];
+
+    const filteredTabs = tabs.filter((tab) => {
+      if (tab.key === EDataContractTab.SCHEMA.toString()) {
+        return !supportsSchema;
+      }
+      if (tab.key === EDataContractTab.QUALITY.toString()) {
+        return !supportsDQ;
+      }
+
+      return true;
+    });
+
+    return filteredTabs;
+  }, [contract, onFormChange, onNext, onPrev]);
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value);
