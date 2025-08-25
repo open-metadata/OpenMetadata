@@ -19,6 +19,12 @@
           "filter": [
             "lowercase"
           ]
+        },
+        "om_lowercase": {
+          "type": "custom",
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "analyzer": {
@@ -466,6 +472,24 @@
           "id": {
             "type": "keyword",
             "ignore_above": 256
+          }
+        }
+      },
+      "classificationTagFQNs": {
+        "type": "keyword",
+        "fields": {
+          "lc": {
+            "type": "keyword",
+            "normalizer": "om_lowercase"
+          }
+        }
+      },
+      "glossaryTermFQNs": {
+        "type": "keyword",
+        "fields": {
+          "lc": {
+            "type": "keyword",
+            "normalizer": "om_lowercase"
           }
         }
       }

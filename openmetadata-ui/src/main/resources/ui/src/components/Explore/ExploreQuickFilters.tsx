@@ -26,6 +26,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import { postAggregateFieldOptions } from '../../rest/miscAPI';
 import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -40,6 +41,7 @@ import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
+import QuickFilterAggregatedTree from './QuickFilterAggregatedTree';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
@@ -54,6 +56,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
+  const [bucketsByKey, setBucketsByKey] = useState<Record<string, Bucket[]>>(
+    {}
+  );
   const { queryFilter } = useAdvanceSearch();
 
   const { showDeleted, quickFilter } = useMemo(() => {
@@ -80,28 +85,114 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     defaultQueryFilter as unknown as QueryFilterInterface
   );
 
+  const formatFqnToHierarchicalLabel = (fqn: string) => {
+    // Convert FQN like A.B.C to hierarchical label A > B > C
+    return fqn.split('.').join(' > ');
+  };
+
+  const withTagSourceFilter = (
+    baseQueryFilter: QueryFilterInterface | undefined,
+    key: string
+  ) => {
+    // Only apply for special split keys
+    const isGlossary = key === 'tags.tagFQN.glossary';
+    const isClassification = key === 'tags.tagFQN.classification';
+    if (!isGlossary && !isClassification) {
+      return baseQueryFilter;
+    }
+
+    const additionalMust = [
+      { term: { 'tags.source': isGlossary ? 'Glossary' : 'Classification' } },
+    ];
+
+    const existingMust =
+      (baseQueryFilter as QueryFilterInterface)?.query?.bool?.must ?? [];
+
+    return {
+      query: {
+        bool: {
+          // merge existing must with our tag source constraint
+          must: [...(existingMust as any[]), ...additionalMust],
+        },
+      },
+    } as QueryFilterInterface;
+  };
+
+  const resolveAggField = (key: string) => {
+    if (key === 'tags.tagFQN.classification') {
+      return 'classificationTagFQNs.lc';
+    }
+    if (key === 'tags.tagFQN.glossary') {
+      return 'glossaryTermFQNs.lc';
+    }
+
+    return key;
+  };
+
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string
   ) => {
     let buckets: Bucket[] = [];
-    if (aggregations?.[key] && key !== TIER_FQN_KEY) {
-      buckets = aggregations[key].buckets;
+    // Determine the actual ES field to aggregate on
+    const isSplitTagKey = key.startsWith('tags.tagFQN.');
+    const preferred = resolveAggField(key);
+    const aggField = isSplitTagKey ? preferred : key;
+
+    // For split tag keys (classification/glossary), avoid using pre-fetched
+    // aggregations since they aren't source-filtered; fetch with source filter.
+    if (aggregations?.[aggField] && key !== TIER_FQN_KEY && !isSplitTagKey) {
+      buckets = aggregations[aggField].buckets;
     } else {
       const [res, tierTags] = await Promise.all([
-        getAggregationOptions(
-          index,
-          key,
-          '',
-          JSON.stringify(combinedQueryFilter),
-          independent
-        ),
+        (async () => {
+          if (isSplitTagKey) {
+            try {
+              const primary = await postAggregateFieldOptions(
+                index,
+                aggField,
+                '',
+                JSON.stringify(withTagSourceFilter(combinedQueryFilter, key))
+              );
+              const buckets =
+                primary.data.aggregations[`sterms#${aggField}`]?.buckets ?? [];
+              if (buckets.length) {
+                return primary;
+              }
+            } catch (_e) {
+              // ignore and fallback
+              void 0;
+            }
+
+            // fallback to tags.tagFQN with source filter
+            return await postAggregateFieldOptions(
+              index,
+              'tags.tagFQN',
+              '',
+              JSON.stringify(withTagSourceFilter(combinedQueryFilter, key))
+            );
+          } else {
+            return await getAggregationOptions(
+              index,
+              aggField,
+              '',
+              JSON.stringify(combinedQueryFilter),
+              independent
+            );
+          }
+        })(),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
           : Promise.resolve(null),
       ]);
 
-      buckets = res.data.aggregations[`sterms#${key}`].buckets;
+      // derive actual aggregation key used in response
+      const aggKey =
+        Object.keys(res.data.aggregations).find(
+          (k) => k.endsWith(`#${aggField}`) || k.endsWith('#tags.tagFQN')
+        ) || Object.keys(res.data.aggregations)[0];
+      buckets = res.data.aggregations[aggKey].buckets;
+      setBucketsByKey((prev) => ({ ...prev, [key]: buckets }));
 
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
@@ -122,7 +213,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       }
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    const parsedOptions = getOptionsFromAggregationBucket(buckets);
+    // Apply hierarchical label for Tags/Terms split keys
+    const finalOptions = key.startsWith('tags.tagFQN.')
+      ? parsedOptions.map((op) => ({
+          ...op,
+          label: formatFqnToHierarchicalLabel(op.label),
+        }))
+      : parsedOptions;
+
+    setOptions(uniqWith(finalOptions, isEqual));
   };
 
   const getInitialOptions = async (key: string) => {
@@ -154,16 +254,60 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return;
       }
       if (key !== TIER_FQN_KEY) {
-        const res = await getAggregationOptions(
-          index,
-          key,
-          value,
-          JSON.stringify(combinedQueryFilter),
-          independent
-        );
+        const isSplitTagKey = key.startsWith('tags.tagFQN.');
+        const preferred = resolveAggField(key);
+        const aggField = isSplitTagKey ? preferred : key;
+        const res = await (async () => {
+          if (isSplitTagKey) {
+            try {
+              const primary = await postAggregateFieldOptions(
+                index,
+                aggField,
+                value,
+                JSON.stringify(withTagSourceFilter(combinedQueryFilter, key))
+              );
+              const buckets =
+                primary.data.aggregations[`sterms#${aggField}`]?.buckets ?? [];
+              if (buckets.length) {
+                return primary;
+              }
+            } catch (_e) {
+              // ignore and fallback
+              void 0;
+            }
 
-        const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-        setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+            return await postAggregateFieldOptions(
+              index,
+              'tags.tagFQN',
+              value,
+              JSON.stringify(withTagSourceFilter(combinedQueryFilter, key))
+            );
+          } else {
+            return await getAggregationOptions(
+              index,
+              aggField,
+              value,
+              JSON.stringify(combinedQueryFilter),
+              independent
+            );
+          }
+        })();
+
+        const aggKey =
+          Object.keys(res.data.aggregations).find(
+            (k) => k.endsWith(`#${aggField}`) || k.endsWith('#tags.tagFQN')
+          ) || Object.keys(res.data.aggregations)[0];
+        const buckets = res.data.aggregations[aggKey].buckets;
+        setBucketsByKey((prev) => ({ ...prev, [key]: buckets }));
+        const parsedOptions = getOptionsFromAggregationBucket(buckets);
+        const finalOptions = key.startsWith('tags.tagFQN.')
+          ? parsedOptions.map((op) => ({
+              ...op,
+              label: formatFqnToHierarchicalLabel(op.label),
+            }))
+          : parsedOptions;
+
+        setOptions(uniqWith(finalOptions, isEqual));
       } else if (key === TIER_FQN_KEY) {
         const filteredOptions = tierOptions?.filter((option) => {
           return option.label.toLowerCase().includes(value.toLowerCase());
@@ -199,6 +343,24 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
               })
             : field.value;
 
+        // Render tree-based selectors for Tags and Glossary Terms
+        if (
+          field.key === 'tags.tagFQN.glossary' ||
+          field.key === 'tags.tagFQN.classification'
+        ) {
+          return (
+            <QuickFilterAggregatedTree
+              buckets={bucketsByKey[field.key]}
+              key={`${field.key}-${field.label}`}
+              label={field.label}
+              selected={selectedKeys ?? []}
+              triggerButtonSize="middle"
+              onChange={(vals) => onFieldValueSelect({ ...field, value: vals })}
+              onOpen={() => getInitialOptions(field.key)}
+            />
+          );
+        }
+
         return (
           <SearchDropdown
             highlight
@@ -207,7 +369,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
-            key={field.key}
+            key={`${field.key}-${field.label}`}
             label={field.label}
             options={options ?? []}
             searchKey={field.key}

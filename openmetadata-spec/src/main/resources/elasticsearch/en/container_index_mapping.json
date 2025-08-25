@@ -19,6 +19,10 @@
           "filter": [
             "lowercase"
           ]
+        },
+        "om_lowercase": {
+          "type": "custom",
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {
@@ -226,18 +230,18 @@
               "fullyQualifiedName": {
                 "type": "text"
               },
-              "tags": {
-                "properties": {
-                  "tagFQN": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "fields": {
-                      "text": {
-                        "type": "text",
-                        "analyzer": "om_analyzer"
-                      }
-                    }
-                  },
+      "tags": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
                   "labelType": {
                     "type": "keyword"
                   },
@@ -256,6 +260,24 @@
                 "type": "integer"
               }
             }
+          }
+        }
+      },
+      "classificationTagFQNs": {
+        "type": "keyword",
+        "fields": {
+          "lc": {
+            "type": "keyword",
+            "normalizer": "om_lowercase"
+          }
+        }
+      },
+      "glossaryTermFQNs": {
+        "type": "keyword",
+        "fields": {
+          "lc": {
+            "type": "keyword",
+            "normalizer": "om_lowercase"
           }
         }
       },

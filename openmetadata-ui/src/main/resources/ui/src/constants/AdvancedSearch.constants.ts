@@ -27,8 +27,14 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: EntityFields.OWNERS,
   },
   {
-    label: t('label.tag'),
-    key: EntityFields.TAG,
+    label: t('label.tag-plural'),
+    // classification tags only (filtered in ExploreQuickFilters)
+    key: 'tags.tagFQN.classification',
+  },
+  {
+    label: t('label.glossary-term-plural'),
+    // glossary terms only (filtered in ExploreQuickFilters)
+    key: 'tags.tagFQN.glossary',
   },
   {
     label: t('label.tier'),
@@ -58,8 +64,12 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.OWNERS,
   },
   {
-    label: t('label.tag'),
-    key: EntityFields.TAG,
+    label: t('label.tag-plural'),
+    key: 'tags.tagFQN.classification',
+  },
+  {
+    label: t('label.glossary-term-plural'),
+    key: 'tags.tagFQN.glossary',
   },
   {
     label: t('label.tier'),
