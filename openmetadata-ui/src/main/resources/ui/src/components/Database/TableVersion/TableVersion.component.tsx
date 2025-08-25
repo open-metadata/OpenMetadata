@@ -347,46 +347,48 @@ const TableVersion: React.FC<TableVersionProp> = ({
     }
   }, [isVersionLoading, tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 
-  if (isVersionLoading) {
-    return <Loader />;
-  }
-
   return (
-    <div className={classNames('version-data')}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          <DataAssetsVersionHeader
-            breadcrumbLinks={slashedTableName}
-            currentVersionData={currentVersionData}
-            deleted={deleted}
-            displayName={displayName}
-            domainDisplayName={domainDisplayName}
-            entityType={EntityType.TABLE}
-            ownerDisplayName={ownerDisplayName}
-            ownerRef={ownerRef}
-            serviceName={currentVersionData.service?.name}
-            tierDisplayName={tierDisplayName}
-            version={version}
-            onVersionClick={backHandler}
-          />
-        </Col>
-        <GenericProvider
-          isVersionView
-          currentVersionData={currentVersionData}
-          data={currentVersionData}
-          permissions={entityPermissions}
-          type={EntityType.TABLE}
-          onUpdate={() => Promise.resolve()}>
-          <Col className="entity-version-page-tabs" span={24}>
-            <Tabs
-              className="tabs-new"
-              defaultActiveKey={tab}
-              items={tabItems}
-              onChange={handleTabChange}
-            />
-          </Col>
-        </GenericProvider>
-      </Row>
+    <>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedTableName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.TABLE}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.TABLE}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
+          </Row>
+        </div>
+      )}
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
@@ -395,7 +397,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </div>
+    </>
   );
 };
 
