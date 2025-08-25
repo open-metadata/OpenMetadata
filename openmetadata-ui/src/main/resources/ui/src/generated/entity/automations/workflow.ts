@@ -534,6 +534,8 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +576,10 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Spark Engine Configuration.
+     */
+    sparkEngine?: SparkEngineConfiguration;
 }
 
 /**
@@ -4379,7 +4385,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -4509,7 +4515,7 @@ export interface Style {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
@@ -4532,6 +4538,36 @@ export enum ServiceType {
     Search = "Search",
     Security = "Security",
     Storage = "Storage",
+}
+
+/**
+ * Spark Engine Configuration.
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface SparkEngineConfiguration {
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote: string;
+    type:   SparkEngineType;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+export enum SparkEngineType {
+    Spark = "Spark",
 }
 
 /**
@@ -4658,4 +4694,5 @@ export enum WorkflowStatus {
 export enum WorkflowType {
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }
