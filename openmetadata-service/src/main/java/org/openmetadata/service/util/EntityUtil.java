@@ -214,7 +214,12 @@ public final class EntityUtil {
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityRelationshipRecord ref : list) {
-      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+      try {
+        refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+      } catch (EntityNotFoundException e) {
+        // Skip deleted entities - the relationship exists but the entity was deleted
+        LOG.debug("Skipping deleted entity reference: {} {}", ref.getType(), ref.getId());
+      }
     }
     refs.sort(compareEntityReference);
     return refs;

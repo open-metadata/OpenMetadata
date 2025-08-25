@@ -801,6 +801,111 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_personaDeletion_cleansUpAllRelationships(TestInfo test) throws IOException {
+    // Create personas
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+    CreatePersona createPersona1 =
+        personaResourceTest.createRequest(test).withName("persona-to-delete-1");
+    Persona persona1 = personaResourceTest.createEntity(createPersona1, ADMIN_AUTH_HEADERS);
+
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test).withName("persona-to-keep");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    // Create multiple users with the personas
+    // User 1: Has persona1 as assigned persona
+    CreateUser createUser1 =
+        createRequest(test, 1).withPersonas(listOf(persona1.getEntityReference()));
+    User user1 = createEntity(createUser1, ADMIN_AUTH_HEADERS);
+
+    // User 2: Has both personas, with persona1 as default
+    CreateUser createUser2 =
+        createRequest(test, 2)
+            .withPersonas(listOf(persona1.getEntityReference(), persona2.getEntityReference()))
+            .withDefaultPersona(persona1.getEntityReference());
+    User user2 = createEntity(createUser2, ADMIN_AUTH_HEADERS);
+
+    // User 3: Has persona1 with preferences
+    CreateUser createUser3 =
+        createRequest(test, 3).withPersonas(listOf(persona1.getEntityReference()));
+    User user3 = createEntity(createUser3, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences for user3
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona1.getId())
+            .withPersonaName(persona1.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json3 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change3 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change3, "personaPreferences", emptyList(), listOf(preferences));
+    user3 = patchEntityAndCheck(user3, json3, authHeaders(user3.getName()), MINOR_UPDATE, change3);
+
+    // Verify initial state
+    User user1WithPersona = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user1WithPersona.getPersonas().size());
+    assertEquals(persona1.getId(), user1WithPersona.getPersonas().get(0).getId());
+
+    User user2WithPersona = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(2, user2WithPersona.getPersonas().size());
+    assertNotNull(user2WithPersona.getDefaultPersona());
+    assertEquals(persona1.getId(), user2WithPersona.getDefaultPersona().getId());
+
+    User user3WithPreferences =
+        getEntity(user3.getId(), "personas,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user3WithPreferences.getPersonas().size());
+    assertNotNull(user3WithPreferences.getPersonaPreferences());
+    assertEquals(1, user3WithPreferences.getPersonaPreferences().size());
+
+    // Delete persona1
+    personaResourceTest.deleteEntity(persona1.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify relationships are cleaned up
+    // User 1: Should have no personas
+    User user1AfterDelete = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user1AfterDelete.getPersonas() == null || user1AfterDelete.getPersonas().isEmpty(),
+        "User1 should have no personas after persona1 deletion");
+
+    // User 2: Should only have persona2, no default persona
+    User user2AfterDelete = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user2AfterDelete.getPersonas().size());
+    assertEquals(persona2.getId(), user2AfterDelete.getPersonas().get(0).getId());
+    // Default persona should either be null or system default (not persona1)
+    if (user2AfterDelete.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona1.getId(),
+          user2AfterDelete.getDefaultPersona().getId(),
+          "Default persona should not be the deleted persona1");
+    }
+
+    // User 3: Should have no personas, preferences should still exist but won't cause issues
+    User user3AfterDelete = getEntity(user3.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user3AfterDelete.getPersonas() == null || user3AfterDelete.getPersonas().isEmpty(),
+        "User3 should have no personas after persona1 deletion");
+
+    // All users should still be updatable
+    String json1 = JsonUtils.pojoToJson(user1AfterDelete);
+    user1AfterDelete.setDisplayName("User1 updated after persona deletion");
+    ChangeDescription change1 = getChangeDescription(user1AfterDelete, MINOR_UPDATE);
+    fieldAdded(change1, "displayName", "User1 updated after persona deletion");
+    User user1Updated =
+        patchEntityAndCheck(user1AfterDelete, json1, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1);
+    assertEquals("User1 updated after persona deletion", user1Updated.getDisplayName());
+
+    String json2 = JsonUtils.pojoToJson(user2AfterDelete);
+    user2AfterDelete.setDisplayName("User2 updated after persona deletion");
+    ChangeDescription change2 = getChangeDescription(user2AfterDelete, MINOR_UPDATE);
+    fieldAdded(change2, "displayName", "User2 updated after persona deletion");
+    User user2Updated =
+        patchEntityAndCheck(user2AfterDelete, json2, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    assertEquals("User2 updated after persona deletion", user2Updated.getDisplayName());
+  }
+
+  @Test
   void patch_userAuthorizationTests(TestInfo test) throws IOException {
     //
     // A user can update many attributes for himself. These tests validate what is allowed and not
