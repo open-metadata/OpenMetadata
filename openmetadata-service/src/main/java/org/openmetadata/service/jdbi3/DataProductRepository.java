@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static java.util.stream.Collectors.toSet;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -30,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -50,7 +52,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -228,12 +229,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       try {
-        // Validate the asset-data product assignment using rule engine
         if (isAdd) {
           validateAssetDataProductAssignment(ref, dataProductRef);
-        }
-
-        if (isAdd) {
           addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
         } else {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
@@ -299,25 +296,29 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private void validateAssetDataProductAssignment(
       EntityReference asset, EntityReference dataProductRef) {
     try {
-      // Get the full asset entity to validate against
-      EntityInterface assetEntity = Entity.getEntity(asset, "*", ALL);
+      // Get asset domains using lightweight relationship queries (Domain HAS Asset)
+      List<EntityReference> assetDomains =
+          findFrom(asset.getId(), asset.getType(), Relationship.HAS, Entity.DOMAIN);
+      Set<UUID> assetDomainIds = assetDomains.stream().map(EntityReference::getId).collect(toSet());
 
-      // Get current data products for the asset
-      List<EntityReference> currentDataProducts = new ArrayList<>();
-      if (assetEntity.getDataProducts() != null) {
-        currentDataProducts.addAll(assetEntity.getDataProducts());
+      // Get data product domains using lightweight relationship queries (Domain CONTAINS
+      // DataProduct)
+      List<EntityReference> dataProductDomains =
+          findFrom(
+              dataProductRef.getId(), Entity.DATA_PRODUCT, Relationship.CONTAINS, Entity.DOMAIN);
+      Set<UUID> dataProductDomainIds =
+          dataProductDomains.stream().map(EntityReference::getId).collect(toSet());
+
+      // Check if there's any overlap between asset domains and data product domains
+      boolean hasMatchingDomain = !Collections.disjoint(assetDomainIds, dataProductDomainIds);
+
+      // If no matching domain found, throw validation error
+      if (!hasMatchingDomain && !assetDomainIds.isEmpty() && !dataProductDomainIds.isEmpty()) {
+        throw new RuleValidationException(
+            (List<SemanticsRule>) null,
+            "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. "
+                + "Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
       }
-
-      // Add the new data product to the list
-      if (!currentDataProducts.contains(dataProductRef)) {
-        currentDataProducts.add(dataProductRef);
-      }
-
-      // Create a copy of the asset entity with the new data product assignment
-      assetEntity.setDataProducts(currentDataProducts);
-
-      // Run rule validation on the modified entity
-      RuleEngine.getInstance().evaluate(assetEntity);
 
     } catch (RuleValidationException e) {
       // Re-throw validation exceptions with context about the bulk operation

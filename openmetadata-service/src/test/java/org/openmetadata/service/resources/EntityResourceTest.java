@@ -1210,8 +1210,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test
