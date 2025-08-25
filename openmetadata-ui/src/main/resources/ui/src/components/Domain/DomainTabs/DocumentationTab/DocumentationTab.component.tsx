@@ -31,7 +31,6 @@ import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomP
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
-import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import '../../domain.less';
@@ -155,8 +154,6 @@ const DocumentationTab = ({
         children: (
           <div className="d-flex flex-column gap-5">
             <OwnerLabelV2 dataTestId="domain-owner-name" />
-
-            <ReviewerLabelV2 />
 
             <TagsContainerV2
               newLook
