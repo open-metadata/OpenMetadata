@@ -516,7 +516,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           data-testid="cancel-btn"
           disabled={isFormLoading}
           type="link"
-          onClick={handleCancel}>
+          onClick={handleCancel}
+        >
           {t('label.cancel')}
         </Button>
         <Button
@@ -524,7 +525,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           htmlType="submit"
           loading={isFormLoading || isCheckingPermissions}
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={() => form.submit()}
+        >
           {t('label.create')}
         </Button>
       </Space>
@@ -993,7 +995,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           scrollMode: 'if-needed',
         }}
         onFinish={handleSubmit}
-        onValuesChange={handleValuesChange}>
+        onValuesChange={handleValuesChange}
+      >
         <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
             label={t('message.select-test-level')}
@@ -1005,7 +1008,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                   entity: t('label.test-level-lowercase'),
                 }),
               },
-            ]}>
+            ]}
+          >
             <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
           </Form.Item>
           <Form.Item
@@ -1030,7 +1034,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                   return Promise.resolve();
                 },
               },
-            ]}>
+            ]}
+          >
             <AsyncSelect
               allowClear
               enableInfiniteScroll
@@ -1058,7 +1063,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                     entity: t('label.column'),
                   }),
                 },
-              ]}>
+              ]}
+            >
               <Select
                 allowClear
                 showSearch
@@ -1081,7 +1087,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 className={classNames(
                   'custom-test-type-container',
                   isCustomQuery ? 'justify-between' : 'justify-end'
-                )}>
+                )}
+              >
                 {isCustomQuery ? (
                   <>
                     <Typography.Text className="test-type-label">
@@ -1099,7 +1106,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                         handleTestDefinitionChange('');
                         handleValuesChange({ testTypeId: undefined });
                         setIsCustomQuery(false);
-                      }}>
+                      }}
+                    >
                       {t('label.select-test-type')}
                     </Button>
                   </>
@@ -1116,7 +1124,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                       handleTestDefinitionChange('tableCustomSQLQuery');
                       handleValuesChange({ testTypeId: 'tableCustomSQLQuery' });
                       setIsCustomQuery(true);
-                    }}>
+                    }}
+                  >
                     {t('label.custom-query')}
                   </Button>
                 )}
@@ -1133,7 +1142,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                   message: t('label.select-test-type'),
                 },
               ]}
-              tooltip={selectedTestDefinition?.description}>
+              tooltip={selectedTestDefinition?.description}
+            >
               <Select
                 showSearch
                 data-testid="test-type"
@@ -1159,7 +1169,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 prevValues['useDynamicAssertion'],
                 currentValues['useDynamicAssertion']
               );
-            }}>
+            }}
+          >
             {({ getFieldValue }) =>
               getFieldValue('useDynamicAssertion') ? null : generateParamsField
             }
@@ -1215,7 +1226,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                         <Form.Item
                           className="m-b-0"
                           name="selectAllTestCases"
-                          valuePropName="checked">
+                          valuePropName="checked"
+                        >
                           <Switch />
                         </Form.Item>
                         <Typography.Text className="font-medium">
@@ -1239,7 +1251,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                               }),
                             },
                           ]}
-                          valuePropName="selectedTest">
+                          valuePropName="selectedTest"
+                        >
                           <AddTestCaseList
                             showButton={false}
                             testCaseParams={{
@@ -1272,7 +1285,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                         <Form.Item
                           className="m-b-0"
                           name="enableDebugLog"
-                          valuePropName="checked">
+                          valuePropName="checked"
+                        >
                           <Switch />
                         </Form.Item>
                         <Typography.Paragraph className="font-medium m-0">
@@ -1285,7 +1299,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                         <Form.Item
                           className="m-b-0"
                           name="raiseOnError"
-                          valuePropName="checked">
+                          valuePropName="checked"
+                        >
                           <Switch />
                         </Form.Item>
                         <Typography.Paragraph className="font-medium m-0">
@@ -1328,7 +1343,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           onClick={onCancel}
         />
       }
-      onClose={onCancel}>
+      onClose={onCancel}
+    >
       <div className="drawer-form-content">{formContent}</div>
     </Drawer>
   );
