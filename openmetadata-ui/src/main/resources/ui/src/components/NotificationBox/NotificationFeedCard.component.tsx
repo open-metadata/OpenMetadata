@@ -21,7 +21,7 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType } from '../../utils/EntityUtils';
+import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import Fqn from '../../utils/Fqn';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
@@ -84,6 +84,12 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     );
   }, [entityType, task, taskDetails]);
 
+  const entityName = useMemo(() => {
+    return task?.entityRef
+      ? getEntityName(task?.entityRef)
+      : entityDisplayName(entityType, entityFQN);
+  }, [task, entityType, entityFQN]);
+
   return (
     <Link
       className="no-underline"
@@ -96,7 +102,10 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
         description={
-          <Space direction="vertical" size={0}>
+          <Space
+            data-testid={`notification-item-${entityName}`}
+            direction="vertical"
+            size={0}>
             <Typography.Paragraph
               className="m-0"
               style={{ color: '#37352F', marginBottom: 0 }}>
@@ -107,8 +116,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <span>{entityType} </span>
                   <Link
                     className="truncate"
+                    data-testid={`notification-link-${entityName}`}
                     to={prepareFeedLink(entityType, entityFQN)}>
-                    {entityDisplayName(entityType, entityFQN)}
+                    {entityName}
                   </Link>
                 </>
               ) : (
