@@ -426,7 +426,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     for (Table table : createdTables) {
       try {
-        deleteTable(table.getId());
+        deleteTable(table.getId(), true);
       } catch (Exception e) {
         // Ignore cleanup errors
       }
@@ -840,8 +840,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
 
-  private void deleteTable(UUID id) {
+  private void deleteTable(UUID id, boolean recursive) {
     WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
+    tableTarget = tableTarget.queryParam("recursive", recursive);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
@@ -4348,7 +4349,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(retrieved);
 
     // Delete the table
-    deleteTable(table.getId());
+    deleteTable(table.getId(), true);
 
     // Verify that the data contract is also deleted (should throw HttpResponseException)
     assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
