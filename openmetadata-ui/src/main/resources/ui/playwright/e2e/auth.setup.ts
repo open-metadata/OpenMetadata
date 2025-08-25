@@ -120,7 +120,9 @@ setup('authenticate all users', async ({ browser }) => {
     ]);
 
     // Save admin state
-    await adminPage.context().storageState({ path: adminFile });
+    await adminPage
+      .context()
+      .storageState({ path: adminFile, indexedDB: true });
 
     // Create separate pages for each user
     const [
@@ -142,31 +144,39 @@ setup('authenticate all users', async ({ browser }) => {
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
     await dataConsumerPage.waitForLoadState('networkidle');
-    await dataConsumerPage.context().storageState({ path: dataConsumerFile });
+    await dataConsumerPage
+      .context()
+      .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
     await dataStewardPage.waitForLoadState('networkidle');
-    await dataStewardPage.context().storageState({ path: dataStewardFile });
+    await dataStewardPage
+      .context()
+      .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
     await editDescriptionPage.waitForLoadState('networkidle');
     await editDescriptionPage
       .context()
-      .storageState({ path: editDescriptionFile });
+      .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
     await editTagsPage.waitForLoadState('networkidle');
-    await editTagsPage.context().storageState({ path: editTagsFile });
+    await editTagsPage
+      .context()
+      .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
     await editGlossaryTermPage.waitForLoadState('networkidle');
     await editGlossaryTermPage
       .context()
-      .storageState({ path: editGlossaryTermFile });
+      .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
     await ownerPage.waitForLoadState('networkidle');
-    await ownerPage.context().storageState({ path: ownerFile });
+    await ownerPage
+      .context()
+      .storageState({ path: ownerFile, indexedDB: true });
 
     await afterAction();
   } catch (error) {

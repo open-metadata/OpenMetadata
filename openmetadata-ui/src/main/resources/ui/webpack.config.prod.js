@@ -236,6 +236,10 @@ module.exports = {
           from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
+        {
+          from: path.join(__dirname, 'public/app-worker.js'),
+          to: outputPath,
+        },
       ],
     }),
 
@@ -246,10 +250,14 @@ module.exports = {
     }),
 
     // Bundle analyzer (only when explicitly requested)
-    ...(process.env.ANALYZE_BUNDLE === 'true' ? [new BundleAnalyzerPlugin({
-      analyzerMode: 'static', // Outputs an HTML report
-      openAnalyzer: false, // Set to true to open report automatically
-    })] : []),
+    ...(process.env.ANALYZE_BUNDLE === 'true'
+      ? [
+          new BundleAnalyzerPlugin({
+            analyzerMode: 'static', // Outputs an HTML report
+            openAnalyzer: false, // Set to true to open report automatically
+          }),
+        ]
+      : []),
   ],
 
   // Performance budgets
