@@ -128,11 +128,7 @@ public class QueryRepository extends EntityRepository<Query> {
       return;
     }
 
-    // Extract query IDs for batch fetching
     List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
-
-    // Bulk fetch all query usage relationships
-    // We need relationships FROM other entities TO queries (queries are the "to" side)
     List<CollectionDAO.EntityRelationshipObject> relationships =
         daoCollection
             .relationshipDAO()
@@ -148,7 +144,6 @@ public class QueryRepository extends EntityRepository<Query> {
       queryUsageMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
     }
 
-    // Set the query usage for each entity
     queries.forEach(
         query -> {
           List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
@@ -161,11 +156,7 @@ public class QueryRepository extends EntityRepository<Query> {
       return;
     }
 
-    // Extract query IDs for batch fetching
     List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
-
-    // Bulk fetch all query user relationships
-    // We need relationships FROM users TO queries (queries are the "to" side)
     List<CollectionDAO.EntityRelationshipObject> relationships =
         daoCollection
             .relationshipDAO()
@@ -181,7 +172,6 @@ public class QueryRepository extends EntityRepository<Query> {
       queryUsersMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
     }
 
-    // Set the query users for each entity
     queries.forEach(
         query -> {
           List<EntityReference> users = queryUsersMap.getOrDefault(query.getId(), List.of());
