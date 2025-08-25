@@ -696,7 +696,7 @@ test.describe('Data Contracts', () => {
       });
 
       // Hide the Contract tab
-      await page.getByTestId('tab-Contract').click();
+      await page.getByTestId('tab-contract').click();
       await page.getByText('Hide', { exact: true }).click();
 
       // Save the customization
