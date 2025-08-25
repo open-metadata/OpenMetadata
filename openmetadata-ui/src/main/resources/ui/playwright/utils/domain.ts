@@ -172,6 +172,8 @@ export const selectDataProductFromTab = async (
 
   await dpRes;
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
 
   await page
@@ -612,39 +614,33 @@ export const verifyDataProductAssetsAfterDelete = async (
     );
   });
 
-  await test.step(
-    'Remove Data Product Sales and Create the same again',
-    async () => {
-      // Remove sales data product
-      await dataProduct1.delete(apiContext);
+  await test.step('Remove Data Product Sales and Create the same again', async () => {
+    // Remove sales data product
+    await dataProduct1.delete(apiContext);
 
-      // Create sales data product again
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      if (subDomain) {
-        await selectSubDomain(page, domain.data, subDomain.data);
-      } else {
-        await selectDomain(page, domain.data);
-      }
-
-      await createDataProduct(page, newDataProduct1.data);
+    // Create sales data product again
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+    } else {
+      await selectDomain(page, domain.data);
     }
-  );
 
-  await test.step(
-    'Verify assets are not present in the newly created data product',
-    async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      if (subDomain) {
-        await selectSubDomain(page, domain.data, subDomain.data);
-        await selectDataProductFromTab(page, newDataProduct1.data);
-      } else {
-        await selectDataProduct(page, domain.data, newDataProduct1.data);
-      }
-      await checkAssetsCount(page, 0);
+    await createDataProduct(page, newDataProduct1.data);
+  });
+
+  await test.step('Verify assets are not present in the newly created data product', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, newDataProduct1.data);
+    } else {
+      await selectDataProduct(page, domain.data, newDataProduct1.data);
     }
-  );
+    await checkAssetsCount(page, 0);
+  });
 };
 
 export const addTagsAndGlossaryToDomain = async (

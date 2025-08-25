@@ -1,3 +1,7 @@
+-- Update the relation between table and dataContract to 0 (CONTAINS)
+UPDATE entity_relationship
+SET relation = 0
+WHERE fromEntity = 'table' AND toEntity = 'dataContract' AND relation = 10;
 -- Add displayName virtual column to glossary_term_entity for efficient search
 ALTER TABLE glossary_term_entity ADD COLUMN IF NOT EXISTS displayName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'displayName') STORED;
 
