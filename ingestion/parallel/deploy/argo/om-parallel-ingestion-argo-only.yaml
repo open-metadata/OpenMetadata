@@ -1,0 +1,239 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: om-parallel-ingestion-argo-only
+  namespace: openmetadata
+spec:
+  entrypoint: pipeline
+  serviceAccountName: om-argo-sa
+  
+  templates:
+  - name: pipeline
+    dag:
+      tasks:
+      - name: partition
+        template: partition
+        arguments:
+          parameters:
+          - name: source_config
+            value: "{{workflow.parameters.source_config}}"
+      
+      - name: process-shards
+        dependencies: [partition]
+        template: process-shard
+        withParam: "{{tasks.partition.outputs.parameters.shards}}"
+        arguments:
+          parameters:
+          - name: shard
+            value: "{{item}}"
+          - name: source_class
+            value: "{{workflow.parameters.source_class}}"
+          - name: processor_class
+            value: "{{workflow.parameters.processor_class}}"
+          - name: sink_class
+            value: "{{workflow.parameters.sink_class}}"
+          - name: config
+            value: "{{workflow.parameters.config}}"
+      
+      - name: aggregate-results
+        dependencies: [process-shards]
+        template: aggregate
+        arguments:
+          artifacts:
+          - name: results
+            from: "{{tasks.process-shards.outputs.artifacts.result}}"
+
+  # Partition template - discovers shards to process
+  - name: partition
+    inputs:
+      parameters:
+      - name: source_config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import os
+        import sys
+        from importlib import import_module
+        
+        # Parse source config
+        source_config = json.loads('''{{inputs.parameters.source_config}}''')
+        source_class = source_config.get("source_class")
+        
+        # Dynamic import
+        module_name, class_name = source_class.rsplit(".", 1)
+        module = import_module(module_name)
+        SourceClass = getattr(module, class_name)
+        
+        # Initialize source and discover shards
+        source = SourceClass(source_config.get("config", {}))
+        shards = source.discover_shards()
+        
+        # Limit parallelism if needed
+        max_shards = int(os.getenv("MAX_PARALLEL_SHARDS", "50"))
+        if len(shards) > max_shards:
+            print(f"Warning: Found {len(shards)} shards, limiting to {max_shards}", file=sys.stderr)
+            shards = shards[:max_shards]
+        
+        # Output as JSON array
+        shard_list = [shard.model_dump() for shard in shards]
+        print(json.dumps(shard_list))
+    outputs:
+      parameters:
+      - name: shards
+        valueFrom:
+          path: /tmp/outputs/stdout
+
+  # Process shard template - runs in individual pods
+  - name: process-shard
+    inputs:
+      parameters:
+      - name: shard
+      - name: source_class
+      - name: processor_class
+      - name: sink_class
+      - name: config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        sys.path.append('/app')
+        
+        from ingestion.parallel.om_argo_runner import process_shard
+        
+        shard = json.loads('''{{inputs.parameters.shard}}''')
+        config = json.loads('''{{inputs.parameters.config}}''')
+        
+        process_shard(
+            shard=shard,
+            source_class="{{inputs.parameters.source_class}}",
+            processor_class="{{inputs.parameters.processor_class}}",
+            sink_class="{{inputs.parameters.sink_class}}",
+            config=config
+        )
+      env:
+      - name: OPENMETADATA_HOST
+        value: "{{workflow.parameters.openmetadata_host}}"
+      - name: OPENMETADATA_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: om-secrets
+            key: api-key
+      - name: WORKFLOW_RUN_ID
+        value: "{{workflow.name}}"
+      - name: OM_BATCH_SIZE
+        value: "{{workflow.parameters.batch_size}}"
+      - name: MAX_PARALLEL_SHARDS
+        value: "{{workflow.parameters.max_parallel_shards}}"
+      resources:
+        requests:
+          cpu: "{{workflow.parameters.shard_cpu}}"
+          memory: "{{workflow.parameters.shard_memory}}"
+        limits:
+          cpu: "{{workflow.parameters.shard_cpu_limit}}"
+          memory: "{{workflow.parameters.shard_memory_limit}}"
+    outputs:
+      artifacts:
+      - name: result
+        path: /tmp/outputs/stdout
+        optional: true
+
+  # Aggregate results template
+  - name: aggregate
+    inputs:
+      artifacts:
+      - name: results
+        path: /tmp/results
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import os
+        import sys
+        sys.path.append('/app')
+        
+        from ingestion.parallel.om_argo_runner import aggregate_results
+        
+        # Find all result files
+        result_files = []
+        results_dir = "/tmp/results"
+        for root, dirs, files in os.walk(results_dir):
+            for file in files:
+                if file.endswith(".json") or file == "stdout":
+                    result_files.append(os.path.join(root, file))
+        
+        if result_files:
+            aggregate_results(result_files, "/tmp/aggregate.json")
+            
+            # Print summary
+            with open("/tmp/aggregate.json", 'r') as f:
+                aggregate = json.load(f)
+            print(f"Workflow completed: {aggregate['total_success']} records processed successfully, "
+                  f"{aggregate['total_failed']} failed across {aggregate['shard_count']} shards")
+        else:
+            print("No results found to aggregate")
+
+  # Global workflow parameters
+  parameters:
+  - name: source_config
+    value: |
+      {
+        "source_class": "ingestion.parallel.adapters.database.PostgresSourceAdapter",
+        "config": {
+          "connection": {
+            "host": "postgres.default.svc.cluster.local",
+            "port": 5432,
+            "database": "openmetadata"
+          }
+        }
+      }
+  - name: source_class
+    value: "ingestion.parallel.adapters.database.PostgresSourceAdapter"
+  - name: processor_class
+    value: "ingestion.parallel.adapters.processors.DataQualityProcessor"
+  - name: sink_class
+    value: "ingestion.parallel.adapters.sinks.OpenMetadataSink"
+  - name: config
+    value: "{}"
+  - name: batch_size
+    value: "1000"
+  - name: max_parallel_shards
+    value: "50"
+  - name: shard_cpu
+    value: "500m"
+  - name: shard_memory
+    value: "1Gi"
+  - name: shard_cpu_limit
+    value: "1"
+  - name: shard_memory_limit
+    value: "2Gi"
+  - name: runner_image
+    value: "openmetadata/om-ray-runner:latest"
+  - name: openmetadata_host
+    value: "http://openmetadata.default.svc.cluster.local:8585"
+
+  # Retry strategy
+  retryStrategy:
+    limit: 3
+    retryPolicy: "OnError"
+    backoff:
+      duration: "30s"
+      factor: 2
+
+  # Parallelism control
+  parallelism: 10  # Max parallel shard processing tasks
+
+  # Pod garbage collection
+  podGC:
+    strategy: OnPodCompletion
+    deleteDelayDuration: 300s  # 5 minutes
+
+  # TTL for cleanup
+  ttlStrategy:
+    secondsAfterCompletion: 86400  # 24 hours
+    secondsAfterSuccess: 3600      # 1 hour
+    secondsAfterFailure: 86400     # 24 hours

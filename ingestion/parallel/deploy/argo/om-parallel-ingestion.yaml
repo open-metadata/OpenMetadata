@@ -1,0 +1,402 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: om-parallel-ingestion
+  namespace: openmetadata
+spec:
+  entrypoint: pipeline
+  serviceAccountName: om-argo-sa
+  volumeClaimTemplates:
+  - metadata:
+      name: workdir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+  
+  templates:
+  - name: pipeline
+    dag:
+      tasks:
+      - name: partition
+        template: partition
+        arguments:
+          parameters:
+          - name: source_config
+            value: "{{workflow.parameters.source_config}}"
+      
+      - name: start-ray
+        dependencies: [partition]
+        template: start-ray
+        arguments:
+          parameters:
+          - name: clusterName
+            value: "{{workflow.name}}-ray"
+          - name: workerReplicas
+            value: "{{workflow.parameters.workerReplicas}}"
+      
+      - name: map
+        dependencies: [start-ray]
+        template: map
+        withParam: "{{tasks.partition.outputs.parameters.shards}}"
+        arguments:
+          parameters:
+          - name: shard
+            value: "{{item}}"
+          - name: clusterName
+            value: "{{tasks.start-ray.outputs.parameters.clusterName}}"
+          - name: source_class
+            value: "{{workflow.parameters.source_class}}"
+          - name: processor_class
+            value: "{{workflow.parameters.processor_class}}"
+          - name: sink_class
+            value: "{{workflow.parameters.sink_class}}"
+          - name: config
+            value: "{{workflow.parameters.config}}"
+      
+      - name: reduce
+        dependencies: [map]
+        template: reduce
+        when: "{{workflow.parameters.enable_reduce}} == true"
+        arguments:
+          parameters:
+          - name: merger_class
+            value: "{{workflow.parameters.merger_class}}"
+          - name: sink_class
+            value: "{{workflow.parameters.sink_class}}"
+          - name: config
+            value: "{{workflow.parameters.config}}"
+      
+      - name: publish
+        dependencies: [reduce]
+        template: publish
+        when: "{{workflow.parameters.enable_publish}} == true"
+      
+      - name: stop-ray
+        dependencies: [publish, reduce, map]
+        template: stop-ray
+        arguments:
+          parameters:
+          - name: clusterName
+            value: "{{tasks.start-ray.outputs.parameters.clusterName}}"
+        continueOn:
+          failed: true
+          error: true
+
+  # Partition template - discovers shards to process
+  - name: partition
+    inputs:
+      parameters:
+      - name: source_config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import os
+        import sys
+        from importlib import import_module
+        
+        # Parse source config
+        source_config = json.loads('''{{inputs.parameters.source_config}}''')
+        source_class = source_config.get("source_class")
+        
+        # Dynamic import
+        module_name, class_name = source_class.rsplit(".", 1)
+        module = import_module(module_name)
+        SourceClass = getattr(module, class_name)
+        
+        # Initialize source and discover shards
+        source = SourceClass(source_config.get("config", {}))
+        shards = source.discover_shards()
+        
+        # Output as JSON array
+        shard_list = [shard.model_dump() for shard in shards]
+        print(json.dumps(shard_list))
+      volumeMounts:
+      - name: workdir
+        mountPath: /work
+    outputs:
+      parameters:
+      - name: shards
+        valueFrom:
+          path: /tmp/outputs/stdout
+
+  # Start Ray cluster
+  - name: start-ray
+    inputs:
+      parameters:
+      - name: clusterName
+      - name: workerReplicas
+    resource:
+      action: create
+      manifest: |
+        apiVersion: ray.io/v1
+        kind: RayCluster
+        metadata:
+          name: {{inputs.parameters.clusterName}}
+          namespace: openmetadata
+        spec:
+          rayVersion: '2.31.0'
+          headGroupSpec:
+            serviceType: ClusterIP
+            rayStartParams:
+              dashboard-host: '0.0.0.0'
+              num-cpus: '2'
+            template:
+              metadata:
+                labels:
+                  app: ray-head
+              spec:
+                serviceAccountName: ray-sa
+                containers:
+                - name: ray-head
+                  image: "{{workflow.parameters.ray_image}}"
+                  ports:
+                  - containerPort: 6379
+                    name: gcs-server
+                  - containerPort: 8265
+                    name: dashboard
+                  - containerPort: 10001
+                    name: client
+                  resources:
+                    requests:
+                      cpu: "2"
+                      memory: "4Gi"
+                    limits:
+                      cpu: "2"
+                      memory: "4Gi"
+                  env:
+                  - name: RAY_ADDRESS
+                    value: "ray://localhost:10001"
+                  volumeMounts:
+                  - name: workdir
+                    mountPath: /work
+                volumes:
+                - name: workdir
+                  persistentVolumeClaim:
+                    claimName: workdir
+          workerGroupSpecs:
+          - replicas: {{inputs.parameters.workerReplicas}}
+            minReplicas: 0
+            maxReplicas: 50
+            groupName: workers
+            rayStartParams: {}
+            template:
+              metadata:
+                labels:
+                  app: ray-worker
+              spec:
+                serviceAccountName: ray-sa
+                containers:
+                - name: ray-worker
+                  image: "{{workflow.parameters.ray_image}}"
+                  env:
+                  - name: RAY_ADDRESS
+                    value: "ray://{{inputs.parameters.clusterName}}-head-svc:10001"
+                  resources:
+                    requests:
+                      cpu: "{{workflow.parameters.worker_cpu}}"
+                      memory: "{{workflow.parameters.worker_memory}}"
+                    limits:
+                      cpu: "{{workflow.parameters.worker_cpu}}"
+                      memory: "{{workflow.parameters.worker_memory}}"
+                  volumeMounts:
+                  - name: workdir
+                    mountPath: /work
+                volumes:
+                - name: workdir
+                  persistentVolumeClaim:
+                    claimName: workdir
+    outputs:
+      parameters:
+      - name: clusterName
+        value: "{{inputs.parameters.clusterName}}"
+
+  # Map template - process each shard in parallel
+  - name: map
+    inputs:
+      parameters:
+      - name: shard
+      - name: clusterName
+      - name: source_class
+      - name: processor_class
+      - name: sink_class
+      - name: config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        sys.path.append('/app')
+        
+        from ingestion.parallel.om_parallel import run_shard_map
+        
+        shard = json.loads('''{{inputs.parameters.shard}}''')
+        config = json.loads('''{{inputs.parameters.config}}''')
+        
+        run_shard_map(
+            shard=shard,
+            source_class="{{inputs.parameters.source_class}}",
+            processor_class="{{inputs.parameters.processor_class}}",
+            sink_class="{{inputs.parameters.sink_class}}",
+            config=config,
+            ray_address=f"ray://{{inputs.parameters.clusterName}}-head-svc:10001"
+        )
+      env:
+      - name: OPENMETADATA_HOST
+        value: "{{workflow.parameters.openmetadata_host}}"
+      - name: OPENMETADATA_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: om-secrets
+            key: api-key
+      - name: WORKFLOW_RUN_ID
+        value: "{{workflow.name}}"
+      - name: OM_MICROBATCH
+        value: "{{workflow.parameters.microbatch_size}}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /work
+      resources:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+
+  # Reduce template - merge partial aggregates
+  - name: reduce
+    inputs:
+      parameters:
+      - name: merger_class
+      - name: sink_class
+      - name: config
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import json
+        import sys
+        sys.path.append('/app')
+        
+        from ingestion.parallel.om_parallel import reduce_partials
+        
+        config = json.loads('''{{inputs.parameters.config}}''')
+        
+        reduce_partials(
+            merger_class="{{inputs.parameters.merger_class}}",
+            sink_class="{{inputs.parameters.sink_class}}",
+            config=config
+        )
+      env:
+      - name: OPENMETADATA_HOST
+        value: "{{workflow.parameters.openmetadata_host}}"
+      - name: OPENMETADATA_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: om-secrets
+            key: api-key
+      - name: WORKFLOW_RUN_ID
+        value: "{{workflow.name}}"
+      volumeMounts:
+      - name: workdir
+        mountPath: /work
+      resources:
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+
+  # Publish template - final publishing step
+  - name: publish
+    script:
+      image: "{{workflow.parameters.runner_image}}"
+      command: [python]
+      source: |
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+        
+        # This is a placeholder for any final publishing logic
+        # For example, triggering downstream workflows, sending notifications, etc.
+        logger.info("Publishing results completed")
+        
+        # Could also validate results, update metadata, etc.
+        print("Workflow completed successfully")
+
+  # Stop Ray cluster
+  - name: stop-ray
+    inputs:
+      parameters:
+      - name: clusterName
+    resource:
+      action: delete
+      manifest: |
+        apiVersion: ray.io/v1
+        kind: RayCluster
+        metadata:
+          name: {{inputs.parameters.clusterName}}
+          namespace: openmetadata
+
+  # Global workflow parameters
+  parameters:
+  - name: source_config
+    value: |
+      {
+        "source_class": "ingestion.parallel.adapters.database.PostgresSourceAdapter",
+        "config": {
+          "connection": {
+            "host": "postgres.default.svc.cluster.local",
+            "port": 5432,
+            "database": "openmetadata"
+          }
+        }
+      }
+  - name: source_class
+    value: "ingestion.parallel.adapters.database.PostgresSourceAdapter"
+  - name: processor_class
+    value: "ingestion.parallel.adapters.processors.DataQualityProcessor"
+  - name: sink_class
+    value: "ingestion.parallel.adapters.sinks.OpenMetadataSink"
+  - name: merger_class
+    value: "ingestion.parallel.om_adapters.TableUsageMerger"
+  - name: config
+    value: "{}"
+  - name: enable_reduce
+    value: "false"
+  - name: enable_publish
+    value: "true"
+  - name: workerReplicas
+    value: "3"
+  - name: worker_cpu
+    value: "1"
+  - name: worker_memory
+    value: "2Gi"
+  - name: microbatch_size
+    value: "1000"
+  - name: runner_image
+    value: "openmetadata/om-ray-runner:latest"
+  - name: ray_image
+    value: "rayproject/ray:2.31.0-py311"
+  - name: openmetadata_host
+    value: "http://openmetadata.default.svc.cluster.local:8585"
+
+  # Retry strategy
+  retryStrategy:
+    limit: 3
+    retryPolicy: "Always"
+    backoff:
+      duration: "30s"
+      factor: 2
+
+  # Parallelism control
+  parallelism: 10  # Max parallel map tasks
+
+  # TTL for cleanup
+  ttlStrategy:
+    secondsAfterCompletion: 86400  # 24 hours
+    secondsAfterSuccess: 3600      # 1 hour
+    secondsAfterFailure: 86400     # 24 hours

@@ -1,0 +1,69 @@
+# KubeRay operator installation
+# This should be installed cluster-wide by a cluster admin
+# Reference: https://docs.ray.io/en/latest/cluster/kubernetes/getting-started.html
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuberay-system
+---
+# Install KubeRay operator using Helm (recommended)
+# Run these commands:
+# helm repo add kuberay https://ray-project.github.io/kuberay-helm/
+# helm repo update
+# helm install kuberay-operator kuberay/kuberay-operator --namespace kuberay-system --create-namespace
+
+# Alternative: Install using kubectl
+# kubectl apply -k "github.com/ray-project/kuberay/manifests/cluster-scope-resources?ref=v1.0.0"
+# kubectl apply -k "github.com/ray-project/kuberay/manifests/base?ref=v1.0.0"
+
+# For reference, here's a minimal configuration for the operator
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kuberay-operator-config
+  namespace: kuberay-system
+data:
+  # Operator configuration
+  config.yaml: |
+    # Enable leader election for HA
+    leaderElection:
+      enabled: true
+      namespace: kuberay-system
+    
+    # Webhook configuration
+    webhook:
+      enabled: true
+      port: 9443
+    
+    # Metrics configuration
+    metrics:
+      enabled: true
+      port: 8080
+    
+    # Health probe configuration
+    health:
+      port: 8081
+    
+    # Log level
+    logLevel: info
+    
+    # Watch namespaces (empty means all namespaces)
+    watchNamespaces: []
+    
+    # Resource limits for Ray clusters
+    clusterDefaults:
+      # Default autoscaler configuration
+      autoscaler:
+        enabled: true
+        idleTimeoutSeconds: 300
+        upscalingMode: Default
+      
+      # Default resource limits
+      resources:
+        limits:
+          cpu: "1000"
+          memory: "1000Gi"
+        requests:
+          cpu: "100"
+          memory: "100Gi"
