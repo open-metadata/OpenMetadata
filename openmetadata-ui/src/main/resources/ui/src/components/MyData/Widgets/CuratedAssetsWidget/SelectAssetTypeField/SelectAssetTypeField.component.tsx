@@ -17,6 +17,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
 import {
   AlertMessage,
@@ -91,7 +92,9 @@ export const SelectAssetTypeField = ({
   const handleResourceChange = useCallback(
     (val: string | string[]) => {
       if (form) {
-        form.setFieldValue('resources', [val]);
+        const isAllSelected =
+          Array.isArray(val) && val.includes(EntityType.ALL);
+        form.setFieldValue('resources', isAllSelected ? [EntityType.ALL] : val);
       }
     },
     [form]
@@ -121,6 +124,7 @@ export const SelectAssetTypeField = ({
         name="resources"
         style={{ marginBottom: 8 }}>
         <Select
+          mode="multiple"
           options={resourcesOptions}
           placeholder={t('label.select-asset-type')}
           value={selectedResource}

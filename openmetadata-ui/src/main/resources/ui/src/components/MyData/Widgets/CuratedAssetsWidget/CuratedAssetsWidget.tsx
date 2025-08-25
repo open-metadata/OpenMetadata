@@ -123,7 +123,9 @@ const CuratedAssetsWidget = ({
     [data, isLoading]
   );
 
-  const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
+  const sourceIcon = searchClassBase.getEntityIcon(
+    selectedResource?.length === 1 ? selectedResource?.[0] : ''
+  );
 
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {
@@ -136,7 +138,7 @@ const CuratedAssetsWidget = ({
   }, []);
 
   const prepareData = useCallback(async () => {
-    if (selectedResource?.[0]) {
+    if (selectedResource?.length) {
       try {
         setIsLoading(true);
         const sortField = getSortField(selectedSortBy);
@@ -148,7 +150,7 @@ const CuratedAssetsWidget = ({
         // Use SearchIndex.ALL when 'all' is selected, otherwise use the first selected resource
         const searchIndex = selectedResource.includes(EntityType.ALL)
           ? SearchIndex.ALL
-          : (selectedResource[0] as SearchIndex);
+          : (selectedResource as SearchIndex);
 
         const res = await searchQuery({
           query: '',
