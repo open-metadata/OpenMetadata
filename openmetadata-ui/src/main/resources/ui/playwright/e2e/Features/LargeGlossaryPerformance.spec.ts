@@ -29,6 +29,8 @@ test.describe('Large Glossary Performance Tests', () => {
   const glossaryTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
@@ -61,7 +63,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    // Clean up all terms and glossary
+    // // Clean up all terms and glossary
     for (const term of glossaryTerms.reverse()) {
       await term.delete(apiContext);
     }
@@ -81,7 +83,10 @@ test.describe('Large Glossary Performance Tests', () => {
   }) => {
     const initialTerms = await page.locator('tbody .ant-table-row').count();
 
-    // 51 because there is one additional row which is not rendered
+    await page
+      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .waitFor({ state: 'detached' });
+
     expect(initialTerms).toBe(50);
 
     // Scroll to bottom to trigger infinite scroll
@@ -162,6 +167,7 @@ test.describe('Large Glossary Performance Tests', () => {
     // Click to collapse all
     await expandAllButton.click();
 
+    await page.waitForLoadState('networkidle');
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(

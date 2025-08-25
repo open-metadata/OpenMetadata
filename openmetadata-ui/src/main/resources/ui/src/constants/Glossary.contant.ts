@@ -48,3 +48,5 @@ export const GLOSSARY_TERM_STATUS_OPTIONS = [
 
 export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
   'GlossaryTermApprovalWorkflow';
+
+export const GLOSSARY_PAGE_SIZE = 50;

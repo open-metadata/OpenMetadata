@@ -65,13 +65,9 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
-const mockUseTranslation = useTranslation as jest.MockedFunction<
-  typeof useTranslation
->;
-const mockUseTourProvider = useTourProvider as jest.MockedFunction<
-  typeof useTourProvider
->;
+const mockSearchQuery = searchQuery as jest.Mock;
+const mockUseTranslation = useTranslation as jest.Mock;
+const mockUseTourProvider = useTourProvider as jest.Mock;
 
 const defaultProps = {
   searchText: 'test',

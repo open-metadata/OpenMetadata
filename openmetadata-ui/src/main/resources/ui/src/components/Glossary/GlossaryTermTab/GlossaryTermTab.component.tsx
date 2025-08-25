@@ -33,8 +33,6 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { useInView } from 'react-intersection-observer';
 import { Link, useNavigate } from 'react-router-dom';
@@ -58,6 +56,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
+  GLOSSARY_PAGE_SIZE,
   GLOSSARY_TERM_STATUS_OPTIONS,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
@@ -77,6 +76,8 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { User } from '../../../generated/entity/teams/user';
+import { Paging } from '../../../generated/type/paging';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
@@ -164,12 +165,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
-  const [afterCursor, setAfterCursor] = useState<string | undefined>(undefined);
+  const { paging, handlePagingChange } = usePaging(GLOSSARY_PAGE_SIZE);
+  const afterCursor = paging.after;
   const [hasMoreTerms, setHasMoreTerms] = useState(true);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
   >({});
-  const pageSize = 50;
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [previousGlossaryFQN, setPreviousGlossaryFQN] = useState<
     string | undefined
@@ -239,13 +241,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const fetchAllTerms = async (loadMore = false) => {
     if (!loadMore) {
       setIsTableLoading(true);
-      setAfterCursor(undefined);
+      handlePagingChange((prev) => ({ ...prev, after: undefined }));
     } else {
       setIsLoadingMore(true);
     }
 
     try {
-      let data, paging;
+      let data;
+      let pagingResponse: Paging | undefined;
 
       // Use search API if search term is present
       if (searchTerm) {
@@ -256,21 +259,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           activeGlossary?.fullyQualifiedName,
           undefined,
           undefined,
-          pageSize,
+          GLOSSARY_PAGE_SIZE,
           offset,
           'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
         );
         data = response.data;
-        paging = response.paging;
+        pagingResponse = response.paging;
       } else {
         // Use regular listing API when no search term
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          pageSize,
+          GLOSSARY_PAGE_SIZE,
           loadMore ? afterCursor : undefined
         );
         data = response.data;
-        paging = response.paging;
+        pagingResponse = response.paging;
       }
 
       if (!data || !Array.isArray(data)) {
@@ -291,10 +294,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setExpandedRowKeys([]);
       }
 
-      // Update cursor for next page
-      // Check if there are more terms
-      setAfterCursor(paging?.after);
-      setHasMoreTerms(paging?.after !== undefined);
+      // Update paging state for next page
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: pagingResponse?.after,
+        total: pagingResponse?.total || prev.total,
+      }));
+      setHasMoreTerms(pagingResponse?.after !== undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -355,7 +361,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     if (currentFQN && !isLoadingMore && currentFQN !== previousGlossaryFQN) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
-      setAfterCursor(undefined);
+      handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
@@ -1347,28 +1353,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }}>
           {glossaryTerms.length > 0 ? (
             <>
-              <DndProvider backend={HTML5Backend}>
-                <Table
-                  resizableColumns
-                  className={classNames('drop-over-background', {
-                    'drop-over-table': isTableHovered,
-                  })}
-                  columns={columns}
-                  components={TABLE_CONSTANTS}
-                  data-testid="glossary-terms-table"
-                  dataSource={filteredGlossaryTerms}
-                  defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                  expandable={expandableConfig}
-                  extraTableFilters={extraTableFilters}
-                  loading={isTableLoading || isExpandingAll}
-                  pagination={false}
-                  rowKey="fullyQualifiedName"
-                  size="small"
-                  staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-                  onHeaderRow={onTableHeader}
-                  onRow={onTableRow}
-                />
-              </DndProvider>
+              <Table
+                resizableColumns
+                className={classNames('drop-over-background', {
+                  'drop-over-table': isTableHovered,
+                })}
+                columns={columns}
+                components={TABLE_CONSTANTS}
+                data-testid="glossary-terms-table"
+                dataSource={filteredGlossaryTerms}
+                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+                expandable={expandableConfig}
+                extraTableFilters={extraTableFilters}
+                loading={isTableLoading || isExpandingAll}
+                pagination={false}
+                rowKey="fullyQualifiedName"
+                size="small"
+                staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+                onHeaderRow={onTableHeader}
+                onRow={onTableRow}
+              />
               {hasMoreTerms && (
                 <div
                   className="m-t-md m-b-md text-center p-y-lg"
@@ -1381,41 +1385,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           ) : (
             // Show empty state within the table container when search returns no results
             // This keeps the search bar and filters visible
-            <DndProvider backend={HTML5Backend}>
-              <Table
-                resizableColumns
-                className="glossary-terms-table"
-                columns={columns}
-                components={TABLE_CONSTANTS}
-                data-testid="glossary-terms-table"
-                dataSource={[]}
-                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                expandable={expandableConfig}
-                extraTableFilters={extraTableFilters}
-                loading={isTableLoading}
-                locale={{
-                  emptyText: (
-                    <ErrorPlaceHolder
-                      className="p-md"
-                      placeholderText={
-                        isSearchActive && searchTerm
-                          ? `No Glossary Term found for "${searchTerm}"`
-                          : isSearchActive
-                          ? 'No Glossary Term found'
-                          : 'No Glossary Terms'
-                      }
-                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-                    />
-                  ),
-                }}
-                pagination={false}
-                rowKey="fullyQualifiedName"
-                size="small"
-                staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-                onHeaderRow={onTableHeader}
-                onRow={onTableRow}
-              />
-            </DndProvider>
+            <Table
+              resizableColumns
+              className="glossary-terms-table"
+              columns={columns}
+              components={TABLE_CONSTANTS}
+              data-testid="glossary-terms-table"
+              dataSource={[]}
+              defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+              expandable={expandableConfig}
+              extraTableFilters={extraTableFilters}
+              loading={isTableLoading}
+              locale={{
+                emptyText: (
+                  <ErrorPlaceHolder
+                    className="p-md"
+                    placeholderText={
+                      isSearchActive && searchTerm
+                        ? `No Glossary Term found for "${searchTerm}"`
+                        : isSearchActive
+                        ? 'No Glossary Term found'
+                        : 'No Glossary Terms'
+                    }
+                    type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+                  />
+                ),
+              }}
+              pagination={false}
+              rowKey="fullyQualifiedName"
+              size="small"
+              staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+              onHeaderRow={onTableHeader}
+              onRow={onTableRow}
+            />
           )}
         </div>
         <Modal
