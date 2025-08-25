@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { isEmpty, omit } from 'lodash';
+import { get, isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -21,6 +21,7 @@ import ContainerChildren from '../components/Container/ContainerChildren/Contain
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
@@ -218,6 +219,17 @@ export const getContainerDetailPageTabs = ({
           />
         </LineageProvider>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
     },
     {
       label: (

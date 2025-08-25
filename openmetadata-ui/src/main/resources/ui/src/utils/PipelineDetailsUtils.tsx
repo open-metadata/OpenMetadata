@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
@@ -20,6 +21,7 @@ import { CustomPropertyTable } from '../components/common/CustomPropertyTable/Cu
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
 import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
@@ -65,6 +67,7 @@ export const getPipelineDetailPageTabs = ({
   deleted,
   fetchPipeline,
   tab,
+  labelMap,
 }: PipelineDetailPageTabProps) => {
   return [
     {
@@ -123,6 +126,17 @@ export const getPipelineDetailPageTabs = ({
           />
         </LineageProvider>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
     },
     {
       label: (

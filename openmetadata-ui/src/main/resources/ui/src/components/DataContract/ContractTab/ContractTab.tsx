@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -22,14 +22,19 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 import './contract-tab.less';
+import { ContractTabProps } from './ContractTab.interface';
 
-export const ContractTab = () => {
+export const ContractTab: FC<ContractTabProps> = ({
+  supportsDQ = true,
+  supportsSchema = true,
+}) => {
   const {
     data: { id },
   } = useGenericContext();
@@ -40,11 +45,12 @@ export const ContractTab = () => {
   const [contract, setContract] = useState<DataContract>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      const contract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
@@ -105,6 +111,8 @@ export const ContractTab = () => {
         return (
           <AddDataContract
             contract={contract}
+            supportsDQ={supportsDQ}
+            supportsSchema={supportsSchema}
             onCancel={() => {
               setTabMode(DataContractTabMode.VIEW);
             }}
@@ -128,7 +136,7 @@ export const ContractTab = () => {
           />
         );
     }
-  }, [tabMode, contract]);
+  }, [tabMode, contract, supportsDQ, supportsSchema]);
 
   return isLoading ? (
     <Loader />

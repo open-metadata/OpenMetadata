@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  CustomizeTabWidget,
-  CustomizeTabWidgetProps,
-} from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
+import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
-import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
@@ -108,7 +104,6 @@ class CustomizeGlossaryTermPageClassBase {
     keyof typeof GlossaryTermDetailPageWidgetKeys,
     number
   >;
-  widgets: ComponentMap;
 
   constructor() {
     this.detailPageWidgetDefaultHeights = {
@@ -146,61 +141,6 @@ class CustomizeGlossaryTermPageClassBase {
         static: true,
       },
     ];
-
-    this.widgets = {
-      [GlossaryTermDetailPageWidgetKeys.HEADER]: {
-        component: GlossaryHeader,
-        props: {} as GlossaryHeaderProps & WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.TABS]: {
-        component: CustomizeTabWidget,
-        props: {} as CustomizeTabWidgetProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.TAGS]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.DOMAIN]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.REFERENCES]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.OWNER]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.REVIEWER]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-      [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: {
-        component: GenericWidget,
-        props: {} as WidgetCommonProps,
-      },
-    };
   }
 
   protected updateDefaultLayoutLayout(layout: Array<WidgetConfig>) {
@@ -241,27 +181,6 @@ class CustomizeGlossaryTermPageClassBase {
         return GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY;
       default:
         return GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER;
-    }
-  }
-
-  /**
-   *
-   * @param string widgetKey
-   * @returns React.FC<
-    {
-      
-      widgetKey: string;
-      
-    }
-  >
-   */
-  public getWidgetFromKey(widgetKey: string) {
-    if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.HEADER)) {
-      return GlossaryHeaderWidget;
-    } else if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TABS)) {
-      return CustomizeTabWidget;
-    } else {
-      return GenericWidget;
     }
   }
 

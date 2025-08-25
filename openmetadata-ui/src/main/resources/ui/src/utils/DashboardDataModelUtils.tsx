@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-
+import { get } from 'lodash';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -21,6 +21,7 @@ import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import ModelTab from '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
@@ -30,7 +31,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelClassBase';
-import i18n from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 
 export const getDashboardDataModelDetailPageTabs = ({
   feedCount,
@@ -131,6 +132,18 @@ export const getDashboardDataModelDetailPageTabs = ({
           />
         </LineageProvider>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab supportsDQ={false} />,
     },
     {
       label: (
