@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v193;
+package org.openmetadata.service.migration.utils.v194;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,7 +42,7 @@ public class MigrationUtil {
    */
   public void migrateAutomatorTagsAndTerms(Handle handle) {
     try {
-      LOG.info("Starting v193 migration of automator tags and terms separation");
+      LOG.info("Starting v194 migration of automator tags and terms separation");
 
       int totalProcessed = 0;
       int totalUpdated = 0;
@@ -169,12 +169,12 @@ public class MigrationUtil {
       }
 
       LOG.info(
-          "Completed v193 migration of automator tags and terms separation. Processed: {}, Updated: {}",
+          "Completed v194 migration of automator tags and terms separation. Processed: {}, Updated: {}",
           totalProcessed,
           totalUpdated);
     } catch (Exception ex) {
       LOG.error("Error running the automator tags/terms migration", ex);
-      throw new RuntimeException("Migration v193 failed", ex);
+      throw new RuntimeException("Migration v194 failed", ex);
     }
   }
 
