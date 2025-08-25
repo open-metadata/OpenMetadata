@@ -56,6 +56,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'pathname' })),
 }));
 
 describe('TableVersion tests', () => {

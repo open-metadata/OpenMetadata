@@ -14,7 +14,7 @@
 import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -27,6 +27,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getAllRowKeysByKeyName,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -41,19 +42,30 @@ import { VersionTableProps } from './VersionTable.interfaces';
 function VersionTable<T extends Column | SearchIndexField>({
   columnName,
   columns,
+  isLoading,
+  paginationProps,
   joins,
   tableConstraints,
   addedColumnConstraintDiffs,
   deletedColumnConstraintDiffs,
   addedTableConstraintDiffs,
   deletedTableConstraintDiffs,
+  handelSearchCallback,
 }: Readonly<VersionTableProps<T>>) {
-  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
+  const data = useMemo(() => {
+    if (!searchText) {
+      return makeData<T>(columns);
+    } else {
+      const searchCols = searchInColumns<T>(columns, searchText);
+
+      return makeData<T>(searchCols);
+    }
+  }, [searchText, columns]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
@@ -129,7 +141,6 @@ function VersionTable<T extends Column | SearchIndexField>({
       );
     },
     [
-      columns,
       tableConstraints,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
@@ -218,11 +229,12 @@ function VersionTable<T extends Column | SearchIndexField>({
         ),
       },
     ],
-    [columnName, joins, data, renderColumnName]
+    [columnName, joins, renderColumnName]
   );
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
+    handelSearchCallback?.(searchValue);
   };
 
   const searchProps = useMemo(
@@ -235,26 +247,28 @@ function VersionTable<T extends Column | SearchIndexField>({
     [searchText, handleSearchAction]
   );
 
+  const handleExpandedRowsChange = useCallback((keys: readonly Key[]) => {
+    setExpandedRowKeys(keys as string[]);
+  }, []);
+
   useEffect(() => {
-    if (!searchText) {
-      setSearchedColumns(columns);
-    } else {
-      const searchCols = searchInColumns<T>(columns, searchText);
-      setSearchedColumns(searchCols);
-    }
-  }, [searchText, columns]);
+    setExpandedRowKeys(getAllRowKeysByKeyName<T>(columns ?? [], 'name'));
+  }, [columns]);
 
   return (
     <Table
       columns={versionTableColumns}
       containerClassName="m-b-sm"
+      customPaginationProps={paginationProps}
       data-testid="entity-table"
       dataSource={data}
       expandable={{
         ...getTableExpandableConfig<T>(),
-        defaultExpandAllRows: true,
+        rowExpandable: (record) => !isEmpty(record.children),
+        onExpandedRowsChange: handleExpandedRowsChange,
+        expandedRowKeys: expandedRowKeys,
       }}
-      key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
+      loading={isLoading}
       locale={{
         emptyText: <FilterTablePlaceHolder />,
       }}

@@ -21,6 +21,7 @@ import {
   removeTagsFromChildren,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -262,46 +263,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '2000'
     );
 
-    // 50 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
-
-    await page.getByTestId('next').click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
-
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
-
-    await page.getByTestId('previous').click();
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
-
-    // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    // 15 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
-
-    // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    // 25 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+    await columnPaginationTable(page);
   });
 
   test('pagination for dashboard data model columns should work', async ({

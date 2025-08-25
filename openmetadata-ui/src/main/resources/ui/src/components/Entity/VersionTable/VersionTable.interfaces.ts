@@ -18,6 +18,8 @@ import {
   FieldChange,
   TableConstraint,
 } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 
 export interface VersionTableProps<T extends Column | SearchIndexField> {
   columnName: string;
@@ -29,4 +31,16 @@ export interface VersionTableProps<T extends Column | SearchIndexField> {
   deletedTableConstraintDiffs?: FieldChange[];
   constraintUpdatedColumns?: string[];
   tableConstraints?: Array<TableConstraint>;
+  isLoading?: boolean;
+  paginationProps?: {
+    currentPage: number;
+    showPagination: boolean;
+    isLoading: boolean;
+    isNumberBased: boolean;
+    pageSize: number;
+    paging: Paging;
+    pagingHandler: ({ currentPage }: PagingHandlerParams) => void;
+    onShowSizeChange: (page: number) => void;
+  };
+  handelSearchCallback?: (searchValue: string) => void;
 }
