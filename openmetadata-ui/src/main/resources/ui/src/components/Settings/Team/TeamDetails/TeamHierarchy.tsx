@@ -19,8 +19,6 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -271,51 +269,49 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
   return (
     <div className="team-list-container">
-      <DndProvider backend={HTML5Backend}>
-        <Table
-          className={classNames('teams-list-table drop-over-background', {
-            'drop-over-table': isTableHovered,
-          })}
-          columns={columns}
-          components={TABLE_CONSTANTS}
-          data-testid="team-hierarchy-table"
-          dataSource={data}
-          expandable={expandableConfig}
-          extraTableFilters={
-            <Space align="center">
-              <span>
-                <Switch
-                  checked={showDeletedTeam}
-                  data-testid="show-deleted"
-                  onClick={onShowDeletedTeamChange}
-                />
-                <Typography.Text className="m-l-xs">
-                  {t('label.deleted')}
-                </Typography.Text>
-              </span>
+      <Table
+        className={classNames('teams-list-table drop-over-background', {
+          'drop-over-table': isTableHovered,
+        })}
+        columns={columns}
+        components={TABLE_CONSTANTS}
+        data-testid="team-hierarchy-table"
+        dataSource={data}
+        expandable={expandableConfig}
+        extraTableFilters={
+          <Space align="center">
+            <span>
+              <Switch
+                checked={showDeletedTeam}
+                data-testid="show-deleted"
+                onClick={onShowDeletedTeamChange}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>
+            </span>
 
-              {createTeamPermission && !isTeamDeleted && (
-                <Button
-                  data-testid="add-team"
-                  type="primary"
-                  onClick={handleAddTeamButtonClick}>
-                  {t('label.add-entity', { entity: t('label.team') })}
-                </Button>
-              )}
-            </Space>
-          }
-          loading={isTableLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="name"
-          searchProps={searchProps}
-          size="small"
-          onHeaderRow={onTableHeader}
-          onRow={onTableRow}
-        />
-      </DndProvider>
+            {createTeamPermission && !isTeamDeleted && (
+              <Button
+                data-testid="add-team"
+                type="primary"
+                onClick={handleAddTeamButtonClick}>
+                {t('label.add-entity', { entity: t('label.team') })}
+              </Button>
+            )}
+          </Space>
+        }
+        loading={isTableLoading}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
+        pagination={false}
+        rowKey="name"
+        searchProps={searchProps}
+        size="small"
+        onHeaderRow={onTableHeader}
+        onRow={onTableRow}
+      />
 
       <Modal
         centered
