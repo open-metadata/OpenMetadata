@@ -4389,4 +4389,5 @@ export enum WorkflowStatus {
 export enum WorkflowType {
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }
