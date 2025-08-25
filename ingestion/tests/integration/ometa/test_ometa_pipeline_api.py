@@ -15,6 +15,7 @@ OpenMetadata high-level API Pipeline test
 import uuid
 from datetime import datetime
 from unittest import TestCase
+from unittest.mock import patch, Mock
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -279,6 +280,49 @@ class OMetaPipelineTest(TestCase):
 
         # # Cleanup
         # self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
+
+    def test_add_status_503_error(self):
+        """
+        Test handling of 503 Service Unavailable error when adding status data
+        """
+        from requests.exceptions import HTTPError
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test-503",
+            service=self.service_entity.fullyQualifiedName,
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+            ],
+        )
+
+        # First create the pipeline normally (without mocking)
+        pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
+
+        execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
+
+        # Now mock the PUT method to simulate 503 error only for add_pipeline_status
+        with patch('metadata.ingestion.ometa.client.REST.put') as mock_put:
+            mock_put.side_effect = HTTPError("503 Server Error: Service Unavailable")
+
+            # Test the 503 error when adding pipeline status
+            with self.assertRaises(HTTPError) as context:
+                self.metadata.add_pipeline_status(
+                    fqn=pipeline.fullyQualifiedName.root,
+                    status=PipelineStatus(
+                        timestamp=execution_ts,
+                        executionStatus=StatusType.Successful,
+                        taskStatus=[
+                            TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                        ],
+                    ),
+                )
+
+            # Verify that the exception contains the expected error message
+            self.assertIn("503", str(context.exception))
+
+        # Cleanup - delete the pipeline we created
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
     def test_add_tasks(self):
         """
