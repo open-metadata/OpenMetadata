@@ -4387,6 +4387,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
 }
