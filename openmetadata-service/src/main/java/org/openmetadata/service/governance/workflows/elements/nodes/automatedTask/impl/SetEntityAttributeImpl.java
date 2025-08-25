@@ -132,7 +132,10 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       String fieldName = (String) fieldNameExpr.getValue(execution);
-      String fieldValue = (String) fieldValueExpr.getValue(execution);
+      String fieldValue =
+          fieldValueExpr.getValue(execution) != null
+              ? (String) fieldValueExpr.getValue(execution)
+              : null;
 
       String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
       String user =

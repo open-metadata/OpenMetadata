@@ -140,7 +140,86 @@
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
+      },
+      "output": ["result", "updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfEntityIsFirstVersion",
+      "displayName": "Check if Entity is First Version",
+      "config": {
+        "rules": "{\"<\":[{\"var\":\"version\"},0.2]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToInReviewForUpdate",
+      "displayName": "Set Status to 'In Review' (Update)",
+      "config": {
+        "glossaryTermStatus": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "detailedUserApprovalTask",
+      "name": "DetailedApprovalForUpdates",
+      "displayName": "Detailed Approval for Updates",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      },
+      "output": ["updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "rollbackEntityTask",
+      "name": "RollbackGlossaryTermChanges",
+      "displayName": "Rollback Glossary Term Changes",
+      "config": {},
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "DetailedApprovalForUpdates"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApprovedDetailed",
+      "displayName": "Set Status to 'Approved' (After Detailed Review)",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "DetailedApprovalForUpdates"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RollbackEnd",
+      "displayName": "Changes Rolled Back"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "DetailedApprovalEnd",
+      "displayName": "Approved After Detailed Review"
     },
     {
       "type": "automatedTask",
@@ -221,12 +300,44 @@
     },
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "CheckIfEntityIsFirstVersion",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfEntityIsFirstVersion",
       "to": "SetGlossaryTermStatusToInReview",
       "condition": "true"
     },
     {
+      "from": "CheckIfEntityIsFirstVersion",
+      "to": "SetGlossaryTermStatusToInReviewForUpdate",
+      "condition": "false"
+    },
+    {
       "from": "SetGlossaryTermStatusToInReview",
       "to": "ApproveGlossaryTerm"
+    },
+    {
+      "from": "SetGlossaryTermStatusToInReviewForUpdate",
+      "to": "DetailedApprovalForUpdates"
+    },
+    {
+      "from": "DetailedApprovalForUpdates",
+      "to": "SetGlossaryTermStatusToApprovedDetailed",
+      "condition": "true"
+    },
+    {
+      "from": "DetailedApprovalForUpdates",
+      "to": "RollbackGlossaryTermChanges",
+      "condition": "false"
+    },
+    {
+      "from": "RollbackGlossaryTermChanges",
+      "to": "RollbackEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedDetailed",
+      "to": "DetailedApprovalEnd"
     },
     {
       "from": "ApproveGlossaryTerm",

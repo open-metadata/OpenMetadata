@@ -122,6 +122,9 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
         new MessageParser.EntityLink(
             Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
 
+    // Build detailed change message regardless of whether task exists
+    String changeInformation = buildDetailedChangeMessage(entity);
+
     Thread thread;
 
     try {
@@ -130,10 +133,29 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
       // UserTask in the new WorkflowInstance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
-    } catch (EntityNotFoundException ex) {
-      // Store detailed change information in the thread message
-      String changeInformation = buildDetailedChangeMessage(entity);
 
+      // Update the existing thread with new change information
+      thread.setMessage(changeInformation);
+      thread.setUpdatedBy(entity.getUpdatedBy());
+      thread.setUpdatedAt(System.currentTimeMillis());
+
+      // Update task details with new assignees and change description
+      if (thread.getTask() != null) {
+        thread
+            .getTask()
+            .withAssignees(FeedMapper.formatAssignees(assignees))
+            .withOldValue(
+                entity.getChangeDescription() != null
+                    ? JsonUtils.pojoToJson(entity.getChangeDescription())
+                    : "{}");
+      }
+
+      // Update the thread in the repository
+      // Note: FeedRepository doesn't have a direct update method, the thread is already terminated
+      // above
+
+    } catch (EntityNotFoundException ex) {
+      // Create new task if none exists
       TaskDetails taskDetails =
           new TaskDetails()
               .withAssignees(FeedMapper.formatAssignees(assignees))

@@ -14,6 +14,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.Message;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
@@ -26,7 +28,6 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
-import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -34,8 +35,13 @@ import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -43,6 +49,8 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -306,17 +314,34 @@ public class WorkflowHandler {
 
   public boolean validateWorkflowDefinition(String workflowDefinition) {
     try {
-      RepositoryService repositoryService = processEngine.getRepositoryService();
+      // Parse and validate the BPMN XML without deploying
+      // This avoids creating and deleting deployments just for validation
+      BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
+      byte[] bpmnBytes = workflowDefinition.getBytes();
+      javax.xml.stream.XMLInputFactory xif = javax.xml.stream.XMLInputFactory.newInstance();
+      xif.setProperty(javax.xml.stream.XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+      xif.setProperty(javax.xml.stream.XMLInputFactory.SUPPORT_DTD, false);
 
-      Deployment deployment =
-          repositoryService
-              .createDeployment()
-              .addString("test-workflow.bpmn20.xml", workflowDefinition)
-              .name("validation-test-" + System.currentTimeMillis())
-              .deploy();
+      try (java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(bpmnBytes)) {
+        javax.xml.stream.XMLStreamReader xtr = xif.createXMLStreamReader(inputStream);
+        org.flowable.bpmn.model.BpmnModel bpmnModel = bpmnXMLConverter.convertToBpmnModel(xtr);
 
-      repositoryService.deleteDeployment(deployment.getId(), true);
-      return true;
+        // Basic validation checks
+        if (bpmnModel == null || bpmnModel.getProcesses().isEmpty()) {
+          LOG.error("Invalid BPMN: No processes found in the model");
+          return false;
+        }
+
+        // Check for at least one start event
+        for (org.flowable.bpmn.model.Process process : bpmnModel.getProcesses()) {
+          if (process.findFlowElementsOfType(org.flowable.bpmn.model.StartEvent.class).isEmpty()) {
+            LOG.error("Invalid BPMN: Process '{}' has no start event", process.getId());
+            return false;
+          }
+        }
+
+        return true;
+      }
     } catch (Exception e) {
       LOG.error("Workflow definition validation failed: {}", e.getMessage());
       return false;
@@ -394,6 +419,8 @@ public class WorkflowHandler {
             LOG.info(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
+            // Update the Thread entity to remove the task from the current voter's feed
+            removeTaskFromVoterFeed(task, customTaskId, variables);
           }
         } else {
           // Single approval - original behavior
@@ -425,6 +452,170 @@ public class WorkflowHandler {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
       throw e;
+    }
+  }
+
+  private void removeTaskFromVoterFeed(
+      Task flowableTask, UUID customTaskId, Map<String, Object> variables) {
+    try {
+      // Extract the current user from variables
+      String currentUser = extractCurrentUser(variables);
+      if (currentUser == null) {
+        LOG.warn("[WorkflowTask] Could not determine current user to remove from task feed");
+        return;
+      }
+
+      LOG.info(
+          "[WorkflowTask] Removing task '{}' from feed for user '{}'", customTaskId, currentUser);
+
+      // Get the FeedRepository to work with Thread entities
+      FeedRepository feedRepository = Entity.getFeedRepository();
+
+      // Find the Thread entity by the customTaskId
+      Thread taskThread = null;
+      try {
+        taskThread = feedRepository.get(customTaskId);
+      } catch (Exception e) {
+        LOG.debug(
+            "[WorkflowTask] Could not find thread with ID '{}', trying alternative lookup",
+            customTaskId);
+      }
+
+      if (taskThread != null && taskThread.getTask() != null) {
+        // Update the Thread entity to remove the current user from assignees
+        List<EntityReference> currentAssignees =
+            new ArrayList<>(taskThread.getTask().getAssignees());
+
+        // Find and remove the user from assignees
+        boolean removed =
+            currentAssignees.removeIf(
+                assignee -> {
+                  // Check by name (username)
+                  if (assignee.getName() != null && assignee.getName().equals(currentUser)) {
+                    return true;
+                  }
+                  // Also check if it's a user entity reference with matching name
+                  if (Entity.USER.equals(assignee.getType())) {
+                    try {
+                      // Try to get the actual user entity to compare
+                      User user =
+                          Entity.getEntity(Entity.USER, assignee.getId(), "", Include.NON_DELETED);
+                      return user.getName().equals(currentUser);
+                    } catch (Exception ex) {
+                      LOG.debug("Could not fetch user entity for assignee: {}", ex.getMessage());
+                    }
+                  }
+                  return false;
+                });
+
+        if (removed) {
+          // Update the thread with new assignees list
+          taskThread.getTask().setAssignees(currentAssignees);
+          taskThread.withUpdatedBy(currentUser).withUpdatedAt(System.currentTimeMillis());
+
+          // Persist the changes
+          Thread finalTaskThread = taskThread;
+          Entity.getJdbi()
+              .useHandle(
+                  handle -> {
+                    CollectionDAO dao = handle.attach(CollectionDAO.class);
+                    dao.feedDAO()
+                        .update(finalTaskThread.getId(), JsonUtils.pojoToJson(finalTaskThread));
+                  });
+
+          LOG.info(
+              "[WorkflowTask] Successfully removed user '{}' from Thread '{}' assignees. Remaining assignees: {}",
+              currentUser,
+              taskThread.getId(),
+              currentAssignees.size());
+        } else {
+          LOG.debug(
+              "[WorkflowTask] User '{}' was not in the assignees list for Thread '{}'",
+              currentUser,
+              taskThread.getId());
+        }
+      }
+
+      // Also update Flowable task to remove the user from candidates
+      TaskService taskService = processEngine.getTaskService();
+      if (flowableTask != null) {
+        // Store voted users in Flowable variables
+        @SuppressWarnings("unchecked")
+        List<String> votedUsers =
+            (List<String>) taskService.getVariable(flowableTask.getId(), "votedUsers");
+        if (votedUsers == null) {
+          votedUsers = new ArrayList<>();
+        }
+
+        if (!votedUsers.contains(currentUser)) {
+          votedUsers.add(currentUser);
+          taskService.setVariable(flowableTask.getId(), "votedUsers", votedUsers);
+          LOG.info(
+              "[WorkflowTask] Added user '{}' to voted users list for Flowable task", currentUser);
+        }
+
+        // Remove the user from Flowable task assignees if they're directly assigned
+        try {
+          // If current user is the assignee, unassign them
+          String currentAssignee = flowableTask.getAssignee();
+          if (currentUser.equals(currentAssignee)) {
+            taskService.unclaim(flowableTask.getId());
+            LOG.info(
+                "[WorkflowTask] Unclaimed Flowable task '{}' from user '{}'",
+                flowableTask.getId(),
+                currentUser);
+          }
+
+          // Remove from candidate users if present
+          taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
+          LOG.info(
+              "[WorkflowTask] Removed user '{}' from candidate users for Flowable task '{}'",
+              currentUser,
+              flowableTask.getId());
+
+        } catch (Exception e) {
+          LOG.debug("[WorkflowTask] Could not update Flowable task assignees: {}", e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "[WorkflowTask] Failed to update task voter information for task '{}': {}",
+          customTaskId,
+          e.getMessage(),
+          e);
+      // Don't throw - this is a non-critical operation
+    }
+  }
+
+  private String extractCurrentUser(Map<String, Object> variables) {
+    // Try direct key first
+    String currentUser = (String) variables.get("updatedBy");
+    if (currentUser != null) {
+      return currentUser;
+    }
+
+    // Try namespaced versions
+    for (String key : variables.keySet()) {
+      if (key.endsWith("_updatedBy")) {
+        currentUser = (String) variables.get(key);
+        if (currentUser != null) {
+          return currentUser;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private Integer extractTaskIdFromCustomTaskId(UUID customTaskId) {
+    // The customTaskId might contain the integer task ID
+    // This is a fallback approach if direct UUID matching doesn't work
+    try {
+      // Check if we can extract an integer ID from somewhere
+      // This depends on how the task ID is generated and stored
+      return null; // Placeholder - actual implementation would depend on ID generation logic
+    } catch (Exception e) {
+      return null;
     }
   }
 
@@ -531,8 +722,15 @@ public class WorkflowHandler {
           "[MultiApproval] Rejection threshold met ({}/{}), rejecting task",
           rejectionCount,
           rejectionThreshold);
-      // Set the final result as rejected and complete the task
-      variables.put("result", false);
+      // Set the final result - need to check if result is namespaced
+      String resultKey = "result";
+      for (String key : variables.keySet()) {
+        if (key.endsWith("_result")) {
+          resultKey = key;
+          break;
+        }
+      }
+      variables.put(resultKey, false);
       taskService.complete(task.getId(), variables);
       return true;
     }
@@ -543,8 +741,15 @@ public class WorkflowHandler {
           "[MultiApproval] Approval threshold met ({}/{}), approving task",
           approvalCount,
           approvalThreshold);
-      // Set the final result as approved and complete the task
-      variables.put("result", true);
+      // Set the final result - need to check if result is namespaced
+      String resultKey = "result";
+      for (String key : variables.keySet()) {
+        if (key.endsWith("_result")) {
+          resultKey = key;
+          break;
+        }
+      }
+      variables.put(resultKey, true);
       taskService.complete(task.getId(), variables);
       return true;
     }
@@ -631,36 +836,75 @@ public class WorkflowHandler {
   }
 
   /**
-   * Dynamically find the termination message name for a task.
-   * Supports both legacy hard-coded names and new dynamic names.
+   * Find the termination message name for a task.
+   * Uses deterministic message names based on the subprocess ID.
    */
   private String findTerminationMessageName(RuntimeService runtimeService, Task task) {
     try {
-      // Strategy 1: Try to find message subscriptions by checking common patterns
-      String[] possibleMessages = {
-        // Try dynamic message names based on task definition key
-        task.getTaskDefinitionKey() + ".terminateProcess",
-        // Try legacy hard-coded name
-        "terminateProcess"
+      String taskDefinitionKey = task.getTaskDefinitionKey();
+      LOG.debug(
+          "Finding termination message for task {} with definition key '{}'",
+          task.getId(),
+          taskDefinitionKey);
+
+      // List all message event subscriptions for this process instance
+      List<Execution> allMessageExecutions =
+          runtimeService
+              .createExecutionQuery()
+              .processInstanceId(task.getProcessInstanceId())
+              .list();
+
+      LOG.debug(
+          "Found {} executions for process {}",
+          allMessageExecutions.size(),
+          task.getProcessInstanceId());
+
+      for (Execution exec : allMessageExecutions) {
+        if (exec.getActivityId() != null) {
+          LOG.debug("Execution {} has activity ID: {}", exec.getId(), exec.getActivityId());
+        }
+      }
+
+      // Get the BpmnModel to see what messages are available
+      BpmnModel model =
+          processEngine.getRepositoryService().getBpmnModel(task.getProcessDefinitionId());
+
+      LOG.debug("Available messages in model:");
+      for (Message msg : model.getMessages()) {
+        LOG.debug("  - Message ID: {}, Name: {}", msg.getId(), msg.getName());
+      }
+
+      // Extract the subprocess ID from the task definition key
+      // E.g., "ApproveGlossaryTerm_approvalTask" -> "ApproveGlossaryTerm"
+      String subProcessId =
+          taskDefinitionKey.contains("_")
+              ? taskDefinitionKey.substring(0, taskDefinitionKey.lastIndexOf("_"))
+              : taskDefinitionKey;
+
+      LOG.debug(
+          "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
+
+      // Try both possible termination message patterns
+      // UserApprovalTask uses: subProcessId_terminateProcess
+      // DetailedUserApprovalTask uses: subProcessId_terminateDetailedProcess
+      String[] messagePatterns = {
+        subProcessId + "_terminateProcess", subProcessId + "_terminateDetailedProcess"
       };
 
-      for (String messageName : possibleMessages) {
-        try {
-          List<Execution> executions =
-              runtimeService
-                  .createExecutionQuery()
-                  .processInstanceId(task.getProcessInstanceId())
-                  .messageEventSubscriptionName(messageName)
-                  .list();
-
-          if (!executions.isEmpty()) {
-            LOG.debug("Found termination message '{}' for task {}", messageName, task.getId());
-            return messageName;
-          }
-        } catch (Exception e) {
-          // Continue to next possible message name
+      for (String messageName : messagePatterns) {
+        LOG.debug("Checking for message subscription: {}", messageName);
+        List<Execution> executions =
+            runtimeService
+                .createExecutionQuery()
+                .processInstanceId(task.getProcessInstanceId())
+                .messageEventSubscriptionName(messageName)
+                .list();
+        if (!executions.isEmpty()) {
           LOG.debug(
-              "Message '{}' not found for task {}: {}", messageName, task.getId(), e.getMessage());
+              "Found {} executions with message subscription '{}'", executions.size(), messageName);
+          return messageName;
+        } else {
+          LOG.debug("No executions found for message: {}", messageName);
         }
       }
 
@@ -670,7 +914,7 @@ public class WorkflowHandler {
           task.getTaskDefinitionKey());
       return null;
     } catch (Exception e) {
-      LOG.warn("Error finding termination message for task {}: {}", task.getId(), e.getMessage());
+      LOG.error("Error finding termination message for task {}", task.getId(), e);
       return null;
     }
   }

@@ -198,14 +198,18 @@ public class DetailedUserApprovalTask implements NodeInterface {
   }
 
   private BoundaryEvent getTerminationEvent(String subProcessId) {
+    // Use a consistent format that matches what getFlowableElementId produces
+    // This ensures uniqueness per node within the workflow definition
+    // DetailedUserApprovalTask uses terminateDetailedProcess to distinguish from UserApprovalTask
+    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateDetailedProcess");
+
     Message terminationMessage = new Message();
-    terminationMessage.setId(getFlowableElementId(subProcessId, "terminateDetailedProcess"));
-    terminationMessage.setName(getFlowableElementId(subProcessId, "terminateDetailedProcess"));
+    terminationMessage.setId(uniqueMessageName);
+    terminationMessage.setName(uniqueMessageName);
     messages.add(terminationMessage);
 
     MessageEventDefinition terminationMessageDefinition = new MessageEventDefinition();
-    terminationMessageDefinition.setMessageRef(
-        getFlowableElementId(subProcessId, "terminateDetailedProcess"));
+    terminationMessageDefinition.setMessageRef(uniqueMessageName);
 
     BoundaryEvent terminationEvent = new BoundaryEvent();
     terminationEvent.setId(getFlowableElementId(subProcessId, "detailedTerminationEvent"));

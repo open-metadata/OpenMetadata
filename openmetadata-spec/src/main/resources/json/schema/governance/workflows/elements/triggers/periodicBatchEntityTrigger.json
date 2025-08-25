@@ -35,8 +35,27 @@
         },
         "filters": {
           "title": "Filters",
-          "description": "Select the Search Filters to filter down the entities fetched.",
-          "type": "string"
+          "description": "Search filters for entities. Can be a string (applied to all entity types) or an object mapping entity types to their specific filters.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single filter applied to all entity types (legacy format)"
+            },
+            {
+              "type": "object",
+              "description": "Entity-specific filters with optional default",
+              "properties": {
+                "default": {
+                  "type": "string",
+                  "description": "Default filter for entity types not explicitly configured"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "description": "Filter for specific entity type"
+              }
+            }
+          ]
         },
         "batchSize": {
           "title": "Batch Size",

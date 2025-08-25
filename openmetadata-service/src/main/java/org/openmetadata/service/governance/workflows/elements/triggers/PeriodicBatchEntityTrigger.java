@@ -151,10 +151,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     FieldExtension entityTypesExpr =
         new FieldExtensionBuilder().fieldName("entityTypesExpr").fieldValue(entityType).build();
 
+    // Extract entity-specific filter based on the filter configuration
+    String entitySpecificFilter =
+        extractEntitySpecificFilter(triggerDefinition.getConfig().getFilters(), entityType);
+
     FieldExtension searchFilterExpr =
         new FieldExtensionBuilder(false)
             .fieldName("searchFilterExpr")
-            .fieldValue(triggerDefinition.getConfig().getFilters())
+            .fieldValue(entitySpecificFilter)
             .build();
 
     FieldExtension batchSizeExpr =
@@ -176,6 +180,35 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
+  }
+
+  private String extractEntitySpecificFilter(Object filtersObj, String entityType) {
+    if (filtersObj == null) {
+      return null;
+    }
+
+    // Handle legacy string format - apply same filter to all entity types
+    if (filtersObj instanceof String) {
+      return (String) filtersObj;
+    }
+
+    // Handle new map format with entity-specific filters
+    if (filtersObj instanceof Map) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> filterMap = (Map<String, String>) filtersObj;
+
+      // First check for entity-specific filter
+      String specificFilter = filterMap.get(entityType.toLowerCase());
+      if (specificFilter != null) {
+        return specificFilter;
+      }
+
+      // Fall back to default filter if no specific filter found
+      return filterMap.get("default");
+    }
+
+    // If it's neither string nor map, try to convert to string
+    return JsonUtils.pojoToJson(filtersObj);
   }
 
   private List<String> getEntityTypesFromConfig(Object configObj) {
