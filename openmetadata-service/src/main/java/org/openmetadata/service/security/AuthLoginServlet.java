@@ -14,4 +14,11 @@ public class AuthLoginServlet extends HttpServlet {
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
     handler.handleLogin(req, resp);
   }
+
+  @Override
+  protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+    // Basic and LDAP auth use POST, OIDC/SAML use GET
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleLogin(req, resp);
+  }
 }

@@ -35,6 +35,15 @@ public class SecurityConfigurationManager {
 
   @Getter private AuthenticationConfiguration currentAuthConfig;
   @Getter private AuthorizerConfiguration currentAuthzConfig;
+
+  public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
+    this.currentAuthConfig = authConfig;
+  }
+
+  public void setCurrentAuthzConfig(AuthorizerConfiguration authzConfig) {
+    this.currentAuthzConfig = authzConfig;
+  }
+
   private SecurityConfiguration previousSecurityConfig;
   private OpenMetadataApplication application;
   private Environment environment;

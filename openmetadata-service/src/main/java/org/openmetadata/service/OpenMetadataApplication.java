@@ -519,14 +519,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+
+      if (contextHandler.getServletHandler().getServletMapping("/api/v1/saml/login") == null) {
+        contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (contextHandler.getServletHandler().getServletMapping("/api/v1/saml/acs") == null) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+      }
+      if (contextHandler.getServletHandler().getServletMapping("/api/v1/saml/metadata") == null) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+      }
+      if (contextHandler.getServletHandler().getServletMapping("/api/v1/saml/refresh") == null) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+      }
+      if (contextHandler.getServletHandler().getServletMapping("/api/v1/saml/logout") == null) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
+      }
     }
   }
 

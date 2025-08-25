@@ -15,4 +15,10 @@ public class AuthRefreshServlet extends HttpServlet {
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
     handler.handleRefresh(req, resp);
   }
+
+  @Override
+  protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleRefresh(req, resp);
+  }
 }
