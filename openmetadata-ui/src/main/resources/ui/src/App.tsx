@@ -32,6 +32,8 @@ import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
@@ -88,7 +90,9 @@ const App: FC = () => {
                               <AsyncDeleteProvider>
                                 <EntityExportModalProvider>
                                   <AirflowStatusProvider>
-                                    <AppRouter />
+                                    <DndProvider backend={HTML5Backend}>
+                                      <AppRouter />
+                                    </DndProvider>
                                   </AirflowStatusProvider>
                                 </EntityExportModalProvider>
                               </AsyncDeleteProvider>
