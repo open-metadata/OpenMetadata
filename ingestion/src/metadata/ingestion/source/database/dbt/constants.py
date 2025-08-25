@@ -105,7 +105,6 @@ class SkipResourceTypeEnum(Enum):
 
     ANALYSIS = "analysis"
     TEST = "test"
-    SOURCE = "source"
 
 
 class CompiledQueriesEnum(Enum):
