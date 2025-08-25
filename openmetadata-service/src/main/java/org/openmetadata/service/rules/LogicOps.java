@@ -11,7 +11,11 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
@@ -130,28 +134,33 @@ public class LogicOps {
             return false; // If data products but no domains, validation fails
           }
 
+          // Convert entity domains to a Set of UUIDs for efficient lookup
+          Set<UUID> entityDomainIds =
+              domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+
           // For each data product, check if its domain matches any entity assigned domain
           for (EntityReference dataProduct : dataProducts) {
             try {
               // Get the data product entity to access its domains
               DataProduct dpEntity =
                   Entity.getEntity(
-                      Entity.DATA_PRODUCT, dataProduct.getId(), "domains", Include.NON_DELETED);
+                      Entity.DATA_PRODUCT,
+                      dataProduct.getId(),
+                      "domains",
+                      Include.NON_DELETED,
+                      true);
               List<EntityReference> dpDomains = dpEntity.getDomains();
 
               if (nullOrEmpty(dpDomains)) {
                 continue; // If data product has no domains, skip validation
               }
 
-              // Check if there's any domain overlap between entity and data product
-              boolean hasMatchingDomain =
-                  dpDomains.stream()
-                      .anyMatch(
-                          dpDomain ->
-                              domains.stream()
-                                  .anyMatch(
-                                      entityDomain ->
-                                          entityDomain.getId().equals(dpDomain.getId())));
+              // Convert data product domains to a Set of UUIDs for efficient comparison
+              Set<UUID> dpDomainIds =
+                  dpDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+
+              // Use Collections.disjoint for O(n+m) performance instead of O(n*m)
+              boolean hasMatchingDomain = !Collections.disjoint(entityDomainIds, dpDomainIds);
 
               if (!hasMatchingDomain) {
                 return false; // Domain mismatch found

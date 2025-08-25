@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static java.util.stream.Collectors.toSet;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -31,7 +30,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -52,6 +50,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -286,8 +285,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   /**
    * Validates that an asset can be assigned to a data product according to configured rules.
-   * This method constructs a temporary entity with the proposed data product assignment
-   * and runs rule validation to ensure it complies with domain validation rules.
+   * This method leverages the RuleEngine to validate domain matching rules that are enabled.
    *
    * @param asset The asset entity reference to be assigned
    * @param dataProductRef The data product entity reference
@@ -296,29 +294,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private void validateAssetDataProductAssignment(
       EntityReference asset, EntityReference dataProductRef) {
     try {
-      // Get asset domains using lightweight relationship queries (Domain HAS Asset)
-      List<EntityReference> assetDomains =
-          findFrom(asset.getId(), asset.getType(), Relationship.HAS, Entity.DOMAIN);
-      Set<UUID> assetDomainIds = assetDomains.stream().map(EntityReference::getId).collect(toSet());
+      EntityInterface assetEntity = Entity.getEntity(asset, "domains,dataProducts", ALL);
 
-      // Get data product domains using lightweight relationship queries (Domain CONTAINS
-      // DataProduct)
-      List<EntityReference> dataProductDomains =
-          findFrom(
-              dataProductRef.getId(), Entity.DATA_PRODUCT, Relationship.CONTAINS, Entity.DOMAIN);
-      Set<UUID> dataProductDomainIds =
-          dataProductDomains.stream().map(EntityReference::getId).collect(toSet());
+      List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
+      List<EntityReference> updatedDataProducts = new ArrayList<>(currentDataProducts);
+      updatedDataProducts.add(dataProductRef);
 
-      // Check if there's any overlap between asset domains and data product domains
-      boolean hasMatchingDomain = !Collections.disjoint(assetDomainIds, dataProductDomainIds);
-
-      // If no matching domain found, throw validation error
-      if (!hasMatchingDomain && !assetDomainIds.isEmpty() && !dataProductDomainIds.isEmpty()) {
-        throw new RuleValidationException(
-            (List<SemanticsRule>) null,
-            "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. "
-                + "Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
-      }
+      assetEntity.setDataProducts(updatedDataProducts);
+      RuleEngine.getInstance().evaluate(assetEntity, true, false);
 
     } catch (RuleValidationException e) {
       // Re-throw validation exceptions with context about the bulk operation
