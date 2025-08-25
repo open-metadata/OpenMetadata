@@ -256,6 +256,31 @@ class JSONLogicSearchClassBase {
                 searchIndex: SearchIndex.TAG,
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
+                queryFilter:
+                  'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.GLOSSARY_TERM]: {
+        label: t('label.glossary-term'),
+        type: '!group',
+        mode: 'some',
+        fieldName: 'tags',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: 'Tags',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.GLOSSARY_TERM,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
               }),
               useAsyncSearch: true,
             },
@@ -309,6 +334,7 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.TIER]: {
         label: t('label.tier'),
         type: 'select',
+        fieldName: 'tags',
         mainWidgetProps: this.mainWidgetProps,
         operators: this.defaultSelectOperators,
         fieldSettings: {
@@ -411,23 +437,25 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
+    queryFilter?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,
     fieldLabel,
+    queryFilter,
   }) => {
     return (search) => {
       return searchData(
         Array.isArray(search) ? search.join(',') : search ?? '',
         1,
         PAGE_SIZE_BASE,
-        '',
+        queryFilter ?? '',
         '',
         '',
         searchIndex ?? SearchIndex.DATA_ASSET,
         false,
         false,
-        false
+        true
       ).then((response) => {
         const data = response.data.hits.hits;
 

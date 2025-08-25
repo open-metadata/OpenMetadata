@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Actions } from '@react-awesome-query-builder/antd';
+import { Actions, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
@@ -32,8 +32,10 @@ import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './contract-semantic-form-tab.less';
+import { EditableSemanticRule } from './ContractSemanticFormTab.interface';
 
 export const ContractSemanticFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
@@ -45,7 +47,7 @@ export const ContractSemanticFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const semanticsFormData: DataContract['semantics'] = Form.useWatch(
+  const semanticsFormData: EditableSemanticRule[] = Form.useWatch(
     'semantics',
     form
   );
@@ -100,6 +102,7 @@ export const ContractSemanticFormTab: React.FC<{
             description: '',
             enabled: true,
             rule: '',
+            tree: '',
           },
         ],
       });
@@ -159,6 +162,10 @@ export const ContractSemanticFormTab: React.FC<{
               return (
                 <>
                   {fields.map((field) => {
+                    const editFieldData = semanticsFormData?.find(
+                      (_item, idx) => idx === field.key
+                    );
+
                     return (
                       <ExpandableCard
                         cardProps={{
@@ -240,27 +247,40 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
-                                <Form.Item
-                                  {...field}
-                                  label={t('label.add-entity', {
-                                    entity: t('label.rule-plural'),
-                                  })}
-                                  name={[field.name, 'rule']}>
-                                  {/* @ts-expect-error because Form.Item will provide value and onChange */}
-                                  <QueryBuilderWidget
-                                    fields={queryBuilderFields}
-                                    formContext={{
-                                      entityType: EntityType.TABLE,
-                                    }}
-                                    getQueryActions={handleAddQueryBuilderRule}
-                                    id="rule"
-                                    name={`${field.name}.rule`}
-                                    registry={{} as FieldErrorProps['registry']}
-                                    schema={{
-                                      outputType: SearchOutputType.JSONLogic,
-                                    }}
-                                  />
-                                </Form.Item>
+                                <QueryBuilderWidgetV1
+                                  entityType={EntityType.TABLE}
+                                  fields={queryBuilderFields}
+                                  getQueryActions={handleAddQueryBuilderRule}
+                                  label="Rule"
+                                  outputType={SearchOutputType.JSONLogic}
+                                  tree={
+                                    editFieldData?.tree
+                                      ? JSON.parse(
+                                          (editFieldData?.tree as unknown as string) ??
+                                            '{}'
+                                        )
+                                      : undefined
+                                  }
+                                  value={editFieldData?.rule ?? ''}
+                                  onChange={(
+                                    rule: string,
+                                    tree?: ImmutableTree
+                                  ) => {
+                                    form.setFieldsValue({
+                                      semantics: semanticsFormData?.map(
+                                        (item, idx) =>
+                                          idx === field.name
+                                            ? {
+                                                ...item,
+                                                rule,
+                                                tree:
+                                                  tree && JSON.stringify(tree),
+                                              }
+                                            : item
+                                      ),
+                                    });
+                                  }}
+                                />
                               </Col>
                             </Row>
 

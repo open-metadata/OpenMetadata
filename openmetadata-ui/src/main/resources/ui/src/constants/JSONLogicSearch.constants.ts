@@ -34,4 +34,5 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.DATA_PRODUCT,
   EntityReferenceFields.TIER,
   EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.GLOSSARY_TERM,
 ];
