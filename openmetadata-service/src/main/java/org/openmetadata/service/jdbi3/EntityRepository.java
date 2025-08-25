@@ -2567,38 +2567,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
-    if (!supportsDataProducts) {
-      return;
-    }
-
-    List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
-      // If no domains are being removed, nothing to do
-      return;
-    }
-
-    for (EntityReference domain : removedDomains) {
-      // Fetch domain data products
-      List<UUID> domainDataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      entityDataProducts.removeIf(
-          dataProduct -> {
-            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-            if (isNotDomainDataProduct) {
-              LOG.info(
-                  "Removing data product {} from entity {}",
-                  dataProduct.getFullyQualifiedName(),
-                  entity.getEntityReference().getType());
-            }
-            return isNotDomainDataProduct;
-          });
-    }
-  }
-
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
@@ -4103,8 +4071,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4169,8 +4135,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4207,7 +4171,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(

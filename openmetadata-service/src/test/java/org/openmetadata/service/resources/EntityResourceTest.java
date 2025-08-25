@@ -292,9 +292,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static final String ENTITY_LINK_MATCH_ERROR =
       "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
-  public static final String MULTIDOMAIN_RULE_ERROR =
-      "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: "
-          + "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
@@ -681,6 +678,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException;
 
   public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -691,7 +698,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getEntitySemantics()
         .forEach(
             rule -> {
-              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+              if (ruleName.equals(rule.getName())) {
                 rule.setEnabled(enable);
               }
             });
@@ -1203,8 +1210,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test

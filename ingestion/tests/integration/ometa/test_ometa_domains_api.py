@@ -201,7 +201,14 @@ class OMetaDomainTest(TestCase):
 
     def test_add_remove_assets_to_data_product(self):
         """We can add assets to a data product"""
-        self.metadata.create_or_update(data=self.create_domain)
+        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain.id, type="domain")]
+        )
+        # Make sure the dashboard belongs to the data product domain!
+        self.metadata.patch_domain(
+            entity=Dashboard, source=self.dashboard, domains=domains_ref
+        )
         data_product: DataProduct = self.metadata.create_or_update(
             data=self.create_data_product
         )
