@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt 실행 결과 파일 경로",
     "dbt-run-result-http-path": "dbt 실행 결과 HTTP 경로",
     "dbt-source": "dbt 소스",
+    "dbt-source-project": "dbt 소스 프로젝트",
     "deactivated": "비활성화됨",
     "december": "12월",
     "decision": "Decision",

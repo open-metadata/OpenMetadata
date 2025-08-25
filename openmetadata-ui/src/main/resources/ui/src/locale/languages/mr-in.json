@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt रन परिणाम फाइल पथ",
     "dbt-run-result-http-path": "dbt रन परिणाम HTTP पथ",
     "dbt-source": "dbt स्रोत",
+    "dbt-source-project": "dbt स्रोत प्रकल्प",
     "deactivated": "निष्क्रिय केले",
     "december": "डिसेंबर",
     "decision": "Decision",

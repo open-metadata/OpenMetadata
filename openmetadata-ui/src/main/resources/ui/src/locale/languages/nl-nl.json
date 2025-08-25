@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt uitvoerresultaten bestandspad",
     "dbt-run-result-http-path": "dbt uitvoerresultaten HTTP-pad",
     "dbt-source": "dbt bron",
+    "dbt-source-project": "dbt Bronproject",
     "deactivated": "Gedeactiveerd",
     "december": "december",
     "decision": "Decision",

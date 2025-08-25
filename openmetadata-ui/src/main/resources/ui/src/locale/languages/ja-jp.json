@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt実行結果ファイルパス",
     "dbt-run-result-http-path": "dbt実行結果HTTPパス",
     "dbt-source": "dbtソース",
+    "dbt-source-project": "dbt ソースプロジェクト",
     "deactivated": "無効化済み",
     "december": "12月",
     "decision": "判断",

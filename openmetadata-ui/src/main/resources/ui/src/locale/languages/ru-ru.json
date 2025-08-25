@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "Путь к файлу результатов выполнения dbt",
     "dbt-run-result-http-path": "HTTP-путь результатов запуска dbt",
     "dbt-source": "dbt Источник",
+    "dbt-source-project": "Исходный проект dbt",
     "deactivated": "Отключено",
     "december": "Декабрь",
     "decision": "Решение",
