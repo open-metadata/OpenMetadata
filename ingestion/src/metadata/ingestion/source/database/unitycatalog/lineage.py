@@ -93,29 +93,36 @@ class UnitycatalogLineageSource(Source):
     def _get_lineage_details(
         self, from_table: Table, to_table: Table, databricks_table_fqn: str
     ) -> Optional[LineageDetails]:
-        col_lineage = []
-        for column in to_table.columns:
-            column_streams = self.client.get_column_lineage(
-                databricks_table_fqn, column_name=column.name.root
-            )
-            from_columns = []
-            for col in column_streams.upstream_cols:
-                col_fqn = get_column_fqn(from_table, col.name)
-                if col_fqn:
-                    from_columns.append(col_fqn)
-
-            if from_columns:
-                col_lineage.append(
-                    ColumnLineage(
-                        fromColumns=from_columns,
-                        toColumn=column.fullyQualifiedName.root,
-                    )
+        try:
+            col_lineage = []
+            for column in to_table.columns:
+                column_streams = self.client.get_column_lineage(
+                    databricks_table_fqn, column_name=column.name.root
                 )
-        if col_lineage:
-            return LineageDetails(
-                columnsLineage=col_lineage, source=LineageSource.QueryLineage
+                from_columns = []
+                for col in column_streams.upstream_cols:
+                    col_fqn = get_column_fqn(from_table, col.name)
+                    if col_fqn:
+                        from_columns.append(col_fqn)
+
+                if from_columns:
+                    col_lineage.append(
+                        ColumnLineage(
+                            fromColumns=from_columns,
+                            toColumn=column.fullyQualifiedName.root,
+                        )
+                    )
+            if col_lineage:
+                return LineageDetails(
+                    columnsLineage=col_lineage, source=LineageSource.QueryLineage
+                )
+            return None
+        except Exception as exc:
+            logger.debug(
+                f"Error computing column lineage for {to_table.fullyQualifiedName.root} - {exc}"
             )
-        return None
+            logger.debug(traceback.format_exc())
+            return None
 
     def _handle_upstream_table(
         self,
@@ -156,6 +163,12 @@ class UnitycatalogLineageSource(Source):
                                 lineageDetails=lineage_details,
                             )
                         ),
+                    )
+                else:
+                    logger.debug(
+                        f"Unable to find upstream entity for "
+                        f"{upstream_table.catalog_name}.{upstream_table.schema_name}.{upstream_table.name}"
+                        f" -> {databricks_table_fqn}"
                     )
             except Exception:
                 logger.debug(
