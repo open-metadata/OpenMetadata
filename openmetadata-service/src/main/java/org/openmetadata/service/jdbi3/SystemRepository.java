@@ -290,7 +290,11 @@ public class SystemRepository {
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
     JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
-    original.setConfigValue(updated);
+    // Convert JsonValue back to a regular Java object
+    // JsonValue is from Jakarta JSON API, we need to convert it to a Jackson-compatible object
+    String jsonString = updated.toString();
+    Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
+    original.setConfigValue(updatedConfigValue);
     try {
       updateSetting(original);
     } catch (Exception ex) {

@@ -92,7 +92,7 @@ public class ConfigResource {
   public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration responseAuthConfig = new AuthenticationConfiguration();
     AuthenticationConfiguration yamlConfig =
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
     if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null) {
       responseAuthConfig.setProvider(yamlConfig.getProvider());
       responseAuthConfig.setProviderName(yamlConfig.getProviderName());
