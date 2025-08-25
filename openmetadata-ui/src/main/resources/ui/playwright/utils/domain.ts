@@ -1,4 +1,16 @@
 /*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -801,6 +813,225 @@ export const setupDomainOwnershipTest = async (apiContext: any) => {
     dataConsumerTeam,
     dataConsumerPolicy,
     dataConsumerRole,
+    cleanup,
+  };
+};
+
+/**
+ * Sets up a complete environment for testing hasDomain() rule condition
+ * Creates user, domain, subdomain, assets, policy with hasDomain(), role, and team
+ * Returns all created objects and a cleanup function
+ */
+export const setupDomainHasDomainTest = async (
+  apiContext: APIRequestContext
+) => {
+  const id = uuid();
+
+  // Create test user
+  const testUser = new UserClass();
+  await testUser.create(apiContext);
+  const mainDomain = new Domain();
+  await mainDomain.create(apiContext);
+  const subDomain = new SubDomain(mainDomain);
+  await subDomain.create(apiContext);
+
+  // Create assets for domain and subdomain
+  const domainTable = new TableClass();
+  const subDomainTable = new TableClass();
+  await domainTable.create(apiContext);
+  await subDomainTable.create(apiContext);
+
+  // Create policy with hasDomain() rule
+  const domainPolicy = new PolicyClass();
+  const domainRule = [
+    {
+      name: 'HasDomainRule',
+      description: '',
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'allow',
+      condition: 'hasDomain()',
+    },
+  ];
+  await domainPolicy.create(apiContext, domainRule);
+
+  // Create role with the policy
+  const domainRole = new RolesClass();
+  await domainRole.create(apiContext, [domainPolicy.responseData.name]);
+
+  // Create team with the user and assign the role
+  const domainTeam = new TeamClass({
+    name: `PW_Team_HasDomain_${id}`,
+    displayName: `PW Team HasDomain ${id}`,
+    description: 'Team for hasDomain() rule testing',
+    teamType: 'Group',
+    users: [testUser.responseData.id ?? ''],
+    defaultRoles: [domainRole.responseData.id ?? ''],
+  });
+  await domainTeam.create(apiContext);
+
+  // Add user to domain
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Assign assets to domain and subdomain
+  await domainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  await subDomainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: subDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Cleanup function
+  const cleanup = async (cleanupContext: APIRequestContext) => {
+    await domainTable.delete(cleanupContext);
+    await subDomainTable.delete(cleanupContext);
+    await subDomain.delete(cleanupContext);
+    await mainDomain.delete(cleanupContext);
+    await domainTeam.delete(cleanupContext);
+    await domainRole.delete(cleanupContext);
+    await domainPolicy.delete(cleanupContext);
+    await testUser.delete(cleanupContext);
+  };
+
+  return {
+    testUser,
+    mainDomain,
+    subDomain,
+    domainTable,
+    subDomainTable,
+    domainPolicy,
+    domainRole,
+    domainTeam,
+    cleanup,
+  };
+};
+
+export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
+  const id = uuid();
+
+  // Create test user
+  const testUser = new UserClass();
+  await testUser.create(apiContext);
+  const mainDomain = new Domain();
+  await mainDomain.create(apiContext);
+
+  // Create assets for domain
+  const domainTable = new TableClass();
+  const noDomainTable = new TableClass();
+  await domainTable.create(apiContext);
+  await noDomainTable.create(apiContext);
+
+  // Create policy with hasDomain() rule
+  const domainPolicy = new PolicyClass();
+  const domainRule = [
+    {
+      name: 'NoDomainRule',
+      description: '',
+      resources: ['All'],
+      operations: ['ViewAll'],
+      effect: 'deny',
+      condition: 'noDomain()',
+    },
+  ];
+  await domainPolicy.create(apiContext, domainRule);
+
+  // Create role with the policy
+  const domainRole = new RolesClass();
+  await domainRole.create(apiContext, [domainPolicy.responseData.name]);
+
+  // Create team with the user and assign the role
+  const domainTeam = new TeamClass({
+    name: `PW_Team_NoDomain_${id}`,
+    displayName: `PW Team NoDomain ${id}`,
+    description: 'Team for noDomain() rule testing',
+    teamType: 'Group',
+    users: [testUser.responseData.id ?? ''],
+    defaultRoles: [domainRole.responseData.id ?? ''],
+  });
+  await domainTeam.create(apiContext);
+
+  // Add user to domain
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Assign assets to domain and subdomain
+  await domainTable.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: mainDomain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
+
+  // Cleanup function
+  const cleanup = async (cleanupContext: APIRequestContext) => {
+    await domainTable.delete(cleanupContext);
+    await noDomainTable.delete(cleanupContext);
+    await mainDomain.delete(cleanupContext);
+    await domainTeam.delete(cleanupContext);
+    await domainRole.delete(cleanupContext);
+    await domainPolicy.delete(cleanupContext);
+    await testUser.delete(cleanupContext);
+  };
+
+  return {
+    testUser,
+    mainDomain,
+    domainTable,
+    noDomainTable,
+    domainPolicy,
+    domainRole,
+    domainTeam,
     cleanup,
   };
 };
