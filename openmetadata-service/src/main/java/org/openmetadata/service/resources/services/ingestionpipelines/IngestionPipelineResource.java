@@ -48,7 +48,9 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -918,6 +920,77 @@ public class IngestionPipelineResource
     Map<String, String> lastIngestionLogs =
         pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  @GET
+  @Path("/logs/{id}/last/download")
+  @Produces(MediaType.APPLICATION_OCTET_STREAM)
+  @Operation(
+      operationId = "downloadLastIngestionLogs",
+      summary = "Download all logs from last ingestion pipeline run as a stream",
+      description = "Stream all logs from last ingestion pipeline run by `Id` for download.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Log content as a downloadable stream",
+            content = @Content(mediaType = "application/octet-stream")),
+        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+      })
+  public Response downloadLastIngestionLogs(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    try {
+      if (pipelineServiceClient == null) {
+        return Response.status(200).entity("Pipeline Client Disabled").build();
+      }
+      IngestionPipeline ingestionPipeline =
+          getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+
+      String filename =
+          String.format(
+              "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
+
+      StreamingOutput streamingOutput =
+          output -> {
+            String cursor = null;
+            boolean hasMoreData = true;
+
+            while (hasMoreData) {
+              Map<String, String> logChunk =
+                  pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+
+              if (logChunk == null || logChunk.isEmpty()) {
+                break;
+              }
+
+              for (Map.Entry<String, String> entry : logChunk.entrySet()) {
+                if (entry.getValue() != null
+                    && !entry.getKey().equals("after")
+                    && !entry.getKey().equals("total")) {
+                  output.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                  output.write("\n".getBytes(StandardCharsets.UTF_8));
+                }
+              }
+              output.flush();
+
+              cursor = logChunk.get("after");
+              if (cursor == null) {
+                hasMoreData = false;
+              }
+            }
+          };
+
+      return Response.ok(streamingOutput)
+          .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+          .build();
+    } catch (Exception e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Error downloading logs: " + e.getMessage())
+          .build();
+    }
   }
 
   @PUT
