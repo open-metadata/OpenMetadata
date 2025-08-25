@@ -14,47 +14,28 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from sqlalchemy import Column, text
+from sqlalchemy import event
+from sqlalchemy.orm import scoped_session, sessionmaker
 
-from metadata.ingestion.source.database.databricks.connection import (
-    get_connection as databricks_get_connection,
-)
-from metadata.profiler.orm.types.custom_array import CustomArray
-from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 
 
-class UnityCatalogSamplerInterface(SQASampler):
+class UnityCatalogSamplerInterface(DatabricksSamplerInterface):
+    """
+    Unity Catalog Sampler Interface
+    """
+
     def __init__(self, *args, **kwargs):
-        """Initialize with a single Databricks connection"""
         super().__init__(*args, **kwargs)
-        self.connection = databricks_get_connection(self.service_connection_config)
 
-    def get_client(self):
-        """client is the session for SQA"""
-        client = super().get_client()
-        self.set_catalog(client)
-        return client
+        # Create custom session with after_begin event to set catalog
+        session_maker = sessionmaker(bind=self.connection)
 
-    def _handle_array_column(self, column: Column) -> bool:
-        """Check if a column is an array type"""
-        return isinstance(column.type, CustomArray)
+        @event.listens_for(session_maker, "after_begin")
+        def set_catalog(session, transaction, connection):
+            connection.execute(
+                "USE CATALOG %(catalog)s;",
+                {"catalog": self.service_connection_config.catalog},
+            )
 
-    def _get_slice_expression(self, column: Column):
-        """Generate SQL expression to slice array elements at query level
-
-        Args:
-            column_name: Name of the column
-            max_elements: Maximum number of elements to extract
-
-        Returns:
-            SQL expression string for array slicing
-        """
-        max_elements = self._get_max_array_elements()
-        return text(
-            f"""
-        CASE 
-            WHEN `{column.name}` IS NULL THEN NULL
-            ELSE slice(`{column.name}`, 1, {max_elements})
-        END AS `{column._label}`
-        """
-        )
+        self.session_factory = scoped_session(session_maker)
