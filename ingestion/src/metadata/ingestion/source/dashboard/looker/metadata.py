@@ -922,6 +922,8 @@ class LookerSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         try:
             return list(
                 self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS))
@@ -963,6 +965,8 @@ class LookerSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
                 if dashboard_owner.email:

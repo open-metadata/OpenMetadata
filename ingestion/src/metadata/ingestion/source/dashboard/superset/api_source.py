@@ -77,6 +77,8 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         current_page = 0
         page_size = 25
         total_dashboards = self.client.fetch_total_dashboards()
