@@ -242,7 +242,7 @@ export const fetchMarkdownFile = async (filePath: string) => {
     baseURL = '/';
   }
 
-  const response = await APIClient.get<string>(filePath, {
+  const response = await APIClient.get<string>(`/locales/${filePath}`, {
     baseURL,
     headers: {
       'Content-Type': 'text/markdown',
