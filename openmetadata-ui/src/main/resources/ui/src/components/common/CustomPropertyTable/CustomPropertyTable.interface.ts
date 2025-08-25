@@ -20,6 +20,7 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { Directory } from '../../../generated/entity/data/directory';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -52,6 +53,7 @@ export type ExtentionEntities = {
   [EntityType.METRIC]: Metric;
   [EntityType.DOMAIN]: Domain;
   [EntityType.CHART]: Chart;
+  [EntityType.DIRECTORY]: Directory;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;

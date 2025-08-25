@@ -22,6 +22,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Directory } from '../../generated/entity/data/directory';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -33,6 +34,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { APIService } from '../../generated/entity/services/apiService';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { DriveService } from '../../generated/entity/services/driveService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
@@ -132,6 +134,7 @@ export type EntityUnion =
   | SearchService
   | APIEndpoint
   | APIService
+  | DriveService
   | APICollection
   | Metric;
 
@@ -146,7 +149,8 @@ export type EntityWithServices =
   | DatabaseSchema
   | SearchIndexEntity
   | APICollection
-  | APIEndpoint;
+  | APIEndpoint
+  | Directory;
 
 export type EntityServiceUnion =
   | DatabaseService
@@ -156,7 +160,8 @@ export type EntityServiceUnion =
   | MlmodelService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | DriveService;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

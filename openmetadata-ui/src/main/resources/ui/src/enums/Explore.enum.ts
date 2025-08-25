@@ -44,4 +44,5 @@ export enum ExplorePageTabs {
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
+  DRIVE_SERVICE = 'driveService',
 }

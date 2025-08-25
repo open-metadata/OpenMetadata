@@ -38,6 +38,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
 import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -51,6 +52,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { DriveService } from '../generated/entity/services/driveService';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
@@ -590,6 +592,16 @@ export const getDataAssetsHeaderInfo = (
 
       break;
 
+    case EntityType.DRIVE_SERVICE:
+      const driveServiceDetails = dataAsset as DriveService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        driveServiceDetails,
+        EntityType.DRIVE_SERVICE
+      );
+
+      break;
+
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 
@@ -700,6 +712,55 @@ export const getDataAssetsHeaderInfo = (
       const chart = dataAsset as Chart;
 
       returnData.breadcrumbs = getEntityBreadcrumbs(chart, EntityType.CHART);
+
+      break;
+    }
+    case EntityType.DIRECTORY: {
+      const directory = dataAsset as Directory;
+
+      returnData.breadcrumbs =
+        getBreadcrumbForEntitiesWithServiceOnly(directory);
+
+      returnData.extraInfo = (
+        <>
+          {directory.directoryType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={directory.directoryType}
+              />
+            </>
+          )}
+          {directory.numberOfFiles !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.file-plural')}
+                value={directory.numberOfFiles}
+              />
+            </>
+          )}
+          {directory.numberOfSubDirectories !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.subdirectory-plural')}
+                value={directory.numberOfSubDirectories}
+              />
+            </>
+          )}
+        </>
+      );
 
       break;
     }

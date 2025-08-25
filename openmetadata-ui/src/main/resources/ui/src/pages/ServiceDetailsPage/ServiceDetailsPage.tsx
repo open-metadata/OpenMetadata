@@ -88,6 +88,7 @@ import {
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
+import { getDirectories } from '../../rest/driveAPI';
 import {
   getIngestionPipelines,
   getPipelineServiceHostIp,
@@ -682,6 +683,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
     },
     [decodedServiceFQN, include]
   );
+  const fetchDirectories = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getDirectories({
+        service: decodedServiceFQN,
+        fields: commonTableFields,
+        paging,
+        include,
+      });
+
+      setData(response.data);
+      handlePagingChange(response.paging);
+    },
+    [decodedServiceFQN, include]
+  );
 
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
@@ -729,6 +744,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
             break;
           }
+          case ServiceCategory.DRIVE_SERVICES: {
+            await fetchDirectories(pagingParams);
+
+            break;
+          }
           default:
             break;
         }
@@ -749,6 +769,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchContainers,
       fetchSearchIndexes,
       fetchCollections,
+      fetchDirectories,
       pageSize,
     ]
   );

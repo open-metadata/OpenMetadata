@@ -30,6 +30,7 @@ import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
 import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
+import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
@@ -158,6 +159,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return mlModelClassBase.getMlModelDetailPageTabsIds();
     case PageType.Chart:
       return chartDetailsClassBase.getChartDetailPageTabsIds();
+    case PageType.Directory:
+      return directoryClassBase.getDirectoryDetailPageTabsIds();
     default:
       return [
         {
@@ -210,6 +213,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return mlModelClassBase.getDefaultLayout(tab);
     case PageType.Chart:
       return chartDetailsClassBase.getDefaultLayout(tab);
+    case PageType.Directory:
+      return directoryClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -279,6 +284,8 @@ export const getCustomizableWidgetByPage = (
       return storedProcedureClassBase.getCommonWidgetList();
     case PageType.Chart:
       return chartDetailsClassBase.getCommonWidgetList();
+    case PageType.Directory:
+      return directoryClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -319,6 +326,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return mlModelClassBase.getDummyData();
     case PageType.Chart:
       return chartDetailsClassBase.getDummyData();
+    case PageType.Directory:
+      return directoryClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -366,6 +375,8 @@ export const getWidgetsFromKey = (
       return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Chart:
       return chartDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Directory:
+      return directoryClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -410,6 +421,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
     case PageType.Chart:
       return chartDetailsClassBase.getWidgetHeight(widgetName);
+    case PageType.Directory:
+      return directoryClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }
@@ -664,6 +677,11 @@ export const checkIfExpandViewSupported = (
       return (
         (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
         activeTab === EntityTabs.FEATURES
+      );
+    case PageType.Directory:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
+        activeTab === EntityTabs.CHILDREN
       );
     default:
       return false;
