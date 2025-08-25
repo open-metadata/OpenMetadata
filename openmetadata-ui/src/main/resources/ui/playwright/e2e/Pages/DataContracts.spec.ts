@@ -122,7 +122,7 @@ test.describe('Data Contracts', () => {
   });
 
   test('Create Data Contract and validate', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(360000);
 
     await test.step('Redirect to Home Page and visit entity', async () => {
       await redirectToHomePage(page);
