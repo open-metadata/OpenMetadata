@@ -31,6 +31,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.resources.glossary.GlossaryResourceTest.waitForTaskToBeCreated;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -117,6 +120,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
@@ -2227,7 +2231,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
 
     // Verify workflow task was created
-    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
     assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
 
     // Verify term status moved to IN_REVIEW
@@ -2474,7 +2478,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
 
     // Verify workflow task was created
-    taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2636,5 +2640,32 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     } catch (Exception e) {
       return false;
     }
+  }
+
+  private boolean wasDetailedWorkflowTaskCreated(String termFqn, long timeoutMs) {
+    try {
+      waitForDetailedTaskToBeCreated(termFqn, timeoutMs);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public static void waitForDetailedTaskToBeCreated(String fullyQualifiedName, long timeout) {
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, fullyQualifiedName).getLinkString();
+    Awaitility.await(
+            String.format(
+                "Wait for Detailed Task to be Created for Glossary Term: '%s'", fullyQualifiedName))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(timeout))
+        .until(
+            () ->
+                WorkflowHandler.getInstance()
+                    .isActivityWithVariableExecuting(
+                        "DetailedApprovalForUpdates.approvalTask",
+                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
   }
 }

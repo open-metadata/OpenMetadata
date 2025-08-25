@@ -7,13 +7,17 @@
   "type": "string",
   "enum": [
     "userApprovalTask",
+    "detailedUserApprovalTask",
     "checkEntityAttributesTask",
+    "setEntityAttributeTask",
     "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
     "createAndRunIngestionPipelineTask",
     "runAppTask",
+    "rollbackEntityTask",
+    "dataCompletenessTask",
     "parallelGateway"
   ]
 }

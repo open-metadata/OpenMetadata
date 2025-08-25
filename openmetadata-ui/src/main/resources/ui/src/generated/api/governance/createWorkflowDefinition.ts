@@ -15,6 +15,10 @@
  */
 export interface CreateWorkflowDefinition {
     /**
+     * Configuration for the Workflow Definition
+     */
+    config?: WorkflowConfiguration;
+    /**
      * Description of the Workflow Definition. What it has and how to use it.
      */
     description: string;
@@ -43,6 +47,16 @@ export interface CreateWorkflowDefinition {
 }
 
 /**
+ * Configuration for the Workflow Definition
+ */
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
+}
+
+/**
  * Governance Workflow Edge.
  */
 export interface EdgeDefinition {
@@ -62,6 +76,8 @@ export interface EdgeDefinition {
 
 /**
  * Checks if an Entity attributes fit given rules.
+ *
+ * Sets any Entity attribute field to the configured value.
  *
  * Sets the GlossaryTerm Status to the configured value.
  *
@@ -104,6 +120,14 @@ export interface NodeConfiguration {
      */
     rules?: string;
     /**
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
+     */
+    fieldName?: string;
+    /**
+     * Value to set for the field
+     */
+    fieldValue?: string;
+    /**
      * Choose which Status to apply to the Glossary Term
      */
     glossaryTermStatus?: Status;
@@ -112,9 +136,20 @@ export interface NodeConfiguration {
      */
     certification?: CertificationEnum;
     /**
+     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
+     * single reviewer can approve).
+     */
+    approvalThreshold?: number;
+    /**
      * People/Teams assigned to the Task.
      */
     assignees?: Assignees;
+    /**
+     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
+     * single reviewer can reject). This allows for scenarios where you want multiple approvals
+     * but a single rejection can veto.
+     */
+    rejectionThreshold?: number;
 }
 
 /**
@@ -125,7 +160,32 @@ export interface Assignees {
      * Add the Reviewers to the assignees List.
      */
     addReviewers?: boolean;
-    [property: string]: any;
+    /**
+     * Additional assignees with optional users and teams.
+     */
+    extraAssignees?: ExtraAssignees;
+    /**
+     * List of team names to assign the task to.
+     */
+    teams?: string[];
+    /**
+     * List of user names to assign the task to.
+     */
+    users?: string[];
+}
+
+/**
+ * Additional assignees with optional users and teams.
+ */
+export interface ExtraAssignees {
+    /**
+     * List of additional team names to assign the task to.
+     */
+    teams?: string[];
+    /**
+     * List of additional user names to assign the task to.
+     */
+    users?: string[];
 }
 
 /**
@@ -226,10 +286,19 @@ export interface EntityTriggerDefinition {
  */
 export interface TriggerConfiguration {
     /**
-     * Entity Type for which it should be triggered.
+     * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
+     * for multiple types.
      */
-    entityType: string;
-    events?:    Event[];
+    entityType?: string;
+    /**
+     * Array of Entity Types for which this workflow should be triggered. Supports multiple
+     * entity types in one workflow.
+     */
+    entityTypes?: string[];
+    /**
+     * Select the events that should trigger this workflow
+     */
+    events?: Event[];
     /**
      * Select fields that should not trigger the workflow if only them are modified.
      */
@@ -245,9 +314,10 @@ export interface TriggerConfiguration {
      */
     batchSize?: number;
     /**
-     * Select the Search Filters to filter down the entities fetched.
+     * Search filters for entities. Can be a string (applied to all entity types) or an object
+     * mapping entity types to their specific filters.
      */
-    filters?: string;
+    filters?: FiltersObject | string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */
@@ -260,6 +330,17 @@ export interface TriggerConfiguration {
 export enum Event {
     Created = "Created",
     Updated = "Updated",
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FiltersObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }
 
 export interface AppScheduleClass {
