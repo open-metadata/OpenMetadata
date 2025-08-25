@@ -332,16 +332,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           "Error during asset data product validation for asset {}: {}",
           asset.getId(),
           e.getMessage());
-      // For non-validation errors, we allow the operation to proceed
-      // This ensures that rule engine issues don't break bulk operations
     }
-  }
-
-  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
-    // This method is deprecated and no longer performs hardcoded validation.
-    // Domain validation for Data Product assignment is now handled by the rule engine
-    // with the "Data Product Domain Validation" rule in entityRulesSettings.json.
-    // The validateAssetDataProductAssignment method above handles proper rule validation.
   }
 
   @Override
