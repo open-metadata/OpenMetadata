@@ -32,7 +32,14 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
@@ -44,11 +51,14 @@ import {
 } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { OPEN_METADATA } from '../../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
   CreateIngestionPipeline,
@@ -102,6 +112,7 @@ import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import ScheduleIntervalV1 from '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
@@ -198,6 +209,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [isCheckingPermissions, setIsCheckingPermissions] =
     useState<boolean>(false);
   const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
+
+  const [activeField, setActiveField] = useState<string>('');
 
   // =============================================
   // HOOKS - Form Watches
@@ -832,6 +845,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     [createTestCaseObj, testSuite, selectedTable, table, onFormSubmit, onCancel]
   );
 
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+    setActiveField(event.target.id);
+  }, []);
+
   // =============================================
   // EFFECT HOOKS
   // =============================================
@@ -993,6 +1010,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           scrollMode: 'if-needed',
         }}
         onFinish={handleSubmit}
+        onFocus={handleFieldFocus}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
@@ -1307,6 +1325,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
+  const docPanel = (
+    <ServiceDocPanel
+      activeField={activeField}
+      serviceName={TEST_CASE_FORM}
+      serviceType={OPEN_METADATA as ServiceCategory}
+    />
+  );
+
   return (
     <Drawer
       destroyOnClose
@@ -1315,10 +1341,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       footer={drawerFooter}
       maskClosable={false}
       placement="right"
-      size="large"
       title={t('label.add-entity', {
         entity: t('label.test-case'),
       })}
+      width="75%"
       {...drawerProps}
       extra={
         <Button
@@ -1329,7 +1355,12 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         />
       }
       onClose={onCancel}>
-      <div className="drawer-form-content">{formContent}</div>
+      <Row gutter={24}>
+        <Col className="drawer-form-content" span={14}>
+          {formContent}
+        </Col>
+        <Col span={10}>{docPanel}</Col>
+      </Row>
     </Drawer>
   );
 };
