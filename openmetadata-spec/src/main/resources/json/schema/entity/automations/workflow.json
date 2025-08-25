@@ -85,7 +85,7 @@
           "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
         },
         {
-          "$ref": "../data/table.json#/definitions/tableData"
+          "$ref": "response/queryRunnerResponse.json"
         }
       ]
     },
