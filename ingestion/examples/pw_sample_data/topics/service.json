@@ -1,0 +1,13 @@
+{
+  "type": "kafka",
+  "serviceName": "sample_kafka",
+  "serviceConnection": {
+    "config": {
+      "type": "Kafka",
+      "bootstrapServers": "localhost:9092"
+    }
+  },
+  "sourceConfig": {
+    "config": {}
+  }
+}
