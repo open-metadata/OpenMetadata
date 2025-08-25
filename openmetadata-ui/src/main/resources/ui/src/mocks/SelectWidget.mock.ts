@@ -23,6 +23,7 @@ export const MOCK_SELECT_WIDGET = {
     enumOptions: [
       { label: 'EN', value: 'EN' },
       { label: 'JP', value: 'JP' },
+      { label: 'RU', value: 'RU' },
       { label: 'ZH', value: 'ZH' },
     ],
   },
@@ -34,7 +35,7 @@ export const MOCK_SELECT_WIDGET = {
     description: 'Recreate Indexes with updated Language',
     title: 'Search Index Language',
     javaType: 'org.openmetadata.schema.type.IndexMappingLanguage',
-    enum: ['EN', 'JP', 'ZH'],
+    enum: ['EN', 'JP', 'RU', 'ZH'],
   },
   uiSchema: {},
   value: 'JP',
