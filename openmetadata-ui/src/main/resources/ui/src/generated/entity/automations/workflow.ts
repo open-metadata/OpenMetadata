@@ -534,6 +534,8 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Request
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +576,14 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
 }
 
 /**
@@ -4621,6 +4631,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * This schema defines the type to capture rows of sample data for a table.
  */
 export interface TestConnectionResult {
     /**
@@ -4652,6 +4664,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4727,6 +4747,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
 }
