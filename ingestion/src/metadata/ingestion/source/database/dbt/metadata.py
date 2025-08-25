@@ -521,10 +521,8 @@ class DbtSource(DbtServiceSource):
                 self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
-            dbt_project_name = (
-                dbt_objects.dbt_manifest.metadata.project_name
-                if hasattr(dbt_objects.dbt_manifest.metadata, "project_name")
-                else None
+            dbt_project_name = getattr(
+                dbt_objects.dbt_manifest.metadata, "project_name", None
             )
             for key, manifest_node in manifest_entities.items():
                 try:
