@@ -1,10 +1,10 @@
 # Spline
 
-In this section, we provide guides and references to use the Spline connector. You can view the full documentation for Spline [here](https://docs.open-metadata.org/connectors/pipeline/spline).
+In this section, we provide guides and references to use the Spline connector. You can view the full documentation for Spline <a href="https://docs.open-metadata.org/connectors/pipeline/spline" target="_blank">here</a>.
 
 ## Requirements
 
-We extract Spline's metadata by using its [API](https://absaoss.github.io/spline/).
+We extract Spline's metadata by using its <a href="https://absaoss.github.io/spline/" target="_blank">API</a>.
 
 ## Connection Details
 

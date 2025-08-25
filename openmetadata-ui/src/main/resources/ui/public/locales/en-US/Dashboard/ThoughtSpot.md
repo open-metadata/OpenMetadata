@@ -34,7 +34,7 @@ If you're using ThoughtSpot Cloud with multiple organizations:
 - Set the `Organization ID` parameter to specify which organization to connect to
 - This is only applicable for ThoughtSpot Cloud instances
 
-You can find further information on the ThoughtSpot connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/thoughtspot).
+You can find further information on the ThoughtSpot connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/thoughtspot" target="_blank">docs</a>.
 
 ## Connection Details
 

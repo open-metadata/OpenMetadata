@@ -18,7 +18,7 @@ For example, to include only those Topics whose name starts with the word `demo`
 
 For example, to exclude all Topics with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern" target="_blank">this</a> document for further examples on filter patterns.
 $$
 
 $$section

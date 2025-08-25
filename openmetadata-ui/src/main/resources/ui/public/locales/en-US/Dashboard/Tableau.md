@@ -6,9 +6,9 @@ In this section, we provide guides and references to use the Tableau connector.
 
 To ingest Tableau metadata, the username used in the configuration **must** have at least the following role: `Site Role: Viewer`.
 
-To create lineage between Tableau dashboards and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server. For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html).
+To create lineage between Tableau dashboards and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server. For more information on enabling the Tableau Metadata APIs follow the link <a href="https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html" target="_blank">here</a>.
 
-You can find further information on the Tableau connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
+You can find further information on the Tableau connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/tableau" target="_blank">docs</a>.
 
 
 ## Authentication Type
@@ -34,7 +34,7 @@ $$section
 
 The personal access token name.
 
-For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official <a href="https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm" target="_blank">docs</a>.
 $$
 
 $$section
@@ -42,7 +42,7 @@ $$section
 
 The personal access token value.
 
-For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official <a href="https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm" target="_blank">docs</a>.
 $$
 
 ## Connection Details
@@ -60,7 +60,7 @@ $$section
 
 When we make a request, we include the API version number in the request as in the following example: `https://{hostPort}/api/{api_version}/auth/signin`
 
-Find [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm) a list of Tableau Server versions and its corresponding REST API versions.
+Find <a href="https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm" target="_blank">here</a> a list of Tableau Server versions and its corresponding REST API versions.
 $$
 
 $$section

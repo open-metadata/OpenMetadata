@@ -1,6 +1,6 @@
 # Trino
 
-In this section, we provide guides and references to use the Trino connector. You can view the full documentation for Trino [here](https://docs.open-metadata.org/connectors/database/trino).
+In this section, we provide guides and references to use the Trino connector. You can view the full documentation for Trino <a href="https://docs.open-metadata.org/connectors/database/trino" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata, the user needs to have `SELECT` permission on the following tables:
@@ -10,12 +10,12 @@ To extract metadata, the user needs to have `SELECT` permission on the following
 - `information_schema.views`
 - `system.metadata.table_comments`
 
-Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation [here](https://trino.io/docs/current/security.html).
+Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation <a href="https://trino.io/docs/current/security.html" target="_blank">here</a>.
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-You can find further information on the Trino connector in the [docs](https://docs.open-metadata.org/connectors/database/trino).
+You can find further information on the Trino connector in the <a href="https://docs.open-metadata.org/connectors/database/trino" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -49,7 +49,7 @@ $$
 $$section
 ### JWT $(id="jwt")
 JWT can be used to authenticate with trino.
-Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
+Follow the steps in the <a href="https://trino.io/docs/current/security/jwt.html" target="_blank">official trino</a> documentation to setup trino with jwt.
 
 $$
 
@@ -60,7 +60,7 @@ $$section
 
 To get the Client ID (also known as application ID), follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. From the Overview section, copy the `Application (client) ID`.
@@ -71,7 +71,7 @@ $$section
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -86,7 +86,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.
@@ -96,7 +96,7 @@ $$section
 ### Scopes $(id="Scopes")
 
 To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. From the `Expose an API` section, copy the `Application ID URI`

@@ -4,16 +4,16 @@ In this section, we provide guides and references to use the Domo Database conne
 
 ## Requirements
 
-For the metadata ingestion, make sure to add at least the `data` scope to the Client ID provided. For question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
+For the metadata ingestion, make sure to add at least the `data` scope to the Client ID provided. For question related to scopes, click <a href="https://developer.domo.com/portal/1845fc11bbe5d-api-authentication" target="_blank">here</a>.
 
-You can find further information on the Domo Database connector in the [docs](https://docs.open-metadata.org/connectors/database/domo-database).
+You can find further information on the Domo Database connector in the <a href="https://docs.open-metadata.org/connectors/database/domo-database" target="_blank">docs</a>.
 
 ## Connection Details
 
 $$section
 ### Client ID $(id="clientId")
 
-Client ID for Domo. Further information can be found [here](https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#how-to-find-clientid).
+Client ID for Domo. Further information can be found <a href="https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#how-to-find-clientid" target="_blank">here</a>.
 
 This needs to be informed together with the `Secret Token` and is used to extract metadata from Domo's official API.
 $$
@@ -27,7 +27,7 @@ $$
 $$section
 ### Access Token $(id="accessToken")
 
-Access token to connect to Domo. Further information can be found [here](https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#where-to-find-accesstoken).
+Access token to connect to Domo. Further information can be found <a href="https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#where-to-find-accesstoken" target="_blank">here</a>.
 
 This is required to automate metadata extraction directly from the instance for endpoints not supported by the API, such as Cards or Pipeline Runs.
 $$

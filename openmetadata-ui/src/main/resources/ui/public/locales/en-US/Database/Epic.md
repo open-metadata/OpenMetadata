@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Epic FHIR connector.
 
-You can find further information on the Epic connector in the [docs](https://docs.open-metadata.org/connectors/database/epic).
+You can find further information on the Epic connector in the <a href="https://docs.open-metadata.org/connectors/database/epic" target="_blank">docs</a>.
 
 ## Connection Details
 

@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the ADLS connector.
 
-By default, the ADLS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the [docs](https://docs.open-metadata.org/connectors/storage).
+By default, the ADLS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the <a href="https://docs.open-metadata.org/connectors/storage" target="_blank">docs</a>.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need
 - Storage Blob Data Contributor
 - Storage Queue Data Contributor
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/storage/adls).
+You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/storage/adls" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -29,7 +29,7 @@ $$section
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -44,7 +44,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.

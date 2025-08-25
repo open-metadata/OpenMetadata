@@ -1,11 +1,11 @@
 # Cassandra
-In this section, we provide guides and references to use the Cassandra connector. You can view the full documentation for Cassandra [here](https://docs.open-metadata.org/connectors/database/cassandra).
+In this section, we provide guides and references to use the Cassandra connector. You can view the full documentation for Cassandra <a href="https://docs.open-metadata.org/connectors/database/cassandra" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata using the Cassandra connector, ensure the user in the connection has the following permissions:
 - Read Permissions: The ability to query tables and perform data extraction.
 - Schema Operations: Access to list and describe keyspaces and tables.
-You can find further information on the Cassandra connector in the [here](https://docs.open-metadata.org/connectors/database/cassandra).
+You can find further information on the Cassandra connector in the <a href="https://docs.open-metadata.org/connectors/database/cassandra" target="_blank">here</a>.
 
 ## Connection Details
 

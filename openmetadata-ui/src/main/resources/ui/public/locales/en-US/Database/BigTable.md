@@ -10,8 +10,8 @@ We need to enable the BigTable API and use an account with a specific set of min
 
 Click on `Enable API`, which will enable the APs on the selected project:
 
-- [Cloud Bigtable Admin API ](https://console.cloud.google.com/apis/api/bigtableadmin.googleapis.com)
-- [Cloud Bigtable API](https://console.cloud.google.com/apis/library/bigtable.googleapis.com)
+- <a href="https://console.cloud.google.com/apis/api/bigtableadmin.googleapis.com" target="_blank">Cloud Bigtable Admin API</a>
+- <a href="https://console.cloud.google.com/apis/library/bigtable.googleapis.com" target="_blank">Cloud Bigtable API</a>
 
 ### GCP Permissions
 
@@ -23,9 +23,9 @@ To execute the metadata extraction and Usage workflow successfully, the user or 
 - `bigtable.tables.list`
 - `bigtable.tables.readRows` 
 
-You can visit [this](https://docs.open-metadata.org/connectors/database/bigtable/roles) documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
+You can visit <a href="https://docs.open-metadata.org/connectors/database/bigtable/roles" target="_blank">this</a> documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
 
-You can find further information on the BigTable connector in the [docs](https://docs.open-metadata.org/connectors/database/bigtable).
+You can find further information on the BigTable connector in the <a href="https://docs.open-metadata.org/connectors/database/bigtable" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -46,9 +46,9 @@ $$section
 
 You can authenticate with your BigQuery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check <a href="https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console" target="_blank">this</a> documentation on how to create the service account keys and download it.
 
-If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCP credentials empty.
+If you want to use <a href="https://cloud.google.com/docs/authentication#adc" target="_blank">ADC authentication</a> for BigQuery you can just leave the GCP credentials empty.
 
 $$
 
