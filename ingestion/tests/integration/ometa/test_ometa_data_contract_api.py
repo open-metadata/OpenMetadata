@@ -28,10 +28,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.dataContract import (
-    ContractStatus,
-    DataContract,
-)
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -64,6 +61,7 @@ from metadata.generated.schema.type.contractExecutionStatus import (
     ContractExecutionStatus,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -137,7 +135,7 @@ class OMetaDataContractTest(TestCase):
             entity=EntityReference(
                 id=cls.table_entity.id, type="table"
             ),  # Will be set in setUpClass
-            status=ContractStatus.Draft,
+            entityStatus=EntityStatus.Draft,
             schema=cls.table_entity.columns[:2],
         )
 
@@ -168,7 +166,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
         self.assertEqual(res.entity.id, self.table_entity.id)
         self.assertEqual(res.entity.type, "table")
         self.assertEqual(len(res.schema_), 2)
@@ -184,7 +182,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
 
     def test_get_data_contract_by_id(self):
         """We can fetch DataContract by ID"""
@@ -197,7 +195,7 @@ class OMetaDataContractTest(TestCase):
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.id, created_contract.id)
-        self.assertEqual(res.status, self.create_data_contract.status)
+        self.assertEqual(res.entityStatus, self.create_data_contract.entityStatus)
 
     def test_put_data_contract_result(self):
         """We can create and store DataContract execution results"""
@@ -254,19 +252,19 @@ class OMetaDataContractTest(TestCase):
         created_contract: DataContract = self.metadata.create_or_update(
             data=self.create_data_contract
         )
-        self.assertEqual(created_contract.status, ContractStatus.Draft)
+        self.assertEqual(created_contract.entityStatus, EntityStatus.Draft)
 
         # Update to Active status
         updated_request = CreateDataContractRequest(
             name=self.create_data_contract.name,
             description=self.create_data_contract.description,
             entity=self.create_data_contract.entity,
-            status=ContractStatus.Active,
+            entityStatus=EntityStatus.Approved,
             schema=self.create_data_contract.schema_,
         )
 
         updated_contract: DataContract = self.metadata.create_or_update(
             data=updated_request
         )
-        self.assertEqual(updated_contract.status, ContractStatus.Active)
+        self.assertEqual(updated_contract.entityStatus, EntityStatus.Approved)
         self.assertEqual(updated_contract.id, created_contract.id)

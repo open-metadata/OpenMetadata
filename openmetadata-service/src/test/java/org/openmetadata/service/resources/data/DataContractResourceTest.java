@@ -84,8 +84,8 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
-import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -179,7 +179,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       DataContract createdEntity, CreateDataContract request, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(request.getName(), createdEntity.getName());
-    assertEquals(request.getStatus(), createdEntity.getStatus());
+    assertEquals(request.getEntityStatus(), createdEntity.getEntityStatus());
     assertSemantics(request.getSemantics(), createdEntity.getSemantics());
     assertQualityExpectations(
         request.getQualityExpectations(), createdEntity.getQualityExpectations());
@@ -221,7 +221,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Compare basic fields
     assertEquals(expected.getName(), patched.getName());
     assertEquals(expected.getDescription(), patched.getDescription());
-    assertEquals(expected.getStatus(), patched.getStatus());
+    assertEquals(expected.getEntityStatus(), patched.getEntityStatus());
 
     // Compare entity reference
     TestUtils.validateEntityReference(patched.getEntity());
@@ -316,15 +316,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     }
 
     if (fieldName.equals("status")) {
-      // Handle ContractStatus enum
-      ContractStatus expectedStatus =
-          expected instanceof ContractStatus
-              ? (ContractStatus) expected
-              : ContractStatus.fromValue(expected.toString());
-      ContractStatus actualStatus =
-          actual instanceof ContractStatus
-              ? (ContractStatus) actual
-              : ContractStatus.fromValue(actual.toString());
+      // Handle EntityStatus enum
+      EntityStatus expectedStatus =
+          expected instanceof EntityStatus
+              ? (EntityStatus) expected
+              : EntityStatus.fromValue(expected.toString());
+      EntityStatus actualStatus =
+          actual instanceof EntityStatus
+              ? (EntityStatus) actual
+              : EntityStatus.fromValue(actual.toString());
       assertEquals(expectedStatus, actualStatus);
     } else if (fieldName.equals("schema") || fieldName.endsWith(".schema")) {
       // Handle schema changes
@@ -550,7 +550,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     return new CreateDataContract()
         .withName(contractName)
         .withEntity(table.getEntityReference())
-        .withStatus(ContractStatus.Draft);
+        .withEntityStatus(EntityStatus.DRAFT);
   }
 
   public DataContract createDataContract(CreateDataContract create) throws IOException {
@@ -697,7 +697,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(dataContract);
     assertNotNull(dataContract.getId());
     assertEquals(create.getName(), dataContract.getName());
-    assertEquals(create.getStatus(), dataContract.getStatus());
+    assertEquals(create.getEntityStatus(), dataContract.getEntityStatus());
     assertEquals(table.getId(), dataContract.getEntity().getId());
     assertEquals("table", dataContract.getEntity().getType());
 
@@ -743,10 +743,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
 
     // Update to Active status
-    create.withStatus(ContractStatus.Active);
+    create.withEntityStatus(EntityStatus.APPROVED);
     DataContract updated = updateDataContract(create);
 
-    assertEquals(ContractStatus.Active, updated.getStatus());
+    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
     assertEquals(created.getId(), updated.getId());
   }
 
@@ -779,14 +779,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Update with semantics and quality expectations
     create
-        .withStatus(ContractStatus.Active)
+        .withEntityStatus(EntityStatus.APPROVED)
         .withSemantics(initialSemantics)
         .withQualityExpectations(initialQualityExpectations);
 
     DataContract updated = updateDataContract(create);
 
     // Verify all updates
-    assertEquals(ContractStatus.Active, updated.getStatus());
+    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
     assertEquals(created.getId(), updated.getId());
     assertNotNull(updated.getSemantics());
     assertEquals(1, updated.getSemantics().size());
@@ -798,8 +798,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // GET the data contract and verify all fields are persisted correctly after first update
     DataContract retrievedAfterFirstUpdate =
-        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
-    assertEquals(ContractStatus.Active, retrievedAfterFirstUpdate.getStatus());
+        getDataContract(
+            created.getId(), "semantics,qualityExpectations,testSuite,entityStatus,owners");
+    assertEquals(EntityStatus.APPROVED, retrievedAfterFirstUpdate.getEntityStatus());
     assertEquals(created.getId(), retrievedAfterFirstUpdate.getId());
     assertNotNull(retrievedAfterFirstUpdate.getSemantics());
     assertEquals(1, retrievedAfterFirstUpdate.getSemantics().size());
@@ -842,7 +843,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract finalUpdated = updateDataContract(create);
 
     // Verify final updates
-    assertEquals(ContractStatus.Active, finalUpdated.getStatus());
+    assertEquals(EntityStatus.APPROVED, finalUpdated.getEntityStatus());
     assertEquals(created.getId(), finalUpdated.getId());
     assertNotNull(finalUpdated.getSemantics());
     assertEquals(2, finalUpdated.getSemantics().size());
@@ -852,8 +853,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // GET the data contract and verify all fields are persisted correctly after final update
     DataContract retrievedAfterFinalUpdate =
-        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
-    assertEquals(ContractStatus.Active, retrievedAfterFinalUpdate.getStatus());
+        getDataContract(
+            created.getId(), "semantics,qualityExpectations,testSuite,entityStatus,owners");
+    assertEquals(EntityStatus.APPROVED, retrievedAfterFinalUpdate.getEntityStatus());
     assertEquals(created.getId(), retrievedAfterFinalUpdate.getId());
     assertNotNull(retrievedAfterFinalUpdate.getSemantics());
     assertEquals(2, retrievedAfterFinalUpdate.getSemantics().size());
@@ -902,7 +904,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // GET the data contract and verify schema is persisted
     DataContract retrievedWithSchema =
-        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+        getDataContract(
+            created.getId(), "schema,semantics,qualityExpectations,testSuite,entityStatus");
     assertNotNull(retrievedWithSchema.getSchema());
     assertEquals(2, retrievedWithSchema.getSchema().size());
     assertEquals("id", retrievedWithSchema.getSchema().get(0).getName());
@@ -935,7 +938,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // GET the final data contract and verify all schema changes are persisted
     DataContract finalRetrieved =
-        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+        getDataContract(
+            created.getId(), "schema,semantics,qualityExpectations,testSuite,entityStatus");
     assertNotNull(finalRetrieved.getSchema());
     assertEquals(2, finalRetrieved.getSchema().size());
     assertEquals("id", finalRetrieved.getSchema().get(0).getName());
@@ -946,7 +950,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals("User email address", finalRetrieved.getSchema().get(1).getDescription());
 
     // Verify the other fields are still intact after schema changes
-    assertEquals(ContractStatus.Active, finalRetrieved.getStatus());
+    assertEquals(EntityStatus.APPROVED, finalRetrieved.getEntityStatus());
     assertNotNull(finalRetrieved.getSemantics());
     assertEquals(2, finalRetrieved.getSemantics().size());
     assertNotNull(finalRetrieved.getQualityExpectations());
@@ -982,7 +986,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     List<EntityReference> initialQualityExpectations =
         List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
 
-    create.withStatus(ContractStatus.Active).withQualityExpectations(initialQualityExpectations);
+    create
+        .withEntityStatus(EntityStatus.APPROVED)
+        .withQualityExpectations(initialQualityExpectations);
     DataContract updated = updateDataContract(create);
 
     // Verify initial state - both test cases should be in TestSuite
@@ -1276,22 +1282,22 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testPatchDataContractStatus(TestInfo test) throws IOException {
+  void testPatchDataEntityStatus(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract created = createDataContract(create);
 
     String originalJson = JsonUtils.pojoToJson(created);
-    created.setStatus(ContractStatus.Active);
+    created.setEntityStatus(EntityStatus.APPROVED);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
-    assertEquals(ContractStatus.Active, patched.getStatus());
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
     assertEquals(created.getId(), patched.getId());
 
     // Verify that GET returns the correct status after PATCH
-    DataContract retrieved = getDataContract(patched.getId(), "");
-    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    DataContract retrieved = getDataContract(patched.getId(), "entityStatus");
+    assertEquals(EntityStatus.APPROVED, retrieved.getEntityStatus());
     assertEquals(created.getId(), retrieved.getId());
   }
 
@@ -1300,21 +1306,21 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   void testPatchDataContractWithoutStatus(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
     CreateDataContract create =
-        createDataContractRequest(test.getDisplayName(), table).withStatus(null);
+        createDataContractRequest(test.getDisplayName(), table).withEntityStatus(null);
     DataContract created = createDataContract(create);
-    assertNull(created.getStatus());
+    assertNull(created.getEntityStatus());
 
     String originalJson = JsonUtils.pojoToJson(created);
-    created.setStatus(ContractStatus.Active);
+    created.setEntityStatus(EntityStatus.APPROVED);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
-    assertEquals(ContractStatus.Active, patched.getStatus());
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
     assertEquals(created.getId(), patched.getId());
 
     // Verify that GET returns the correct status after PATCH
-    DataContract retrieved = getDataContract(patched.getId(), "");
-    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    DataContract retrieved = getDataContract(patched.getId(), "entityStatus");
+    assertEquals(EntityStatus.APPROVED, retrieved.getEntityStatus());
     assertEquals(created.getId(), retrieved.getId());
   }
 
@@ -1399,7 +1405,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     String originalJson = JsonUtils.pojoToJson(created);
 
     // Patch multiple fields at once: status, description, and schema
-    created.setStatus(ContractStatus.Active);
+    created.setEntityStatus(EntityStatus.APPROVED);
     created.setDescription("Updated contract description via patch");
 
     List<Column> columns = new ArrayList<>();
@@ -1412,7 +1418,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
-    assertEquals(ContractStatus.Active, patched.getStatus());
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
     assertEquals("Updated contract description via patch", patched.getDescription());
     assertNotNull(patched.getSchema());
     assertEquals(1, patched.getSchema().size());
@@ -1555,7 +1561,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         new CreateDataContract()
             .withName(contractName)
             .withEntity(invalidRef)
-            .withStatus(ContractStatus.Draft);
+            .withEntityStatus(EntityStatus.DRAFT);
 
     assertResponseContains(
         () -> createDataContract(create),
@@ -1565,24 +1571,25 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testDataContractStatusTransitions(TestInfo test) throws IOException {
+  void testDataEntityStatusTransitions(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create Draft data contract
     CreateDataContract create =
-        createDataContractRequest(test.getDisplayName(), table).withStatus(ContractStatus.Draft);
+        createDataContractRequest(test.getDisplayName(), table)
+            .withEntityStatus(EntityStatus.DRAFT);
     DataContract dataContract = createDataContract(create);
-    assertEquals(ContractStatus.Draft, dataContract.getStatus());
+    assertEquals(EntityStatus.DRAFT, dataContract.getEntityStatus());
 
     // Update to Active status
-    create.withStatus(ContractStatus.Active);
+    create.withEntityStatus(EntityStatus.APPROVED);
     dataContract = updateDataContract(create);
-    assertEquals(ContractStatus.Active, dataContract.getStatus());
+    assertEquals(EntityStatus.APPROVED, dataContract.getEntityStatus());
 
     // Update to Deprecated status
-    create.withStatus(ContractStatus.Deprecated);
+    create.withEntityStatus(EntityStatus.DEPRECATED);
     dataContract = updateDataContract(create);
-    assertEquals(ContractStatus.Deprecated, dataContract.getStatus());
+    assertEquals(EntityStatus.DEPRECATED, dataContract.getEntityStatus());
   }
 
   @Test
@@ -1605,7 +1612,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 + "entity:\n"
                 + "  id: %s\n"
                 + "  type: table\n"
-                + "status: Active\n"
+                + "entityStatus: Approved\n"
                 + "schema:\n"
                 + "  - name: %s\n"
                 + "    description: ID field with validation\n"
@@ -1621,7 +1628,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract dataContract = postYaml(yamlContent);
 
     assertNotNull(dataContract);
-    assertEquals(ContractStatus.Active, dataContract.getStatus());
+    assertEquals(EntityStatus.APPROVED, dataContract.getEntityStatus());
     assertEquals(2, dataContract.getSchema().size());
     assertEquals(1, dataContract.getQualityExpectations().size());
     assertEquals(testCase.getId(), dataContract.getQualityExpectations().getFirst().getId());
@@ -1637,7 +1644,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 + "entity:\n"
                 + "  id: %s\n"
                 + "  type: table\n"
-                + "status: Active\n"
+                + "entityStatus: Active\n"
                 + "schema:\n"
                 + "  - name: %s\n"
                 + "    description: ID field with validation\n"
@@ -1668,7 +1675,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         new CreateDataContract()
             .withName(contractName)
             .withEntity(null) // Null entity reference
-            .withStatus(ContractStatus.Draft);
+            .withEntityStatus(EntityStatus.DRAFT);
 
     // Bean validation will catch this as "entity must not be null"
     assertResponseContains(
@@ -1773,13 +1780,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     createDataContract(create);
 
     // Update as admin should work
-    create.withStatus(ContractStatus.Active);
+    create.withEntityStatus(EntityStatus.APPROVED);
     WebTarget target = getCollection();
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).put(Entity.json(create));
     DataContract updated = TestUtils.readResponse(response, DataContract.class, OK.getStatusCode());
 
-    assertEquals(ContractStatus.Active, updated.getStatus());
+    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
   }
 
   @Test
@@ -1790,7 +1797,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     createDataContract(create);
 
     // Regular user should not be able to update admin's data contract
-    create.withStatus(ContractStatus.Active);
+    create.withEntityStatus(EntityStatus.APPROVED);
     WebTarget target = getCollection();
 
     assertResponse(
@@ -1813,7 +1820,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Patch as admin should work
     String originalJson = JsonUtils.pojoToJson(created);
-    created.setStatus(ContractStatus.Active);
+    created.setEntityStatus(EntityStatus.APPROVED);
 
     try {
       ObjectMapper mapper = new ObjectMapper();
@@ -1824,7 +1831,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       WebTarget target = getResource(created.getId());
       DataContract patched = TestUtils.patch(target, patch, DataContract.class, ADMIN_AUTH_HEADERS);
 
-      assertEquals(ContractStatus.Active, patched.getStatus());
+      assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
     } catch (Exception e) {
       throw new IOException("Failed to patch data contract", e);
     }
@@ -1839,7 +1846,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Regular user should not be able to patch admin's data contract
     String originalJson = JsonUtils.pojoToJson(created);
-    created.setStatus(ContractStatus.Active);
+    created.setEntityStatus(EntityStatus.APPROVED);
 
     try {
       ObjectMapper mapper = new ObjectMapper();
@@ -3172,7 +3179,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
-            .withStatus(ContractStatus.Active)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withQualityExpectations(qualityExpectations);
 
     DataContract dataContract = createDataContract(create);
@@ -3268,7 +3275,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
             .withSemantics(initialSemantics)
-            .withStatus(ContractStatus.Active);
+            .withEntityStatus(EntityStatus.APPROVED);
 
     DataContract dataContract = createDataContract(create);
 

@@ -40,6 +40,10 @@ export interface Query {
      */
     duration?: number;
     /**
+     * Status of the Query.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Flag to check if query is to be excluded while processing usage
      */
     exclude_usage?: boolean;
@@ -254,6 +258,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the Query.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
