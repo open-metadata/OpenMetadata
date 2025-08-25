@@ -71,10 +71,10 @@ public class ListFilter extends Filter<ListFilter> {
         && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
       return new ResourceContext<>(
           Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
-    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
-        && queryParams.get(Entity.API_COLLCECTION) != null) {
+    } else if (queryParams.containsKey(Entity.API_COLLECTION)
+        && queryParams.get(Entity.API_COLLECTION) != null) {
       return new ResourceContext<>(
-          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+          Entity.API_COLLECTION, null, queryParams.get(Entity.API_COLLECTION));
     }
     return new ResourceContext<>(entityType);
   }

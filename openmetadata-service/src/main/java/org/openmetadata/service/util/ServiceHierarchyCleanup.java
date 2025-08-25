@@ -221,11 +221,11 @@ public class ServiceHierarchyCleanup {
             List.of(
                 ServiceHierarchy.builder()
                     .parentEntityType(Entity.API_SERVICE)
-                    .childEntityType(Entity.API_COLLCECTION)
+                    .childEntityType(Entity.API_COLLECTION)
                     .tableName("api_collection_entity")
                     .build(),
                 ServiceHierarchy.builder()
-                    .parentEntityType(Entity.API_COLLCECTION)
+                    .parentEntityType(Entity.API_COLLECTION)
                     .childEntityType(Entity.API_ENDPOINT)
                     .tableName("api_endpoint_entity")
                     .build()),

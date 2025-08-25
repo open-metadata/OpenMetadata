@@ -28,7 +28,7 @@ public class APICollectionResourceTest
     extends EntityResourceTest<APICollection, CreateAPICollection> {
   public APICollectionResourceTest() {
     super(
-        Entity.API_COLLCECTION,
+        Entity.API_COLLECTION,
         APICollection.class,
         APICollectionResource.APICollectionList.class,
         "apiCollections",

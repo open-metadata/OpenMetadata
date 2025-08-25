@@ -13,7 +13,7 @@ public record APICollectionIndex(APICollection apiCollection) implements SearchI
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes =
-        getCommonAttributesMap(apiCollection, Entity.API_COLLCECTION);
+        getCommonAttributesMap(apiCollection, Entity.API_COLLECTION);
     doc.putAll(commonAttributes);
     return doc;
   }
