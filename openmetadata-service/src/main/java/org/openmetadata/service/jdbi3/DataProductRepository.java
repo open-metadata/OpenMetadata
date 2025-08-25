@@ -42,7 +42,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -306,7 +305,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } catch (RuleValidationException e) {
       // Re-throw validation exceptions with context about the bulk operation
       throw new RuleValidationException(
-          (List<SemanticsRule>) null,
           String.format(
               "Cannot assign asset '%s' (type: %s) to data product '%s': %s",
               asset.getName(), asset.getType(), dataProductRef.getName(), e.getMessage()));
