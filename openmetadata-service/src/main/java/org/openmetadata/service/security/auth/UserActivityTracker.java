@@ -61,8 +61,9 @@ public class UserActivityTracker {
   private static volatile UserActivityTracker INSTANCE;
 
   private UserActivityTracker() {
-    this.minUpdateIntervalMs = 60000;
-    this.batchUpdateIntervalSeconds = 30;
+    this.minUpdateIntervalMs = 60000; // 1 minute minimum between local cache updates for same user
+    this.batchUpdateIntervalSeconds =
+        3600; // 1 hour batch flush to database (since we only care about daily)
     int maxConcurrentDbOperations = 10;
     this.dbOperationPermits = new Semaphore(maxConcurrentDbOperations);
   }
@@ -122,6 +123,7 @@ public class UserActivityTracker {
     try {
       UserActivity existing = localActivityCache.get(userName);
       if (existing != null && (currentTime - existing.lastLocalUpdate) < minUpdateIntervalMs) {
+        LOG.trace("Skipping activity update for {} - too soon since last update", userName);
         return;
       }
     } finally {
@@ -134,8 +136,10 @@ public class UserActivityTracker {
           userName,
           (k, v) -> {
             if (v == null) {
+              LOG.debug("New activity tracked for user: {}", userName);
               return new UserActivity(userName, currentTime, currentTime);
             } else if ((currentTime - v.lastLocalUpdate) >= minUpdateIntervalMs) {
+              LOG.debug("Updating activity for user: {}", userName);
               v.lastActivityTime = currentTime;
               v.lastLocalUpdate = currentTime;
             }
@@ -146,18 +150,29 @@ public class UserActivityTracker {
     }
   }
 
+  /**
+   * Force an immediate flush of cached activities to the database.
+   * Useful for testing or when shutting down.
+   */
+  public void forceFlush() {
+    LOG.info("Force flushing user activity cache with {} entries", localActivityCache.size());
+    performBatchUpdate();
+  }
+
   private void performBatchUpdate() {
     Map<String, Long> userActivityMap;
 
     cacheLock.writeLock().lock();
     try {
       if (localActivityCache.isEmpty()) {
+        LOG.trace("No activities to flush");
         return;
       }
 
       userActivityMap = new HashMap<>();
       localActivityCache.forEach(
           (userName, activity) -> userActivityMap.put(userName, activity.lastActivityTime));
+      LOG.info("Flushing {} user activities to database", userActivityMap.size());
       localActivityCache.clear();
     } finally {
       cacheLock.writeLock().unlock();

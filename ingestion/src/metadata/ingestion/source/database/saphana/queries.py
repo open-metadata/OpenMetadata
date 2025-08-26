@@ -21,3 +21,10 @@ SELECT
 FROM _SYS_REPO.ACTIVE_OBJECT
 WHERE OBJECT_SUFFIX IN ('analyticview', 'attributeview', 'calculationview');
 """
+
+SAPHANA_SCHEMA_MAPPING = """
+SELECT
+  PHYSICAL_SCHEMA
+FROM _SYS_BI.M_SCHEMA_MAPPING
+WHERE AUTHORING_SCHEMA = '{authoring_schema}';
+"""

@@ -12,7 +12,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space } from 'antd';
+import { Button, Dropdown, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,13 +25,12 @@ import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ControlProps } from './EntityLineage.interface';
+import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC<ControlProps> = ({
-  style,
-  className,
-}: ControlProps) => {
+const CustomControls: FC<LineageControlProps> = ({
+  onlyShowTabSwitch,
+}: LineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
@@ -135,36 +134,39 @@ const CustomControls: FC<ControlProps> = ({
   }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
-    <Row
-      className={classNames('z-10 w-full', className)}
-      gutter={[8, 8]}
-      style={style}>
-      <Col flex="auto">
-        <LineageSearchSelect />
-        <Space className="m-l-xs" size={16}>
-          <Dropdown
-            menu={{
-              items: filterMenu,
-              selectedKeys: selectedFilter,
-            }}
-            trigger={['click']}>
-            <Button ghost className="expand-btn" type="primary">
-              {t('label.advanced')}
-              <RightOutlined />
-            </Button>
-          </Dropdown>
-          <ExploreQuickFilters
-            independent
-            aggregations={{}}
-            defaultQueryFilter={queryFilter}
-            fields={selectedQuickFilters}
-            index={SearchIndex.ALL}
-            showDeleted={false}
-            onFieldValueSelect={handleQuickFiltersValueSelect}
-          />
-        </Space>
-      </Col>
-    </Row>
+    <div
+      className={classNames(
+        'd-flex w-full',
+        onlyShowTabSwitch ? 'justify-end' : 'justify-between'
+      )}>
+      {!onlyShowTabSwitch && (
+        <div className="d-flex items-center gap-4">
+          <LineageSearchSelect />
+          <Space className="m-l-xs" size={16}>
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button ghost className="expand-btn" type="primary">
+                {t('label.advanced')}
+                <RightOutlined />
+              </Button>
+            </Dropdown>
+            <ExploreQuickFilters
+              independent
+              aggregations={{}}
+              defaultQueryFilter={queryFilter}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Space>
+        </div>
+      )}
+    </div>
   );
 };
 
