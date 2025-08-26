@@ -210,23 +210,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
-    // Validate glossary
-    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
-    entity.setGlossary(glossary.getEntityReference());
-
-    validateHierarchy(entity);
-
-    // Validate related terms
-    EntityUtil.populateEntityReferences(entity.getRelatedTerms());
-
-    // Status is now handled in setDefaultStatus method
-    if (!update) {
-      checkDuplicateTerms(entity);
-    }
-  }
-
-  @Override
-  protected void setDefaultStatus(GlossaryTerm entity, boolean update) {
     List<EntityReference> parentReviewers = null;
     // Validate parent term
     GlossaryTerm parentTerm =
@@ -238,13 +221,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       parentReviewers = parentTerm.getReviewers();
       entity.setParent(parentTerm.getEntityReference());
     }
+
+    // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+    entity.setGlossary(glossary.getEntityReference());
     parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
+
+    validateHierarchy(entity);
+
+    // Validate related terms
+    EntityUtil.populateEntityReferences(entity.getRelatedTerms());
+
     if (!update || entity.getEntityStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
       entity.setEntityStatus(
           !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
+    }
+    if (!update) {
+      checkDuplicateTerms(entity);
     }
   }
 
@@ -742,6 +737,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Check for circular references
     String parentFqn = term.getParent().getFullyQualifiedName();
     String termFqn = term.getFullyQualifiedName();
+    if (parentFqn == null || termFqn == null) {
+      throw new IllegalStateException("Cannot validate hierarchy: FQNs must be present");
+    }
     if (FullyQualifiedName.isParent(parentFqn, termFqn)) {
       throw new IllegalArgumentException(
           String.format(
