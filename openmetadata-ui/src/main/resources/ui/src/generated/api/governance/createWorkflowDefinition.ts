@@ -314,9 +314,10 @@ export interface TriggerConfiguration {
      */
     batchSize?: number;
     /**
-     * Select the Search Filters to filter down the entities fetched.
+     * Search filters for entities. Can be a string (applied to all entity types) or an object
+     * mapping entity types to their specific filters.
      */
-    filters?: string;
+    filters?: FiltersObject | string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */
@@ -329,6 +330,17 @@ export interface TriggerConfiguration {
 export enum Event {
     Created = "Created",
     Updated = "Updated",
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FiltersObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }
 
 export interface AppScheduleClass {

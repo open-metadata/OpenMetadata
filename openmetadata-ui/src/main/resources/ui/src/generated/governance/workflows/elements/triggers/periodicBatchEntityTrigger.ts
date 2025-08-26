@@ -38,13 +38,25 @@ export interface TriggerConfiguration {
      */
     entityTypes?: string[];
     /**
-     * Select the Search Filters to filter down the entities fetched.
+     * Search filters for entities. Can be a string (applied to all entity types) or an object
+     * mapping entity types to their specific filters.
      */
-    filters: string;
+    filters: FiltersObject | string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */
     schedule: any[] | boolean | AppScheduleClass | number | number | null | string;
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FiltersObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }
 
 export interface AppScheduleClass {
