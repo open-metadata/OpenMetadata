@@ -449,7 +449,7 @@ export const glossaryTermTableColumnsWidth = (
   havingCreatePermission: boolean
 ) => {
   return {
-    name: calculatePercentageFromValue(tableWidth, 20),
+    name: calculatePercentageFromValue(tableWidth, 30),
     description: calculatePercentageFromValue(
       tableWidth,
       havingCreatePermission ? 21 : 33

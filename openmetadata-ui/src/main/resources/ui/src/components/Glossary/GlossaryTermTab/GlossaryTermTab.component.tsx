@@ -826,7 +826,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return; // Prevent multiple simultaneous expand operations
     }
 
-    if (expandedRowKeys.length > 0) {
+    if (expandedRowKeys.length === expandableKeys.length) {
       // Collapse all - immediate UI update
       setExpandedRowKeys([]);
     } else {
@@ -1156,7 +1156,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           <>
             <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
             {isLoading ? (
-              <Loader className="m-r-xs" size="small" />
+              <span className="m-r-xs expand-loader">
+                <Loader size="x-small" />
+              </span>
             ) : (
               <Icon
                 className="m-r-xs vertical-baseline"
