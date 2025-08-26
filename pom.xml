@@ -156,7 +156,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
 
