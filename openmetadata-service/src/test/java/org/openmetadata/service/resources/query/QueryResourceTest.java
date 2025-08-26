@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -329,6 +330,105 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(updatedQuery.getQuery(), queryText);
     assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
+  }
+
+  @Test
+  void test_batchFetchQueryFields(TestInfo test) throws IOException {
+    // Test bulk fetching of query relationships using setFieldsInBulk method
+    String testName = getEntityName(test);
+
+    // Create additional table for testing queryUsedIn relationships
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
+    CreateTable tableCreate =
+        tableResourceTest.createRequest(test).withName(testName + "_table").withColumns(columns);
+    Table testTable = tableResourceTest.createAndCheckEntity(tableCreate, ADMIN_AUTH_HEADERS);
+
+    // Create queries with different relationship patterns
+    CreateQuery query1Create =
+        createRequest(testName + "_query1")
+            .withQueryUsedIn(List.of(TABLE_REF, testTable.getEntityReference()))
+            .withUsers(List.of(USER1.getName(), USER2.getName()));
+    Query query1 = createAndCheckEntity(query1Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery query2Create =
+        createRequest(testName + "_query2")
+            .withQueryUsedIn(List.of(testTable.getEntityReference()))
+            .withUsers(List.of(USER1.getName()));
+    Query query2 = createAndCheckEntity(query2Create, ADMIN_AUTH_HEADERS);
+
+    CreateQuery query3Create =
+        createRequest(testName + "_query3")
+            .withQueryUsedIn(List.of())
+            .withUsers(List.of(USER2.getName()));
+    Query query3 = createAndCheckEntity(query3Create, ADMIN_AUTH_HEADERS);
+
+    try {
+      // Test 1: Bulk fetch with all fields - should populate all relationships
+      ResultList<Query> allFieldsResult = getQueries(100, "*", true, ADMIN_AUTH_HEADERS);
+
+      Query fetchedQuery1 = findQueryInResults(allFieldsResult, query1.getId());
+      Query fetchedQuery2 = findQueryInResults(allFieldsResult, query2.getId());
+      Query fetchedQuery3 = findQueryInResults(allFieldsResult, query3.getId());
+
+      // Verify bulk fetchers populated queryUsedIn correctly
+      assertNotNull(fetchedQuery1, "Query1 should be found");
+      assertListNotNull(fetchedQuery1.getQueryUsedIn());
+      assertEquals(2, fetchedQuery1.getQueryUsedIn().size(), "Query1 should have 2 queryUsedIn");
+      assertListNotNull(fetchedQuery1.getUsers());
+      assertEquals(2, fetchedQuery1.getUsers().size(), "Query1 should have 2 users");
+
+      assertNotNull(fetchedQuery2, "Query2 should be found");
+      assertListNotNull(fetchedQuery2.getQueryUsedIn());
+      assertEquals(1, fetchedQuery2.getQueryUsedIn().size(), "Query2 should have 1 queryUsedIn");
+      assertListNotNull(fetchedQuery2.getUsers());
+      assertEquals(1, fetchedQuery2.getUsers().size(), "Query2 should have 1 user");
+
+      assertNotNull(fetchedQuery3, "Query3 should be found");
+      assertListNotNull(fetchedQuery3.getQueryUsedIn());
+      assertEquals(0, fetchedQuery3.getQueryUsedIn().size(), "Query3 should have 0 queryUsedIn");
+      assertListNotNull(fetchedQuery3.getUsers());
+      assertEquals(1, fetchedQuery3.getUsers().size(), "Query3 should have 1 user");
+
+      // Test 2: Fetch only queryUsedIn field - should only populate queryUsedIn
+      ResultList<Query> queryUsedInOnly = getQueries(100, "queryUsedIn", true, ADMIN_AUTH_HEADERS);
+      Query queryUsedInResult = findQueryInResults(queryUsedInOnly, query1.getId());
+
+      assertNotNull(queryUsedInResult, "Query should be found with queryUsedIn field");
+      assertListNotNull(queryUsedInResult.getQueryUsedIn());
+      assertEquals(2, queryUsedInResult.getQueryUsedIn().size());
+      assertListNull(queryUsedInResult.getUsers()); // Should be null - not requested
+
+      // Test 3: Fetch only users field - should only populate users
+      ResultList<Query> usersOnly = getQueries(100, "users", true, ADMIN_AUTH_HEADERS);
+      Query usersResult = findQueryInResults(usersOnly, query1.getId());
+
+      assertNotNull(usersResult, "Query should be found with users field");
+      assertListNotNull(usersResult.getUsers());
+      assertEquals(2, usersResult.getUsers().size());
+      assertListNull(usersResult.getQueryUsedIn()); // Should be null - not requested
+
+      // Test 4: Fetch without relationship fields - should not populate relationships
+      ResultList<Query> noRelFields = getQueries(100, "name,query", true, ADMIN_AUTH_HEADERS);
+      Query noRelResult = findQueryInResults(noRelFields, query1.getId());
+
+      assertNotNull(noRelResult, "Query should be found without relationship fields");
+      assertListNull(noRelResult.getQueryUsedIn());
+      assertListNull(noRelResult.getUsers());
+    } finally {
+      // Cleanup test queries
+      deleteEntity(query1.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(query2.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(query3.getId(), ADMIN_AUTH_HEADERS);
+      tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  private Query findQueryInResults(ResultList<Query> results, UUID queryId) {
+    return results.getData().stream()
+        .filter(q -> q.getId().equals(queryId))
+        .findFirst()
+        .orElse(null);
   }
 
   public ResultList<Query> getQueries(

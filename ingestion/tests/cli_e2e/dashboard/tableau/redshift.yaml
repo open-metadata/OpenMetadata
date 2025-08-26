@@ -12,7 +12,9 @@ source:
     config:
       schemaFilterPattern:
         includes:
-        - dbt_jaffle
+        - sales
+        - inventory
+        - marketing
 sink:
   type: metadata-rest
   config: {}

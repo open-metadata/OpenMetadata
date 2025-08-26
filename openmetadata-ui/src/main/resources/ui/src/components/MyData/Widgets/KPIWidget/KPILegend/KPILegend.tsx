@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Tooltip, Typography } from 'antd';
+import { Progress, Tooltip, Typography } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +37,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
   const GoalCompleted = () => {
     return (
-      <div className="goal-completed-container d-flex items-center gap-1">
+      <div className="goal-completed-container">
         <CheckIcon />
         <Typography.Text>{t('label.goal-completed')}</Typography.Text>
       </div>
@@ -46,7 +46,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
   const GoalMissed = () => {
     return (
-      <div className="goal-missed-container d-flex items-center gap-1">
+      <div className="goal-missed-container">
         <WarningOutlined />
         <Typography.Text>{t('label.goal-missed')}</Typography.Text>
       </div>
@@ -74,59 +74,58 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
         if (isFullSize) {
           return (
-            <div className="kpi-full-legend p-xs m-b-sm" key={key}>
-              <Row className="items-center" gutter={8}>
-                <Col span={24}>
-                  <div className="d-flex justify-between">
-                    <Typography.Text
-                      className="kpi-legend-title"
-                      ellipsis={{ tooltip: true }}>
-                      {resultData.displayName}
-                    </Typography.Text>
+            <div className="kpi-full-legend" key={key}>
+              <div className="kpi-legend-header">
+                <Typography.Text
+                  className="kpi-legend-title"
+                  ellipsis={{ tooltip: true }}>
+                  {resultData.displayName}
+                </Typography.Text>
 
-                    {daysLeft <= 0 || isTargetMet ? (
-                      <Tooltip
-                        placement="bottom"
-                        title={getKpiResultFeedback(
-                          daysLeft,
-                          Boolean(isTargetMet)
-                        )}
-                        trigger="hover">
-                        <InfoCircleOutlined className="kpi-legend-info-icon" />
-                      </Tooltip>
-                    ) : null}
-                  </div>
+                {daysLeft <= 0 || isTargetMet ? (
+                  <Tooltip
+                    placement="bottom"
+                    title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
+                    trigger="hover">
+                    <InfoCircleOutlined className="kpi-legend-info-icon" />
+                  </Tooltip>
+                ) : null}
+              </div>
 
-                  <Progress
-                    percent={Number(currentProgress)}
-                    showInfo={false}
-                    size="small"
-                    strokeColor={color}
-                    strokeWidth={4}
-                  />
+              <Progress
+                percent={Number(currentProgress)}
+                showInfo={false}
+                size="small"
+                strokeColor={color}
+                strokeWidth={4}
+              />
 
-                  <div className="d-flex justify-between m-t-xxs">
-                    <Typography.Text className="text-xss kpi-legend-value">
-                      {current.toFixed(0)}
-                      {suffix}
+              <div className="kpi-legend-bottom-row">
+                <div className="kpi-legend-value-section">
+                  <Typography.Text className="text-xss kpi-legend-value">
+                    {current.toFixed(0)}
+                    {suffix}
+                  </Typography.Text>
+                </div>
+                <div className="kpi-legend-center-section">
+                  {isTargetMet ? (
+                    <GoalCompleted />
+                  ) : isTargetMissed ? (
+                    <GoalMissed />
+                  ) : (
+                    <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
+                      {daysLeft <= 0 ? 0 : daysLeft}{' '}
+                      {t('label.days-left').toUpperCase()}
                     </Typography.Text>
-                    {isTargetMet ? (
-                      <GoalCompleted />
-                    ) : isTargetMissed ? (
-                      <GoalMissed />
-                    ) : (
-                      <Typography.Text className="text-xss font-semibold kpi-legend-days-left">
-                        {daysLeft <= 0 ? 0 : daysLeft}{' '}
-                        {t('label.days-left').toUpperCase()}
-                      </Typography.Text>
-                    )}
-                    <Typography.Text className="text-xss kpi-legend-value">
-                      {target.toFixed(0)}
-                      {suffix}
-                    </Typography.Text>
-                  </div>
-                </Col>
-              </Row>
+                  )}
+                </div>
+                <div className="kpi-legend-value-section">
+                  <Typography.Text className="text-xss kpi-legend-value">
+                    {target.toFixed(0)}
+                    {suffix}
+                  </Typography.Text>
+                </div>
+              </div>
             </div>
           );
         }

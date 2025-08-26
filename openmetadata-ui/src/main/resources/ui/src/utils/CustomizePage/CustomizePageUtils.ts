@@ -709,3 +709,7 @@ export const updateWidgetHeightRecursively = (
 
     return acc;
   }, [] as WidgetConfig[]);
+
+export const getTabDisplayName = (item: Tab) => {
+  return item.displayName ?? getTabLabelFromId(item.name as EntityTabs);
+};
