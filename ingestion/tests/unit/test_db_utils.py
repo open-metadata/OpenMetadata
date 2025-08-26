@@ -151,7 +151,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -221,7 +221,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -291,7 +291,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -362,7 +362,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -395,7 +395,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=table_view_no_definition,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -430,7 +430,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -500,7 +500,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=table_view,
                 metadata=metadata,
-                service_name="test_service",
+                service_names="test_service",
                 connection_type="mysql",
                 timeout_seconds=self.timeout_seconds,
             )
@@ -547,7 +547,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -587,7 +587,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -603,7 +603,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=123,  # Invalid type
                 timeout_seconds=self.timeout_seconds,
             )
@@ -655,7 +655,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=custom_timeout,
             )

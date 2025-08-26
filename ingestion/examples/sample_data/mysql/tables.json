@@ -1223,6 +1223,101 @@
           "description": null,
           "constraint": "NULL",
           "ordinalPosition": 3
+        },
+        {
+          "name": "risk_score",
+          "dataType": "DOUBLE",
+          "dataTypeDisplay": "double",
+          "description": "Customer risk assessment score",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "credit_metrics",
+          "dataType": "STRUCT",
+          "dataTypeDisplay": "struct",
+          "description": "Customer credit assessment metrics",
+          "tags": [],
+          "ordinalPosition": 3,
+          "children": [
+            {
+              "name": "credit_score",
+              "dataType": "BIGINT",
+              "dataTypeDisplay": "bigint",
+              "description": "Customer credit score",
+              "tags": [],
+              "ordinalPosition": 1
+            },
+            {
+              "name": "payment_history",
+              "dataType": "STRUCT",
+              "dataTypeDisplay": "struct",
+              "description": "Payment history analytics",
+              "tags": [],
+              "ordinalPosition": 2,
+              "children": [
+                {
+                  "name": "on_time_payments",
+                  "dataType": "BIGINT",
+                  "dataTypeDisplay": "bigint",
+                  "description": "Number of on-time payments",
+                  "tags": [],
+                  "ordinalPosition": 1
+                },
+                {
+                  "name": "late_payments",
+                  "dataType": "BIGINT",
+                  "dataTypeDisplay": "bigint",
+                  "description": "Number of late payments",
+                  "tags": [],
+                  "ordinalPosition": 2
+                },
+                {
+                  "name": "payment_trends",
+                  "dataType": "ARRAY",
+                  "arrayDataType": "STRUCT",
+                  "dataTypeDisplay": "array<struct>",
+                  "description": "Payment trend analysis",
+                  "tags": [],
+                  "ordinalPosition": 3,
+                  "children": [
+                    {
+                      "name": "trend_period",
+                      "dataType": "DATE",
+                      "dataTypeDisplay": "date",
+                      "description": "Payment trend period",
+                      "tags": [],
+                      "ordinalPosition": 1
+                    },
+                    {
+                      "name": "trend_score",
+                      "dataType": "DOUBLE",
+                      "dataTypeDisplay": "double",
+                      "description": "Payment trend score",
+                      "tags": [],
+                      "ordinalPosition": 2
+                    },
+                    {
+                      "name": "trend_confidence",
+                      "dataType": "DOUBLE",
+                      "dataTypeDisplay": "double",
+                      "description": "Trend confidence level",
+                      "tags": [],
+                      "ordinalPosition": 3
+                    },
+                    {
+                      "name": "trend_confidence with quotes \"00\"",
+                      "dataType": "DOUBLE",
+                      "dataTypeDisplay": "double",
+                      "description": "Trend confidence level",
+                      "tags": [],
+                      "ordinalPosition": 4
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ],
       "tableConstraints": [

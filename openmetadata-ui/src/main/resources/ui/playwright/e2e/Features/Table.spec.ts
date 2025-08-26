@@ -15,13 +15,16 @@ import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { getFirstRowColumnLink } from '../../utils/entity';
+import {
+  assignTagToChildren,
+  getFirstRowColumnLink,
+  removeTagsFromChildren,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
-
-test.slow(true);
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -260,46 +263,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       '2000'
     );
 
-    // 50 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
-
-    await page.getByTestId('next').click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
-
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
-
-    await page.getByTestId('previous').click();
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
-
-    // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    // 15 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
-
-    // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
-
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    // 25 Row + 1 Header row
-    expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);
+    await columnPaginationTable(page);
   });
 
   test('pagination for dashboard data model columns should work', async ({
@@ -437,5 +401,43 @@ test.describe('Table & Data Model columns table pagination', () => {
     expect(
       page.locator('[data-row-key="shop_id"]').getByTestId('expand-icon')
     ).not.toBeVisible();
+  });
+
+  test('expand / collapse should not appear after updating nested fields table', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId:
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+      entityEndpoint: 'tables',
+    });
   });
 });

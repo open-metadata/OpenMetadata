@@ -15,10 +15,10 @@ GRANT SELECT TO Mary;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
 ### Usage & Lineage
-For the usage and lineage workflow, the user will need `SELECT` privilege table. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the usage and lineage workflow, the user will need `SELECT` privilege table. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
 
 ### Remote Connection
 
@@ -44,9 +44,9 @@ If you are using SQL server on Windows, you must configure the firewall on the c
 6. In the `Profile` dialog box, select any profiles that describe the computer connection environment when you want to connect to the Database Engine, and then select `Next`.
 7. In the `Name` dialog box, type a name and description for this rule, and then select `Finish`.
 
-For details step please refer this [link](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-windows-firewall-for-database-engine-access?view=sql-server-ver15).
+For details step please refer this <a href="https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-windows-firewall-for-database-engine-access?view=sql-server-ver15" target="_blank">link</a>.
 
-You can find further information on the MSSQL connector in the [docs](https://docs.open-metadata.org/connectors/database/mssql).
+You can find further information on the MSSQL connector in the <a href="https://docs.open-metadata.org/connectors/database/mssql" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -92,7 +92,7 @@ $$section
 
 Connecting to MSSQL via **pyodbc** scheme requires the ODBC driver to be installed. Specify ODBC driver name in the field.
 
-You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16).
+You can download the ODBC driver from <a href="https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16" target="_blank">here</a>.
 
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$

@@ -29,22 +29,35 @@ import PermissionProvider from './context/PermissionProvider/PermissionProvider'
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
-import { getCustomUiThemePreference } from './rest/settingConfigAPI';
+import {
+  getCustomUiThemePreference,
+  getSystemConfig,
+} from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const App: FC = () => {
-  const { applicationConfig, setApplicationConfig } = useApplicationStore();
+  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
+    useApplicationStore();
 
   const fetchApplicationConfig = async () => {
     try {
-      const data = await getCustomUiThemePreference();
+      const [themeData, systemConfig] = await Promise.all([
+        getCustomUiThemePreference(),
+        getSystemConfig(),
+      ]);
+
       setApplicationConfig({
-        ...data,
-        customTheme: getThemeConfig(data.customTheme),
+        ...themeData,
+        customTheme: getThemeConfig(themeData.customTheme),
       });
+
+      // Set RDF enabled state
+      setRdfEnabled(systemConfig.rdfEnabled || false);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -88,7 +101,9 @@ const App: FC = () => {
                               <AsyncDeleteProvider>
                                 <EntityExportModalProvider>
                                   <AirflowStatusProvider>
-                                    <AppRouter />
+                                    <DndProvider backend={HTML5Backend}>
+                                      <AppRouter />
+                                    </DndProvider>
                                   </AirflowStatusProvider>
                                 </EntityExportModalProvider>
                               </AsyncDeleteProvider>

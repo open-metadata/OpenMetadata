@@ -1,0 +1,68 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Service": "om:Service",
+      "DatabaseService": {
+        "@id": "om:DatabaseService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "DashboardService": {
+        "@id": "om:DashboardService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "MessagingService": {
+        "@id": "om:MessagingService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "PipelineService": {
+        "@id": "om:PipelineService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "MLModelService": {
+        "@id": "om:MLModelService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "StorageService": {
+        "@id": "om:StorageService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "SearchService": {
+        "@id": "om:SearchService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "MetadataService": {
+        "@id": "om:MetadataService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "APIService": {
+        "@id": "om:APIService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "ReportingService": {
+        "@id": "om:ReportingService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "QualityService": {
+        "@id": "om:QualityService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "ObservabilityService": {
+        "@id": "om:ObservabilityService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "DriveService": {
+        "@id": "om:DriveService",
+        "@type": ["om:Service", "dcat:DataService"]
+      },
+      "serviceType": {
+        "@id": "om:serviceType",
+        "@type": "xsd:string"
+      },
+      "connection": {
+        "@id": "om:hasConnection",
+        "@type": "@json"
+      }
+    }
+  ]
+}

@@ -32,8 +32,6 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
@@ -882,28 +880,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
         {glossaryTerms.length > 0 ? (
-          <DndProvider backend={HTML5Backend}>
-            <Table
-              resizableColumns
-              className={classNames('drop-over-background', {
-                'drop-over-table': isTableHovered,
-              })}
-              columns={columns}
-              components={TABLE_CONSTANTS}
-              data-testid="glossary-terms-table"
-              dataSource={filteredGlossaryTerms}
-              defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-              expandable={expandableConfig}
-              extraTableFilters={extraTableFilters}
-              loading={isTableLoading || termsLoading}
-              pagination={false}
-              rowKey="fullyQualifiedName"
-              size="small"
-              staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-              onHeaderRow={onTableHeader}
-              onRow={onTableRow}
-            />
-          </DndProvider>
+          <Table
+            resizableColumns
+            className={classNames('drop-over-background', {
+              'drop-over-table': isTableHovered,
+            })}
+            columns={columns}
+            components={TABLE_CONSTANTS}
+            data-testid="glossary-terms-table"
+            dataSource={filteredGlossaryTerms}
+            defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+            expandable={expandableConfig}
+            extraTableFilters={extraTableFilters}
+            loading={isTableLoading || termsLoading}
+            pagination={false}
+            rowKey="fullyQualifiedName"
+            size="small"
+            staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+            onHeaderRow={onTableHeader}
+            onRow={onTableRow}
+          />
         ) : (
           <ErrorPlaceHolder />
         )}

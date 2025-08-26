@@ -130,20 +130,14 @@ public class McpTestUtils {
   }
 
   /**
-   * Extracts session ID from response headers.
-   */
-  public static String extractSessionId(okhttp3.Response response) {
-    return response.header("Mcp-Session-Id");
-  }
-
-  /**
    * Creates a search metadata tool call.
    */
-  public static Map<String, Object> createSearchMetadataToolCall(String query, int limit) {
+  public static Map<String, Object> createSearchMetadataToolCall(
+      String query, int limit, String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
-    arguments.put("entity_type", "table");
+    arguments.put("entity_type", entityType);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("search_metadata", arguments);
@@ -159,5 +153,61 @@ public class McpTestUtils {
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_details", arguments);
+  }
+
+  /**
+   * Creates a create glossary tool call.
+   */
+  public static Map<String, Object> createGlossaryToolCall(String name, String description) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", name);
+    arguments.put("description", description);
+    arguments.put("mutuallyExclusive", false);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("create_glossary", arguments);
+  }
+
+  /**
+   * Creates a create glossary term tool call.
+   */
+  public static Map<String, Object> createGlossaryTermToolCall(
+      String glossary, String name, String description) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("glossary", glossary);
+    arguments.put("name", name);
+    arguments.put("description", description);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("create_glossary_term", arguments);
+  }
+
+  /**
+   * Creates a patch entity tool call.
+   */
+  public static Map<String, Object> createPatchEntityToolCall(
+      String entityType, String fqn, String patch) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", entityType);
+    arguments.put("entityFqn", fqn);
+    arguments.put("patch", patch);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("patch_entity", arguments);
+  }
+
+  /**
+   * Creates a get entity lineage tool call.
+   */
+  public static Map<String, Object> createGetLineageToolCall(
+      String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entity_type", entityType);
+    arguments.put("fqn", fqn);
+    arguments.put("upstream_depth", upstreamDepth);
+    arguments.put("downstream_depth", downstreamDepth);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("get_entity_lineage", arguments);
   }
 }
