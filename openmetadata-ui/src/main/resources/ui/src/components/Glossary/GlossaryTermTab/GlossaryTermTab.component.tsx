@@ -50,6 +50,7 @@ import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -75,6 +76,8 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { User } from '../../../generated/entity/teams/user';
+import { Paging } from '../../../generated/type/paging';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
@@ -162,12 +165,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
-  const [afterCursor, setAfterCursor] = useState<string | undefined>(undefined);
-  const [hasMoreTerms, setHasMoreTerms] = useState(true);
+  const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
   >({});
-  const pageSize = 50;
+
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [previousGlossaryFQN, setPreviousGlossaryFQN] = useState<
     string | undefined
@@ -237,38 +239,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const fetchAllTerms = async (loadMore = false) => {
     if (!loadMore) {
       setIsTableLoading(true);
-      setAfterCursor(undefined);
+      handlePagingChange((prev) => ({ ...prev, after: undefined }));
     } else {
       setIsLoadingMore(true);
     }
 
     try {
-      let data, paging;
+      let data;
+      let pagingResponse: Paging | undefined;
 
       // Use search API if search term is present
       if (searchTerm) {
-        const offset = loadMore && afterCursor ? parseInt(afterCursor) : 0;
+        const offset = loadMore && paging.after ? parseInt(paging.after) : 0;
         const response = await searchGlossaryTermsPaginated(
           searchTerm,
           undefined,
           activeGlossary?.fullyQualifiedName,
           undefined,
           undefined,
-          pageSize,
+          PAGE_SIZE_LARGE,
           offset,
           'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
         );
         data = response.data;
-        paging = response.paging;
+        pagingResponse = response.paging;
       } else {
         // Use regular listing API when no search term
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          pageSize,
-          loadMore ? afterCursor : undefined
+          PAGE_SIZE_LARGE,
+          loadMore ? paging.after : undefined
         );
         data = response.data;
-        paging = response.paging;
+        pagingResponse = response.paging;
       }
 
       if (!data || !Array.isArray(data)) {
@@ -289,10 +292,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setExpandedRowKeys([]);
       }
 
-      // Update cursor for next page
-      // Check if there are more terms
-      setAfterCursor(paging?.after);
-      setHasMoreTerms(paging?.after !== undefined);
+      // Update paging state for next page
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: pagingResponse?.after,
+        total: pagingResponse?.total || prev.total,
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -353,7 +358,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     if (currentFQN && !isLoadingMore && currentFQN !== previousGlossaryFQN) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
-      setAfterCursor(undefined);
+      handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
@@ -395,16 +400,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, []);
 
   useEffect(() => {
-    if (inView && hasMoreTerms && !isLoadingMore && !isTableLoading) {
+    if (
+      inView &&
+      paging.after !== undefined &&
+      !isLoadingMore &&
+      !isTableLoading
+    ) {
       fetchAllTerms(true);
     }
-  }, [inView, hasMoreTerms, isLoadingMore, isTableLoading]);
+  }, [inView, paging.after, isLoadingMore, isTableLoading]);
 
   // Monitor for DOM changes to detect when the table becomes scrollable
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const scrollContainer = findScrollContainer();
-      if (scrollContainer && hasMoreTerms && !isLoadingMore) {
+      if (scrollContainer && paging.after !== undefined && !isLoadingMore) {
         const { scrollHeight, clientHeight } = scrollContainer;
         // If content doesn't fill the viewport, load more
         if (scrollHeight <= clientHeight + 10) {
@@ -425,7 +435,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     return () => observer.disconnect();
-  }, [hasMoreTerms, isLoadingMore, findScrollContainer]);
+  }, [paging.after, isLoadingMore, findScrollContainer]);
 
   // Additional scroll handler for parent container
   useEffect(() => {
@@ -433,7 +443,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const scrollContainer = event.target as HTMLElement;
       if (
         scrollContainer &&
-        hasMoreTerms &&
+        paging.after !== undefined &&
         !isLoadingMore &&
         !isTableLoading
       ) {
@@ -460,10 +470,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     // the component should handle cases where container might appear later
     return undefined;
   }, [
-    hasMoreTerms,
+    paging.after,
     isLoadingMore,
     isTableLoading,
-    afterCursor,
     findScrollContainer,
     fetchAllTerms,
   ]);
@@ -817,7 +826,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return; // Prevent multiple simultaneous expand operations
     }
 
-    if (expandedRowKeys.length > 0) {
+    if (expandedRowKeys.length === expandableKeys.length) {
       // Collapse all - immediate UI update
       setExpandedRowKeys([]);
     } else {
@@ -1147,7 +1156,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           <>
             <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
             {isLoading ? (
-              <Loader className="m-r-xs" size="small" />
+              <span className="m-r-xs expand-loader">
+                <Loader size="x-small" />
+              </span>
             ) : (
               <Icon
                 className="m-r-xs vertical-baseline"
@@ -1365,7 +1376,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 onHeaderRow={onTableHeader}
                 onRow={onTableRow}
               />
-              {hasMoreTerms && (
+              {paging.after !== undefined && (
                 <div
                   className="m-t-md m-b-md text-center p-y-lg"
                   ref={infiniteScrollRef}

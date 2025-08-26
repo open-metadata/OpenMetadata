@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -111,7 +112,6 @@ const GlossaryV1 = ({
 
   const [afterCursor, setAfterCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(true);
-  const pageSize = 50; // Load 50 terms at a time
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
@@ -125,7 +125,7 @@ const GlossaryV1 = ({
     try {
       const { data, paging } = await getFirstLevelGlossaryTermsPaginated(
         params?.glossary ?? params?.parent ?? '',
-        pageSize,
+        PAGE_SIZE_LARGE,
         append ? afterCursor : undefined
       );
 
