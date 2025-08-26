@@ -17,16 +17,6 @@ export interface ServiceNowConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
-     */
-    databaseName?: string;
-    /**
-     * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
-     * as the schema name.
-     */
-    databaseSchema?: string;
-    /**
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
     hostPort: string;
@@ -43,20 +33,9 @@ export interface ServiceNowConnection {
     /**
      * Password to connect to ServiceNow.
      */
-    password: string;
-    /**
-     * Regex to only include/exclude schemas that matches the pattern.
-     */
-    schemaFilterPattern?: FilterPattern;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?:                  Config;
+    password:                    string;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -73,11 +52,9 @@ export interface ServiceNowConnection {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
+ * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -88,28 +65,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-}
-
-/**
- * SSL Configuration details.
- *
- * Client SSL configuration
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
 }
 
 /**

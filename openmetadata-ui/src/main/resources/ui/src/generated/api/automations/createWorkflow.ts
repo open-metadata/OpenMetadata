@@ -910,9 +910,6 @@ export interface ConfigClass {
      *
      * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
      * as the schema name
-     *
-     * Optional name to give to the schema in OpenMetadata. If left blank, we will use default
-     * as the schema name.
      */
     databaseSchema?: string;
     /**
