@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
@@ -43,13 +46,19 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
@@ -416,5 +425,93 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
+  }
+
+  @Override
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends TaskWorkflow {
+    ApprovalTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      DataProduct dataProduct = (DataProduct) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(dataProduct, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+
+      // Check if this is a simple approval/rejection or contains edited content
+      String newValue = resolveTask.getNewValue();
+      boolean isApproved = false;
+      boolean hasEditedContent = false;
+
+      // Check if it's a simple approval/rejection
+      if (newValue.equalsIgnoreCase("approved") || newValue.equalsIgnoreCase("approve")) {
+        isApproved = true;
+        hasEditedContent = false;
+      } else if (newValue.equalsIgnoreCase("rejected") || newValue.equalsIgnoreCase("reject")) {
+        isApproved = false;
+        hasEditedContent = false;
+      } else {
+        // Treat as edited content that implies approval
+        isApproved = true;
+        hasEditedContent = true;
+      }
+
+      variables.put(RESULT_VARIABLE, isApproved);
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      // If user provided edited content, apply it to the entity
+      if (hasEditedContent && isApproved) {
+        applyEditedChanges(dataProduct, newValue, threadContext.getThread().getTask(), user);
+      }
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return dataProduct;
+    }
+
+    private void applyEditedChanges(
+        DataProduct dataProduct, String editedValue, TaskDetails task, String user) {
+      try {
+        String entityType = DATA_PRODUCT;
+
+        // Check if the task has old/new value format (for DetailedUserApprovalTask)
+        if (task.getOldValue() != null && task.getOldValue().contains(":")) {
+          // Parse the edited value using field-specific format
+          EntityFieldUtils.applyFieldBasedEdits(dataProduct, entityType, user, editedValue);
+        } else {
+          // Fallback: assume it's a description edit for backward compatibility
+          EntityFieldUtils.setEntityField(
+              dataProduct, entityType, user, "description", editedValue, false);
+        }
+        EntityFieldUtils.updateEntityMetadata(dataProduct, user);
+
+      } catch (Exception e) {
+        LOG.error("Failed to apply edited changes to data product", e);
+        // Don't throw - just log the error and continue with approval
+      }
+    }
+
+    private void checkUpdatedByReviewer(DataProduct dataProduct, String user) {
+      // Add any DataProduct-specific validation logic here if needed
+      // For now, this can be empty or use existing validation patterns
+    }
   }
 }

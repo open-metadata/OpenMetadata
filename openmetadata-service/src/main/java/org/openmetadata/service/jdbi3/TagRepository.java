@@ -18,6 +18,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -25,6 +27,7 @@ import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,6 +40,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ApiStatus;
@@ -45,13 +49,19 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -525,6 +535,92 @@ public class TagRepository extends EntityRepository<Tag> {
   private void addParentRelationship(Tag term) {
     if (term.getParent() != null) {
       addRelationship(term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS);
+    }
+  }
+
+  @Override
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends TaskWorkflow {
+    ApprovalTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      Tag tag = (Tag) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(tag, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+
+      // Check if this is a simple approval/rejection or contains edited content
+      String newValue = resolveTask.getNewValue();
+      boolean isApproved = false;
+      boolean hasEditedContent = false;
+
+      // Check if it's a simple approval/rejection
+      if (newValue.equalsIgnoreCase("approved") || newValue.equalsIgnoreCase("approve")) {
+        isApproved = true;
+        hasEditedContent = false;
+      } else if (newValue.equalsIgnoreCase("rejected") || newValue.equalsIgnoreCase("reject")) {
+        isApproved = false;
+        hasEditedContent = false;
+      } else {
+        // Treat as edited content that implies approval
+        isApproved = true;
+        hasEditedContent = true;
+      }
+
+      variables.put(RESULT_VARIABLE, isApproved);
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      // If user provided edited content, apply it to the entity
+      if (hasEditedContent && isApproved) {
+        applyEditedChanges(tag, newValue, threadContext.getThread().getTask(), user);
+      }
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return tag;
+    }
+
+    private void applyEditedChanges(Tag tag, String editedValue, TaskDetails task, String user) {
+      try {
+        String entityType = TAG;
+
+        // Check if the task has old/new value format (for DetailedUserApprovalTask)
+        if (task.getOldValue() != null && task.getOldValue().contains(":")) {
+          // Parse the edited value using field-specific format
+          EntityFieldUtils.applyFieldBasedEdits(tag, entityType, user, editedValue);
+        } else {
+          // Fallback: assume it's a description edit for backward compatibility
+          EntityFieldUtils.setEntityField(tag, entityType, user, "description", editedValue, false);
+        }
+        EntityFieldUtils.updateEntityMetadata(tag, user);
+
+      } catch (Exception e) {
+        LOG.error("Failed to apply edited changes to tag", e);
+        // Don't throw - just log the error and continue with approval
+      }
+    }
+
+    private void checkUpdatedByReviewer(Tag tag, String user) {
+      // Add any Tag-specific validation logic here if needed
+      // For now, this can be empty or use existing validation patterns
     }
   }
 

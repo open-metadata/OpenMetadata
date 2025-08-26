@@ -140,8 +140,7 @@
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
-      },
-      "output": ["result", "updatedBy"]
+      }
     },
     {
       "type": "automatedTask",

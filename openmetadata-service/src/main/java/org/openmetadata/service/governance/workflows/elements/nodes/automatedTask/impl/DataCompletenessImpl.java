@@ -154,7 +154,11 @@ public class DataCompletenessImpl implements JavaDelegate {
 
   /**
    * Evaluates the completeness of a field, handling nested arrays properly.
-   * For example, "columns.description" checks description field in ALL column objects.
+   * Automatically detects arrays and validates them as non-null AND non-empty.
+   * For example:
+   * - "columns" - auto-detects it's an array and checks non-null AND non-empty
+   * - "columns.description" - checks description field in ALL column objects
+   * - "reviewers" - auto-detects it's an array and checks non-empty
    */
   private FieldCompletenessInfo evaluateFieldCompleteness(
       Map<String, Object> entityMap,
@@ -167,15 +171,14 @@ public class DataCompletenessImpl implements JavaDelegate {
     // Handle nested fields with dot notation
     String[] parts = fieldPath.split("\\.");
 
-    // Check if this is an array field check (e.g., "columns.description")
-    boolean isArrayFieldCheck = parts.length > 1 && !parts[0].endsWith("[]");
+    // Check if this is an array element field check (e.g., "columns.description")
+    if (parts.length > 1) {
+      // Get the first part to check if it's an array
+      Object firstField = getNestedValue(entityMap, parts[0]);
 
-    if (isArrayFieldCheck) {
-      // Handle array field checks like "columns.description"
-      Object arrayField = getNestedValue(entityMap, parts[0]);
-
-      if (arrayField instanceof List) {
-        List<?> arrayList = (List<?>) arrayField;
+      if (firstField instanceof List) {
+        // It's an array field check like "columns.description"
+        List<?> arrayList = (List<?>) firstField;
         if (arrayList.isEmpty()) {
           // Empty array - no items to check
           info.totalCount = 1;
@@ -195,22 +198,28 @@ public class DataCompletenessImpl implements JavaDelegate {
           }
         }
       } else {
-        // Field should be an array but isn't - treat as missing
+        // It's a regular nested field path (e.g., "database.name")
+        Object value = getNestedValue(entityMap, fieldPath);
         info.totalCount = 1;
-        info.filledCount = 0;
+        // Smart detection for the nested value
+        if (value instanceof List) {
+          List<?> list = (List<?>) value;
+          info.filledCount = treatEmptyArrayAsNull ? (!list.isEmpty() ? 1 : 0) : 1;
+        } else {
+          info.filledCount =
+              isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull) ? 1 : 0;
+        }
       }
     } else {
-      // Handle simple field or array existence check (e.g., "description" or "columns[]")
+      // Simple field - with smart array detection
       Object value = getNestedValue(entityMap, fieldPath);
       info.totalCount = 1;
 
-      if (fieldPath.endsWith("[]")) {
-        // Check if array exists and is non-empty
-        String arrayFieldName = fieldPath.substring(0, fieldPath.length() - 2);
-        value = getNestedValue(entityMap, arrayFieldName);
-        info.filledCount = (value instanceof List && !((List<?>) value).isEmpty()) ? 1 : 0;
+      // Smart detection: if it's an array, check for non-empty
+      if (value instanceof List) {
+        List<?> list = (List<?>) value;
+        info.filledCount = treatEmptyArrayAsNull ? (!list.isEmpty() ? 1 : 0) : 1;
       } else {
-        // Check if simple field is filled
         info.filledCount =
             isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull) ? 1 : 0;
       }

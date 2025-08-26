@@ -6,6 +6,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,9 +123,6 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
         new MessageParser.EntityLink(
             Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
 
-    // Build detailed change message regardless of whether task exists
-    String changeInformation = buildDetailedChangeMessage(entity);
-
     Thread thread;
 
     try {
@@ -133,40 +131,25 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
       // UserTask in the new WorkflowInstance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
-
-      // Update the existing thread with new change information
-      thread.setMessage(changeInformation);
-      thread.setUpdatedBy(entity.getUpdatedBy());
-      thread.setUpdatedAt(System.currentTimeMillis());
-
-      // Update task details with new assignees and change description
-      if (thread.getTask() != null) {
-        thread
-            .getTask()
-            .withAssignees(FeedMapper.formatAssignees(assignees))
-            .withOldValue(
-                entity.getChangeDescription() != null
-                    ? JsonUtils.pojoToJson(entity.getChangeDescription())
-                    : "{}");
-      }
-
-      // Update the thread in the repository
-      // Note: FeedRepository doesn't have a direct update method, the thread is already terminated
-      // above
-
     } catch (EntityNotFoundException ex) {
-      // Create new task if none exists
+      // Build detailed change message
+      String changeInformation = buildDetailedChangeMessage(entity);
+
+      // Generate old and new values for the task
+      String oldValue = buildOldValueSummary(entity);
+      String newValue = buildNewValueSummary(entity);
+
+      // Generate context-aware suggestion
+      String suggestion = generateContextAwareSuggestion(entity);
+
       TaskDetails taskDetails =
           new TaskDetails()
               .withAssignees(FeedMapper.formatAssignees(assignees))
               .withType(TaskType.RequestApproval)
               .withStatus(TaskStatus.Open)
-              .withOldValue(
-                  entity.getChangeDescription() != null
-                      ? JsonUtils.pojoToJson(entity.getChangeDescription())
-                      : "{}")
-              .withSuggestion(
-                  "{\"action\":\"review_changes\",\"message\":\"Please review and approve the changes\"}");
+              .withOldValue(oldValue)
+              .withNewValue(newValue)
+              .withSuggestion(suggestion);
 
       thread =
           new Thread()
@@ -207,22 +190,34 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
     if (changeDescription != null) {
       message.append("Changes Made:\n\n");
 
-      // Fields Added
-      if (changeDescription.getFieldsAdded() != null
-          && !changeDescription.getFieldsAdded().isEmpty()) {
+      // Fields Added (excluding workflow-controlled)
+      List<FieldChange> addedFields =
+          changeDescription.getFieldsAdded() != null
+              ? changeDescription.getFieldsAdded().stream()
+                  .filter(field -> !isWorkflowControlledField(field.getName()))
+                  .toList()
+              : List.of();
+
+      if (!addedFields.isEmpty()) {
         message.append("Fields Added:\n");
-        for (FieldChange field : changeDescription.getFieldsAdded()) {
+        for (FieldChange field : addedFields) {
           message.append("  - ").append(formatFieldName(field.getName())).append(": ");
           message.append(formatFieldValue(field.getNewValue(), field.getName())).append("\n");
         }
         message.append("\n");
       }
 
-      // Fields Updated
-      if (changeDescription.getFieldsUpdated() != null
-          && !changeDescription.getFieldsUpdated().isEmpty()) {
+      // Fields Updated (excluding workflow-controlled)
+      List<FieldChange> updatedFields =
+          changeDescription.getFieldsUpdated() != null
+              ? changeDescription.getFieldsUpdated().stream()
+                  .filter(field -> !isWorkflowControlledField(field.getName()))
+                  .toList()
+              : List.of();
+
+      if (!updatedFields.isEmpty()) {
         message.append("Fields Updated:\n");
-        for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        for (FieldChange field : updatedFields) {
           message.append("  - ").append(formatFieldName(field.getName())).append(":\n");
           message
               .append("    Previous: ")
@@ -236,11 +231,17 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
         message.append("\n");
       }
 
-      // Fields Deleted
-      if (changeDescription.getFieldsDeleted() != null
-          && !changeDescription.getFieldsDeleted().isEmpty()) {
+      // Fields Deleted (excluding workflow-controlled)
+      List<FieldChange> deletedFields =
+          changeDescription.getFieldsDeleted() != null
+              ? changeDescription.getFieldsDeleted().stream()
+                  .filter(field -> !isWorkflowControlledField(field.getName()))
+                  .toList()
+              : List.of();
+
+      if (!deletedFields.isEmpty()) {
         message.append("Fields Removed:\n");
-        for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        for (FieldChange field : deletedFields) {
           message.append("  - ").append(formatFieldName(field.getName())).append(": ");
           message.append(formatFieldValue(field.getOldValue(), field.getName())).append("\n");
         }
@@ -419,5 +420,164 @@ public class CreateDetailedApprovalTaskImpl implements TaskListener {
     } else {
       return "{" + map.size() + " fields}";
     }
+  }
+
+  // Fields that are controlled by the workflow and should be excluded from change tracking
+  private static final Set<String> WORKFLOW_CONTROLLED_FIELDS =
+      Set.of("status", "workflowStatus", "lifecycleState", "state");
+
+  private boolean isWorkflowControlledField(String fieldName) {
+    String lowerFieldName = fieldName.toLowerCase();
+    return WORKFLOW_CONTROLLED_FIELDS.stream().anyMatch(lowerFieldName::contains);
+  }
+
+  private String buildOldValueSummary(EntityInterface entity) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
+    if (changeDescription == null) {
+      return "";
+    }
+
+    StringBuilder oldValue = new StringBuilder();
+
+    // Add updated field's old values (excluding workflow-controlled fields)
+    if (changeDescription.getFieldsUpdated() != null) {
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue; // Skip workflow-controlled fields
+        }
+        if (oldValue.length() > 0) {
+          oldValue.append("\n");
+        }
+        oldValue.append(formatFieldName(field.getName())).append(": ");
+        oldValue.append(formatFieldValue(field.getOldValue(), field.getName()));
+      }
+    }
+
+    // Add deleted fields (excluding workflow-controlled fields)
+    if (changeDescription.getFieldsDeleted() != null) {
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue; // Skip workflow-controlled fields
+        }
+        if (oldValue.length() > 0) {
+          oldValue.append("\n");
+        }
+        oldValue.append(formatFieldName(field.getName())).append(": ");
+        oldValue.append(formatFieldValue(field.getOldValue(), field.getName()));
+      }
+    }
+
+    return oldValue.toString();
+  }
+
+  private String buildNewValueSummary(EntityInterface entity) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
+    if (changeDescription == null) {
+      return "";
+    }
+
+    StringBuilder newValue = new StringBuilder();
+
+    // Add updated field's new values (excluding workflow-controlled fields)
+    if (changeDescription.getFieldsUpdated() != null) {
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue; // Skip workflow-controlled fields
+        }
+        if (newValue.length() > 0) {
+          newValue.append("\n");
+        }
+        newValue.append(formatFieldName(field.getName())).append(": ");
+        newValue.append(formatFieldValue(field.getNewValue(), field.getName()));
+      }
+    }
+
+    // Add added fields (excluding workflow-controlled fields)
+    if (changeDescription.getFieldsAdded() != null) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue; // Skip workflow-controlled fields
+        }
+        if (newValue.length() > 0) {
+          newValue.append("\n");
+        }
+        newValue.append(formatFieldName(field.getName())).append(": ");
+        newValue.append(formatFieldValue(field.getNewValue(), field.getName()));
+      }
+    }
+
+    return newValue.toString();
+  }
+
+  private String generateContextAwareSuggestion(EntityInterface entity) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
+
+    if (changeDescription == null) {
+      return JsonUtils.pojoToJson(
+          Map.of(
+              "action", "review",
+              "message", "Please review the entity and provide your approval."));
+    }
+
+    // Count changes (excluding workflow-controlled fields)
+    int fieldsAdded =
+        changeDescription.getFieldsAdded() != null
+            ? (int)
+                changeDescription.getFieldsAdded().stream()
+                    .filter(field -> !isWorkflowControlledField(field.getName()))
+                    .count()
+            : 0;
+    int fieldsUpdated =
+        changeDescription.getFieldsUpdated() != null
+            ? (int)
+                changeDescription.getFieldsUpdated().stream()
+                    .filter(field -> !isWorkflowControlledField(field.getName()))
+                    .count()
+            : 0;
+    int fieldsDeleted =
+        changeDescription.getFieldsDeleted() != null
+            ? (int)
+                changeDescription.getFieldsDeleted().stream()
+                    .filter(field -> !isWorkflowControlledField(field.getName()))
+                    .count()
+            : 0;
+    int totalChanges = fieldsAdded + fieldsUpdated + fieldsDeleted;
+
+    // Build simple suggestion
+    Map<String, Object> suggestion = new HashMap<>();
+    String message;
+
+    if (totalChanges == 0) {
+      message = "Please review the entity and provide your approval.";
+    } else {
+      // Build a simple summary of changes
+      List<String> changeSummary = new ArrayList<>();
+      if (fieldsUpdated > 0) {
+        changeSummary.add(fieldsUpdated + " field" + (fieldsUpdated > 1 ? "s" : "") + " updated");
+      }
+      if (fieldsAdded > 0) {
+        changeSummary.add(fieldsAdded + " field" + (fieldsAdded > 1 ? "s" : "") + " added");
+      }
+      if (fieldsDeleted > 0) {
+        changeSummary.add(fieldsDeleted + " field" + (fieldsDeleted > 1 ? "s" : "") + " removed");
+      }
+
+      message =
+          "Review " + String.join(", ", changeSummary) + " and provide your approval or feedback.";
+    }
+
+    suggestion.put("action", "review_changes");
+    suggestion.put("message", message);
+
+    // Add simple metadata
+    if (totalChanges > 0) {
+      Map<String, Integer> changeStats = new HashMap<>();
+      if (fieldsAdded > 0) changeStats.put("added", fieldsAdded);
+      if (fieldsUpdated > 0) changeStats.put("updated", fieldsUpdated);
+      if (fieldsDeleted > 0) changeStats.put("deleted", fieldsDeleted);
+      suggestion.put("changeSummary", changeStats);
+    }
+
+    return JsonUtils.pojoToJson(suggestion);
   }
 }
