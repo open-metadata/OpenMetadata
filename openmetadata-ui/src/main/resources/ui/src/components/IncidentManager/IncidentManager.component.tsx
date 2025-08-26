@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { DEFAULT_DOMAIN_VALUE, PAGE_SIZE_BASE } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -38,6 +38,7 @@ import {
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -90,6 +91,7 @@ const IncidentManager = ({
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
   const navigate = useNavigate();
+  const { activeDomain } = useDomainStore();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -157,6 +159,7 @@ const IncidentManager = ({
           latest: true,
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
+          domain: activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
@@ -187,7 +190,7 @@ const IncidentManager = ({
         setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [pageSize, setTestCaseListData]
+    [pageSize, setTestCaseListData, activeDomain]
   );
 
   const fetchTestCasePermissions = async () => {
@@ -375,7 +378,7 @@ const IncidentManager = ({
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [commonTestCasePermission, pageSize, filters]);
+  }, [commonTestCasePermission, pageSize, filters, activeDomain]);
 
   useEffect(() => {
     if (testCaseListData.data.length > 0) {

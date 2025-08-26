@@ -30,6 +30,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testCaseFQN?: string;
   offset?: string;
   originEntityFQN?: string;
+  domain?: string;
 };
 
 export const getListTestCaseIncidentStatus = async ({
