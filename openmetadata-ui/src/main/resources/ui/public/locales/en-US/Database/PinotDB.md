@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the PinotDB connector.
 
 ## Requirements
 
-You can find further information on the PinotDB connector in the [docs](https://docs.open-metadata.org/connectors/database/pinotdb).
+You can find further information on the PinotDB connector in the <a href="https://docs.open-metadata.org/connectors/database/pinotdb" target="_blank">docs</a>.
 
 ## Connection Details
 
