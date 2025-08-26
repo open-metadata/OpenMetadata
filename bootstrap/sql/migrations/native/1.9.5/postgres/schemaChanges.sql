@@ -37,13 +37,13 @@ DROP INDEX IF EXISTS idx_entity_relationship_to;
 -- Used by: getOwners, getFollowers, getDomains, getDataProducts, getReviewers
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_from_composite
 ON entity_relationship(fromId, fromEntity, relation) 
-INCLUDE (toId, toEntity, json);
+INCLUDE (toId, toEntity, relation);
 
 -- Primary composite index for findTo queries with covering columns
 -- Used by: getChildren, getExperts, getParent
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_to_composite
 ON entity_relationship(toId, toEntity, relation) 
-INCLUDE (fromId, fromEntity, json);
+INCLUDE (fromId, fromEntity, relation);
 
 -- Index for relation-specific queries (batch operations)
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_relation
