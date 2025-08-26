@@ -269,8 +269,7 @@ export const userMentionItemWithAvatar = (
           <div
             className="flex-center flex-shrink align-middle mention-avatar"
             data-testid="avatar"
-            style={{ backgroundColor: color }}
-          >
+            style={{ backgroundColor: color }}>
             <span>{character}</span>
           </div>
         )}
@@ -672,12 +671,10 @@ export const getTestCaseResultCount = (
 ) => (
   <div
     className={`test-result-container ${lowerCase(status)}`}
-    data-testid={`test-${status}`}
-  >
+    data-testid={`test-${status}`}>
     <Typography.Text
       className="font-medium text-md"
-      data-testid={`test-${status}-value`}
-    >
+      data-testid={`test-${status}-value`}>
       {count}
     </Typography.Text>
   </div>

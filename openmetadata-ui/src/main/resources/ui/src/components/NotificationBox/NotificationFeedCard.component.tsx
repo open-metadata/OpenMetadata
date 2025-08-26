@@ -54,8 +54,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               task?.entityRef?.fullyQualifiedName ?? '',
               task?.entityRef?.type as EntityType,
               task?.entityRef as SourceType
-            )}
-          >
+            )}>
             <span className="m-r-xss">{task?.entityRef?.displayName}</span>
           </Link>
           <span>{t('label.of-lowercase')}</span>
@@ -64,8 +63,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0],
               task?.entityRef?.type as EntityType,
               task?.entityRef as SourceType
-            )}
-          >
+            )}>
             <span className="m-l-xss">
               {Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0]}
             </span>
@@ -99,8 +97,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         feedType === ThreadType.Conversation
           ? prepareFeedLink(entityType, entityFQN)
           : getTaskDetailPath(task)
-      }
-    >
+      }>
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
@@ -108,12 +105,10 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
           <Space
             data-testid={`notification-item-${entityName}`}
             direction="vertical"
-            size={0}
-          >
+            size={0}>
             <Typography.Paragraph
               className="m-0"
-              style={{ color: '#37352F', marginBottom: 0 }}
-            >
+              style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
@@ -122,8 +117,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <Link
                     className="truncate"
                     data-testid={`notification-link-${entityName}`}
-                    to={prepareFeedLink(entityType, entityFQN)}
-                  >
+                    to={prepareFeedLink(entityType, entityFQN)}>
                     {entityName}
                   </Link>
                 </>
@@ -133,8 +127,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             </Typography.Paragraph>
             <Typography.Text
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={formatDateTime(timestamp)}
-            >
+              title={formatDateTime(timestamp)}>
               {getRelativeTime(timestamp)}
             </Typography.Text>
           </Space>
