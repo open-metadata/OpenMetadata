@@ -1,5 +1,5 @@
 -- Performance optimization indexes for entity_relationship and tag_usage tables
--- MySQL version for OpenMetadata 1.9.3
+-- MySQL version for OpenMetadata 1.9.5
 -- Focus: Optimize the N+1 query problem in setFieldsInternal
 
 -- ========================================
@@ -75,8 +75,3 @@ ANALYZE TABLE field_relationship;
 ALTER TABLE entity_relationship COMMENT = 'High-frequency relationship table optimized with DYNAMIC row format and indexes for N+1 query prevention';
 ALTER TABLE change_event COMMENT = 'Event log table optimized with DYNAMIC row format for append-heavy workload';
 ALTER TABLE tag_usage COMMENT = 'Tag usage tracking optimized with DYNAMIC row format for frequent updates';
-
--- Note: OPTIMIZE TABLE commands are commented out as they lock tables
--- Run these during a maintenance window if needed:
--- OPTIMIZE TABLE entity_relationship;
--- OPTIMIZE TABLE tag_usage;

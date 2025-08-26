@@ -1,5 +1,5 @@
 -- Performance optimization indexes for entity_relationship and tag_usage tables
--- PostgreSQL version for OpenMetadata 1.9.3
+-- PostgreSQL version for OpenMetadata 1.9.5
 -- Focus: Optimize the N+1 query problem in setFieldsInternal
 
 -- ========================================
