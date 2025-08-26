@@ -46,7 +46,10 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
-import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import {
+  ContractExecutionStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
@@ -54,6 +57,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
@@ -104,7 +108,6 @@ export const DataAssetsHeader = ({
   showDomain = true,
   afterDeleteAction,
   dataAsset,
-  dataContract,
   onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
@@ -144,6 +147,16 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+  const [dataContract, setDataContract] = useState<DataContract>();
+
+  const fetchDataContract = async (tableId: string) => {
+    try {
+      const contract = await getContractByEntityId(tableId, entityType);
+      setDataContract(contract);
+    } catch {
+      // Do nothing
+    }
+  };
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -528,6 +541,12 @@ export const DataAssetsHeader = ({
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
   ]);
+
+  useEffect(() => {
+    if (dataAsset.id) {
+      fetchDataContract(dataAsset.id);
+    }
+  }, [dataAsset?.id]);
 
   return (
     <>
