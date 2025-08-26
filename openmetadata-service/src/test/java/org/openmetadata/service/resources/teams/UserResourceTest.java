@@ -801,6 +801,101 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_userCanBeFetchedAfterPersonaDeletion(TestInfo test) throws IOException {
+    // This test verifies that users can still be fetched after a persona is properly deleted
+    // Our preDelete hook should clean up the relationships
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+
+    // Create a persona
+    CreatePersona createPersona =
+        personaResourceTest.createRequest(test).withName("persona-to-delete");
+    Persona persona = personaResourceTest.createEntity(createPersona, ADMIN_AUTH_HEADERS);
+
+    // Create a user with this persona assigned and as default
+    CreateUser createUser =
+        createRequest(test)
+            .withPersonas(listOf(persona.getEntityReference()))
+            .withDefaultPersona(persona.getEntityReference());
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json = JsonUtils.pojoToJson(user);
+    user.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
+    fieldUpdated(change, "personaPreferences", emptyList(), listOf(preferences));
+    user = patchEntityAndCheck(user, json, authHeaders(user.getName()), MINOR_UPDATE, change);
+
+    // Verify the user has the persona
+    User userWithPersona =
+        getEntity(user.getId(), "personas,defaultPersona,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, userWithPersona.getPersonas().size());
+    assertEquals(persona.getId(), userWithPersona.getPersonas().get(0).getId());
+    assertNotNull(userWithPersona.getDefaultPersona());
+    assertEquals(persona.getId(), userWithPersona.getDefaultPersona().getId());
+    assertEquals(1, userWithPersona.getPersonaPreferences().size());
+
+    // Delete the persona - this should trigger preDelete to clean up relationships
+    personaResourceTest.deleteEntity(persona.getId(), ADMIN_AUTH_HEADERS);
+
+    // Now fetch the user with all persona-related fields
+    // This should NOT throw an error - the preDelete should have cleaned up relationships
+    User finalUser = user;
+    User userAfterPersonaDeletion =
+        assertDoesNotThrow(
+            () ->
+                getEntity(
+                    finalUser.getId(),
+                    "personas,defaultPersona,personaPreferences",
+                    ADMIN_AUTH_HEADERS),
+            "Should be able to fetch user after persona deletion");
+
+    // The personas list should be empty since the relationships were cleaned up
+    assertTrue(
+        userAfterPersonaDeletion.getPersonas() == null
+            || userAfterPersonaDeletion.getPersonas().isEmpty(),
+        "Personas should be empty after persona deletion and relationship cleanup");
+
+    // Default persona should be null or system default (not the deleted persona)
+    if (userAfterPersonaDeletion.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona.getId(),
+          userAfterPersonaDeletion.getDefaultPersona().getId(),
+          "Default persona should not reference the deleted persona");
+    }
+
+    // User should still be functional - can be updated
+    String jsonAfter = JsonUtils.pojoToJson(userAfterPersonaDeletion);
+    userAfterPersonaDeletion.setDisplayName("User still works after persona deletion");
+    ChangeDescription changeAfter = getChangeDescription(userAfterPersonaDeletion, MINOR_UPDATE);
+    fieldAdded(changeAfter, "displayName", "User still works after persona deletion");
+    User updatedUser =
+        patchEntityAndCheck(
+            userAfterPersonaDeletion, jsonAfter, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeAfter);
+    assertEquals("User still works after persona deletion", updatedUser.getDisplayName());
+
+    // User should be able to be assigned a new persona without issues
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test, 2).withName("new-persona-after-delete");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    String jsonWithNewPersona = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setPersonas(listOf(persona2.getEntityReference()));
+    ChangeDescription changeNewPersona = getChangeDescription(updatedUser, MINOR_UPDATE);
+    fieldAdded(changeNewPersona, "personas", listOf(persona2.getEntityReference()));
+    User userWithNewPersona =
+        patchEntityAndCheck(
+            updatedUser, jsonWithNewPersona, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeNewPersona);
+    assertEquals(1, userWithNewPersona.getPersonas().size());
+    assertEquals(persona2.getId(), userWithNewPersona.getPersonas().get(0).getId());
+  }
+
+  @Test
   void test_personaDeletion_cleansUpAllRelationships(TestInfo test) throws IOException {
     // Create personas
     PersonaResourceTest personaResourceTest = new PersonaResourceTest();

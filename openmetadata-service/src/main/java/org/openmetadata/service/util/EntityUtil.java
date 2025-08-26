@@ -218,7 +218,11 @@ public final class EntityUtil {
         refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
       } catch (EntityNotFoundException e) {
         // Skip deleted entities - the relationship exists but the entity was deleted
-        LOG.debug("Skipping deleted entity reference: {} {}", ref.getType(), ref.getId());
+        LOG.info(
+            "Skipping deleted entity reference: {} {} - {}",
+            ref.getType(),
+            ref.getId(),
+            e.getMessage());
       }
     }
     refs.sort(compareEntityReference);
