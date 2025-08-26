@@ -24,7 +24,6 @@ ALTER TABLE team_entity ADD INDEX idx_team_entity_deleted (deleted);
 UPDATE entity_relationship
 SET relation = 0
 WHERE fromEntity = 'table' AND toEntity = 'dataContract' AND relation = 10;
-
 -- Add displayName virtual column to glossary_term_entity for efficient search
 ALTER TABLE glossary_term_entity ADD COLUMN displayName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.displayName') STORED;
 
