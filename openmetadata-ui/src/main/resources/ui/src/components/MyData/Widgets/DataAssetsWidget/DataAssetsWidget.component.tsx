@@ -119,7 +119,7 @@ const DataAssetsWidget = ({
     () => (
       <WidgetEmptyState
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.no-data-assets-yet')}
       />

@@ -147,10 +147,10 @@ const CuratedAssetsWidget = ({
         // Expand 'all' selection to individual entity types for the API call
         const expandedResources = getExpandedResourceList(selectedResource);
 
-        // Use SearchIndex.ALL when 'all' is selected, otherwise use the first selected resource
+        // Use SearchIndex.ALL when 'all' is selected, otherwise use all the selected resource
         const searchIndex = selectedResource.includes(EntityType.ALL)
           ? SearchIndex.ALL
-          : (selectedResource as SearchIndex);
+          : (selectedResource as SearchIndex[]);
 
         const res = await searchQuery({
           query: '',
@@ -301,8 +301,8 @@ const CuratedAssetsWidget = ({
         icon={
           <CuratedAssetsNoDataIcon
             data-testid="curated-assets-no-data-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         title={t('message.curated-assets-no-data-message')}
@@ -320,8 +320,8 @@ const CuratedAssetsWidget = ({
         icon={
           <CuratedAssetsEmptyIcon
             data-testid="curated-assets-empty-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         onActionClick={handleModalOpen}

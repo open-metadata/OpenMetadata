@@ -51,7 +51,7 @@ export const SelectAssetTypeField = ({
   const resourcesOptions: DefaultOptionType[] = useMemo(() => {
     return getSourceOptionsFromResourceList(
       CURATED_ASSETS_LIST,
-      false,
+      true,
       selectedResource,
       false
     );
@@ -90,14 +90,37 @@ export const SelectAssetTypeField = ({
   );
 
   const handleResourceChange = useCallback(
-    (val: string | string[]) => {
-      if (form) {
-        const isAllSelected =
-          Array.isArray(val) && val.includes(EntityType.ALL);
-        form.setFieldValue('resources', isAllSelected ? [EntityType.ALL] : val);
+    (val: string[]) => {
+      if (!form) {
+        return;
       }
+
+      const allKey = EntityType.ALL;
+      const includesAll = Array.isArray(val) && val.includes(allKey);
+      const wasAllSelected = selectedResource.includes(allKey);
+
+      // If user clicked All (present in the new value)
+      if (includesAll && !wasAllSelected) {
+        // Select everything
+        form.setFieldValue('resources', CURATED_ASSETS_LIST);
+
+        return;
+      }
+
+      // If All was previously selected and is now deselected, clear all
+      if (wasAllSelected && !includesAll) {
+        form.setFieldValue('resources', []);
+
+        return;
+      }
+
+      // Otherwise, ensure All is not part of the selection when any individual toggles
+      form.setFieldValue(
+        'resources',
+        val.filter((k) => k !== allKey)
+      );
     },
-    [form]
+    [form, selectedResource]
   );
 
   useEffect(() => {
@@ -124,6 +147,7 @@ export const SelectAssetTypeField = ({
         name="resources"
         style={{ marginBottom: 8 }}>
         <Select
+          maxTagCount="responsive"
           mode="multiple"
           options={resourcesOptions}
           placeholder={t('label.select-asset-type')}
