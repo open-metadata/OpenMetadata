@@ -322,7 +322,6 @@ elasticsearch:
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
-
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
