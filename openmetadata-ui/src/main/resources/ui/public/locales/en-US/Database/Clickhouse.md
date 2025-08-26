@@ -6,13 +6,13 @@ In this section, we provide guides and references to use the ClickHouse connecto
 
 ClickHouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
 
-* Create a new user. Find mode details [here](https://clickhouse.com/docs/en/sql-reference/statements/create/user).
+* Create a new user. Find mode details <a href="https://clickhouse.com/docs/en/sql-reference/statements/create/user" target="_blank">here</a>.
 
 ```sql
 CREATE USER <username> IDENTIFIED WITH sha256_password BY <password>
 ```
 
-* Grant Permissions. Find more details on permissions can be found [here](https://clickhouse.com/docs/en/sql-reference/statements/grant).
+* Grant Permissions. Find more details on permissions can be found <a href="https://clickhouse.com/docs/en/sql-reference/statements/grant" target="_blank">here</a>.
 
 ```sql
 -- Grant SELECT and SHOW to that user
@@ -22,13 +22,13 @@ GRANT SELECT ON <schema_name>.* to <username>;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
 ### Usage & Lineage
 
-For the Usage and Lineage workflows, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the Usage and Lineage workflows, the user will need `SELECT` privilege. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
 
-You can find further information on the ClickHouse connector in the [docs](https://docs.open-metadata.org/connectors/database/clickhouse).
+You can find further information on the ClickHouse connector in the <a href="https://docs.open-metadata.org/connectors/database/clickhouse" target="_blank">docs</a>.
 
 ## Connection Details
 
