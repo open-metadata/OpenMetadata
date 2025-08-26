@@ -87,6 +87,11 @@ test.describe('Curated Assets', () => {
 
     await page.locator('[data-testid="chart-option"]').click();
 
+    // Close the multi-select dropdown after selecting the option
+    await page.keyboard.press('Escape');
+
+    await expect(page.locator('.ant-select-dropdown')).toBeHidden();
+
     const ruleLocator = page.locator('.rule').nth(0);
     await selectOption(
       page,
