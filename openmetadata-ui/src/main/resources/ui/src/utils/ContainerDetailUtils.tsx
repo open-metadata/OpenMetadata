@@ -229,7 +229,7 @@ export const getContainerDetailPageTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

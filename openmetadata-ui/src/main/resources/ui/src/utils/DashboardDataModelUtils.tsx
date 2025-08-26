@@ -143,7 +143,7 @@ export const getDashboardDataModelDetailPageTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

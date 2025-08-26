@@ -172,7 +172,7 @@ export const getSearchIndexDetailsTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

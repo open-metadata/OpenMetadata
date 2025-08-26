@@ -128,7 +128,7 @@ export const getMlModelDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

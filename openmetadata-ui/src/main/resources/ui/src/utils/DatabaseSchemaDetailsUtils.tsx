@@ -118,7 +118,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} supportsSchema={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

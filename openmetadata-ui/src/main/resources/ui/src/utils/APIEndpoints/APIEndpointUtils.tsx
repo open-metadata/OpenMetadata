@@ -106,7 +106,7 @@ export const getApiEndpointDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

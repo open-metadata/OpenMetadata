@@ -12,6 +12,7 @@
  */
 
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 
 export enum DataContractMode {
   YAML,
@@ -41,3 +42,63 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
   EntityReferenceFields.DISPLAY_NAME,
   EntityReferenceFields.DELETED,
 ];
+
+export const SUPPORTED_CONTRACT_TAB = {
+  [EntityType.TABLE]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SCHEMA,
+    EDataContractTab.SEMANTICS,
+    EDataContractTab.QUALITY,
+  ],
+  [EntityType.TOPIC]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SCHEMA,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.API_ENDPOINT]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SCHEMA,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.DASHBOARD_DATA_MODEL]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SCHEMA,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.DATABASE]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.DATABASE_SCHEMA]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.STORED_PROCEDURE]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.DASHBOARD]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.PIPELINE]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.SEARCH_INDEX]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.API_COLLECTION]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.MLMODEL]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+  [EntityType.CONTAINER]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
+};

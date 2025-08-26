@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -29,12 +29,8 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 import './contract-tab.less';
-import { ContractTabProps } from './ContractTab.interface';
 
-export const ContractTab: FC<ContractTabProps> = ({
-  supportsDQ = true,
-  supportsSchema = true,
-}) => {
+export const ContractTab = () => {
   const {
     data: { id },
   } = useGenericContext();
@@ -111,8 +107,6 @@ export const ContractTab: FC<ContractTabProps> = ({
         return (
           <AddDataContract
             contract={contract}
-            supportsDQ={supportsDQ}
-            supportsSchema={supportsSchema}
             onCancel={() => {
               setTabMode(DataContractTabMode.VIEW);
             }}
@@ -136,7 +130,7 @@ export const ContractTab: FC<ContractTabProps> = ({
           />
         );
     }
-  }, [tabMode, contract, supportsDQ, supportsSchema]);
+  }, [tabMode, contract]);
 
   return isLoading ? (
     <Loader />

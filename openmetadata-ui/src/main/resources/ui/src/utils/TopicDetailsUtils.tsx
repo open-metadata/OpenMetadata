@@ -106,7 +106,7 @@ export const getTopicDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CONTRACT,
-      children: <ContractTab supportsDQ={false} />,
+      children: <ContractTab />,
     },
     {
       label: (

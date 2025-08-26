@@ -25,7 +25,8 @@ export const ContractDetailFormTab: React.FC<{
   onNext: () => void;
   onChange: (formData: Partial<DataContract>) => void;
   nextLabel?: string;
-}> = ({ initialValues, onNext, nextLabel, onChange }) => {
+  isNextVisible?: boolean;
+}> = ({ initialValues, onNext, nextLabel, onChange, isNextVisible = true }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -101,20 +102,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button className="contract-prev-button" type="default">
-          {t('label.contract-detail-plural')}
-        </Button>
-
-        <Button
-          className="contract-next-button"
-          htmlType="submit"
-          type="primary"
-          onClick={onNext}>
-          {nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
+      {isNextVisible && (
+        <div className="d-flex justify-end m-t-md">
+          <Button
+            className="contract-next-button"
+            htmlType="submit"
+            type="primary"
+            onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+            <Icon component={RightIcon} />
+          </Button>
+        </div>
+      )}
     </>
   );
 };

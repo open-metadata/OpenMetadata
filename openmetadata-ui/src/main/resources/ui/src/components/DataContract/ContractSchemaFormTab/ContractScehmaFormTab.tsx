@@ -50,7 +50,16 @@ export const ContractSchemaFormTab: React.FC<{
   onPrev: () => void;
   nextLabel?: string;
   prevLabel?: string;
-}> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
+  isNextVisible?: boolean;
+}> = ({
+  selectedSchema,
+  onNext,
+  onChange,
+  onPrev,
+  nextLabel,
+  prevLabel,
+  isNextVisible = true,
+}) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [allColumns, setAllColumns] = useState<Column[]>([]);
@@ -309,13 +318,15 @@ export const ContractSchemaFormTab: React.FC<{
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
-          {nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
+        {isNextVisible && (
+          <Button
+            className="contract-next-button"
+            type="primary"
+            onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+            <Icon component={RightIcon} />
+          </Button>
+        )}
       </div>
     </>
   );
