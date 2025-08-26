@@ -1417,8 +1417,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
-      // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
