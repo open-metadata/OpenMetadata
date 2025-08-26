@@ -15,7 +15,6 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta
       name="msapplication-TileImage"
@@ -106,12 +105,12 @@
     <link rel="manifest" href="${basePath}manifest.json" />
 
     <script>
-      let images = ['/images/governce.png', '/images/data-collbration.png'];
+      let images = ['${basePath}images/governce.png', '${basePath}images/data-collbration.png'];
 
       images.forEach((image) => {
         let img = new Image();
         img.loading = 'eager';
-        img.src = window.location.origin + image;
+        img.src = image;
       });
     </script>
 
@@ -120,5 +119,6 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
