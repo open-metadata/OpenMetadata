@@ -8,13 +8,15 @@
 
 -- MySQL 5.7+ supports generated columns for efficient case-insensitive searches
 -- Separate ALTER statements for columns and indexes
+-- IMPORTANT: Specify collation explicitly to avoid mismatch errors
+-- The LOWER() function result must match the table's collation
 ALTER TABLE tag_usage 
-ADD COLUMN targetfqnhash_lower VARCHAR(768) 
-GENERATED ALWAYS AS (LOWER(targetFQNHash)) STORED;
+ADD COLUMN targetfqnhash_lower VARCHAR(768) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+GENERATED ALWAYS AS (CONVERT(LOWER(targetFQNHash) USING utf8mb4) COLLATE utf8mb4_unicode_ci) STORED;
 
 ALTER TABLE tag_usage 
-ADD COLUMN tagfqn_lower VARCHAR(768) 
-GENERATED ALWAYS AS (LOWER(tagFQN)) STORED;
+ADD COLUMN tagfqn_lower VARCHAR(768) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+GENERATED ALWAYS AS (CONVERT(LOWER(tagFQN) USING utf8mb4) COLLATE utf8mb4_unicode_ci) STORED;
 
 -- Create indexes on the new columns
 CREATE INDEX idx_targetfqnhash_lower ON tag_usage (targetfqnhash_lower(255));
@@ -68,6 +70,15 @@ OPTIMIZE TABLE tag;
 ANALYZE TABLE tag_usage;
 ANALYZE TABLE classification;
 ANALYZE TABLE tag;
+
+-- ========================================
+-- Fix for classification term count queries
+-- ========================================
+
+-- Add index for efficient bulk term count queries
+-- The bulkGetTermCounts query uses: WHERE classificationHash IN (...) AND deleted = FALSE
+CREATE INDEX idx_tag_classification_deleted 
+ON tag (classificationHash, deleted);
 
 -- ========================================
 -- Fix for entity_relationship queries

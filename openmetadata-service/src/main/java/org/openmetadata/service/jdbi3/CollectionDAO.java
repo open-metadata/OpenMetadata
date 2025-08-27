@@ -3741,32 +3741,15 @@ public interface CollectionDAO {
       return "nameHash";
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN JSON_TABLE("
-                + "    :jsonHashes, "
-                + "    '$[*]' COLUMNS (classificationHash VARCHAR(64) PATH '$')"
-                + ") AS h "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            ""
-                + "SELECT t.classificationHash, COUNT(*) AS termCount "
-                + "FROM tag t "
-                + "JOIN UNNEST(:hashArray::text[]) AS h(classificationHash) "
-                + "  ON t.classificationHash = h.classificationHash "
-                + "WHERE t.deleted = FALSE "
-                + "GROUP BY t.classificationHash",
-        connectionType = POSTGRES)
+    // Much more efficient: Use IN clause with proper index usage
+    @SqlQuery(
+        "SELECT classificationHash, COUNT(*) AS termCount "
+            + "FROM tag "
+            + "WHERE classificationHash IN (<hashArray>) "
+            + "AND deleted = FALSE "
+            + "GROUP BY classificationHash")
     @RegisterRowMapper(TermCountMapper.class)
-    List<Pair<String, Integer>> bulkGetTermCounts(
-        @Bind("jsonHashes") String jsonHashes, @Bind("hashArray") List<String> hashArray);
+    List<Pair<String, Integer>> bulkGetTermCounts(@BindList("hashArray") List<String> hashArray);
 
     class TermCountMapper implements RowMapper<Pair<String, Integer>> {
       @Override
