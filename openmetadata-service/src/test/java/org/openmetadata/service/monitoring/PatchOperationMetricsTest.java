@@ -66,7 +66,7 @@ public class PatchOperationMetricsTest {
         "Validation time should be ~20ms");
 
     Timer updateTimer =
-        meterRegistry.find("entity.patch.update").tag("entity_type", entityType).timer();
+        meterRegistry.find("entity.patch.update_total").tag("entity_type", entityType).timer();
     assertNotNull(updateTimer, "Update timer should be recorded");
     assertEquals(
         150.0, updateTimer.totalTime(TimeUnit.MILLISECONDS), 1.0, "Update time should be ~150ms");
@@ -79,14 +79,14 @@ public class PatchOperationMetricsTest {
     // Simulate recording post-update metrics
     recordPostUpdateMetrics(entityType, 200L, 50L);
 
-    Timer eventDispatchTimer =
-        meterRegistry.find("entity.patch.event_dispatch").tag("entity_type", entityType).timer();
-    assertNotNull(eventDispatchTimer, "Event dispatch timer should be recorded");
+    Timer searchIndexTimer =
+        meterRegistry.find("entity.patch.search_index").tag("entity_type", entityType).timer();
+    assertNotNull(searchIndexTimer, "Search index timer should be recorded");
     assertEquals(
         200.0,
-        eventDispatchTimer.totalTime(TimeUnit.MILLISECONDS),
+        searchIndexTimer.totalTime(TimeUnit.MILLISECONDS),
         1.0,
-        "Event dispatch time should be ~200ms");
+        "Search index time should be ~200ms");
 
     Timer rdfTimer =
         meterRegistry.find("entity.patch.rdf_update").tag("entity_type", entityType).timer();
@@ -133,24 +133,24 @@ public class PatchOperationMetricsTest {
     recordEntityUpdaterMetrics(entityType, 10L, 30L, 100L, 250L);
 
     Timer consolidateTimer =
-        meterRegistry.find("entity.updater.consolidate").tag("entity_type", entityType).timer();
+        meterRegistry.find("entity.patch.consolidate").tag("entity_type", entityType).timer();
     assertNotNull(consolidateTimer, "Consolidate timer should be recorded");
     assertEquals(10.0, consolidateTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
 
     Timer updateInternalTimer =
-        meterRegistry.find("entity.updater.update_internal").tag("entity_type", entityType).timer();
+        meterRegistry.find("entity.patch.update_internal").tag("entity_type", entityType).timer();
     assertNotNull(updateInternalTimer, "Update internal timer should be recorded");
     assertEquals(30.0, updateInternalTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
 
-    Timer storeTimer =
-        meterRegistry.find("entity.updater.store").tag("entity_type", entityType).timer();
-    assertNotNull(storeTimer, "Store timer should be recorded");
-    assertEquals(100.0, storeTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
+    Timer databaseTimer =
+        meterRegistry.find("entity.patch.database").tag("entity_type", entityType).timer();
+    assertNotNull(databaseTimer, "Database timer should be recorded");
+    assertEquals(100.0, databaseTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
 
-    Timer postUpdateTimer =
-        meterRegistry.find("entity.updater.post_update").tag("entity_type", entityType).timer();
-    assertNotNull(postUpdateTimer, "Post update timer should be recorded");
-    assertEquals(250.0, postUpdateTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
+    Timer searchIndexTimer =
+        meterRegistry.find("entity.patch.search_index").tag("entity_type", entityType).timer();
+    assertNotNull(searchIndexTimer, "Search index timer should be recorded");
+    assertEquals(250.0, searchIndexTimer.totalTime(TimeUnit.MILLISECONDS), 1.0);
   }
 
   @Test
@@ -186,9 +186,9 @@ public class PatchOperationMetricsTest {
 
     // Verify all metrics are recorded
     assertTrue(meterRegistry.find("entity.patch.apply").timer() != null);
-    assertTrue(meterRegistry.find("entity.patch.update").timer() != null);
+    assertTrue(meterRegistry.find("entity.patch.update_total").timer() != null);
     assertTrue(meterRegistry.find("search.index.update").timer() != null);
-    assertTrue(meterRegistry.find("entity.patch.event_dispatch").timer() != null);
+    assertTrue(meterRegistry.find("entity.patch.search_index").timer() != null);
 
     // Verify request latency context metrics
     Timer totalTimer =
@@ -263,14 +263,13 @@ public class PatchOperationMetricsTest {
     Metrics.timer("entity.patch.apply", tags).record(applyTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.prepare", tags).record(prepareTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.validation", tags).record(validationTime, TimeUnit.MILLISECONDS);
-    Metrics.timer("entity.patch.update", tags).record(updateTime, TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.update_total", tags).record(updateTime, TimeUnit.MILLISECONDS);
   }
 
-  private void recordPostUpdateMetrics(String entityType, long eventDispatchTime, long rdfTime) {
+  private void recordPostUpdateMetrics(String entityType, long searchIndexTime, long rdfTime) {
     io.micrometer.core.instrument.Tags tags =
         io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "patch");
-    Metrics.timer("entity.patch.event_dispatch", tags)
-        .record(eventDispatchTime, TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.search_index", tags).record(searchIndexTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.rdf_update", tags).record(rdfTime, TimeUnit.MILLISECONDS);
   }
 
@@ -285,16 +284,15 @@ public class PatchOperationMetricsTest {
       String entityType,
       long consolidateTime,
       long updateInternalTime,
-      long storeTime,
-      long postUpdateTime) {
+      long databaseTime,
+      long searchIndexTime) {
     io.micrometer.core.instrument.Tags tags =
         io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "patch");
-    Metrics.timer("entity.updater.consolidate", tags)
-        .record(consolidateTime, TimeUnit.MILLISECONDS);
-    Metrics.timer("entity.updater.update_internal", tags)
+    Metrics.timer("entity.patch.consolidate", tags).record(consolidateTime, TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.update_internal", tags)
         .record(updateInternalTime, TimeUnit.MILLISECONDS);
-    Metrics.timer("entity.updater.store", tags).record(storeTime, TimeUnit.MILLISECONDS);
-    Metrics.timer("entity.updater.post_update", tags).record(postUpdateTime, TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.database", tags).record(databaseTime, TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.search_index", tags).record(searchIndexTime, TimeUnit.MILLISECONDS);
   }
 
   private void simulateWork(long milliseconds) {
