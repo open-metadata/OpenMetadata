@@ -34,6 +34,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
       conditions.add(
           entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
+      conditions.add(
+          entityType.equals(Entity.TEST_CASE_RESOLUTION_STATUS)
+              ? getTestCaseResolutionStatusCondition()
+              : null);
     }
     String conditionFilter = addCondition(conditions);
     String sourceFilter = getExcludeIncludeFields();
@@ -317,5 +321,43 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
     return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+  }
+
+  private String getTestCaseResolutionStatusCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String testCaseResolutionStatusType = getQueryParam("testCaseResolutionStatusType");
+    String assignee = getQueryParam("assignee");
+    String testCaseFqn = getQueryParam("testCaseFqn");
+    String originEntityFQN = getQueryParam("originEntityFQN");
+
+    if (testCaseResolutionStatusType != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCaseResolutionStatusType\": \"%s\"}}",
+              escapeDoubleQuotes(testCaseResolutionStatusType)));
+    }
+
+    if (assignee != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCaseResolutionStatusDetails.assignee.name\": \"%s\"}}",
+              escapeDoubleQuotes(assignee)));
+    }
+
+    if (testCaseFqn != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCase.fullyQualifiedName\": \"%s\"}}",
+              escapeDoubleQuotes(testCaseFqn)));
+    }
+
+    if (originEntityFQN != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCase.entityFQN\": \"%s\"}}", escapeDoubleQuotes(originEntityFQN)));
+    }
+
+    return addCondition(conditions);
   }
 }

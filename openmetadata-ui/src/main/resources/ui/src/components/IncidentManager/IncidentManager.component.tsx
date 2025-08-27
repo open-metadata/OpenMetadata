@@ -46,7 +46,7 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
-  getListTestCaseIncidentStatus,
+  getListTestCaseIncidentStatusFromSearch,
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
@@ -152,7 +152,7 @@ const IncidentManager = ({
     async (params: TestCaseIncidentStatusParams) => {
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
-        const { data, paging } = await getListTestCaseIncidentStatus({
+        const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
           limit: pageSize,
           latest: true,
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
