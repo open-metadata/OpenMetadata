@@ -87,9 +87,9 @@ ALTER TABLE tag_usage ALTER COLUMN tagfqn_lower SET STATISTICS 500;
 ALTER TABLE tag_usage ALTER COLUMN source SET STATISTICS 100;
 
 -- Force immediate statistics update
-VACUUM (ANALYZE) tag_usage;
-ANALYZE classification;
-ANALYZE tag;
+-- VACUUM (ANALYZE) tag_usage;
+-- ANALYZE classification;
+-- ANALYZE tag;
 
 -- ========================================
 -- Fix for classification term count queries
@@ -136,4 +136,4 @@ ON entity_relationship(fromId, toId, relation)
 WHERE deleted = FALSE;
 
 -- Update statistics
-ANALYZE entity_relationship;
+-- ANALYZE entity_relationship;

@@ -172,30 +172,30 @@ database:
   checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
   checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
-  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
+  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-5 minute}
   
   
   # JDBC Driver Properties - Critical for Performance
   # These work across both PostgreSQL and MySQL drivers
   properties:
     # HikariCP connection pool settings
-    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30000}  # 30 seconds
+    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-300000}  # 300 seconds
     idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes  
     maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
-    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute
+    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
-    validationTimeout: ${DB_VALIDATION_TIMEOUT:-5000}  # 5 seconds
+    validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30}
-    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-10}
+    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-300}
+    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-300}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
-    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-30}  # Login timeout in seconds
+    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
     
     # Aurora PostgreSQL specific optimizations
     loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
