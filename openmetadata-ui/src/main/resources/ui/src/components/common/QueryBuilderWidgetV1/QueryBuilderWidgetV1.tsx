@@ -12,6 +12,16 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import {
+  Actions,
+  Builder,
+  Config,
+  ImmutableTree,
+  JsonTree,
+  ListValues,
+  Query,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
+import {
   Alert,
   Button,
   Card,
@@ -22,22 +32,9 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { useEffect } from 'react';
-
-import {
-  Actions,
-  Builder,
-  Config,
-  ImmutableTree,
-  JsonTree,
-  ListValues,
-  Query,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import 'antd/dist/antd.css';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -57,6 +54,7 @@ import {
 import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import './query-builder-widget-v1.less';
 
 const QueryBuilderWidgetV1: FC<{
   fields?: Config['fields'];
@@ -137,7 +135,7 @@ const QueryBuilderWidgetV1: FC<{
         });
         setSearchResults(res.hits.total.value ?? 0);
       } catch {
-        // silent fail
+        setSearchResults(0); // fallback to 0 on error
       } finally {
         setIsCountLoading(false);
       }

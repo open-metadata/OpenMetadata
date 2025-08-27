@@ -25,17 +25,18 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
-import { EntityReferenceFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
-import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
+import {
+  DataContract,
+  SemanticsRule,
+} from '../../../generated/entity/data/dataContract';
+import { getSematicRuleFields } from '../../../utils/DataContract/DataContractUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './contract-semantic-form-tab.less';
-import { EditableSemanticRule } from './ContractSemanticFormTab.interface';
 
 export const ContractSemanticFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
@@ -47,13 +48,13 @@ export const ContractSemanticFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const semanticsFormData: EditableSemanticRule[] = Form.useWatch(
-    'semantics',
-    form
-  );
+  const semanticsFormData: SemanticsRule[] = Form.useWatch('semantics', form);
   const [editingKey, setEditingKey] = useState<number | null>(null);
   const [queryBuilderAddRule, setQueryBuilderAddRule] = useState<Actions>();
-  const addFunctionRef = useRef<((defaultValue?: any) => void) | null>(null);
+  const addFunctionRef = useRef<
+    | ((defaultValue?: SemanticsRule, insertIndex?: number | undefined) => void)
+    | null
+  >(null);
 
   const handleAddQueryBuilderRule = (actionFunctions: Actions) => {
     setQueryBuilderAddRule(actionFunctions);
@@ -102,7 +103,7 @@ export const ContractSemanticFormTab: React.FC<{
             description: '',
             enabled: true,
             rule: '',
-            tree: '',
+            jsonTree: '',
           },
         ],
       });
@@ -112,11 +113,7 @@ export const ContractSemanticFormTab: React.FC<{
 
   // Remove extension field from common config
   const queryBuilderFields = useMemo(() => {
-    const fields = jsonLogicSearchClassBase.getCommonConfig();
-
-    delete fields[EntityReferenceFields.EXTENSION];
-
-    return fields;
+    return getSematicRuleFields();
   }, []);
 
   return (
@@ -254,9 +251,9 @@ export const ContractSemanticFormTab: React.FC<{
                                   label="Rule"
                                   outputType={SearchOutputType.JSONLogic}
                                   tree={
-                                    editFieldData?.tree
+                                    editFieldData?.jsonTree
                                       ? JSON.parse(
-                                          (editFieldData?.tree as unknown as string) ??
+                                          (editFieldData?.jsonTree as unknown as string) ??
                                             '{}'
                                         )
                                       : undefined
@@ -273,7 +270,7 @@ export const ContractSemanticFormTab: React.FC<{
                                             ? {
                                                 ...item,
                                                 rule,
-                                                tree:
+                                                jsonTree:
                                                   tree && JSON.stringify(tree),
                                               }
                                             : item
