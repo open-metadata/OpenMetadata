@@ -261,13 +261,26 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host (deprecated - use 'hosts' for multiple hosts support)
      */
     host?: string;
+    /**
+     * List of Elastic Search hosts with format host:port. If not provided, falls back to 'host'
+     * and 'port'
+     */
+    hosts?: string[];
     /**
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -283,7 +296,7 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port (deprecated - use 'hosts' for multiple hosts support)
      */
     port?: number;
     /**
