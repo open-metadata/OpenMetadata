@@ -92,6 +92,15 @@ ANALYZE classification;
 ANALYZE tag;
 
 -- ========================================
+-- Fix for classification term count queries
+-- ========================================
+
+-- Add index for efficient bulk term count queries
+-- The bulkGetTermCounts query uses: WHERE classificationHash IN (...) AND deleted = FALSE
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_classification_deleted 
+ON tag (classificationHash, deleted);
+
+-- ========================================
 -- Fix for entity_relationship queries
 -- ========================================
 

@@ -183,17 +183,24 @@ database:
     idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes  
     maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
     leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute
+    keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
+    validationTimeout: ${DB_VALIDATION_TIMEOUT:-5000}  # 5 seconds
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    tcpKeepAlive: ${DB_PG_TCP_KEEP_ALIVE:-true}
     socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30}
     connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-10}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
+    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-30}  # Login timeout in seconds
+    
+    # Aurora PostgreSQL specific optimizations
+    loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
+    hostRecheckSeconds: ${DB_PG_HOST_RECHECK_SECONDS:-10}  # How often to check host status
+    targetServerType: ${DB_PG_TARGET_SERVER_TYPE:-primary}  # primary, secondary, any, preferSecondary
     
     # MySQL specific - these are ignored by PostgreSQL driver
     rewriteBatchedStatements: ${DB_MYSQL_REWRITE_BATCHED_STATEMENTS:-true}  # Critical for MySQL batch
