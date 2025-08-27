@@ -155,7 +155,10 @@ public class TestCaseResolutionStatusResource
               description = "Origin entity for which the incident was opened for",
               schema = @Schema(type = "String"))
           @QueryParam("originEntityFQN")
-          String originEntityFQN) {
+          String originEntityFQN,
+      @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain) {
     List<AuthRequest> requests = new ArrayList<>();
     OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
@@ -175,6 +178,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("assignee", assignee);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
+    filter.addQueryParam("domain", domain);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }

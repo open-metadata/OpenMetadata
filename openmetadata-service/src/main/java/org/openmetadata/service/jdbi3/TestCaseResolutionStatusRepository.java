@@ -387,6 +387,19 @@ public class TestCaseResolutionStatusRepository
               """
               + condition;
     }
+    
+    // if domain is present, we need to join with domain tables through test_case
+    if (filter.getQueryParam("domain") != null) {
+      condition =
+          """
+              INNER JOIN test_case tc ON entityFQNHash = tc.fqnHash
+              INNER JOIN entity_relationship er ON tc.id = er.fromId 
+              INNER JOIN domain_entity de ON er.toId = de.id
+              """
+              + condition
+              + " AND de.fullyQualifiedName = :domain AND er.relation = 8";
+    }
+    
     return condition;
   }
 
