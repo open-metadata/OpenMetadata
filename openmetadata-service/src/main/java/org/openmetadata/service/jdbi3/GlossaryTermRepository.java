@@ -737,9 +737,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Check for circular references
     String parentFqn = term.getParent().getFullyQualifiedName();
     String termFqn = term.getFullyQualifiedName();
-    if (parentFqn == null || termFqn == null) {
-      throw new IllegalStateException("Cannot validate hierarchy: FQNs must be present");
-    }
     if (FullyQualifiedName.isParent(parentFqn, termFqn)) {
       throw new IllegalArgumentException(
           String.format(
