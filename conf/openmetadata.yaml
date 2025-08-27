@@ -163,13 +163,52 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
-  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
-  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
-  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
+  
+  # HikariCP Connection Pool Settings - Optimized for Performance
+  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-100}  # Increased from 50 for better concurrency
+  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-20}   # Increased from 10 to reduce connection creation overhead
+  minimumIdle: ${DB_CONNECTION_POOL_MIN_IDLE:-20}  # HikariCP specific minimum idle connections
+  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-20}  # Start with more connections ready
   checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
-  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-true}
+  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
+  
+  
+  # JDBC Driver Properties - Critical for Performance
+  # These work across both PostgreSQL and MySQL drivers
+  properties:
+    # HikariCP connection pool settings
+    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30000}  # 30 seconds
+    idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes  
+    maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
+    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute
+    # PostgreSQL specific - these are ignored by MySQL driver
+    prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
+    preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
+    preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
+    reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
+    defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
+    tcpKeepAlive: ${DB_PG_TCP_KEEP_ALIVE:-true}
+    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30}
+    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-10}
+    assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
+    ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
+    
+    # MySQL specific - these are ignored by PostgreSQL driver
+    rewriteBatchedStatements: ${DB_MYSQL_REWRITE_BATCHED_STATEMENTS:-true}  # Critical for MySQL batch
+    cachePrepStmts: ${DB_MYSQL_CACHE_PREP_STMTS:-true}
+    prepStmtCacheSize: ${DB_MYSQL_PREP_STMT_CACHE_SIZE:-500}
+    prepStmtCacheSqlLimit: ${DB_MYSQL_PREP_STMT_CACHE_SQL_LIMIT:-2048}
+    useServerPrepStmts: ${DB_MYSQL_USE_SERVER_PREP_STMTS:-true}
+    useLocalSessionState: ${DB_MYSQL_USE_LOCAL_SESSION_STATE:-true}
+    useLocalTransactionState: ${DB_MYSQL_USE_LOCAL_TRANSACTION_STATE:-true}
+    elideSetAutoCommits: ${DB_MYSQL_ELIDE_SET_AUTO_COMMITS:-true}
+    maintainTimeStats: ${DB_MYSQL_MAINTAIN_TIME_STATS:-false}
+    cacheResultSetMetadata: ${DB_MYSQL_CACHE_RESULT_SET_METADATA:-true}
+    cacheServerConfiguration: ${DB_MYSQL_CACHE_SERVER_CONFIG:-true}
+    tcpKeepAlive: ${DB_MYSQL_TCP_KEEP_ALIVE:-true}
+    tcpNoDelay: ${DB_MYSQL_TCP_NO_DELAY:-true}
 
 objectStorage:
   enabled: false
