@@ -35,6 +35,7 @@ import {
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { AssetCertification } from '../../../../generated/type/assetCertification';
 import {
   SearchIndexSearchSourceMapping,
   SearchSourceAlias,
@@ -55,6 +56,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -334,6 +336,7 @@ const CuratedAssetsWidget = ({
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
       const title = getEntityName(item);
       const description = get(item, 'description');
+      const certification = get(item, 'certification');
 
       return (
         <Link
@@ -353,11 +356,18 @@ const CuratedAssetsWidget = ({
               )}
             />
             <div className="flex flex-col curated-assets-list-item-content">
-              <Typography.Text
-                className="entity-list-item-title"
-                ellipsis={{ tooltip: true }}>
-                {title}
-              </Typography.Text>
+              <div className="flex items-center gap-1">
+                <Typography.Text
+                  className="entity-list-item-title"
+                  ellipsis={{ tooltip: true }}>
+                  {title}
+                </Typography.Text>
+                {certification && (
+                  <CertificationTag
+                    certification={certification as AssetCertification}
+                  />
+                )}
+              </div>
               {description && (
                 <RichTextEditorPreviewerV1
                   className="max-two-lines entity-list-item-description"

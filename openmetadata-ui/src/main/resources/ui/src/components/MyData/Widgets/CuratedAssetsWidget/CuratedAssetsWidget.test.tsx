@@ -144,6 +144,14 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
+jest.mock('../../../common/CertificationTag/CertificationTag', () =>
+  jest
+    .fn()
+    .mockImplementation(({ certification }) => (
+      <div>{certification?.tagLabel?.tagFQN}</div>
+    ))
+);
+
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
 
@@ -158,6 +166,22 @@ const mockEntityData = [
     },
     description: 'Test description',
     updatedAt: '2023-01-01T00:00:00Z',
+    certification: {
+      expiryDate: 1758805135467,
+      appliedDate: 1756213135467,
+      tagLabel: {
+        tagFQN: 'Certification.Gold',
+        name: 'Gold',
+        labelType: 'Manual',
+        description: 'Gold certified Data Asset.',
+        style: {
+          color: '#FFCE00',
+          iconURL: 'GoldCertification.svg',
+        },
+        source: 'Classification',
+        state: 'Confirmed',
+      },
+    },
   },
 ];
 
@@ -360,6 +384,7 @@ describe('CuratedAssetsWidget', () => {
       expect(
         screen.getByTestId('Curated Assets-Test Entity')
       ).toBeInTheDocument();
+      expect(screen.getAllByText('Certification.Gold')).toHaveLength(1);
     });
   });
 
