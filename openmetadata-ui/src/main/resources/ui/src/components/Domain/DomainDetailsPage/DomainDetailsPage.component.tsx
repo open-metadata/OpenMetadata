@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Button as UntitledButton } from '@openmetadata/ui-core-components/dist/components/base/buttons/button';
 import {
   Button,
   Col,
@@ -742,6 +743,16 @@ const DomainDetailsPage = ({
                 </Dropdown>
               )}
             </ButtonGroup>
+            <UntitledButton
+              className="ml-2"
+              color="primary"
+              size="md"
+              onClick={() => {
+                // eslint-disable-next-line no-console
+                console.log('Untitled UI Button clicked!');
+              }}>
+              {t('label.test-untitled-ui')}
+            </UntitledButton>
           </div>
         </Col>
 

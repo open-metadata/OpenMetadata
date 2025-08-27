@@ -69,6 +69,7 @@ export default defineConfig(({ mode }) => {
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
+      dedupe: ['react', 'react-dom', 'react/jsx-runtime'], // Dedupe shared dependencies in monorepo
     },
 
     css: {
