@@ -16,8 +16,53 @@ class RequestLatencyContextTest {
 
   @BeforeEach
   void setUp() {
+    // Clear any existing registries
     Metrics.globalRegistry.clear();
-    Metrics.addRegistry(new SimpleMeterRegistry());
+    // Clear all registries to avoid conflicts
+    Metrics.globalRegistry.getRegistries().forEach(Metrics.globalRegistry::remove);
+
+    // Add a new simple registry for testing
+    SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    Metrics.addRegistry(registry);
+
+    // Also ensure RequestLatencyContext is clean
+    // This is important because it uses static maps
+    RequestLatencyContext.endRequest(); // Clean up any lingering context
+
+    // Clear the static maps in RequestLatencyContext via reflection if needed
+    try {
+      clearStaticMaps();
+    } catch (Exception e) {
+      // Ignore
+    }
+  }
+
+  private void clearStaticMaps() throws Exception {
+    // Use reflection to clear static maps in RequestLatencyContext
+    java.lang.reflect.Field requestTimersField =
+        RequestLatencyContext.class.getDeclaredField("requestTimers");
+    requestTimersField.setAccessible(true);
+    ((java.util.concurrent.ConcurrentHashMap<?, ?>) requestTimersField.get(null)).clear();
+
+    java.lang.reflect.Field databaseTimersField =
+        RequestLatencyContext.class.getDeclaredField("databaseTimers");
+    databaseTimersField.setAccessible(true);
+    ((java.util.concurrent.ConcurrentHashMap<?, ?>) databaseTimersField.get(null)).clear();
+
+    java.lang.reflect.Field searchTimersField =
+        RequestLatencyContext.class.getDeclaredField("searchTimers");
+    searchTimersField.setAccessible(true);
+    ((java.util.concurrent.ConcurrentHashMap<?, ?>) searchTimersField.get(null)).clear();
+
+    java.lang.reflect.Field internalTimersField =
+        RequestLatencyContext.class.getDeclaredField("internalTimers");
+    internalTimersField.setAccessible(true);
+    ((java.util.concurrent.ConcurrentHashMap<?, ?>) internalTimersField.get(null)).clear();
+
+    java.lang.reflect.Field percentageHoldersField =
+        RequestLatencyContext.class.getDeclaredField("percentageHolders");
+    percentageHoldersField.setAccessible(true);
+    ((java.util.concurrent.ConcurrentHashMap<?, ?>) percentageHoldersField.get(null)).clear();
   }
 
   @Test
@@ -41,9 +86,96 @@ class RequestLatencyContextTest {
 
     String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
     RequestLatencyContext.endRequest();
-    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", normalizedEndpoint);
-    Timer dbTimer = Metrics.timer("request.latency.database", "endpoint", normalizedEndpoint);
-    Timer internalTimer = Metrics.timer("request.latency.internal", "endpoint", normalizedEndpoint);
+
+    // Debug: Log the normalized endpoint and all available metrics
+    LOG.info("Original endpoint: {}, Normalized: {}", endpoint, normalizedEndpoint);
+
+    // List all meters to debug
+    LOG.info("Available meters:");
+    Metrics.globalRegistry
+        .getMeters()
+        .forEach(
+            meter -> {
+              LOG.info(
+                  "  Meter: {} type: {} with tags: {}",
+                  meter.getId().getName(),
+                  meter.getClass().getSimpleName(),
+                  meter.getId().getTags());
+            });
+
+    // Try different approaches to find the timer
+    Timer totalTimer = null;
+    Timer dbTimer = null;
+    Timer internalTimer = null;
+
+    // Method 1: Direct lookup with normalized endpoint
+    totalTimer =
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    // If null, try without tags first to see if timer exists
+    if (totalTimer == null) {
+      Timer anyTotalTimer = Metrics.globalRegistry.find("request.latency.total").timer();
+      if (anyTotalTimer != null) {
+        LOG.info(
+            "Found total timer without tag filter, tags: {}",
+            Metrics.globalRegistry.find("request.latency.total").meters());
+      }
+
+      // Try iterating through all meters to find our timer
+      for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
+        if (meter.getId().getName().equals("request.latency.total")) {
+          String endpointTag = meter.getId().getTag("endpoint");
+          LOG.info("Found request.latency.total with endpoint tag: {}", endpointTag);
+          if (normalizedEndpoint.equals(endpointTag)) {
+            totalTimer = (Timer) meter;
+            LOG.info("Matched timer for endpoint: {}", normalizedEndpoint);
+          }
+        }
+      }
+    }
+
+    // Similar approach for database timer
+    dbTimer =
+        Metrics.globalRegistry
+            .find("request.latency.database")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    if (dbTimer == null) {
+      for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
+        if (meter.getId().getName().equals("request.latency.database")) {
+          String endpointTag = meter.getId().getTag("endpoint");
+          if (normalizedEndpoint.equals(endpointTag)) {
+            dbTimer = (Timer) meter;
+          }
+        }
+      }
+    }
+
+    // Similar approach for internal timer
+    internalTimer =
+        Metrics.globalRegistry
+            .find("request.latency.internal")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    if (internalTimer == null) {
+      for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
+        if (meter.getId().getName().equals("request.latency.internal")) {
+          String endpointTag = meter.getId().getTag("endpoint");
+          if (normalizedEndpoint.equals(endpointTag)) {
+            internalTimer = (Timer) meter;
+          }
+        }
+      }
+    }
+
+    assertNotNull(totalTimer, "Total timer should exist for endpoint: " + normalizedEndpoint);
+    assertNotNull(dbTimer, "DB timer should exist for endpoint: " + normalizedEndpoint);
+    assertNotNull(internalTimer, "Internal timer should exist for endpoint: " + normalizedEndpoint);
 
     assertEquals(1, totalTimer.count(), "Should have recorded 1 request");
     assertEquals(1, dbTimer.count(), "Should have recorded 1 request with database operations");
@@ -198,10 +330,217 @@ class RequestLatencyContextTest {
     RequestLatencyContext.endRequest();
   }
 
+  @Test
+  void testPatchOperationWithDetailedBreakdown() {
+    String endpoint = "/api/v1/tables/{id}";
+    String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
+
+    // Start PATCH request tracking
+    RequestLatencyContext.startRequest(endpoint);
+
+    // Simulate initial processing
+    simulateWork(20);
+
+    // Database operation for fetching entity
+    Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
+    simulateWork(50);
+    RequestLatencyContext.endDatabaseOperation(dbSample);
+
+    // Internal processing (patch apply, validation)
+    simulateWork(100);
+
+    // Database operation for storing update
+    dbSample = RequestLatencyContext.startDatabaseOperation();
+    simulateWork(80);
+    RequestLatencyContext.endDatabaseOperation(dbSample);
+
+    // Search index update
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    simulateWork(200);
+    RequestLatencyContext.endSearchOperation(searchSample);
+
+    // Final internal processing
+    simulateWork(30);
+
+    RequestLatencyContext.endRequest();
+
+    // Verify metrics
+    Timer totalTimer =
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+    Timer dbTimer =
+        Metrics.globalRegistry
+            .find("request.latency.database")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+    Timer searchTimer =
+        Metrics.globalRegistry
+            .find("request.latency.search")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+    Timer internalTimer =
+        Metrics.globalRegistry
+            .find("request.latency.internal")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    assertNotNull(totalTimer, "Total timer should exist");
+    assertNotNull(dbTimer, "DB timer should exist");
+    assertNotNull(searchTimer, "Search timer should exist");
+    assertNotNull(internalTimer, "Internal timer should exist");
+
+    assertEquals(1, totalTimer.count(), "Should have 1 request");
+    assertEquals(1, dbTimer.count(), "Should have database operations");
+    assertEquals(1, searchTimer.count(), "Should have search operations");
+    assertEquals(1, internalTimer.count(), "Should have internal processing");
+
+    double totalMs = totalTimer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS);
+    double dbMs = dbTimer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS);
+    double searchMs = searchTimer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS);
+    double internalMs = internalTimer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS);
+
+    LOG.info("PATCH operation breakdown:");
+    LOG.info("  Total time: {}ms", String.format("%.2f", totalMs));
+    LOG.info("  Database time: {}ms (2 operations)", String.format("%.2f", dbMs));
+    LOG.info("  Search time: {}ms", String.format("%.2f", searchMs));
+    LOG.info("  Internal time: {}ms", String.format("%.2f", internalMs));
+
+    // Verify expected ranges
+    assertTrue(totalMs >= 450, "Total time should be at least 450ms");
+    assertTrue(dbMs >= 120, "Database time should be at least 120ms");
+    assertTrue(searchMs >= 180, "Search time should be at least 180ms");
+    assertTrue(internalMs >= 140, "Internal time should be at least 140ms");
+
+    // Check percentage gauges
+    Gauge dbPercentage =
+        Metrics.globalRegistry
+            .find("request.percentage.database")
+            .tag("endpoint", normalizedEndpoint)
+            .gauge();
+    Gauge searchPercentage =
+        Metrics.globalRegistry
+            .find("request.percentage.search")
+            .tag("endpoint", normalizedEndpoint)
+            .gauge();
+
+    assertNotNull(dbPercentage);
+    assertNotNull(searchPercentage);
+
+    LOG.info("  Database: {}%", String.format("%.1f", dbPercentage.value()));
+    LOG.info("  Search: {}%", String.format("%.1f", searchPercentage.value()));
+
+    // Search should be the dominant component in this test (>35%)
+    assertTrue(
+        searchPercentage.value() > 35,
+        "Search should be >35% of request time, got: " + searchPercentage.value());
+  }
+
+  @Test
+  void testMetricsRecordedEvenOnError() {
+    String endpoint = "/api/v1/tables/{id}";
+
+    try {
+      RequestLatencyContext.startRequest(endpoint);
+      simulateWork(50);
+
+      Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
+      simulateWork(100);
+      RequestLatencyContext.endDatabaseOperation(dbSample);
+
+      throw new RuntimeException("Simulated error");
+    } catch (RuntimeException e) {
+      // Error occurred, but metrics should still be recorded
+    } finally {
+      RequestLatencyContext.endRequest();
+    }
+
+    String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
+    Timer totalTimer =
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+    Timer dbTimer =
+        Metrics.globalRegistry
+            .find("request.latency.database")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    assertNotNull(totalTimer, "Total timer should exist even after error");
+    assertNotNull(dbTimer, "DB timer should exist even after error");
+    assertEquals(1, totalTimer.count(), "Should have recorded 1 request");
+    assertEquals(1, dbTimer.count(), "Should have recorded DB operation");
+  }
+
+  @Test
+  void testNullRequestContext() {
+    // Call endRequest without starting - should not throw
+    assertDoesNotThrow(() -> RequestLatencyContext.endRequest());
+
+    Timer.Sample sample = RequestLatencyContext.startDatabaseOperation();
+    assertNull(sample, "Should return null when no context");
+
+    assertDoesNotThrow(() -> RequestLatencyContext.endDatabaseOperation(null));
+
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    assertNull(searchSample, "Should return null when no context");
+
+    assertDoesNotThrow(() -> RequestLatencyContext.endSearchOperation(null));
+  }
+
+  @Test
+  void testZeroTimeOperations() {
+    String endpoint = "/api/v1/tables/quick";
+
+    RequestLatencyContext.startRequest(endpoint);
+
+    Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
+    RequestLatencyContext.endDatabaseOperation(dbSample);
+
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    RequestLatencyContext.endSearchOperation(searchSample);
+
+    RequestLatencyContext.endRequest();
+
+    String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
+    Timer dbTimer =
+        Metrics.globalRegistry
+            .find("request.latency.database")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+    Timer searchTimer =
+        Metrics.globalRegistry
+            .find("request.latency.search")
+            .tag("endpoint", normalizedEndpoint)
+            .timer();
+
+    assertNotNull(dbTimer, "DB timer should exist even with zero time");
+    assertNotNull(searchTimer, "Search timer should exist even with zero time");
+  }
+
+  @Test
+  void testEndpointNormalizationEdgeCases() {
+    assertEquals("/unknown", MetricUtils.normalizeUri(null));
+    assertEquals("/unknown", MetricUtils.normalizeUri("")); // Empty string returns /unknown
+    assertEquals("/", MetricUtils.normalizeUri("/"));
+    assertEquals(
+        "/api/v1/tables/{name}", // UUIDs are normalized to {name} based on the current
+        // implementation
+        MetricUtils.normalizeUri("/api/v1/tables/123e4567-e89b-12d3-a456-426614174000"));
+    assertEquals("/api/v1/tables/{name}", MetricUtils.normalizeUri("/api/v1/tables/test%20table"));
+    assertEquals(
+        "/api/v1/tables/{name}", // Numeric IDs are also normalized to {name}
+        MetricUtils.normalizeUri("/api/v1/tables/123456"));
+    assertEquals("/api/v1/tables", MetricUtils.normalizeUri("/api/v1/tables?query=test&limit=10"));
+  }
+
   private void printDetailedMetrics(String endpoint) {
     LOG.info("\n=== Detailed Metrics for {} ===", endpoint);
 
-    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", endpoint);
+    Timer totalTimer =
+        Metrics.globalRegistry.find("request.latency.total").tag("endpoint", endpoint).timer();
     LOG.info("Total Request:");
     LOG.info(
         "  Mean: {}ms",

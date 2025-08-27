@@ -1,6 +1,5 @@
 package org.openmetadata.service.monitoring;
 
-import static org.openmetadata.service.monitoring.MetricUtils.LATENCY_SLA_BUCKETS;
 import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
 
 import io.micrometer.core.instrument.Gauge;
@@ -52,14 +51,15 @@ public class RequestLatencyContext {
     RequestContext context = new RequestContext(endpoint);
     requestContext.set(context);
     String normalizedEndpoint = normalizeUri(endpoint);
-    requestTimers.computeIfAbsent(
-        normalizedEndpoint,
-        k ->
-            Timer.builder("request.latency.total")
-                .tag(ENDPOINT, normalizedEndpoint)
-                .description("Total request latency")
-                .sla(LATENCY_SLA_BUCKETS)
-                .register(Metrics.globalRegistry));
+    Timer timer =
+        requestTimers.computeIfAbsent(
+            normalizedEndpoint,
+            k ->
+                Timer.builder("request.latency.total")
+                    .tag(ENDPOINT, normalizedEndpoint)
+                    .description("Total request latency")
+                    .register(Metrics.globalRegistry));
+    LOG.debug("Created/retrieved timer for endpoint: {}, timer: {}", normalizedEndpoint, timer);
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos = System.nanoTime();
   }
@@ -138,6 +138,8 @@ public class RequestLatencyContext {
         Timer requestTimer = requestTimers.get(normalizedEndpoint);
         if (requestTimer != null) {
           context.totalTime = context.requestTimerSample.stop(requestTimer);
+        } else {
+          LOG.warn("Request timer not found for endpoint: {}", normalizedEndpoint);
         }
       }
 
@@ -154,9 +156,10 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.database")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total database latency per request")
-                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
-      dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.dbTime > 0) {
+        dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record total search time for THIS request
       Timer searchTimer =
@@ -166,9 +169,10 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.search")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total search latency per request")
-                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
-      searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.searchTime > 0) {
+        searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record internal processing time for THIS request
       Timer internalTimer =
@@ -178,9 +182,10 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.internal")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Internal processing latency per request")
-                      .sla(LATENCY_SLA_BUCKETS)
                       .register(Metrics.globalRegistry));
-      internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.internalTime > 0) {
+        internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record operation counts as distribution summaries to get avg/max/percentiles
       if (context.dbOperationCount > 0) {

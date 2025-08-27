@@ -20,11 +20,19 @@
   },
   "properties": {
     "host": {
-      "description": "Elastic Search Host",
+      "description": "Elastic Search Host (deprecated - use 'hosts' for multiple hosts support)",
       "type": "string"
     },
+    "hosts": {
+      "description": "List of Elastic Search hosts with format host:port. If not provided, falls back to 'host' and 'port'",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^:]+:[0-9]+$"
+      }
+    },
     "port": {
-      "description": "Elastic Search port",
+      "description": "Elastic Search port (deprecated - use 'hosts' for multiple hosts support)",
       "type": "integer"
     },
     "scheme": {
@@ -60,6 +68,16 @@
     "keepAliveTimeoutSecs": {
       "description": "Keep Alive Timeout in Seconds",
       "type": "integer"
+    },
+    "maxConnTotal": {
+      "description": "Maximum total connections in the connection pool across all hosts",
+      "type": "integer",
+      "default": 30
+    },
+    "maxConnPerRoute": {
+      "description": "Maximum connections per host/route in the connection pool",
+      "type": "integer",
+      "default": 10
     },
     "batchSize": {
       "description": "Batch Size for Requests",
@@ -141,6 +159,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": ["scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

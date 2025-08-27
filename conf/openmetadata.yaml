@@ -27,19 +27,69 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
-      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
+      
+      # Jetty Acceptor and Selector threads for high concurrency
+      acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
+      selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
+      
+      # Connection settings - relaxed for Docker/local development
+      acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-256}  # OS-level connection backlog
+      idleTimeout: ${SERVER_IDLE_TIMEOUT:-60 seconds}  # Close idle connections (increased from 30s)
+      
+      # Buffer sizes for better throughput
+      outputBufferSize: ${SERVER_OUTPUT_BUFFER_SIZE:-32KiB}
+      inputBufferSize: ${SERVER_INPUT_BUFFER_SIZE:-8KiB}
+      maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-8KiB}
+      maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
+      headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}  # Cache parsed headers (in bytes)
+      
+      # Performance settings
+      useServerHeader: false  # Don't send server version header
+      useDateHeader: true
+      useForwardedHeaders: ${SERVER_USE_FORWARDED_HEADERS:-false}  # Enable if behind proxy
+      
+      # Data rate limits (prevent slow loris attacks)
+      minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}  # 0B = disabled
+      minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}  # 0B = disabled
+      
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+      acceptorThreads: 1  # Admin endpoint needs minimal resources
+      selectorThreads: 1
+      
+  # Enable response compression
   gzip:
+    enabled: true
     syncFlush: true
+    minimumEntitySize: 256B  # Only compress responses > 256 bytes
+    bufferSize: 8KiB
+    deflateCompressionLevel: 6  # Balance between CPU and compression ratio
+    includedMethods: [GET, POST, PUT, PATCH]
+    compressedMimeTypes:
+      - application/json
+      - application/xml
+      - text/html
+      - text/plain
+      - text/css
+      - text/javascript
+      - application/javascript
 
-  maxThreads: ${SERVER_MAX_THREADS:-50}
-  minThreads: ${SERVER_MIN_THREADS:-10}
-  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+  # Thread pool configuration for request processing
+  maxThreads: ${SERVER_MAX_THREADS:-200}  # Increased for 1000 concurrent users
+  minThreads: ${SERVER_MIN_THREADS:-50}   # Keep more threads ready
+  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-60 seconds}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}  # Java 21 virtual threads
+  
+  # Request queue configuration
+  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-2048}  # Queue for burst handling
+  
+  # Request/Response logging (disable in production for performance)
+  requestLog:
+    appenders:
+      - type: console
+        threshold: ${REQUEST_LOG_LEVEL:-ERROR}  # Only log errors by default
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -345,17 +395,25 @@ jwtTokenConfiguration:
 
 elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"}
+  # Legacy single host configuration (deprecated - use 'hosts' for multiple hosts support)
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
+  # Multi-host configuration - list of host:port entries
+  # This takes precedence over host/port if provided
+  # For environment variable, use JSON array: ELASTICSEARCH_HOSTS='["host1:9200","host2:9200"]'
+  hosts: ${ELASTICSEARCH_HOSTS:-["localhost:9200"]}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
   password: ${ELASTICSEARCH_PASSWORD:-""}
   clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
-  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
-  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
+  # Connection pool settings for better load balancing and performance
+  maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-30}  # Total connections across all hosts
+  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-10}  # Max connections per host
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
