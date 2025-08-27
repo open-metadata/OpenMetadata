@@ -138,12 +138,13 @@ def _get_schema_column_info(
     """
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
-    result = connection.execute(
-        REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
-    )
-    for col in result:
-        key = RelationKey(col.table_name, col.schema, connection)
-        all_columns[key].append(col)
+    with connection.begin() as trans:
+        result = trans.execute(
+            REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+        )
+        for col in result:
+            key = RelationKey(col.table_name, col.schema, connection)
+            all_columns[key].append(col)
     return dict(all_columns)
 
 
@@ -387,17 +388,18 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
         "AND relname = '{table}'".format(table=table_name) if table_name else ""
     )
 
-    result = connection.execute(
-        sa.text(
-            REDSHIFT_GET_ALL_RELATIONS.format(
-                schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
+    relations = {}
+    with connection.begin() as trans:
+        result = trans.execute(
+            sa.text(
+                REDSHIFT_GET_ALL_RELATIONS.format(
+                    schema_clause=schema_clause, table_clause=table_clause, limit_clause=""
+                )
             )
         )
-    )
-    relations = {}
-    for rel in result:
-        key = RelationKey(rel.relname, rel.schema, connection)
-        relations[key] = rel
+        for rel in result:
+            key = RelationKey(rel.relname, rel.schema, connection)
+            relations[key] = rel
     return relations
 
 
