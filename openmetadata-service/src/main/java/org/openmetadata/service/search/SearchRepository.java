@@ -55,6 +55,9 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -114,6 +117,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -463,6 +467,11 @@ public class SearchRepository {
 
     String entityType = entity.getEntityReference().getType();
     String entityId = entity.getId().toString();
+
+    // Start timing search operation
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    long startTime = System.currentTimeMillis();
+
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       String scriptTxt = DEFAULT_UPDATE_SCRIPT;
@@ -487,11 +496,31 @@ public class SearchRepository {
         doc = elasticSearchIndex.buildSearchIndexDoc();
       }
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
+      long updateTime = System.currentTimeMillis() - startTime;
+
+      // Time propagation operations
+      startTime = System.currentTimeMillis();
       propagateInheritedFieldsToChildren(
           entityType, entityId, changeDescription, indexMapping, entity);
       propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
       propagateCertificationTags(entityType, entity, changeDescription);
       propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+      long propagateTime = System.currentTimeMillis() - startTime;
+
+      LOG.info(
+          "Search index update timing - entity: {}, type: {}, update: {}ms, propagate: {}ms, total: {}ms",
+          entityId,
+          entityType,
+          updateTime,
+          propagateTime,
+          updateTime + propagateTime);
+
+      // Record search index metrics
+      Tags tags = Tags.of("entity_type", entityType, "operation", "update");
+      Metrics.timer("search.index.update", tags)
+          .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      Metrics.timer("search.index.propagate", tags)
+          .record(propagateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
     } catch (Exception ie) {
       LOG.error(
           "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -500,6 +529,11 @@ public class SearchRepository {
           ie.getMessage(),
           ie.getCause(),
           ExceptionUtils.getStackTrace(ie));
+    } finally {
+      // End search timing
+      if (searchSample != null) {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
     }
   }
 

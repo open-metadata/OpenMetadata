@@ -119,9 +119,29 @@ migrationConfiguration:
   nativePath: "../bootstrap/sql/migrations/native"
   extensionPath: ""
 
-#elasticsearch:
-#  host: localhost
-#  port: 0
+elasticsearch:
+  searchType: "elasticsearch"
+  # Single host configuration for test
+  host: localhost
+  port: 9200
+  # Multi-host configuration (optional for testing)
+  hosts: []
+  scheme: http
+  username: ""
+  password: ""
+  clusterAlias: ""
+  truststorePath: ""
+  truststorePassword: ""
+  connectionTimeoutSecs: 5
+  socketTimeoutSecs: 60
+  keepAliveTimeoutSecs: 600
+  # Connection pool settings
+  maxConnTotal: 30
+  maxConnPerRoute: 10
+  batchSize: 100
+  payLoadSize: 10485760
+  searchIndexMappingLanguage: EN
+  searchIndexFactoryClassName: org.openmetadata.service.search.SearchIndexFactory
 
 secretsManagerConfiguration:
   secretsManager: db
