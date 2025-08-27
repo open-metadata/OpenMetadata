@@ -21,7 +21,6 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.db.ManagedDataSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 import lombok.Getter;
@@ -103,52 +102,54 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     config.setPoolName(poolName);
     config.setMinimumIdle(minimumIdle);
     config.setMaximumPoolSize(getMaxSize());
-    
+
     // Read timeout configurations from either direct fields or properties
     Map<String, String> properties = getProperties();
-    
+
     // Connection timeout - default 30 seconds
     Long connTimeout = connectionTimeout;
     if (connTimeout == null && properties != null && properties.containsKey("connectionTimeout")) {
       connTimeout = Long.parseLong(properties.get("connectionTimeout"));
     }
     config.setConnectionTimeout(connTimeout != null ? connTimeout : 30000L);
-    
+
     // Idle timeout - default 10 minutes
     Long idleTime = idleTimeout;
     if (idleTime == null && properties != null && properties.containsKey("idleTimeout")) {
       idleTime = Long.parseLong(properties.get("idleTimeout"));
     }
     config.setIdleTimeout(idleTime != null ? idleTime : 600000L);
-    
+
     // Max lifetime - default 30 minutes
     Long maxLife = maxLifetime;
     if (maxLife == null && properties != null && properties.containsKey("maxLifetime")) {
       maxLife = Long.parseLong(properties.get("maxLifetime"));
     }
     config.setMaxLifetime(maxLife != null ? maxLife : 1800000L);
-    
+
     // Keepalive time - default 0 (disabled)
     Long keepAlive = keepaliveTime;
     if (keepAlive == null && properties != null && properties.containsKey("keepaliveTime")) {
       keepAlive = Long.parseLong(properties.get("keepaliveTime"));
     }
     config.setKeepaliveTime(keepAlive != null ? keepAlive : 0L);
-    
+
     // Validation timeout - default 5 seconds
     Long validTimeout = validationTimeout;
     if (validTimeout == null && properties != null && properties.containsKey("validationTimeout")) {
       validTimeout = Long.parseLong(properties.get("validationTimeout"));
     }
     config.setValidationTimeout(validTimeout != null ? validTimeout : 5000L);
-    
+
     // Leak detection threshold - default 0 (disabled)
     Long leakThreshold = leakDetectionThreshold;
-    if (leakThreshold == null && properties != null && properties.containsKey("leakDetectionThreshold")) {
+    if (leakThreshold == null
+        && properties != null
+        && properties.containsKey("leakDetectionThreshold")) {
       leakThreshold = Long.parseLong(properties.get("leakDetectionThreshold"));
     }
     config.setLeakDetectionThreshold(leakThreshold != null ? leakThreshold : 0L);
-    
+
     config.setAutoCommit(autoCommit);
     config.setReadOnly(readOnly);
     config.setRegisterMbeans(registerMbeans);
@@ -203,7 +204,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("socketTimeout", "0");
     props.putIfAbsent("tcpKeepAlive", "true");
     props.putIfAbsent("ApplicationName", "OpenMetadata");
-    
+
     // Aurora-specific optimizations
     props.putIfAbsent("loadBalanceHosts", "false");
     props.putIfAbsent("hostRecheckSeconds", "10");
