@@ -116,18 +116,18 @@ DROP INDEX IF EXISTS idx_entity_relationship_to_composite;    -- May exist from 
 -- Using partial indexes (WHERE deleted = FALSE) for even better performance
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_from_deleted
 ON entity_relationship(fromId, fromEntity, relation)
-INCLUDE (toId, toEntity, json)
+INCLUDE (toId, toEntity, relation)
 WHERE deleted = FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_to_deleted
 ON entity_relationship(toId, toEntity, relation)
-INCLUDE (fromId, fromEntity, json)
+INCLUDE (fromId, fromEntity, relation)
 WHERE deleted = FALSE;
 
 -- Also add indexes for the specific queries that include fromEntity/toEntity filters
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_from_typed
 ON entity_relationship(toId, toEntity, relation, fromEntity)
-INCLUDE (fromId, json)
+INCLUDE (fromEntity, toEntity)
 WHERE deleted = FALSE;
 
 -- Index for bidirectional lookups (used in UNION queries)
