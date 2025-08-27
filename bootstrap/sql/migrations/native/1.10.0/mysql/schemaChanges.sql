@@ -62,14 +62,14 @@ ON tag_usage(targetFQNHash);
 -- ========================================
 
 -- Optimize table for better performance
-OPTIMIZE TABLE tag_usage;
-OPTIMIZE TABLE classification;
-OPTIMIZE TABLE tag;
+-- OPTIMIZE TABLE tag_usage;
+-- OPTIMIZE TABLE classification;
+-- OPTIMIZE TABLE tag;
 
 -- Update table statistics
-ANALYZE TABLE tag_usage;
-ANALYZE TABLE classification;
-ANALYZE TABLE tag;
+-- ANALYZE TABLE tag_usage;
+-- ANALYZE TABLE classification;
+-- ANALYZE TABLE tag;
 
 -- ========================================
 -- Fix for classification term count queries
@@ -106,4 +106,4 @@ CREATE INDEX idx_entity_relationship_bidirectional
 ON entity_relationship(fromId, toId, relation, deleted);
 
 -- Update statistics
-ANALYZE TABLE entity_relationship;
+-- ANALYZE TABLE entity_relationship;
