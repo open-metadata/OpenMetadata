@@ -57,6 +57,7 @@ export class MlModelClass extends EntityClass {
     service: this.service.name,
     algorithm: 'Time Series',
     mlFeatures: this.children,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

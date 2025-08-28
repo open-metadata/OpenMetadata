@@ -56,6 +56,7 @@ export class DashboardDataModelClass extends EntityClass {
   entity = {
     name: this.dashboardDataModelName,
     displayName: this.dashboardDataModelName,
+    description: 'description',
     service: this.service.name,
     columns: this.children,
     dataModelType: 'SupersetDataModel',

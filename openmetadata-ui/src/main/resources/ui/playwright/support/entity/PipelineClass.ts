@@ -49,6 +49,7 @@ export class PipelineClass extends EntityClass {
     displayName: this.pipelineName,
     service: this.service.name,
     tasks: this.children,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

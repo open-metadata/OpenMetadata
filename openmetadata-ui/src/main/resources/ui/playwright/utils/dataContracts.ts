@@ -40,6 +40,8 @@ export const saveAndTriggerDataContractValidation = async (
 
   await page.reload();
 
+  await page.waitForLoadState('networkidle');
+
   return responseData;
 };
 
