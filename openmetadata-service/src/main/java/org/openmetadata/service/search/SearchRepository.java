@@ -495,21 +495,7 @@ public class SearchRepository {
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
       }
-
-      // Use async update for better performance
-      if (searchClient instanceof org.openmetadata.service.search.opensearch.OpenSearchClient) {
-        ((org.openmetadata.service.search.opensearch.OpenSearchClient) searchClient)
-            .updateEntityAsync(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      } else if (searchClient
-          instanceof org.openmetadata.service.search.elasticsearch.ElasticSearchClient) {
-        ((org.openmetadata.service.search.elasticsearch.ElasticSearchClient) searchClient)
-            .updateEntityAsync(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      } else {
-        // Fallback to sync for other implementations
-        searchClient.updateEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      }
-
+      searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
       long updateTime = System.currentTimeMillis() - startTime;
 
       // Only propagate if fields that affect children have changed
@@ -523,7 +509,7 @@ public class SearchRepository {
         propagateCertificationTags(entityType, entity, changeDescription);
         propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
         propagateTime = System.currentTimeMillis() - startTime;
-
+        
         LOG.info(
             "Search index update with propagation - entity: {}, type: {}, update: {}ms, propagate: {}ms, total: {}ms",
             entityId,
@@ -543,7 +529,7 @@ public class SearchRepository {
       Tags tags = Tags.of("entity_type", entityType, "operation", "update");
       Metrics.timer("search.index.update", tags)
           .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
-
+      
       if (propagateTime > 0) {
         Metrics.timer("search.index.propagate", tags)
             .record(propagateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -595,72 +581,63 @@ public class SearchRepository {
     }
 
     // Check if any inheritable fields have changed (owners, domains, etc.)
-    boolean hasInheritableChanges =
-        changeDescription.getFieldsAdded().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()))
-            || changeDescription.getFieldsUpdated().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()))
-            || changeDescription.getFieldsDeleted().stream()
-                .anyMatch(field -> inheritableFields.contains(field.getName()));
-
+    boolean hasInheritableChanges = changeDescription.getFieldsAdded().stream()
+        .anyMatch(field -> inheritableFields.contains(field.getName()))
+        || changeDescription.getFieldsUpdated().stream()
+        .anyMatch(field -> inheritableFields.contains(field.getName()))
+        || changeDescription.getFieldsDeleted().stream()
+        .anyMatch(field -> inheritableFields.contains(field.getName()));
+    
     // Tags need special handling - they only propagate in specific scenarios:
     // 1. From glossary terms to entities
     // 2. When a tag entity itself is updated (to all entities using it)
     // 3. NOT from table to columns
     boolean hasTagChanges = false;
-    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
-        || entityType.equalsIgnoreCase(Entity.TAG)) {
-      hasTagChanges =
-          changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()))
-              || changeDescription.getFieldsUpdated().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()))
-              || changeDescription.getFieldsDeleted().stream()
-                  .anyMatch(field -> propagateFields.contains(field.getName()));
+    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM) || entityType.equalsIgnoreCase(Entity.TAG)) {
+      hasTagChanges = changeDescription.getFieldsAdded().stream()
+          .anyMatch(field -> propagateFields.contains(field.getName()))
+          || changeDescription.getFieldsUpdated().stream()
+          .anyMatch(field -> propagateFields.contains(field.getName()))
+          || changeDescription.getFieldsDeleted().stream()
+          .anyMatch(field -> propagateFields.contains(field.getName()));
     }
 
     // Check for glossary term specific changes
     if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      hasInheritableChanges =
-          hasInheritableChanges
-              || hasTagChanges
-              || changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS))
-              || changeDescription.getFieldsDeleted().stream()
-                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS));
+      hasInheritableChanges = hasInheritableChanges || hasTagChanges || changeDescription.getFieldsAdded().stream()
+          .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS))
+          || changeDescription.getFieldsDeleted().stream()
+          .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS));
     }
 
     // Check for certification tag changes
     if (entityType.equalsIgnoreCase(Entity.TAG)) {
       Tag tag = (Tag) entity;
       if (tag != null && tag.getCertification() != null) {
-        hasInheritableChanges =
-            hasInheritableChanges
-                || changeDescription.getFieldsUpdated().stream()
-                    .anyMatch(field -> field.getName().equals("certification"));
+        hasInheritableChanges = hasInheritableChanges || changeDescription.getFieldsUpdated().stream()
+            .anyMatch(field -> field.getName().equals("certification"));
       }
     }
 
     // Check for relationship changes that need propagation
     if (changeDescription.getFieldsAdded().stream()
-            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))
+        .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))
         || changeDescription.getFieldsUpdated().stream()
-            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))) {
+        .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))) {
       hasInheritableChanges = true;
     }
-
+    
     // Page entities have special FQN propagation when parent changes
     if (entityType.equalsIgnoreCase(Entity.PAGE)) {
-      boolean parentChanged =
-          changeDescription.getFieldsAdded().stream()
-                  .anyMatch(field -> field.getName().contains("parent"))
-              || changeDescription.getFieldsUpdated().stream()
-                  .anyMatch(field -> field.getName().contains("parent"));
+      boolean parentChanged = changeDescription.getFieldsAdded().stream()
+          .anyMatch(field -> field.getName().contains("parent"))
+          || changeDescription.getFieldsUpdated().stream()
+          .anyMatch(field -> field.getName().contains("parent"));
       hasInheritableChanges = hasInheritableChanges || parentChanged;
     }
 
     boolean propagationRequired = hasInheritableChanges || hasTagChanges;
-
+    
     if (propagationRequired) {
       LOG.debug(
           "Propagation required for entity {} of type {} - changes detected in inheritable fields or special propagation needed",

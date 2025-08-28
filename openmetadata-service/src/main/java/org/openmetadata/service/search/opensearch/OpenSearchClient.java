@@ -152,7 +152,6 @@ import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.action.update.UpdateResponse;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.ResponseException;
@@ -1680,17 +1679,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     if (updateRequest != null) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-
-      // Time the actual HTTP request to OpenSearch
-      long startHttp = System.currentTimeMillis();
-      UpdateResponse response = client.update(updateRequest, RequestOptions.DEFAULT);
-      long httpTime = System.currentTimeMillis() - startHttp;
-
-      LOG.debug(
-          "OpenSearch HTTP update - Doc ID: {}, HTTP time: {}ms, Result: {}",
-          updateRequest.id(),
-          httpTime,
-          response.getResult());
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1889,19 +1878,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
       updateOpenSearch(updateRequest);
-    }
-  }
-
-  public void updateEntityAsync(
-      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateOpenSearchAsync(updateRequest);
     }
   }
 
@@ -2122,36 +2098,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  public void updateOpenSearchAsync(UpdateRequest updateRequest) {
-    if (updateRequest != null && isClientAvailable) {
-      // Use WAIT_UNTIL for async updates - waits for next refresh but doesn't force immediate
-      // refresh
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      LOG.debug("Sending async request to OpenSearch: {}", updateRequest);
-
-      // The REST client has built-in retry with exponential backoff (default 3 retries, 30s
-      // timeout)
-      client.updateAsync(
-          updateRequest,
-          RequestOptions.DEFAULT,
-          new ActionListener<UpdateResponse>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug(
-                  "Async update successful for doc: {}, result: {}",
-                  updateResponse.getId(),
-                  updateResponse.getResult());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              // Log the error - the built-in retry already attempted 3 times before failing
-              LOG.error("Async update failed for doc: {} after retries", updateRequest.id(), e);
-            }
-          });
     }
   }
 
