@@ -83,11 +83,18 @@ test.describe('Curated Assets', () => {
 
     await page.locator('[data-testid="title-input"]').fill('Popular Charts');
 
+    // Open asset type TreeSelect
     await page.locator('[data-testid="asset-type-select"]').click();
 
-    await page.locator('[data-testid="chart-option"]').click();
+    // Select two asset types: Chart and Table
+    await page
+      .locator('.ant-select-tree .ant-select-tree-title:has-text("Chart")')
+      .click();
+    await page
+      .locator('.ant-select-tree .ant-select-tree-title:has-text("Table")')
+      .click();
 
-    // Close the multi-select dropdown after selecting the option
+    // Close the dropdown to proceed
     await page.keyboard.press('Escape');
 
     await expect(page.locator('.ant-select-dropdown')).toBeHidden();
@@ -135,7 +142,7 @@ test.describe('Curated Assets', () => {
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
 
     const queryResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=chart&*'
+      '/api/v1/search/query?q=&index=chart,table&*'
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -158,7 +165,7 @@ test.describe('Curated Assets', () => {
 
       return (
         url.includes('/api/v1/search/query') &&
-        url.includes('index=chart') &&
+        url.includes('index=chart,table') &&
         response.status() === 200
       );
     });

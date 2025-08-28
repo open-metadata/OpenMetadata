@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Select, Skeleton } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { Col, Form, Skeleton, TreeSelect } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,13 +47,42 @@ export const SelectAssetTypeField = ({
   const selectedResource: Array<string> =
     Form.useWatch<Array<string>>('resources', form) || [];
 
-  const resourcesOptions: DefaultOptionType[] = useMemo(() => {
-    return getSourceOptionsFromResourceList(
+  const resourcesOptions = useMemo(() => {
+    const allOptions = getSourceOptionsFromResourceList(
       CURATED_ASSETS_LIST,
-      true,
+      false,
       selectedResource,
       false
     );
+
+    // Create tree structure with "All" as parent
+    const allOption = allOptions.find(
+      (option) => option.value === EntityType.ALL
+    );
+    const individualOptions = allOptions.filter(
+      (option) => option.value !== EntityType.ALL
+    );
+
+    if (allOption) {
+      return [
+        {
+          title: allOption.label,
+          value: allOption.value,
+          key: allOption.value,
+          children: individualOptions.map((option) => ({
+            title: option.label,
+            value: option.value,
+            key: option.value,
+          })),
+        },
+      ];
+    }
+
+    return allOptions.map((option) => ({
+      title: option.label,
+      value: option.value,
+      key: option.value,
+    }));
   }, [selectedResource]);
 
   const handleEntityCountChange = useCallback(async () => {
@@ -95,32 +123,9 @@ export const SelectAssetTypeField = ({
         return;
       }
 
-      const allKey = EntityType.ALL;
-      const includesAll = Array.isArray(val) && val.includes(allKey);
-      const wasAllSelected = selectedResource.includes(allKey);
-
-      // If user clicked All (present in the new value)
-      if (includesAll && !wasAllSelected) {
-        // Select everything
-        form.setFieldValue('resources', CURATED_ASSETS_LIST);
-
-        return;
-      }
-
-      // If All was previously selected and is now deselected, clear all
-      if (wasAllSelected && !includesAll) {
-        form.setFieldValue('resources', []);
-
-        return;
-      }
-
-      // Otherwise, ensure All is not part of the selection when any individual toggles
-      form.setFieldValue(
-        'resources',
-        val.filter((k) => k !== allKey)
-      );
+      form.setFieldValue('resources', val);
     },
-    [form, selectedResource]
+    [form]
   );
 
   useEffect(() => {
@@ -146,11 +151,16 @@ export const SelectAssetTypeField = ({
         }}
         name="resources"
         style={{ marginBottom: 8 }}>
-        <Select
+        <TreeSelect
+          treeCheckable
+          treeDefaultExpandAll
+          autoClearSearchValue={false}
+          className="w-full"
+          data-testid="asset-type-select"
           maxTagCount="responsive"
-          mode="multiple"
-          options={resourcesOptions}
           placeholder={t('label.select-asset-type')}
+          showCheckedStrategy={TreeSelect.SHOW_PARENT}
+          treeData={resourcesOptions}
           value={selectedResource}
           onChange={handleResourceChange}
         />

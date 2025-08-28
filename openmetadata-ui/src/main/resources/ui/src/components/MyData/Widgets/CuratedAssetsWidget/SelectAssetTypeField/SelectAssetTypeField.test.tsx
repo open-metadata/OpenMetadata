@@ -65,15 +65,15 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
 jest.mock('antd', () => {
   const actual = jest.requireActual('antd');
 
-  const MockSelect = ({ options = [], onChange }: any) => {
+  const MockTreeSelect = ({ treeData = [], onChange }: any) => {
     return (
-      <div data-testid="mock-select">
-        {options.map((opt: any) => (
+      <div data-testid="mock-tree-select">
+        {treeData.map((opt: any) => (
           <button
             data-testid={`${opt.value}-option`}
             key={opt.value}
             onClick={() => onChange([opt.value])}>
-            {typeof opt.label === 'string' ? opt.label : opt.value}
+            {typeof opt.title === 'string' ? opt.title : opt.value}
           </button>
         ))}
       </div>
@@ -82,7 +82,7 @@ jest.mock('antd', () => {
 
   return {
     ...actual,
-    Select: MockSelect,
+    TreeSelect: MockTreeSelect,
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
