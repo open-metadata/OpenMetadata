@@ -23,12 +23,13 @@ public class MigrationUtil {
 
   /**
    * Update GlossaryTermApprovalWorkflow to:
-   * 1. Add approval and rejection thresholds to support multi-person voting
-   * 2. Add version-based approval routing for different paths between creates and updates
-   * 3. Add detailed approval task for updates with higher thresholds
-   * 4. Add rollback capability for rejected updates
+   * 1. Replace setGlossaryTermStatusTask nodes with generic setEntityAttributeTask nodes
+   * 2. Add approval and rejection thresholds to support multi-person voting
+   * 3. Add version-based approval routing for different paths between creates and updates
+   * 4. Add detailed approval task for updates with higher thresholds
+   * 5. Add rollback capability for rejected updates
    */
-  public static void updateGlossaryTermApprovalWorkflowWithThresholds() {
+  public static void updateGlossaryTermApprovalWorkflow() {
     try {
       LOG.info(
           "Starting v1100 migration - Updating GlossaryTermApprovalWorkflow with thresholds and version-based routing");
@@ -52,7 +53,20 @@ public class MigrationUtil {
 
         boolean workflowModified = false;
 
-        // Step 1: Update ApproveGlossaryTerm node with thresholds and output
+        // Step 1: Migrate setGlossaryTermStatusTask nodes to setEntityAttributeTask
+        for (int i = 0; i < nodes.size(); i++) {
+          WorkflowNodeDefinitionInterface node = nodes.get(i);
+          if ("setGlossaryTermStatusTask".equals(node.getSubType())) {
+            WorkflowNodeDefinitionInterface migratedNode = migrateGlossaryTermStatusNode(node);
+            nodes.set(i, migratedNode);
+            workflowModified = true;
+            LOG.info(
+                "Migrated node '{}' from setGlossaryTermStatusTask to setEntityAttributeTask",
+                node.getName());
+          }
+        }
+
+        // Step 2: Update ApproveGlossaryTerm node with thresholds and output
         for (WorkflowNodeDefinitionInterface node : nodes) {
           if ("userApprovalTask".equals(node.getSubType())) {
 
@@ -76,10 +90,10 @@ public class MigrationUtil {
           }
         }
 
-        // Step 2: Add new nodes for version-based routing
+        // Step 3: Add new nodes for version-based routing
         workflowModified |= addVersionRoutingNodes(nodes);
 
-        // Step 3: Update and add edges for version-based routing
+        // Step 4: Update and add edges for version-based routing
         workflowModified |= updateEdgesForVersionRouting(edges);
 
         if (workflowModified) {
@@ -455,6 +469,46 @@ public class MigrationUtil {
     } catch (Exception e) {
       LOG.error("Failed to update node config with thresholds and output", e);
       return nodeJson; // Return original if update fails
+    }
+  }
+
+  /**
+   * Migrate setGlossaryTermStatusTask to setEntityAttributeTask
+   */
+  private static WorkflowNodeDefinitionInterface migrateGlossaryTermStatusNode(
+      WorkflowNodeDefinitionInterface node) {
+    try {
+      // Parse original node as JSON to manipulate it
+      String nodeJson = JsonUtils.pojoToJson(node);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode nodeJsonNode = mapper.readTree(nodeJson);
+
+      if (nodeJsonNode instanceof ObjectNode) {
+        ObjectNode nodeObj = (ObjectNode) nodeJsonNode;
+
+        // Change subType
+        nodeObj.put("subType", "setEntityAttributeTask");
+
+        // Transform config from glossaryTermStatus to fieldName/fieldValue
+        if (nodeObj.has("config") && nodeObj.get("config").isObject()) {
+          ObjectNode configNode = (ObjectNode) nodeObj.get("config");
+
+          if (configNode.has("glossaryTermStatus")) {
+            String statusValue = configNode.get("glossaryTermStatus").asText();
+            configNode.remove("glossaryTermStatus");
+            configNode.put("fieldName", "status");
+            configNode.put("fieldValue", statusValue);
+          }
+        }
+      }
+
+      // Convert back to WorkflowNodeDefinitionInterface
+      return JsonUtils.readValue(
+          mapper.writeValueAsString(nodeJsonNode), WorkflowNodeDefinitionInterface.class);
+
+    } catch (Exception e) {
+      LOG.error("Failed to migrate glossary term status node", e);
+      return node;
     }
   }
 }

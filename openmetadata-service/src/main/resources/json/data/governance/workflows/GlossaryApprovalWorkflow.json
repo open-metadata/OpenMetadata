@@ -67,11 +67,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToApprovedByReviewer",
       "displayName": "Set Status to 'Approved' (By Reviewer)",
       "config": {
-        "glossaryTermStatus": "Approved"
+        "fieldName": "status",
+        "fieldValue": "Approved"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",
@@ -104,11 +105,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToInReview",
       "displayName": "Set Status to 'In Review'",
       "config": {
-        "glossaryTermStatus": "In Review"
+        "fieldName": "status",
+        "fieldValue": "In Review"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -116,11 +118,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToDraft",
       "displayName": "Set Status to 'Draft'",
       "config": {
-        "glossaryTermStatus": "Draft"
+        "fieldName": "status",
+        "fieldValue": "Draft"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -156,11 +159,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToInReviewForUpdate",
       "displayName": "Set Status to 'In Review' (Update)",
       "config": {
-        "glossaryTermStatus": "In Review"
+        "fieldName": "status",
+        "fieldValue": "In Review"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",
@@ -197,11 +201,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToApprovedDetailed",
       "displayName": "Set Status to 'Approved' (After Detailed Review)",
       "config": {
-        "glossaryTermStatus": "Approved"
+        "fieldName": "status",
+        "fieldValue": "Approved"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",
@@ -222,11 +227,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToApprovedAfterApproval",
       "displayName": "Set Status to 'Approved'",
       "config": {
-        "glossaryTermStatus": "Approved"
+        "fieldName": "status",
+        "fieldValue": "Approved"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",
@@ -235,11 +241,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToApproved",
       "displayName": "Set Status to 'Approved'",
       "config": {
-        "glossaryTermStatus": "Approved"
+        "fieldName": "status",
+        "fieldValue": "Approved"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -247,11 +254,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "setGlossaryTermStatusTask",
+      "subType": "setEntityAttributeTask",
       "name": "SetGlossaryTermStatusToRejected",
       "displayName": "Set Status to 'Rejected'",
       "config": {
-        "glossaryTermStatus": "Rejected"
+        "fieldName": "status",
+        "fieldValue": "Rejected"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",

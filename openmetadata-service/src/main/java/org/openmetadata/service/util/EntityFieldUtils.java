@@ -101,6 +101,12 @@ public class EntityFieldUtils {
         setReviewers(entity, fieldValue);
         break;
 
+      case "status":
+      case "entityStatus":
+        // Set entity status - handle different entity types appropriately
+        setEntityStatus(entity, fieldValue);
+        break;
+
       default:
         // For other simple fields, try direct setting
         setSimpleStringField(entity, fieldName, fieldValue);
@@ -451,6 +457,49 @@ public class EntityFieldUtils {
           setEntityField(entity, entityType, user, fieldName, fieldValue, false);
         }
       }
+    }
+  }
+
+  /**
+   * Sets the status field on various entity types using appropriate enum values.
+   * Handles both legacy 'status' field and new 'entityStatus' field.
+   */
+  public static void setEntityStatus(EntityInterface entity, String statusValue) {
+    try {
+      // Handle GlossaryTerm status (uses Status enum)
+      if (entity instanceof GlossaryTerm) {
+        GlossaryTerm glossaryTerm = (GlossaryTerm) entity;
+        try {
+          // Try to parse as GlossaryTerm.Status enum
+          GlossaryTerm.Status status = GlossaryTerm.Status.fromValue(statusValue);
+          glossaryTerm.setStatus(status);
+          return;
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to set GlossaryTerm status to '{}', falling back to string setter",
+              statusValue);
+        }
+      }
+
+      // For other entities or fallback, try reflection with string values
+      setSimpleStringField(entity, "status", statusValue);
+
+      // Also try entityStatus field for newer entities
+      try {
+        setSimpleStringField(entity, "entityStatus", statusValue);
+      } catch (Exception e) {
+        // Ignore if entityStatus field doesn't exist
+        LOG.debug(
+            "entityStatus field not found on entity type: {}", entity.getClass().getSimpleName());
+      }
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to set status field to '{}' on entity type: {}",
+          statusValue,
+          entity.getClass().getSimpleName(),
+          e);
+      throw new RuntimeException("Failed to set status field", e);
     }
   }
 }

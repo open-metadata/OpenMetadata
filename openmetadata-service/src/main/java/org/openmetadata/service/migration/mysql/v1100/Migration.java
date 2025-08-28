@@ -1,6 +1,6 @@
 package org.openmetadata.service.migration.mysql.v1100;
 
-import static org.openmetadata.service.migration.utils.v1100.MigrationUtil.updateGlossaryTermApprovalWorkflowWithThresholds;
+import static org.openmetadata.service.migration.utils.v1100.MigrationUtil.updateGlossaryTermApprovalWorkflow;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -19,7 +19,7 @@ public class Migration extends MigrationProcessImpl {
     // This ensures that Flowable engine is ready for validation
     initializeWorkflowHandler();
 
-    // Update GlossaryTermApprovalWorkflow with approval and rejection thresholds
-    updateGlossaryTermApprovalWorkflowWithThresholds();
+    // Update GlossaryTermApprovalWorkflow: migrate to generic tasks and add thresholds
+    updateGlossaryTermApprovalWorkflow();
   }
 }

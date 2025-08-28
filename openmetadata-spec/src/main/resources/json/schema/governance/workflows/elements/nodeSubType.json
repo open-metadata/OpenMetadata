@@ -10,8 +10,6 @@
     "detailedUserApprovalTask",
     "checkEntityAttributesTask",
     "setEntityAttributeTask",
-    "setEntityCertificationTask",
-    "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
     "createAndRunIngestionPipelineTask",
