@@ -32,7 +32,7 @@ The user account used for connection should have the following minimum permissio
 - Write access to tag management
 - Read access to service definitions for verification
 
-For more detailed information on setting up the appropriate permissions, refer to the [Apache Ranger documentation](https://ranger.apache.org/).
+For more detailed information on setting up the appropriate permissions, refer to the <a href="https://ranger.apache.org/" target="_blank">Apache Ranger documentation</a>.
 
 ## Connection Details
 

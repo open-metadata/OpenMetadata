@@ -1,5 +1,5 @@
 # Redshift
-In this section, we provide guides and references to use the Redshift connector. You can view the full documentation for Redshift [here](https://docs.open-metadata.org/connectors/database/redshift).
+In this section, we provide guides and references to use the Redshift connector. You can view the full documentation for Redshift <a href="https://docs.open-metadata.org/connectors/database/redshift" target="_blank">here</a>.
 
 ## Requirements
 
@@ -7,7 +7,7 @@ Redshift user must grant `SELECT` privilege on `SVV_TABLE_INFO` to fetch the met
 
 ```sql
 -- Create a new user
--- More details https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html
+-- More details <a href="https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html" target="_blank">https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html</a>
 CREATE USER test_user with PASSWORD 'password';
 
 -- Grant SELECT on table
@@ -16,13 +16,13 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `svv_table_info` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `svv_table_info` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
 ### Usage & Lineage
 
-For the usage and lineage workflow, the user will need `SELECT` privilege on `STL_QUERY` table. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the usage and lineage workflow, the user will need `SELECT` privilege on `STL_QUERY` table. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
 
-You can find further information on the Redshift connector in the [docs](https://docs.open-metadata.org/connectors/database/redshift).
+You can find further information on the Redshift connector in the <a href="https://docs.open-metadata.org/connectors/database/redshift" target="_blank">docs</a>.
 
 ## Connection Details
 
