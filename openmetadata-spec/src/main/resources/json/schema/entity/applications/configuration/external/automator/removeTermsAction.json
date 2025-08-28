@@ -1,18 +1,18 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeTagsAction.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeTermsAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RemoveTagsAction",
-  "description": "Remove Classification Tags Action Type",
+  "title": "RemoveTermsAction",
+  "description": "Remove Glossary Terms Action Type",
   "type": "object",
   "definitions": {
-    "removeTagsActionType": {
-      "description": "Remove Classification Tags Action Type.",
+    "removeTermsActionType": {
+      "description": "Remove Terms Action Type.",
       "type": "string",
-      "enum": ["RemoveTagsAction"],
-      "default": "RemoveTagsAction"
+      "enum": ["RemoveTermsAction"],
+      "default": "RemoveTermsAction"
     },
     "labelType": {
-      "description" : "Remove tags by its label type",
+      "description" : "Remove terms by its label type",
       "type": "string",
       "enum": [
         "Manual",
@@ -25,18 +25,18 @@
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/removeTagsActionType",
-      "default": "AddTagsAction"
+      "$ref": "#/definitions/removeTermsActionType",
+      "default": "RemoveTermsAction"
     },
-    "tags": {
-      "description": "Classification Tags to remove (source must be 'Classification')",
+    "terms": {
+      "description": "Glossary Terms to remove",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/tagLabel.json"
       }
     },
     "labels": {
-      "description": "Remove tags by its label type",
+      "description": "Remove terms by its label type",
       "type": "array",
       "items": {
           "$ref": "#/definitions/labelType"
@@ -45,7 +45,7 @@
     },
     "applyToChildren": {
       "title": "Apply to Children",
-      "description": "Remove tags from the children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "description": "Remove terms from the children of the selected assets. E.g., columns, tasks, topic fields,...",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
@@ -54,7 +54,7 @@
     },
     "applyToAll": {
       "title": "Apply to All",
-      "description": "Remove tags from all the children and parent of the selected assets.",
+      "description": "Remove terms from all the children and parent of the selected assets.",
       "type": "boolean",
       "default": null
     }

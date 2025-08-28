@@ -11,34 +11,34 @@
  *  limitations under the License.
  */
 /**
- * Remove Classification Tags Action Type
+ * Remove Glossary Terms Action Type
  */
-export interface RemoveTagsAction {
+export interface RemoveTermsAction {
     /**
-     * Remove tags from all the children and parent of the selected assets.
+     * Remove terms from all the children and parent of the selected assets.
      */
     applyToAll?: boolean;
     /**
-     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
     /**
-     * Remove tags by its label type
+     * Remove terms by its label type
      */
     labels?: LabelElement[];
     /**
-     * Classification Tags to remove (source must be 'Classification')
+     * Glossary Terms to remove
      */
-    tags?: TagLabel[];
+    terms?: TagLabel[];
     /**
      * Application Type
      */
-    type: RemoveTagsActionType;
+    type: RemoveTermsActionType;
 }
 
 /**
- * Remove tags by its label type
+ * Remove terms by its label type
  */
 export enum LabelElement {
     Automated = "Automated",
@@ -137,8 +137,8 @@ export interface Style {
 /**
  * Application Type
  *
- * Remove Classification Tags Action Type.
+ * Remove Terms Action Type.
  */
-export enum RemoveTagsActionType {
-    RemoveTagsAction = "RemoveTagsAction",
+export enum RemoveTermsActionType {
+    RemoveTermsAction = "RemoveTermsAction",
 }
