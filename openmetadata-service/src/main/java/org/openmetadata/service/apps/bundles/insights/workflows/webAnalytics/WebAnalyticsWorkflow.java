@@ -19,6 +19,7 @@ import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.processors.CreateReportDataProcessor;
@@ -32,7 +33,6 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.sou
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class WebAnalyticsWorkflow {

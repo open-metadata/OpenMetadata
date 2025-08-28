@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelation
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -64,7 +65,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databaseSchemas")
 @Tag(
