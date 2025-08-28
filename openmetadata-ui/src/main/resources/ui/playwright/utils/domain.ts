@@ -118,10 +118,20 @@ export const validateDomainForm = async (page: Page) => {
 };
 
 export const selectDomain = async (page: Page, domain: Domain['data']) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  // Check if we're on the domain list page
+  const domainCard = page.locator(
+    `[data-testid="domain-card-${domain.fullyQualifiedName}"]`
+  );
+  if ((await domainCard.count()) > 0) {
+    // Click on the domain card in the list view
+    await domainCard.click();
+  } else {
+    // Fallback to old menu approach if not on list page
+    await page
+      .getByRole('menuitem', { name: domain.displayName })
+      .locator('span')
+      .click();
+  }
   await page.waitForLoadState('networkidle');
 };
 
@@ -299,7 +309,11 @@ export const createDomain = async (
   domain: Domain['data'],
   validate = false
 ) => {
-  await page.click('[data-testid="add-domain"]');
+  // Try the new add domain button first, then fallback to the old one
+  const addDomainButton = page
+    .locator('[data-testid="add-domain-button"], [data-testid="add-domain"]')
+    .first();
+  await addDomainButton.click();
   await page.waitForSelector('[data-testid="form-heading"]');
 
   await expect(page.locator('[data-testid="form-heading"]')).toHaveText(

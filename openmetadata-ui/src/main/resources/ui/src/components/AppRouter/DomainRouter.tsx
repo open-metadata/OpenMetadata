@@ -31,6 +31,7 @@ const DomainRouter = () => {
 
   return (
     <Routes>
+      {/* Add Domain Route */}
       <Route
         element={
           <AddDomain
@@ -41,15 +42,19 @@ const DomainRouter = () => {
         }
         path={ROUTES.ADD_DOMAIN.replace(ROUTES.DOMAIN, '')}
       />
+
+      {/* Domain List Route - shows when accessing /domain */}
       <Route
         index
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage pageTitle={i18n.t('label.domain')} />
+            <DomainPage pageTitle={i18n.t('label.domain-plural')} />
           </AdminProtectedRoute>
         }
         path="/"
       />
+
+      {/* Domain Details Route - shows when accessing /domain/:fqn */}
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
@@ -58,6 +63,8 @@ const DomainRouter = () => {
         }
         path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
       />
+
+      {/* Domain Details with Tab Route - shows when accessing /domain/:fqn/:tab */}
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>

@@ -38,13 +38,12 @@ import {
 } from '../../rest/domainAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
-import { getDomainPath } from '../../utils/RouterUtils';
+import { getDomainDetailsPath, getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
-import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
-import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
+import DomainListPage from './DomainListPage/DomainListPage.component';
 
 const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
@@ -226,6 +225,17 @@ const DomainPage = () => {
     setIsFollowingLoading(false);
   }, [isFollowing, unFollowDomain, followDomain]);
 
+  const handleAddDomain = useCallback(() => {
+    navigate(ROUTES.ADD_DOMAIN);
+  }, [navigate]);
+
+  const handleDomainClick = useCallback(
+    (domain: Domain) => {
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+    },
+    [navigate]
+  );
+
   const domainPageRender = useMemo(() => {
     if (isMainContentLoading) {
       return <Loader />;
@@ -260,8 +270,10 @@ const DomainPage = () => {
   }, [domainFqn]);
 
   useEffect(() => {
+    // Don't auto-navigate when showing list view
     if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
-      navigate(getDomainPath(rootDomains[0].fullyQualifiedName));
+      // Keep on list view instead of auto-navigating to first domain
+      return;
     }
   }, [rootDomains, domainFqn]);
 
@@ -305,32 +317,27 @@ const DomainPage = () => {
               ? ERROR_PLACEHOLDER_TYPE.CREATE
               : ERROR_PLACEHOLDER_TYPE.CUSTOM
           }
-          onClick={handleAddDomainClick}>
+          onClick={handleAddDomain}>
           {t('message.domains-not-configured')}
         </ErrorPlaceHolder>
       </div>
     );
   }
 
-  return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        title: t('label.domain-plural'),
-        children: <DomainsLeftPanel domains={rootDomains} />,
-      }}
-      pageTitle={t('label.domain')}
-      secondPanel={{
-        children: domainPageRender,
-        className: 'content-resizable-panel-container',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
-  );
+  // If no domain FQN, show list view
+  if (!domainFqn) {
+    return (
+      <DomainListPage
+        domains={domains}
+        loading={domainLoading}
+        onAddDomain={handleAddDomain}
+        onDomainClick={handleDomainClick}
+      />
+    );
+  }
+
+  // If domain FQN exists, show details view
+  return domainPageRender;
 };
 
 export default withPageLayout(DomainPage);
