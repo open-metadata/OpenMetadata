@@ -19,6 +19,8 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { MemoryRouter } from 'react-router-dom';
 import {
   mockedGlossaryTerms,
@@ -104,6 +106,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+const renderWithDndProvider = (props = {}) => {
+  return render(
+    <DndProvider backend={HTML5Backend}>
+      <GlossaryTermTab {...mockProps} {...props} />
+    </DndProvider>,
+    { wrapper: MemoryRouter }
+  );
+};
+
 describe('Test GlossaryTermTab component', () => {
   it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
     const { container } = render(<GlossaryTermTab {...mockProps} />, {
@@ -132,9 +143,7 @@ describe('Test GlossaryTermTab component', () => {
       glossaryChildTerms: mockedGlossaryTerms,
       updateActiveGlossary: jest.fn(),
     }));
-    const { container } = render(<GlossaryTermTab {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithDndProvider();
 
     expect(getByTestId(container, 'Clothing')).toBeInTheDocument();
     expect(

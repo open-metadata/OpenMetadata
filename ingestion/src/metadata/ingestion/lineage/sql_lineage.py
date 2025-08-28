@@ -63,9 +63,16 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     """
     if not table_entity:
         return None
-    for tbl_column in table_entity.columns:
-        if column.lower() == tbl_column.name.root.lower():
-            return tbl_column.fullyQualifiedName.root
+    for tbl_column in table_entity.columns or []:
+        try:
+            if column.lower() == tbl_column.name.root.lower():
+                return tbl_column.fullyQualifiedName.root
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                f"Error getting column FQN for column [{column}] in"
+                f"table [{table_entity.fullyQualifiedName}] for column [{tbl_column}]: {e}"
+            )
 
     return None
 
