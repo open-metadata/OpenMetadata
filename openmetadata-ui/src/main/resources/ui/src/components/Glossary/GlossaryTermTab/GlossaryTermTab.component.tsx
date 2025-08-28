@@ -255,7 +255,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (term.fullyQualifiedName === targetFqn) {
         return {
           ...term,
-          status: newStatus,
+          entityStatus: newStatus,
         };
       }
 
