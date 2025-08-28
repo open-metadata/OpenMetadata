@@ -70,12 +70,6 @@
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityAttributeTask.json"
           },
           {
-            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
-          },
-          {
-            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityCertificationTask.json"
-          },
-          {
             "$ref": "../../governance/workflows/elements/nodes/endEvent/endEvent.json"
           },
           {
