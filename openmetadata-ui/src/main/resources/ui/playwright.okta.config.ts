@@ -21,23 +21,24 @@ dotenv.config();
 
 /**
  * See https://playwright.dev/docs/test-configuration.
+ * This configuration is specifically for Okta login tests with separate backend.
  */
 export default defineConfig({
-  testDir: './playwright/e2e',
-  outputDir: './playwright/output/test-results',
+  testDir: './playwright/login-flows',
+  outputDir: './playwright/output/okta-test-results',
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false, // Use single worker for Okta tests to ensure isolation
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : undefined,
-  maxFailures: 500,
+  /* Use single worker for Okta tests */
+  workers: 1,
+  maxFailures: 10,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
-    ['html', { outputFolder: './playwright/output/playwright-report' }],
+    ['html', { outputFolder: './playwright/output/okta-playwright-report' }],
     [
       '@estruyf/github-actions-reporter',
       {
@@ -58,39 +59,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for Okta login tests */
   projects: [
-    // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
-      name: 'setup',
-      testMatch: '**/*.setup.ts',
-      teardown: 'restore-policies',
-    },
-    {
-      name: 'restore-policies',
-      testMatch: '**/auth.teardown.ts',
-    },
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-      // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
-      grepInvert: /data-insight/,
-      testIgnore: ['**/nightly/**', '**/login-flows/**'],
-    },
-    {
-      name: 'data-insight-application',
-      dependencies: ['setup'],
-      testMatch: '**/dataInsightApp.ts',
-    },
-    {
-      name: 'Data Insight',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['data-insight-application'],
-      grep: /data-insight/,
-    },
-    {
-      name: 'login-flows',
+      name: 'okta-login-tests',
       use: {
         ...devices['Desktop Chrome'],
         // Isolated storage state - no shared auth
@@ -124,11 +96,8 @@ export default defineConfig({
         userAgent:
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
-      // No dependencies - completely independent from setup/auth
-      testDir: './playwright/login-flows',
+      // No dependencies - completely independent
       testMatch: '**/*.spec.ts',
-      // Use single worker for this project to ensure isolation
-      fullyParallel: false,
     },
   ],
 
