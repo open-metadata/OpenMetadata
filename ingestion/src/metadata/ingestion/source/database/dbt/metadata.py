@@ -605,17 +605,12 @@ class DbtSource(DbtServiceSource):
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if resource_type == DbtCommonEnum.SOURCE.value:
-                        schema_name = "*"
-                    else:
-                        schema_name = get_corrected_name(manifest_node.schema_)
-
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
                         database_name=get_corrected_name(manifest_node.database),
-                        schema_name=schema_name,
+                        schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
 
@@ -694,21 +689,12 @@ class DbtSource(DbtServiceSource):
                             self.parse_upstream_nodes(manifest_entities, parent_node)
                         )
                     else:
-                        # If the node is a source node, then we need to use the schema name as *
-                        # This is because the source node is not a table, but a source of tables
-                        if (
-                            manifest_entities[node].resource_type
-                            == DbtCommonEnum.SOURCE.value
-                        ):
-                            schema_name = "*"
-                        else:
-                            schema_name = get_corrected_name(parent_node.schema_)
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
-                            schema_name=schema_name,
+                            schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
                         )
 
