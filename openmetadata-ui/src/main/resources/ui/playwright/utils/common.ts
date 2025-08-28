@@ -57,7 +57,11 @@ export const getAuthContext = async (token: string) => {
 
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
-  await page.waitForURL('**/my-data');
+  // Wait until the user is redirected to the /my-data route
+  await page.waitForFunction(
+    () => window.location.pathname.includes('/my-data'),
+    { timeout: 30000 }
+  );
   await page.waitForLoadState('networkidle');
 };
 
