@@ -387,7 +387,7 @@ public class TestCaseResolutionStatusRepository
               """
               + condition;
     }
-    
+
     return condition;
   }
 
