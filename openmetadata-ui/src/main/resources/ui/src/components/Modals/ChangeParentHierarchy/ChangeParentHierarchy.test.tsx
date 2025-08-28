@@ -25,7 +25,18 @@ import ChangeParent from './ChangeParentHierarchy.component';
 const mockOnCancel = jest.fn();
 
 const mockProps = {
-  selectedData: mockedGlossaryTerms[0],
+  selectedData: {
+    ...mockedGlossaryTerms[0],
+    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+      id: child.id,
+      name: child.name,
+      displayName: child.displayName,
+      description: child.description,
+      fullyQualifiedName: child.fullyQualifiedName,
+      type: 'glossaryTerm', // Required field for EntityReference
+      deleted: child.deleted || false,
+    })),
+  },
   onCancel: mockOnCancel,
 };
 
