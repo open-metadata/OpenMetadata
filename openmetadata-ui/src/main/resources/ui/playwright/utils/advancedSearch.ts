@@ -111,7 +111,7 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Status',
-    name: 'status',
+    name: 'entityStatus',
     localSearch: false,
   },
   {
