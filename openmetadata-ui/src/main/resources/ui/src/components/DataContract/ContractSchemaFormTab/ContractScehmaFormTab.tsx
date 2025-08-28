@@ -24,20 +24,29 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
-import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import {
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
+import { Field } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
+import { getDataModelColumnsByFQN } from '../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
@@ -62,7 +71,8 @@ export const ContractSchemaFormTab: React.FC<{
 }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const [allColumns, setAllColumns] = useState<Column[]>([]);
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const [allColumns, setAllColumns] = useState<Column[] | Field[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -130,12 +140,103 @@ export const ContractSchemaFormTab: React.FC<{
     [tableFqn, pageSize]
   );
 
+  const fetchDashboardDataModalColumns = useCallback(
+    async (page = 1) => {
+      if (!fqn) {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+        const response = await getDataModelColumnsByFQN(fqn, {
+          limit: pageSize,
+          offset,
+          fields: TabSpecificField.TAGS,
+        });
+
+        setAllColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        setAllColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      }
+      setIsLoading(false);
+    },
+    [fqn, pageSize, handlePagingChange]
+  );
+
+  const fetchTopicColumns = useCallback(async () => {
+    if (!fqn) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await getTopicByFqn(fqn, {
+        fields: [TabSpecificField.TAGS].join(','),
+      });
+
+      setAllColumns(response.messageSchema?.schemaFields || []);
+    } catch (error) {
+      setAllColumns([]);
+    }
+    setIsLoading(false);
+  }, [fqn]);
+
+  const fetchApiEndPointColumns = async () => {
+    if (!fqn) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await getApiEndPointByFQN(fqn, {
+        fields: TabSpecificField.TAGS,
+      });
+
+      setAllColumns(response.responseSchema?.schemaFields || []);
+    } catch {
+      setAllColumns([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchColumnsBasedOnEntity = useCallback(
+    (currentPage?: number) => {
+      switch (entityType) {
+        case EntityType.TOPIC:
+          fetchTopicColumns();
+
+          break;
+
+        case EntityType.API_ENDPOINT:
+          fetchApiEndPointColumns();
+
+          break;
+        case EntityType.DASHBOARD_DATA_MODEL:
+          fetchDashboardDataModalColumns(currentPage);
+
+          break;
+
+        default:
+          fetchTableColumns(currentPage);
+      }
+    },
+    [entityType, fetchTableColumns, fetchDashboardDataModalColumns]
+  );
+
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
-      fetchTableColumns(currentPage);
+      fetchColumnsBasedOnEntity(currentPage);
       handlePageChange(currentPage);
     },
-    [fetchTableColumns]
+    [fetchColumnsBasedOnEntity]
   );
 
   const paginationProps = useMemo(
@@ -159,7 +260,6 @@ export const ContractSchemaFormTab: React.FC<{
       handleColumnsPageChange,
     ]
   );
-
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay,
     record
@@ -272,19 +372,23 @@ export const ContractSchemaFormTab: React.FC<{
           );
         },
       },
-      {
-        title: t('label.constraint-plural'),
-        dataIndex: 'constraint',
-        key: 'constraint',
-        render: renderConstraint,
-      },
+      ...(entityType === EntityType.TABLE
+        ? [
+            {
+              title: t('label.constraint-plural'),
+              dataIndex: 'constraint',
+              key: 'constraint',
+              render: renderConstraint,
+            },
+          ]
+        : []),
     ],
-    [tableFqn]
+    [entityType, tableFqn]
   );
 
   useEffect(() => {
-    fetchTableColumns();
-  }, [fetchTableColumns]);
+    fetchColumnsBasedOnEntity();
+  }, [fetchColumnsBasedOnEntity]);
 
   return (
     <>

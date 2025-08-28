@@ -111,10 +111,17 @@
       "$ref": "../../type/entityReference.json"
     },
     "schema": {
-      "description": "Schema definition for the data contract.",
+      "description": "Schema definition for the data contract. Supports both table columns and topic fields.",
       "type": "array",
       "items": {
-        "$ref": "./table.json#/definitions/column"
+        "oneOf": [
+          {
+            "$ref": "./table.json#/definitions/column"
+          },
+          {
+            "$ref": "../../type/schema.json#/definitions/field"
+          }
+        ]
       },
       "default": null
     },
