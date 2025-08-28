@@ -138,17 +138,12 @@ public class LogicOps {
           Set<UUID> entityDomainIds =
               domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
 
-          // For each data product, check if its domain matches any entity assigned domain
-          for (EntityReference dataProduct : dataProducts) {
-            try {
-              // Get the data product entity to access its domains
-              DataProduct dpEntity =
-                  Entity.getEntity(
-                      Entity.DATA_PRODUCT,
-                      dataProduct.getId(),
-                      "domains",
-                      Include.NON_DELETED,
-                      true);
+          // Get all data product entities in bulk instead of using a loop
+          try {
+            List<DataProduct> dpEntities =
+                Entity.getEntities(dataProducts, "domains", Include.NON_DELETED);
+
+            for (DataProduct dpEntity : dpEntities) {
               List<EntityReference> dpDomains = dpEntity.getDomains();
 
               if (nullOrEmpty(dpDomains)) {
@@ -165,10 +160,10 @@ public class LogicOps {
               if (!hasMatchingDomain) {
                 return false; // Domain mismatch found
               }
-            } catch (Exception e) {
-              // If we can't fetch the data product, fail validation for safety
-              return false;
             }
+          } catch (Exception e) {
+            // If we can't fetch the data products, fail validation for safety
+            return false;
           }
           return true; // All data products have matching domains
         });

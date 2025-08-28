@@ -223,12 +223,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     DataProduct dataProduct = find(entityId, ALL);
     EntityReference dataProductRef = dataProduct.getEntityReference();
 
-    for (EntityReference ref : request.getAssets()) {
+    // Fetch all asset entities in bulk for validation
+    List<EntityInterface> assetEntities = new ArrayList<>();
+    if (isAdd && !request.getAssets().isEmpty()) {
+      assetEntities = Entity.getEntities(request.getAssets(), "domains,dataProducts", ALL);
+    }
+
+    for (int i = 0; i < request.getAssets().size(); i++) {
+      EntityReference ref = request.getAssets().get(i);
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       try {
         if (isAdd) {
-          validateAssetDataProductAssignment(ref, dataProductRef);
+          EntityInterface assetEntity = assetEntities.get(i);
+          validateAssetDataProductAssignment(assetEntity, dataProductRef);
           addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
         } else {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
@@ -286,14 +294,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    * Validates that an asset can be assigned to a data product according to configured rules.
    * This method leverages the RuleEngine to validate domain matching rules that are enabled.
    *
-   * @param asset The asset entity reference to be assigned
+   * @param assetEntity The asset entity interface (pre-fetched with domains,dataProducts)
    * @param dataProductRef The data product entity reference
    * @throws RuleValidationException if validation fails
    */
   private void validateAssetDataProductAssignment(
-      EntityReference asset, EntityReference dataProductRef) {
+      EntityInterface assetEntity, EntityReference dataProductRef) {
     try {
-      EntityInterface assetEntity = Entity.getEntity(asset, "domains,dataProducts", ALL);
 
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
       List<EntityReference> updatedDataProducts = new ArrayList<>(currentDataProducts);
@@ -307,11 +314,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       throw new RuleValidationException(
           String.format(
               "Cannot assign asset '%s' (type: %s) to data product '%s': %s",
-              asset.getName(), asset.getType(), dataProductRef.getName(), e.getMessage()));
+              assetEntity.getName(),
+              assetEntity.getEntityReference().getType(),
+              dataProductRef.getName(),
+              e.getMessage()));
     } catch (Exception e) {
       LOG.warn(
           "Error during asset data product validation for asset {}: {}",
-          asset.getId(),
+          assetEntity.getId(),
           e.getMessage());
     }
   }
