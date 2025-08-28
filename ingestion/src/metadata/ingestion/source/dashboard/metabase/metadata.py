@@ -108,6 +108,8 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         self.dashboards_list = self.client.get_dashboards_list(self.collections)
         return self.dashboards_list
 
@@ -180,6 +182,8 @@ class MetabaseSource(DashboardServiceSource):
         Get dashboard owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.creator_id:
                 owner_details = self.client.get_user_details(
                     dashboard_details.creator_id

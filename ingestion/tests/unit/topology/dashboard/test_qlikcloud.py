@@ -61,6 +61,7 @@ mock_qlikcloud_config = {
         "sourceConfig": {
             "config": {
                 "includeDraftDashboard": False,
+                "includeOwners": True,
             }
         },
     },
