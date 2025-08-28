@@ -156,7 +156,6 @@ export const SelectAssetTypeField = ({
           treeDefaultExpandAll
           autoClearSearchValue={false}
           className="w-full"
-          data-testid="asset-type-select"
           maxTagCount="responsive"
           placeholder={t('label.select-asset-type')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}

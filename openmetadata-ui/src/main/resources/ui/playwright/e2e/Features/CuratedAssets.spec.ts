@@ -81,23 +81,23 @@ test.describe('Curated Assets', () => {
 
     await page.waitForSelector('[data-testid="title-input"]');
 
-    await page.locator('[data-testid="title-input"]').fill('Popular Charts');
+    await page
+      .locator('[data-testid="title-input"]')
+      .fill('Popular Charts And Dashboards');
 
     // Open asset type TreeSelect
     await page.locator('[data-testid="asset-type-select"]').click();
 
-    // Select two asset types: Chart and Table
+    // Select two asset types: Chart and Dashboard
     await page
       .locator('.ant-select-tree .ant-select-tree-title:has-text("Chart")')
       .click();
     await page
-      .locator('.ant-select-tree .ant-select-tree-title:has-text("Table")')
+      .locator('.ant-select-tree .ant-select-tree-title:has-text("Dashboard")')
       .click();
 
     // Close the dropdown to proceed
-    await page.keyboard.press('Escape');
-
-    await expect(page.locator('.ant-select-dropdown')).toBeHidden();
+    await page.getByText('Select Asset Type').click();
 
     const ruleLocator = page.locator('.rule').nth(0);
     await selectOption(
@@ -142,7 +142,7 @@ test.describe('Curated Assets', () => {
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
 
     const queryResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=chart,table&*'
+      '/api/v1/search/query?q=&index=chart,dashboard&*'
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -155,7 +155,7 @@ test.describe('Curated Assets', () => {
     await expect(
       page
         .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('Popular Charts')
+        .getByText('Popular Charts And Dashboards')
     ).toBeVisible();
 
     await saveCustomizeLayoutPage(page);
@@ -165,7 +165,7 @@ test.describe('Curated Assets', () => {
 
       return (
         url.includes('/api/v1/search/query') &&
-        url.includes('index=chart,table') &&
+        url.includes('index=chart,dashboard') &&
         response.status() === 200
       );
     });
@@ -192,7 +192,7 @@ test.describe('Curated Assets', () => {
     await expect(
       page
         .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('Popular Charts')
+        .getByText('Popular Charts And Dashboards')
     ).toBeVisible();
   });
 
