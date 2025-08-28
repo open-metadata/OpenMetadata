@@ -3,7 +3,7 @@
 Data Insight Ingestion Pipeline Configuration.
 
 
-You can find further information on the Data Insight Ingestion in the [docs](https://docs.open-metadata.org/openmetadata/data-insight).
+You can find further information on the Data Insight Ingestion in the <a href="https://docs.open-metadata.org/openmetadata/data-insight" target="_blank">docs</a>.
 
 $$section
 
@@ -25,7 +25,7 @@ $$section
 
 Region name is required when using AWS Credentials.
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 $$
