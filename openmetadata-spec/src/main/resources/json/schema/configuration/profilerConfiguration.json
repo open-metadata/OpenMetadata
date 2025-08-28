@@ -43,7 +43,8 @@
         "firstQuartile",
         "thirdQuartile",
         "system",
-        "histogram"
+        "histogram",
+        "cardinalityDistribution"
       ]
     },
     "metricConfigurationDefinition": {
