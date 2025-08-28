@@ -36,11 +36,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -190,6 +192,41 @@ public class SystemResource {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/settings/entityRulesSettings/{entityType}")
+  @Operation(
+      operationId = "getEntityRulesSetting",
+      summary = "Get a setting for an entity type",
+      description = "Get the list of available entity rules settings for a given entity type",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public List<SemanticsRule> getEntityRulesSettingByType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity Type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType) {
+    return SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
+        .getEntitySemantics()
+        .stream()
+        .filter(SemanticsRule::getEnabled)
+        .filter(
+            rule ->
+                rule.getEntityType() == null || rule.getEntityType().equalsIgnoreCase(entityType))
+        .filter(
+            rule ->
+                nullOrEmpty(rule.getIgnoredEntities())
+                    || !rule.getIgnoredEntities().contains(entityType))
+        .toList();
   }
 
   @GET
