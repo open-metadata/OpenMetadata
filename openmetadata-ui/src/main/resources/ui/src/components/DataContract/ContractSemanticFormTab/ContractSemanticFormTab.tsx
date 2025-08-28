@@ -17,13 +17,14 @@ import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
-import { isNull } from 'lodash';
+import { isNull, isNumber } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -60,26 +61,20 @@ export const ContractSemanticFormTab: React.FC<{
 
   const handleAddSemantic = () => {
     addFunctionRef.current?.({
-      name: '',
-      description: '',
-      rule: '',
       enabled: true,
-    });
+      rule: '',
+    } as SemanticsRule);
     setEditingKey(semanticsFormData?.length ?? 0);
   };
 
   const handleDeleteSemantic = useCallback(
     (key: number) => {
-      const filteredValue = semanticsFormData?.filter(
-        (_, index) => index !== key
-      );
-
-      form.setFieldsValue({
-        semantics: filteredValue,
-      });
-      onChange({
-        semantics: filteredValue,
-      });
+      const filteredValue =
+        semanticsFormData
+          ?.filter((_item, idx) => idx !== key)
+          ?.filter(Boolean) ?? [];
+      form.setFieldsValue({ semantics: filteredValue });
+      onChange({ semantics: filteredValue });
     },
     [semanticsFormData]
   );
@@ -97,11 +92,7 @@ export const ContractSemanticFormTab: React.FC<{
       form.setFieldsValue({
         semantics: [
           {
-            name: '',
-            description: '',
             enabled: true,
-            rule: '',
-            jsonTree: '',
           },
         ],
       });
@@ -113,6 +104,20 @@ export const ContractSemanticFormTab: React.FC<{
   const queryBuilderFields = useMemo(() => {
     return getSematicRuleFields();
   }, []);
+
+  const handleSaveRule = async () => {
+    try {
+      await form.validateFields({ recursive: true });
+      setEditingKey(null);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Validation failed:', error);
+    }
+  };
+
+  const editFieldData = isNumber(editingKey)
+    ? semanticsFormData?.[editingKey]
+    : undefined;
 
   return (
     <>
@@ -144,6 +149,7 @@ export const ContractSemanticFormTab: React.FC<{
           className="new-form-style"
           form={form}
           layout="vertical"
+          validateMessages={VALIDATION_MESSAGES}
           onValuesChange={(_, allValues) => {
             onChange(allValues);
           }}>
@@ -154,180 +160,192 @@ export const ContractSemanticFormTab: React.FC<{
                 addFunctionRef.current = add;
               }
 
-              return (
-                <>
-                  {fields.map((field) => {
-                    const editFieldData = semanticsFormData?.find(
-                      (_item, idx) => idx === field.key
-                    );
+              return fields.map((field) => {
+                return (
+                  <ExpandableCard
+                    cardProps={{
+                      className: classNames('expandable-card m-t-md', {
+                        'expanded-active-card': editingKey === field.name,
+                      }),
+                      title: (
+                        <div className="w-full d-flex justify-between items-center">
+                          {editingKey === field.key ? null : (
+                            <div className="semantic-form-item-title-container">
+                              <div className="d-flex items-center gap-6">
+                                <Form.Item
+                                  {...field}
+                                  className="enable-form-item"
+                                  name={[field.name, 'enabled']}
+                                  valuePropName="checked">
+                                  <Switch />
+                                </Form.Item>
 
-                    return (
-                      <ExpandableCard
-                        cardProps={{
-                          className: classNames('expandable-card m-t-md', {
-                            'expanded-active-card': editingKey === field.key,
-                          }),
-                          title: (
-                            <div className="w-full d-flex justify-between items-center">
-                              {editingKey === field.key ? null : (
-                                <div className="semantic-form-item-title-container">
-                                  <div className="d-flex items-center gap-6">
-                                    <Form.Item
-                                      {...field}
-                                      className="enable-form-item"
-                                      name={[field.name, 'enabled']}
-                                      valuePropName="checked">
-                                      <Switch />
-                                    </Form.Item>
-
-                                    <div className="d-flex flex-column">
-                                      <Typography.Text className="semantic-form-item-title">
-                                        {semanticsFormData?.[field.key]?.name ||
-                                          t('label.untitled')}
-                                      </Typography.Text>
-                                      <Typography.Text
-                                        ellipsis
-                                        className="semantic-form-item-description">
-                                        {semanticsFormData?.[field.key]
-                                          ?.description ||
-                                          t('label.no-description')}
-                                      </Typography.Text>
-                                    </div>
-                                  </div>
-                                  <div className="d-flex items-center gap-2">
-                                    <EditIconButton
-                                      newLook
-                                      className="edit-expand-button"
-                                      data-testid={`edit-semantic-${field.key}`}
-                                      size="middle"
-                                      onClick={() => setEditingKey(field.key)}
-                                    />
-
-                                    <Button
-                                      danger
-                                      className="delete-expand-button"
-                                      data-testid={`delete-semantic-${field.key}`}
-                                      icon={<DeleteIcon />}
-                                      size="middle"
-                                      onClick={() => {
-                                        handleDeleteSemantic(field.key);
-                                      }}
-                                    />
-                                  </div>
+                                <div className="d-flex flex-column">
+                                  <Typography.Text className="semantic-form-item-title">
+                                    {semanticsFormData?.[field.key]?.name ||
+                                      t('label.untitled')}
+                                  </Typography.Text>
+                                  <Typography.Text
+                                    ellipsis
+                                    className="semantic-form-item-description">
+                                    {semanticsFormData?.[field.key]
+                                      ?.description ||
+                                      t('label.no-description')}
+                                  </Typography.Text>
                                 </div>
-                              )}
-                            </div>
-                          ),
-                        }}
-                        dataTestId={`contract-semantics-card-${field.key}`}
-                        defaultExpanded={editingKey === field.key}
-                        key={field.key}>
-                        {editingKey === field.key ? (
-                          <>
-                            <Row className="semantic-form-item-content">
-                              <Col span={24}>
-                                <Form.Item
-                                  {...field}
-                                  label={t('label.name')}
-                                  name={[field.name, 'name']}>
-                                  <Input />
-                                </Form.Item>
-                              </Col>
-                              <Col span={24}>
-                                <Form.Item
-                                  {...field}
-                                  label={t('label.description')}
-                                  name={[field.name, 'description']}>
-                                  <TextArea rows={4} />
-                                </Form.Item>
-                              </Col>
-                              <Col span={24}>
-                                <QueryBuilderWidgetV1
-                                  entityType={EntityType.TABLE}
-                                  fields={queryBuilderFields}
-                                  getQueryActions={handleAddQueryBuilderRule}
-                                  label="Rule"
-                                  outputType={SearchOutputType.JSONLogic}
-                                  tree={
-                                    editFieldData?.jsonTree
-                                      ? JSON.parse(
-                                          (editFieldData?.jsonTree as unknown as string) ??
-                                            '{}'
-                                        )
-                                      : undefined
-                                  }
-                                  value={editFieldData?.rule ?? ''}
-                                  onChange={(rule: string, tree?: JsonTree) => {
-                                    form.setFieldsValue({
-                                      semantics: semanticsFormData?.map(
-                                        (item, idx) =>
-                                          idx === field.name
-                                            ? {
-                                                ...item,
-                                                rule,
-                                                jsonTree:
-                                                  tree && JSON.stringify(tree),
-                                              }
-                                            : item
-                                      ),
-                                    });
+                              </div>
+                              <div className="d-flex items-center gap-2">
+                                <EditIconButton
+                                  newLook
+                                  className="edit-expand-button"
+                                  data-testid={`edit-semantic-${field.key}`}
+                                  size="middle"
+                                  onClick={() => setEditingKey(field.key)}
+                                />
+
+                                <Button
+                                  danger
+                                  className="delete-expand-button"
+                                  data-testid={`delete-semantic-${field.key}`}
+                                  icon={<DeleteIcon />}
+                                  size="middle"
+                                  onClick={() => {
+                                    handleDeleteSemantic(field.key);
                                   }}
                                 />
-                              </Col>
-                            </Row>
-
-                            <div className="semantic-form-item-actions">
-                              <Button
-                                className="add-semantic-button"
-                                disabled={!queryBuilderAddRule?.addRule}
-                                icon={<Icon component={PlusIcon} />}
-                                type="link"
-                                onClick={handleAddNewRule}>
-                                {t('label.add-new-entity', {
-                                  entity: t('label.rule'),
-                                })}
-                              </Button>
-
-                              <div className="d-flex items-center">
-                                <Button onClick={() => setEditingKey(null)}>
-                                  {t('label.cancel')}
-                                </Button>
-                                <Button
-                                  className="m-l-md"
-                                  data-testid="save-semantic-button"
-                                  type="primary"
-                                  onClick={() => setEditingKey(null)}>
-                                  {t('label.save')}
-                                </Button>
                               </div>
                             </div>
-                          </>
-                        ) : (
-                          <div className="semantic-rule-editor-view-only">
+                          )}
+                        </div>
+                      ),
+                    }}
+                    dataTestId={`contract-semantics-card-${field.key}`}
+                    defaultExpanded={editingKey === field.name}
+                    key={field.name}>
+                    {editingKey === field.name ? (
+                      <>
+                        <Row className="semantic-form-item-content">
+                          <Col span={24}>
+                            <Form.Item
+                              {...field}
+                              label={t('label.name')}
+                              name={[field.name, 'name']}
+                              rules={[
+                                {
+                                  required: true,
+                                },
+                              ]}>
+                              <Input />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item
+                              {...field}
+                              label={t('label.description')}
+                              name={[field.name, 'description']}
+                              rules={[
+                                {
+                                  required: true,
+                                },
+                              ]}>
+                              <TextArea rows={4} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
                             <QueryBuilderWidgetV1
-                              readonly
                               entityType={EntityType.TABLE}
                               fields={queryBuilderFields}
+                              getQueryActions={handleAddQueryBuilderRule}
+                              key={field.name}
+                              label="Rule"
                               outputType={SearchOutputType.JSONLogic}
                               tree={
-                                semanticsFormData?.[field.key]?.jsonTree
-                                  ? JSON.parse(
-                                      semanticsFormData?.[field.key]
-                                        ?.jsonTree as unknown as string
-                                    )
+                                editFieldData?.jsonTree
+                                  ? JSON.parse(editFieldData?.jsonTree)
                                   : undefined
                               }
-                              value={
-                                semanticsFormData?.[field.key]?.rule ?? '{}'
-                              }
+                              value={editFieldData?.rule ?? ''}
+                              onChange={(rule: string, tree?: JsonTree) => {
+                                form.setFields([
+                                  {
+                                    name: ['semantics', field.name, 'rule'],
+                                    value: rule,
+                                    errors: rule
+                                      ? []
+                                      : [
+                                          t('message.field-text-is-required', {
+                                            fieldText: t('label.rule'),
+                                          }),
+                                        ],
+                                  },
+                                ]);
+                                form.setFieldsValue({
+                                  semantics: semanticsFormData?.map(
+                                    (item, idx) =>
+                                      idx === field.name
+                                        ? {
+                                            ...item,
+                                            rule,
+                                            jsonTree:
+                                              tree && JSON.stringify(tree),
+                                          }
+                                        : item
+                                  ),
+                                });
+                              }}
                             />
+                          </Col>
+                        </Row>
+
+                        <div className="semantic-form-item-actions">
+                          <Button
+                            className="add-semantic-button"
+                            disabled={!queryBuilderAddRule?.addRule}
+                            icon={<Icon component={PlusIcon} />}
+                            type="link"
+                            onClick={handleAddNewRule}>
+                            {t('label.add-new-entity', {
+                              entity: t('label.rule'),
+                            })}
+                          </Button>
+
+                          <div className="d-flex items-center">
+                            <Button onClick={() => setEditingKey(null)}>
+                              {t('label.cancel')}
+                            </Button>
+                            <Button
+                              className="m-l-md"
+                              data-testid="save-semantic-button"
+                              type="primary"
+                              onClick={handleSaveRule}>
+                              {t('label.save')}
+                            </Button>
                           </div>
-                        )}
-                      </ExpandableCard>
-                    );
-                  })}
-                </>
-              );
+                        </div>
+                      </>
+                    ) : (
+                      <div className="semantic-rule-editor-view-only">
+                        <QueryBuilderWidgetV1
+                          readonly
+                          entityType={EntityType.TABLE}
+                          fields={queryBuilderFields}
+                          key={field.name}
+                          outputType={SearchOutputType.JSONLogic}
+                          tree={
+                            semanticsFormData?.[field.name]?.jsonTree
+                              ? JSON.parse(
+                                  semanticsFormData?.[field.name]
+                                    ?.jsonTree as unknown as string
+                                )
+                              : undefined
+                          }
+                          value={semanticsFormData?.[field.name]?.rule}
+                        />
+                      </div>
+                    )}
+                  </ExpandableCard>
+                );
+              });
             }}
           </Form.List>
         </Form>

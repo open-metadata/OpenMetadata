@@ -76,7 +76,6 @@ const QueryBuilderWidgetV1: FC<{
 }) => {
   const [searchResults, setSearchResults] = useState<number | undefined>();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
-
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
   const baseConfig = useMemo(
@@ -101,10 +100,10 @@ const QueryBuilderWidgetV1: FC<{
     },
   });
   const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    QbUtils.sanitizeTree(
+    QbUtils.checkTree(
       QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
       config
-    ).fixedTree
+    )
   );
 
   const { t } = useTranslation();
@@ -228,7 +227,6 @@ const QueryBuilderWidgetV1: FC<{
             )}
             <Query
               {...config}
-              fields={fields ?? config.fields}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {
@@ -241,7 +239,6 @@ const QueryBuilderWidgetV1: FC<{
                   </div>
                 );
               }}
-              settings={config.settings}
               value={treeInternal}
               onChange={handleChange}
             />
