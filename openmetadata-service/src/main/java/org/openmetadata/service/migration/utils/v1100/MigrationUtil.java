@@ -121,14 +121,12 @@ public class MigrationUtil {
     while (totalMigrated < totalToMigrate) {
       batchNumber++;
 
-      // Escape the JSONB ? operator with double ??
       String updateSql =
           String.format(
               "WITH batch AS ( "
                   + "  SELECT id "
                   + "  FROM %1$s "
                   + "  WHERE NOT ((json)::jsonb ?? 'entityStatus') "
-                  + "    AND COALESCE(((json)::jsonb ->> 'deleted')::boolean, false) = false "
                   + "  ORDER BY id "
                   + "  LIMIT %2$d "
                   + ") "
@@ -136,8 +134,7 @@ public class MigrationUtil {
                   + "SET json = jsonb_set((t.json)::jsonb, '{entityStatus}', '\"Approved\"'::jsonb)::json "
                   + "FROM batch "
                   + "WHERE t.id = batch.id "
-                  + "  AND NOT ((t.json)::jsonb ?? 'entityStatus') "
-                  + "  AND COALESCE(((t.json)::jsonb ->> 'deleted')::boolean, false) = false",
+                  + "  AND NOT ((t.json)::jsonb ?? 'entityStatus')",
               tableName, BATCH_SIZE);
 
       long startTime = System.currentTimeMillis();
@@ -178,13 +175,11 @@ public class MigrationUtil {
                   + "  SELECT id "
                   + "  FROM %1$s "
                   + "  WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL "
-                  + "    AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.deleted')), 'false') = 'false' "
                   + "  ORDER BY id "
                   + "  LIMIT %2$d "
                   + ") s ON t.id = s.id "
                   + "SET t.json = JSON_SET(t.json, '$.entityStatus', 'Approved') "
-                  + "WHERE JSON_EXTRACT(t.json, '$.entityStatus') IS NULL "
-                  + "  AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(t.json, '$.deleted')), 'false') = 'false'",
+                  + "WHERE JSON_EXTRACT(t.json, '$.entityStatus') IS NULL",
               tableName, BATCH_SIZE);
 
       long startTime = System.currentTimeMillis();
@@ -217,23 +212,19 @@ public class MigrationUtil {
     try {
       String sql;
       if (isPostgres) {
-        // PostgreSQL: Rename status to entityStatus
         sql =
             "UPDATE glossary_term_entity "
                 + "SET json = jsonb_set(json - 'status', '{entityStatus}', "
                 + "COALESCE(json->'status', '\"Approved\"'::jsonb)) "
                 + "WHERE json ?? 'status' "
-                + "AND NOT json ?? 'entityStatus' "
-                + "AND deleted = false";
+                + "AND NOT json ?? 'entityStatus'";
       } else {
-        // MySQL: Rename status to entityStatus
         sql =
             "UPDATE glossary_term_entity "
                 + "SET json = JSON_SET(JSON_REMOVE(json, '$.status'), '$.entityStatus', "
                 + "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')), 'Approved')) "
                 + "WHERE JSON_CONTAINS_PATH(json, 'one', '$.status') = 1 "
-                + "AND JSON_CONTAINS_PATH(json, 'one', '$.entityStatus') = 0 "
-                + "AND deleted = false";
+                + "AND JSON_CONTAINS_PATH(json, 'one', '$.entityStatus') = 0";
       }
 
       long startTime = System.currentTimeMillis();
@@ -273,8 +264,7 @@ public class MigrationUtil {
                 + "  ELSE COALESCE(json->'status', '\"Approved\"'::jsonb) "
                 + "END) "
                 + "WHERE json ?? 'status' "
-                + "AND NOT json ?? 'entityStatus' "
-                + "AND deleted = false";
+                + "AND NOT json ?? 'entityStatus'";
       } else {
         // MySQL: Rename status to entityStatus and convert Active to Approved
         sql =
@@ -285,8 +275,7 @@ public class MigrationUtil {
                 + "  ELSE COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')), 'Approved') "
                 + "END) "
                 + "WHERE JSON_CONTAINS_PATH(json, 'one', '$.status') = 1 "
-                + "AND JSON_CONTAINS_PATH(json, 'one', '$.entityStatus') = 0 "
-                + "AND deleted = false";
+                + "AND JSON_CONTAINS_PATH(json, 'one', '$.entityStatus') = 0";
       }
 
       long startTime = System.currentTimeMillis();
@@ -312,16 +301,11 @@ public class MigrationUtil {
   private String buildCountQuery(String tableName) {
     if (isPostgres) {
       return String.format(
-          "SELECT COUNT(*) FROM %s "
-              + "WHERE NOT (json ?? 'entityStatus') "
-              + "AND COALESCE(json->>'deleted', 'false') = 'false'",
-          tableName);
+          "SELECT COUNT(*) FROM %s " + "WHERE NOT (json ?? 'entityStatus')", tableName);
 
     } else {
       return String.format(
-          "SELECT COUNT(*) FROM %s "
-              + "WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL "
-              + "AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.deleted')), 'false') = 'false'",
+          "SELECT COUNT(*) FROM %s " + "WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL",
           tableName);
     }
   }
