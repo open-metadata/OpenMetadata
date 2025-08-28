@@ -48,7 +48,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.MLMODEL,
           Entity.SEARCH_INDEX,
           Entity.API_ENDPOINT,
-          Entity.API_COLLCECTION,
+          Entity.API_COLLECTION,
           Entity.DATABASE_SERVICE,
           Entity.DASHBOARD_SERVICE,
           Entity.MESSAGING_SERVICE,
