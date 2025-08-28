@@ -98,10 +98,11 @@ export const ContractSchemaFormTab: React.FC<{
   const handleChangeTable = useCallback(
     (selectedRowKeys: Key[]) => {
       setSelectedKeys(selectedRowKeys as string[]);
+      const filteredColumns = (allColumns as Array<Column | Field>).filter(
+        (column) => selectedRowKeys.includes(column.name)
+      );
       onChange({
-        schema: allColumns.filter((column) =>
-          selectedRowKeys.includes(column.name)
-        ),
+        schema: filteredColumns as Column[],
       });
     },
     [allColumns, onChange]
