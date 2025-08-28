@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
@@ -34,7 +35,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/data")
