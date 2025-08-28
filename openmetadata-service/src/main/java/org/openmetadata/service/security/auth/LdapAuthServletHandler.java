@@ -25,19 +25,38 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
   private static final String SESSION_REFRESH_TOKEN = "refreshToken";
   private static final String SESSION_USER_ID = "userId";
 
-  private final LdapAuthenticator authenticator;
-  private final AuthenticationConfiguration authConfig;
+  final LdapAuthenticator authenticator;
+  final AuthenticationConfiguration authConfig;
 
   private static class Holder {
-    private static LdapAuthServletHandler instance;
+    private static volatile LdapAuthServletHandler instance;
+    private static volatile AuthenticationConfiguration lastAuthConfig;
+    private static volatile AuthorizerConfiguration lastAuthzConfig;
   }
 
   public static LdapAuthServletHandler getInstance(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
-    synchronized (LdapAuthServletHandler.class) {
-      Holder.instance = new LdapAuthServletHandler(authConfig, authorizerConfig);
+    // Check if configuration has changed
+    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
+      synchronized (LdapAuthServletHandler.class) {
+        if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
+          // Clean up old instance resources if exists
+          if (Holder.instance != null && Holder.instance.authenticator != null) {
+            // LdapAuthenticator might have connection pools to close
+            LOG.info("Replacing LDAP handler due to config change");
+          }
+          Holder.instance = new LdapAuthServletHandler(authConfig, authorizerConfig);
+          Holder.lastAuthConfig = authConfig;
+          Holder.lastAuthzConfig = authorizerConfig;
+        }
+      }
     }
     return Holder.instance;
+  }
+
+  private static boolean isSameConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    return authConfig == Holder.lastAuthConfig && authorizerConfig == Holder.lastAuthzConfig;
   }
 
   private LdapAuthServletHandler(

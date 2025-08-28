@@ -25,19 +25,35 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
   private static final String SESSION_REFRESH_TOKEN = "refreshToken";
   private static final String SESSION_USER_ID = "userId";
 
-  private final BasicAuthenticator authenticator;
-  private final AuthenticationConfiguration authConfig;
+  final BasicAuthenticator authenticator;
+  final AuthenticationConfiguration authConfig;
 
   private static class Holder {
-    private static BasicAuthServletHandler instance;
+    private static volatile BasicAuthServletHandler instance;
+    private static volatile AuthenticationConfiguration lastAuthConfig;
+    private static volatile AuthorizerConfiguration lastAuthzConfig;
   }
 
   public static BasicAuthServletHandler getInstance(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
-    synchronized (BasicAuthServletHandler.class) {
-      Holder.instance = new BasicAuthServletHandler(authConfig, authorizerConfig);
+    // Check if configuration has changed using reference equality
+    // This works because SecurityConfigurationManager keeps the same object reference
+    // until reloadSecuritySystem() is called
+    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
+      synchronized (BasicAuthServletHandler.class) {
+        if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
+          Holder.instance = new BasicAuthServletHandler(authConfig, authorizerConfig);
+          Holder.lastAuthConfig = authConfig;
+          Holder.lastAuthzConfig = authorizerConfig;
+        }
+      }
     }
     return Holder.instance;
+  }
+
+  private static boolean isSameConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    return authConfig == Holder.lastAuthConfig && authorizerConfig == Holder.lastAuthzConfig;
   }
 
   private BasicAuthServletHandler(

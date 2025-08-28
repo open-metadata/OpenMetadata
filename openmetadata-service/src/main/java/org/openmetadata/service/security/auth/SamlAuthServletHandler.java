@@ -41,23 +41,33 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String SESSION_USERNAME = "username";
   private static final String SESSION_REDIRECT_URI = "redirectUri";
 
-  private final AuthenticationConfiguration authConfig;
-  private final AuthorizerConfiguration authorizerConfig;
+  final AuthenticationConfiguration authConfig;
+  final AuthorizerConfiguration authorizerConfig;
 
   private static class Holder {
-    private static SamlAuthServletHandler instance;
+    private static volatile SamlAuthServletHandler instance;
+    private static volatile AuthenticationConfiguration lastAuthConfig;
+    private static volatile AuthorizerConfiguration lastAuthzConfig;
   }
 
   public static SamlAuthServletHandler getInstance(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
-    if (Holder.instance == null) {
+    // Check if configuration has changed
+    if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
       synchronized (SamlAuthServletHandler.class) {
-        if (Holder.instance == null) {
+        if (Holder.instance == null || !isSameConfig(authConfig, authorizerConfig)) {
           Holder.instance = new SamlAuthServletHandler(authConfig, authorizerConfig);
+          Holder.lastAuthConfig = authConfig;
+          Holder.lastAuthzConfig = authorizerConfig;
         }
       }
     }
     return Holder.instance;
+  }
+
+  private static boolean isSameConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    return authConfig == Holder.lastAuthConfig && authorizerConfig == Holder.lastAuthzConfig;
   }
 
   private SamlAuthServletHandler(

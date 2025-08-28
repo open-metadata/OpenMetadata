@@ -399,11 +399,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
     cookieConfig.setSecure(isHttps(config));
-    cookieConfig.setMaxAge(
-        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+
+    // Get session expiry - use OIDC config if available, otherwise default
+    int sessionExpiry = 604800; // Default 7 days in seconds
+    if (config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
+      sessionExpiry =
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry();
+    }
+
+    cookieConfig.setMaxAge(sessionExpiry);
     cookieConfig.setPath("/");
-    sessionHandler.setMaxInactiveInterval(
-        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+    sessionHandler.setMaxInactiveInterval(sessionExpiry);
 
     // Register Servlets
     ServletHolder authLoginHolder = new ServletHolder(new AuthLoginServlet());

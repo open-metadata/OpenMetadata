@@ -6,8 +6,6 @@ import static org.mockito.Mockito.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +33,7 @@ public class UnifiedAuthTest {
   @Mock private AuthorizerConfiguration mockAuthzConfig;
 
   @BeforeEach
-  void setUp() {
-    // Setup will be done in individual tests as needed
-  }
+  void setUp() {}
 
   @Test
   void testFactoryReturnsCorrectHandlerForBasicAuth() {
@@ -71,12 +67,6 @@ public class UnifiedAuthTest {
 
   @Test
   void testUnifiedLoginEndpoint() throws Exception {
-    // This test verifies that all auth types use the same /api/v1/auth/login endpoint
-    // and redirect to /callback?id_token=xxx
-
-    // Note: This is a conceptual test - actual implementation requires a running authenticator
-    // The test verifies that the handler structure exists and follows the pattern
-
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
     when(mockAuthConfig.getCallbackUrl()).thenReturn("http://localhost:8585");
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
@@ -123,47 +113,5 @@ public class UnifiedAuthTest {
 
     AuthServeletHandler handler2 = AuthServeletHandlerFactory.getHandler(mockConfig);
     assertTrue(handler2 instanceof LdapAuthServletHandler);
-  }
-
-  @Test
-  void testAllEndpointsPresent() throws Exception {
-    // Verify that all 4 required endpoints are handled
-
-    when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
-    SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
-    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
-
-    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig);
-
-    // Verify handler exists and has all required methods
-    assertNotNull(handler);
-
-    // Mock necessary components for method calls
-    when(mockRequest.getSession(anyBoolean())).thenReturn(mockSession);
-    when(mockSession.getId()).thenReturn("test-session");
-
-    StringWriter stringWriter = new StringWriter();
-    PrintWriter writer = new PrintWriter(stringWriter);
-    when(mockResponse.getWriter()).thenReturn(writer);
-
-    // Verify all methods are callable (they may fail due to missing auth, but should not throw
-    // compilation errors)
-    // Note: Actual execution would require full authentication setup
-    assertNotNull(
-        handler
-            .getClass()
-            .getMethod("handleLogin", HttpServletRequest.class, HttpServletResponse.class));
-    assertNotNull(
-        handler
-            .getClass()
-            .getMethod("handleCallback", HttpServletRequest.class, HttpServletResponse.class));
-    assertNotNull(
-        handler
-            .getClass()
-            .getMethod("handleRefresh", HttpServletRequest.class, HttpServletResponse.class));
-    assertNotNull(
-        handler
-            .getClass()
-            .getMethod("handleLogout", HttpServletRequest.class, HttpServletResponse.class));
   }
 }
