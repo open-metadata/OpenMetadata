@@ -100,6 +100,7 @@ jest.mock('@react-awesome-query-builder/antd', () => {
     ...actual,
     Utils: {
       ...actual.Utils,
+      getTree: jest.fn((tree) => tree),
       checkTree: jest.fn((tree) => tree),
       loadTree: jest.fn((tree) => tree || {}),
       sanitizeTree: jest.fn(() => ({ fixedTree: {} })),
@@ -608,7 +609,7 @@ describe('QueryBuilderWidgetV1', () => {
       });
 
       // Config should be updated internally
-      expect(Utils.checkTree).toHaveBeenCalled();
+      expect(Utils.sanitizeTree).toHaveBeenCalled();
     });
   });
 

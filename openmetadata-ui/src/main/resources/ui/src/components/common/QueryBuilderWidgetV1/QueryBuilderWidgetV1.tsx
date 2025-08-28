@@ -58,7 +58,7 @@ import './query-builder-widget-v1.less';
 
 const QueryBuilderWidgetV1: FC<{
   fields?: Config['fields'];
-  onChange?: (value: string, tree?: ImmutableTree) => void;
+  onChange?: (value: string, tree?: JsonTree) => void;
   entityType?: EntityType;
   outputType?: SearchOutputType;
   value?: string;
@@ -79,19 +79,32 @@ const QueryBuilderWidgetV1: FC<{
 
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
-  const [config, setConfig] = useState<Config>(
-    getTreeConfig({
-      searchIndex: searchIndex,
-      searchOutputType: outputType,
-      isExplorePage: false,
-      tierOptions: new Promise<ListValues>((resolve) => resolve([])),
-    })
+  const baseConfig = useMemo(
+    () =>
+      getTreeConfig({
+        searchIndex: searchIndex,
+        searchOutputType: outputType,
+        isExplorePage: false,
+        tierOptions: new Promise<ListValues>((resolve) => resolve([])),
+      }),
+    [searchIndex, outputType]
   );
+  const [config, setConfig] = useState<Config>({
+    ...baseConfig,
+    fields: fields ?? baseConfig.fields,
+    settings: {
+      ...baseConfig.settings,
+      ...(props.readonly ? READONLY_SETTINGS : {}),
+      removeEmptyGroupsOnLoad: false,
+      removeEmptyRulesOnLoad: false,
+      shouldCreateEmptyGroup: true,
+    },
+  });
   const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    QbUtils.checkTree(
+    QbUtils.sanitizeTree(
       QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
       config
-    )
+    ).fixedTree
   );
 
   const { t } = useTranslation();
@@ -178,11 +191,12 @@ const QueryBuilderWidgetV1: FC<{
 
       onChange?.(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
+      const jsonTree = QbUtils.getTree(nTree);
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        onChange?.(JSON.stringify(jsonLogic.logic ?? ''), nTree);
+        onChange?.(JSON.stringify(jsonLogic.logic ?? ''), jsonTree);
       } catch {
-        onChange?.('', nTree);
+        onChange?.('', jsonTree);
       }
     }
   };
@@ -227,13 +241,7 @@ const QueryBuilderWidgetV1: FC<{
                   </div>
                 );
               }}
-              settings={{
-                ...config.settings,
-                ...(props.readonly ? READONLY_SETTINGS : {}),
-                removeEmptyGroupsOnLoad: false,
-                removeEmptyRulesOnLoad: false,
-                shouldCreateEmptyGroup: true,
-              }}
+              settings={config.settings}
               value={treeInternal}
               onChange={handleChange}
             />

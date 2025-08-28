@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Actions, ImmutableTree } from '@react-awesome-query-builder/antd';
-import { FieldErrorProps } from '@rjsf/utils';
+import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
@@ -32,7 +31,6 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { getSematicRuleFields } from '../../../utils/DataContract/DataContractUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -259,10 +257,7 @@ export const ContractSemanticFormTab: React.FC<{
                                       : undefined
                                   }
                                   value={editFieldData?.rule ?? ''}
-                                  onChange={(
-                                    rule: string,
-                                    tree?: ImmutableTree
-                                  ) => {
+                                  onChange={(rule: string, tree?: JsonTree) => {
                                     form.setFieldsValue({
                                       semantics: semanticsFormData?.map(
                                         (item, idx) =>
@@ -309,18 +304,22 @@ export const ContractSemanticFormTab: React.FC<{
                           </>
                         ) : (
                           <div className="semantic-rule-editor-view-only">
-                            {/* @ts-expect-error because Form.Item will provide value and onChange */}
-                            <QueryBuilderWidget
+                            <QueryBuilderWidgetV1
                               readonly
+                              entityType={EntityType.TABLE}
                               fields={queryBuilderFields}
-                              formContext={{
-                                entityType: EntityType.TABLE,
-                              }}
-                              registry={{} as FieldErrorProps['registry']}
-                              schema={{
-                                outputType: SearchOutputType.JSONLogic,
-                              }}
-                              value={semanticsFormData?.[field.key]?.rule ?? {}}
+                              outputType={SearchOutputType.JSONLogic}
+                              tree={
+                                semanticsFormData?.[field.key]?.jsonTree
+                                  ? JSON.parse(
+                                      semanticsFormData?.[field.key]
+                                        ?.jsonTree as unknown as string
+                                    )
+                                  : undefined
+                              }
+                              value={
+                                semanticsFormData?.[field.key]?.rule ?? '{}'
+                              }
                             />
                           </div>
                         )}
