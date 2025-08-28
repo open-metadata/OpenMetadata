@@ -104,8 +104,8 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -1098,7 +1098,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
         securityConfig.getAuthorizerConfiguration().getClassName(),
         currentConfig.getAuthorizerConfiguration().getClassName());
   }
-  
+
   void testGetEntityRulesSettingByType() throws HttpResponseException {
     // Test table entity type - should include only enabled rules applicable to tables
     List<SemanticsRule> tableRules = getEntityRules("table");
