@@ -19,6 +19,7 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
 
@@ -33,7 +34,7 @@ const mockProps = {
       displayName: child.displayName,
       description: child.description,
       fullyQualifiedName: child.fullyQualifiedName,
-      type: 'glossaryTerm', // Required field for EntityReference
+      type: PageType.GlossaryTerm, // Required field for EntityReference
       deleted: child.deleted || false,
     })),
   },
