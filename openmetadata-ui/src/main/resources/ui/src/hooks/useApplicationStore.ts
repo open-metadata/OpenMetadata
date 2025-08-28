@@ -24,6 +24,7 @@ import { getThemeConfig } from '../utils/ThemeUtils';
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   isApplicationLoading: false,
+  isAuthenticating: true, // Loading until auth state is determined
   theme: getThemeConfig(),
   applicationConfig: {
     customTheme: getThemeConfig(),
@@ -71,10 +72,12 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
       set({
         isAuthenticated: Boolean(token),
+        isAuthenticating: false,
       });
     } catch {
       set({
         isAuthenticated: false,
+        isAuthenticating: false,
       });
     }
   },

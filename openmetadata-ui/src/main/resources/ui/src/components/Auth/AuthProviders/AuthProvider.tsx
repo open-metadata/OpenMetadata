@@ -155,6 +155,7 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     isApplicationLoading,
     setApplicationLoading,
+    isAuthenticating,
     initializeAuthState,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
@@ -667,12 +668,13 @@ export const AuthProvider = ({
   };
 
   const getProtectedApp = () => {
-    // Show loader if application in loading state
-    const childElement = isApplicationLoading ? (
-      <Loader fullScreen />
-    ) : (
-      children
-    );
+    // Show loader if application is loading or authenticating
+    const childElement =
+      isApplicationLoading || isAuthenticating ? (
+        <Loader fullScreen />
+      ) : (
+        children
+      );
 
     if (clientType === ClientType.Confidential) {
       return (
