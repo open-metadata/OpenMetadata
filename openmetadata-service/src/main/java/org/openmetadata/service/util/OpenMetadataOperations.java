@@ -1576,7 +1576,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(true);
   }
 
   private void initOrganization() {

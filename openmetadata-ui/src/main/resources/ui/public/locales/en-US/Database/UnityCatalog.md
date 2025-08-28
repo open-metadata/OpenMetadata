@@ -1,10 +1,10 @@
 # Unity Catalog
 
-In this section, we provide guides and references to use the Unity Catalog connector. You can view the full documentation for Unity Catalog [here](https://docs.open-metadata.org/connectors/database/unity-catalog).
+In this section, we provide guides and references to use the Unity Catalog connector. You can view the full documentation for Unity Catalog <a href="https://docs.open-metadata.org/connectors/database/unity-catalog" target="_blank">here</a>.
 
 ## Requirements
 
-To learn more about the Unity Catalog Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/unity-catalog/troubleshooting).
+To learn more about the Unity Catalog Connection Details (`hostPort`,`token`, `http_path`) information visit these <a href="https://docs.open-metadata.org/connectors/database/unity-catalog/troubleshooting" target="_blank">docs</a>.
 
 $$note
 We support Databricks runtime version 9 and above.
@@ -16,7 +16,7 @@ $$note
 To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
-You can find further information on the Unity Catalog connector in the [docs](https://docs.open-metadata.org/connectors/database/unity-catalog).
+You can find further information on the Unity Catalog connector in the <a href="https://docs.open-metadata.org/connectors/database/unity-catalog" target="_blank">docs</a>.
 
 ## Connection Details
 

@@ -122,7 +122,7 @@ test.describe('Data Contracts', () => {
   });
 
   test('Create Data Contract and validate', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(360000);
 
     await test.step('Redirect to Home Page and visit entity', async () => {
       await redirectToHomePage(page);
@@ -696,7 +696,7 @@ test.describe('Data Contracts', () => {
       });
 
       // Hide the Contract tab
-      await page.getByTestId('tab-Contract').click();
+      await page.getByTestId('tab-contract').click();
       await page.getByText('Hide', { exact: true }).click();
 
       // Save the customization
