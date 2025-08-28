@@ -23,8 +23,6 @@ export enum NodeSubType {
     RollbackEntityTask = "rollbackEntityTask",
     RunAppTask = "runAppTask",
     SetEntityAttributeTask = "setEntityAttributeTask",
-    SetEntityCertificationTask = "setEntityCertificationTask",
-    SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
     StartEvent = "startEvent",
     UserApprovalTask = "userApprovalTask",
 }
