@@ -235,8 +235,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DATABASE_SCHEMA,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -253,8 +253,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -266,8 +266,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -311,8 +311,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.STORED_PROCEDURE,
-          entityField: EntityFields.DATABASE,
+          searchIndex: SearchIndex.DATABASE,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -324,8 +324,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.STORED_PROCEDURE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -378,8 +378,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
-          entityField: EntityFields.API_COLLECTION,
+          searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -432,8 +432,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.GLOSSARY_TERM,
-          entityField: EntityFields.GLOSSARY,
+          searchIndex: SearchIndex.GLOSSARY,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -450,8 +450,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD,
-          entityField: EntityFields.DATA_MODEL,
+          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -462,8 +462,8 @@ class AdvancedSearchClassBase {
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD,
-          entityField: EntityFields.CHART,
+          searchIndex: SearchIndex.CHART,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
       },
@@ -709,8 +709,22 @@ class AdvancedSearchClassBase {
 
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex,
-            entityField: EntityFields.DOMAINS,
+            searchIndex: SearchIndex.DOMAIN,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityFields.DATA_PRODUCT]: {
+        label: t('label.data-product'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_PRODUCT,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
           }),
           useAsyncSearch: true,
         },
