@@ -54,6 +54,7 @@ export type ExportData = {
   exportTypes: ExportTypes[];
   viewport?: ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
+  hideExportModal?: boolean;
   onExport: (
     name: string,
     params?: {

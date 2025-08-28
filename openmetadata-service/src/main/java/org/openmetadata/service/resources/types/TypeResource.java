@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -69,15 +70,16 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SchemaFieldExtractor;
 
 @Path("/v1/metadata/types")
 @Tag(
     name = "Metadata",
     description =
-        "These APIs are for adding new `Types` to OpenMetadata and use those `Types` to "
-            + "extend the metadata of an entity with custom properties.")
+        "These APIs are for managing custom property definitions in OpenMetadata. Use these APIs to "
+            + "create custom properties with predefined data types (String, Integer, Date, etc.) that "
+            + "extend entity metadata. Note: This does not support creating new custom data types - "
+            + "only custom properties using existing OpenMetadata data types.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "types")
@@ -311,12 +313,17 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @POST
   @Operation(
       operationId = "createType",
-      summary = "Create a type",
-      description = "Create a new type.",
+      summary = "Create a custom property definition",
+      description =
+          "Create a new custom property definition that can be applied to entities. "
+              + "This creates a property template using existing OpenMetadata data types "
+              + "(String, Integer, Date, Enum, etc.). The created property can then be used to "
+              + "extend metadata for data assets like tables, dashboards, and pipelines. "
+              + "Note: This does not create new data types - only custom property definitions.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The type",
+            description = "The custom property definition",
             content =
                 @Content(
                     mediaType = "application/json",

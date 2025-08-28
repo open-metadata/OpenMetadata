@@ -38,6 +38,8 @@ server:
   maxThreads: ${SERVER_MAX_THREADS:-50}
   minThreads: ${SERVER_MIN_THREADS:-10}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
+  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -447,7 +449,13 @@ web:
 
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
-  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-    
-    
-  
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}
+
+rdf:
+  enabled: ${RDF_ENABLED:-false}
+  baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
+  storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  username: ${RDF_REMOTE_USERNAME:-"admin"}
+  password: ${RDF_REMOTE_PASSWORD:-"admin"}
+  dataset: ${RDF_DATASET:-"openmetadata"}
