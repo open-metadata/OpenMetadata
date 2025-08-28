@@ -256,31 +256,6 @@ class JSONLogicSearchClassBase {
                 searchIndex: SearchIndex.TAG,
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
-                queryFilter:
-                  'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
-              }),
-              useAsyncSearch: true,
-            },
-          },
-        },
-      },
-      [EntityReferenceFields.GLOSSARY_TERM]: {
-        label: t('label.glossary-term'),
-        type: '!group',
-        mode: 'some',
-        fieldName: 'tags',
-        defaultField: 'tagFQN',
-        subfields: {
-          tagFQN: {
-            label: 'Tags',
-            type: 'select',
-            mainWidgetProps: this.mainWidgetProps,
-            operators: this.defaultSelectOperators,
-            fieldSettings: {
-              asyncFetch: this.searchAutocomplete({
-                searchIndex: SearchIndex.GLOSSARY_TERM,
-                fieldName: 'fullyQualifiedName',
-                fieldLabel: 'name',
               }),
               useAsyncSearch: true,
             },
@@ -329,17 +304,6 @@ class JSONLogicSearchClassBase {
               useAsyncSearch: true,
             },
           },
-        },
-      },
-      [EntityReferenceFields.TIER]: {
-        label: t('label.tier'),
-        type: 'select',
-        fieldName: 'tags',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.autoCompleteTier,
-          useAsyncSearch: true,
         },
       },
       [EntityReferenceFields.EXTENSION]: {
