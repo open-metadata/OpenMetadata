@@ -28,7 +28,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testCaseResolutionStatusType?: string;
   assignee?: string;
   testCaseFQN?: string;
-  offset?: string;
+  offset?: number;
   originEntityFQN?: string;
   domain?: string;
   sortField?: string;

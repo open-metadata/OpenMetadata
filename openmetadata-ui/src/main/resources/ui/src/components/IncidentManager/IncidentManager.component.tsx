@@ -239,7 +239,9 @@ const IncidentManager = ({
       fetchTestCaseIncidents({
         ...filters,
         [cursorType]: paging?.[cursorType],
-        offset: paging?.[cursorType],
+        offset: paging?.[cursorType]
+          ? parseInt(paging[cursorType], 10)
+          : undefined,
       });
     }
     handlePageChange(currentPage);
