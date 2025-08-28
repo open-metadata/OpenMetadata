@@ -1,10 +1,10 @@
 package org.openmetadata.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
-import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
@@ -20,6 +20,7 @@ import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
@@ -61,8 +62,7 @@ public class McpServer implements McpServerProvider {
                 SecurityConfigurationManager.getInstance().getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
-    addSSETransport(contextHandler, authFilter, tools, prompts);
-    addStreamableHttpServlet(contextHandler, authFilter, tools, prompts);
+    addStatelessTransport(contextHandler, authFilter, tools, prompts);
   }
 
   protected List<McpSchema.Tool> getTools() {
@@ -73,7 +73,7 @@ public class McpServer implements McpServerProvider {
     return promptsContext.loadPromptsDefinitionsFromJson("json/data/mcp/prompts.json");
   }
 
-  private void addSSETransport(
+  private void addStatelessTransport(
       MutableServletContextHandler contextHandler,
       McpAuthFilter authFilter,
       List<McpSchema.Tool> tools,
@@ -83,69 +83,56 @@ public class McpServer implements McpServerProvider {
             .tools(true)
             .prompts(true)
             .resources(true, true)
+            .logging()
             .build();
 
-    HttpServletSseServerTransportProvider sseTransport =
-        new HttpServletSseServerTransportProvider(new ObjectMapper(), "/mcp/messages", "/mcp/sse");
+    HttpServletStatelessServerTransport statelessTransport =
+        HttpServletStatelessServerTransport.builder()
+            .objectMapper(JsonUtils.getObjectMapper())
+            .messageEndpoint("/mcp")
+            .contextExtractor(new AuthEnrichedMcpContextExtractor())
+            .build();
 
-    McpSyncServer server =
-        io.modelcontextprotocol.server.McpServer.sync(sseTransport)
-            .serverInfo("openmetadata-mcp-sse", "0.1.0")
+    McpStatelessSyncServer server =
+        io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
+            .serverInfo("openmetadata-mcp-stateless", "0.11.2")
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);
     addPromptsToServer(server, prompts);
 
     // SSE transport for MCP
-    ServletHolder servletHolderSSE = new ServletHolder(sseTransport);
+    ServletHolder servletHolderSSE = new ServletHolder(statelessTransport);
     contextHandler.addServlet(servletHolderSSE, "/mcp/*");
 
     contextHandler.addFilter(
         new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
   }
 
-  private void addStreamableHttpServlet(
-      MutableServletContextHandler contextHandler,
-      McpAuthFilter authFilter,
-      List<McpSchema.Tool> tools,
-      List<McpSchema.Prompt> prompts) {
-    // Streamable HTTP servlet for MCP
-    MCPStreamableHttpServlet streamableHttpServlet =
-        new MCPStreamableHttpServlet(
-            jwtFilter, authorizer, limits, toolContext, promptsContext, tools, prompts);
-    ServletHolder servletHolderStreamableHttp = new ServletHolder(streamableHttpServlet);
-    contextHandler.addServlet(servletHolderStreamableHttp, "/mcp");
-
-    contextHandler.addFilter(
-        new FilterHolder(authFilter), "/mcp", EnumSet.of(DispatcherType.REQUEST));
-  }
-
-  public void addToolsToServer(McpSyncServer server, List<McpSchema.Tool> tools) {
+  public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
     for (McpSchema.Tool tool : tools) {
       server.addTool(getTool(tool));
     }
   }
 
-  public void addPromptsToServer(McpSyncServer server, List<McpSchema.Prompt> tools) {
+  public void addPromptsToServer(McpStatelessSyncServer server, List<McpSchema.Prompt> tools) {
     for (McpSchema.Prompt pm : tools) {
       server.addPrompt(getPrompt(pm));
     }
   }
 
-  private McpServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
-    return new McpServerFeatures.SyncToolSpecification(
+  private McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
+    return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
-        (exchange, arguments) -> {
-          McpSchema.Content content =
-              new McpSchema.TextContent(
-                  JsonUtils.pojoToJson(
-                      toolContext.callTool(authorizer, jwtFilter, limits, tool.name(), arguments)));
-          return new McpSchema.CallToolResult(List.of(content), false);
+        (context, req) -> {
+          CatalogSecurityContext securityContext =
+              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+          return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
         });
   }
 
-  private McpServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
-    return new McpServerFeatures.SyncPromptSpecification(
+  private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+    return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (exchange, arguments) ->
             promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());

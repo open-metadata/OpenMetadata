@@ -4,7 +4,7 @@ MCP Server app installs an embedded Model Context Protocol(MCP) server within Op
  
    1. SSE : http[s]://openmetadata-host/mcp/sse
  
-    - This endpoint can be used by client if Streamable-Http transport is used.
+    - This endpoint can be used by client if SSE transport is used.
  
    2. Streamable-Http : http[s]://openmetadata-host/mcp
  

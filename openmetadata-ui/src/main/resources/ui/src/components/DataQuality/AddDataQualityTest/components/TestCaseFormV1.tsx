@@ -1038,6 +1038,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
+              notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
               })}
@@ -1071,10 +1072,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               />
             </Form.Item>
           )}
-        </Card>
-
-        <Card className="form-card-section" data-testid="test-details-card">
-          {generateFormFields(testDetailsFormFields)}
         </Card>
 
         <Card className="form-card-section" data-testid="test-type-card">
@@ -1170,6 +1167,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
           {isComputeRowCountFieldVisible &&
             generateFormFields(computeRowCountField)}
+        </Card>
+
+        <Card className="form-card-section" data-testid="test-details-card">
+          {generateFormFields(testDetailsFormFields)}
         </Card>
 
         {shouldShowScheduler && (
