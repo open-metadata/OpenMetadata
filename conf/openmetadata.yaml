@@ -52,7 +52,7 @@ server:
       minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}  # 0B = disabled
       minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}  # 0B = disabled
       
-  adminConnectors:
+  adminConnectors: 
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
