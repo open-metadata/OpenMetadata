@@ -106,6 +106,8 @@ export interface PipelineConnection {
  * Azure Data Factory Connection Config
  *
  * Stitch Connection
+ *
+ * Snowplow Pipeline Connection Config
  */
 export interface ConfigClass {
     /**
@@ -168,6 +170,8 @@ export interface ConfigClass {
     username?: string;
     /**
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -330,6 +334,26 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
+    /**
+     * Snowplow BDP Organization ID
+     */
+    organizationId?: string;
 }
 
 /**
@@ -392,6 +416,15 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -824,6 +857,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * We support username/password or client certificate authentication
  *
  * Configuration for connecting to Nifi Basic Auth.
@@ -955,6 +998,7 @@ export enum PipelineServiceType {
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",

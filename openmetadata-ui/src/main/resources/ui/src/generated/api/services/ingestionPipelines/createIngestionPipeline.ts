@@ -2403,6 +2403,8 @@ export interface ServiceConnection {
  *
  * Stitch Connection
  *
+ * Snowplow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -2874,6 +2876,8 @@ export interface ConfigClass {
      * API key to authenticate with the SAP ERP APIs.
      *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -3342,6 +3346,8 @@ export interface ConfigClass {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -3854,6 +3860,22 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -4523,6 +4545,15 @@ export interface ConsumerConfigSSLClass {
 }
 
 /**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
+}
+
+/**
  * Available sources to fetch the metadata.
  *
  * Deltalake Metastore configuration.
@@ -5124,6 +5155,16 @@ export enum MssqlScheme {
  */
 export enum MssqlType {
     Mssql = "Mssql",
+}
+
+/**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
 }
 
 /**
@@ -5897,6 +5938,7 @@ export enum PurpleType {
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",
