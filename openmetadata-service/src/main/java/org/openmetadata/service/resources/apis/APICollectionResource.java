@@ -90,7 +90,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
   }
 
   public APICollectionResource(Authorizer authorizer, Limits limits) {
-    super(Entity.API_COLLCECTION, authorizer, limits);
+    super(Entity.API_COLLECTION, authorizer, limits);
   }
 
   public static class APICollectionList extends ResultList<APICollection> {

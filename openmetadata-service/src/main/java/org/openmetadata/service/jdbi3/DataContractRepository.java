@@ -131,6 +131,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void prepare(DataContract dataContract, boolean update) {
     EntityReference entityRef = dataContract.getEntity();
+
+    validateEntitySpecificConstraints(dataContract, entityRef);
+
     if (!update) {
       validateEntityReference(entityRef);
     }
@@ -304,6 +307,99 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  /**
+   * Validates entity-specific constraints for data contracts based on entity type.
+   *
+   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
+   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,
+   * mlmodel, container, directory, file, spreadsheet, worksheet
+   *
+   * Validation support by entity type:
+   * - All entities: Support semantics validation
+   * - Schema validation: table, topic, apiEndpoint, dashboardDataModel
+   * - Quality expectations (DQ): table only
+   */
+  private void validateEntitySpecificConstraints(
+      DataContract dataContract, EntityReference entityRef) {
+    String entityType = entityRef.getType();
+    List<String> violations = new ArrayList<>();
+
+    // First, check if the entity type is supported for data contracts
+    if (!isSupportedEntityType(entityType)) {
+      violations.add(
+          String.format("Entity type '%s' is not supported for data contracts", entityType));
+    } else {
+      // Validate schema constraints
+      if (!nullOrEmpty(dataContract.getSchema()) && !supportsSchemaValidation(entityType)) {
+        violations.add(
+            String.format(
+                "Schema validation is not supported for %s entities. Only table, topic, "
+                    + "apiEndpoint, and dashboardDataModel entities support schema validation",
+                entityType));
+      }
+
+      // Validate quality expectations constraints
+      if (!nullOrEmpty(dataContract.getQualityExpectations())
+          && !supportsQualityValidation(entityType)) {
+        violations.add(
+            String.format(
+                "Quality expectations are not supported for %s entities. Only table entities "
+                    + "support quality expectations",
+                entityType));
+      }
+    }
+
+    if (!violations.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Data contract validation failed for %s entity: %s",
+              entityType, String.join("; ", violations)));
+    }
+  }
+
+  /**
+   * Checks if the given entity type is supported for data contracts.
+   */
+  private boolean isSupportedEntityType(String entityType) {
+    return Set.of(
+            Entity.TABLE,
+            Entity.STORED_PROCEDURE,
+            Entity.DATABASE,
+            Entity.DATABASE_SCHEMA,
+            Entity.DASHBOARD,
+            Entity.DASHBOARD_DATA_MODEL,
+            Entity.PIPELINE,
+            Entity.TOPIC,
+            Entity.SEARCH_INDEX,
+            Entity.API_COLLECTION,
+            Entity.API_ENDPOINT,
+            Entity.API,
+            Entity.MLMODEL,
+            Entity.CONTAINER,
+            Entity.DIRECTORY,
+            Entity.FILE,
+            Entity.SPREADSHEET,
+            Entity.WORKSHEET)
+        .contains(entityType);
+  }
+
+  /**
+   * Checks if the given entity type supports schema validation.
+   * Only table, topic, apiEndpoint, and dashboardDataModel support schema validation.
+   */
+  private boolean supportsSchemaValidation(String entityType) {
+    return Set.of(Entity.TABLE, Entity.TOPIC, Entity.API_ENDPOINT, Entity.DASHBOARD_DATA_MODEL)
+        .contains(entityType);
+  }
+
+  /**
+   * Checks if the given entity type supports quality expectations (DQ validation).
+   * Only table entities support quality expectations.
+   */
+  private boolean supportsQualityValidation(String entityType) {
+    return Entity.TABLE.equals(entityType);
   }
 
   public static String getTestSuiteName(DataContract dataContract) {
