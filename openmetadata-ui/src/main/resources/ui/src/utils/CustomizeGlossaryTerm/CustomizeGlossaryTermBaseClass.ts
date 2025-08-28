@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
-import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
-import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
@@ -33,66 +29,8 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import {
-  WidgetCommonProps,
-  WidgetConfig,
-} from '../../pages/CustomizablePage/CustomizablePage.interface';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermUtil';
-
-type ComponentMap = {
-  [GlossaryTermDetailPageWidgetKeys.HEADER]: {
-    component: typeof GlossaryHeader;
-    props: GlossaryHeaderProps & WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.TABS]: {
-    component: typeof CustomizeTabWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.TAGS]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.DOMAIN]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.REFERENCES]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.OWNER]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.REVIEWER]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-  [GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER]: {
-    component: typeof GenericWidget;
-    props: WidgetCommonProps;
-  };
-};
 
 class CustomizeGlossaryTermPageClassBase {
   defaultWidgetHeight = 2;

@@ -74,6 +74,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import AlertBar from '../../AlertBar/AlertBar';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -94,6 +95,7 @@ const ContractDetail: React.FC<{
   onDelete: () => void;
 }> = ({ contract, onEdit, onDelete }) => {
   const { t } = useTranslation();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const [validateLoading, setValidateLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
@@ -153,44 +155,51 @@ const ContractDetail: React.FC<{
     return pruneEmptyChildren(contract?.schema || []);
   }, [contract?.schema]);
 
-  const schemaColumns = [
-    {
-      title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => (
-        <Typography.Text className="text-primary">{name}</Typography.Text>
-      ),
-    },
-    {
-      title: t('label.type'),
-      dataIndex: 'dataType',
-      key: 'dataType',
-      render: (type: string) => (
-        <Tag className="custom-tag" color="purple">
-          {type}
-        </Tag>
-      ),
-    },
-    {
-      title: t('label.constraint-plural'),
-      dataIndex: 'constraint',
-      key: 'constraint',
-      render: (constraint: string) => (
-        <div>
-          {constraint ? (
-            <Tag className="custom-tag" color="blue">
-              {constraint}
-            </Tag>
-          ) : (
-            <Typography.Text data-testid="no-constraints">
-              {NO_DATA_PLACEHOLDER}
-            </Typography.Text>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const schemaColumns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (name: string) => (
+          <Typography.Text className="text-primary">{name}</Typography.Text>
+        ),
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'dataType',
+        key: 'dataType',
+        render: (type: string) => (
+          <Tag className="custom-tag" color="purple">
+            {type}
+          </Tag>
+        ),
+      },
+      ...(entityType === EntityType.TABLE
+        ? [
+            {
+              title: t('label.constraint-plural'),
+              dataIndex: 'constraint',
+              key: 'constraint',
+              render: (constraint: string) => (
+                <div>
+                  {constraint ? (
+                    <Tag className="custom-tag" color="blue">
+                      {constraint}
+                    </Tag>
+                  ) : (
+                    <Typography.Text data-testid="no-constraints">
+                      {NO_DATA_PLACEHOLDER}
+                    </Typography.Text>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
+    ],
+    [entityType]
+  );
 
   const constraintStatus = useMemo(() => {
     if (!latestContractResults) {

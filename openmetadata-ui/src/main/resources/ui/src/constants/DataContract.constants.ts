@@ -101,4 +101,8 @@ export const SUPPORTED_CONTRACT_TAB = {
     EDataContractTab.CONTRACT_DETAIL,
     EDataContractTab.SEMANTICS,
   ],
+  [EntityType.CHART]: [
+    EDataContractTab.CONTRACT_DETAIL,
+    EDataContractTab.SEMANTICS,
+  ],
 };
