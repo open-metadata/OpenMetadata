@@ -754,7 +754,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     return new CreateDataContract()
         .withName(contractName)
         .withEntity(entity.getEntityReference())
-        .withStatus(ContractStatus.Draft);
+        .withEntityStatus(EntityStatus.DRAFT);
   }
 
   public DataContract createDataContract(CreateDataContract create) throws IOException {
@@ -3595,7 +3595,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         createDataContractRequestForEntity(test.getDisplayName(), dashboard)
             .withDescription("Data contract for dashboard with semantics validation")
             .withSemantics(semanticsRules)
-            .withStatus(ContractStatus.Active);
+            .withEntityStatus(EntityStatus.APPROVED);
 
     DataContract dataContract = createDataContract(create);
 
@@ -3603,7 +3603,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(dataContract);
     assertNotNull(dataContract.getId());
     assertEquals(create.getName(), dataContract.getName());
-    assertEquals(create.getStatus(), dataContract.getStatus());
+    assertEquals(create.getEntityStatus(), dataContract.getEntityStatus());
     assertEquals(dashboard.getId(), dataContract.getEntity().getId());
     assertEquals("dashboard", dataContract.getEntity().getType());
 
@@ -4077,7 +4077,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         new CreateDataContract()
             .withName("contract_unsupported_" + test.getDisplayName())
             .withEntity(unsupportedRef)
-            .withStatus(ContractStatus.Draft);
+            .withEntityStatus(EntityStatus.DRAFT);
 
     assertResponseContains(
         () -> createDataContract(createWithUnsupported),
@@ -4193,7 +4193,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         new CreateDataContract()
             .withName("contract_unsupported_" + test.getDisplayName())
             .withEntity(unsupportedRef)
-            .withStatus(ContractStatus.Draft);
+            .withEntityStatus(EntityStatus.DRAFT);
 
     assertResponseContains(
         () -> createDataContract(createWithUnsupported),
