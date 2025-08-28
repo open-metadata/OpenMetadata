@@ -60,6 +60,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(26, ClassConverterFactory.getConverterMap().size());
+    assertEquals(34, ClassConverterFactory.getConverterMap().size());
   }
 }
