@@ -37,6 +37,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.ResponseException;
@@ -1738,6 +1739,19 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  public void updateEntityAsync(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.scriptedUpsert(true);
+      updateRequest.script(script);
+      updateElasticSearchAsync(updateRequest);
+    }
+  }
+
   @Override
   public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
     if (isClientAvailable) {
@@ -1947,6 +1961,36 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  public void updateElasticSearchAsync(UpdateRequest updateRequest) {
+    if (updateRequest != null && isClientAvailable) {
+      // Use WAIT_UNTIL for async updates - waits for next refresh but doesn't force immediate
+      // refresh
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+      LOG.debug("Sending async request to ElasticSearch: {}", updateRequest);
+
+      // The REST client has built-in retry with exponential backoff (default 3 retries, 30s
+      // timeout)
+      client.updateAsync(
+          updateRequest,
+          RequestOptions.DEFAULT,
+          new ActionListener<UpdateResponse>() {
+            @Override
+            public void onResponse(UpdateResponse updateResponse) {
+              LOG.debug(
+                  "Async update successful for doc: {}, result: {}",
+                  updateResponse.getId(),
+                  updateResponse.getResult());
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              // Log the error - the built-in retry already attempted 3 times before failing
+              LOG.error("Async update failed for doc: {} after retries", updateRequest.id(), e);
+            }
+          });
     }
   }
 
