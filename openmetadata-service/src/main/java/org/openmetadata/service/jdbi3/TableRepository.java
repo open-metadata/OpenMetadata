@@ -100,6 +100,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
@@ -117,7 +118,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
@@ -1823,7 +1823,7 @@ public class TableRepository extends EntityRepository<Table> {
         table, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
-  private org.openmetadata.service.util.ResultList<Column> getTableColumnsInternal(
+  private ResultList<Column> getTableColumnsInternal(
       Table table,
       int limit,
       int offset,

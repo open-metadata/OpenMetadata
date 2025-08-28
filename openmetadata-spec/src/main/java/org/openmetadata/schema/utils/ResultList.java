@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.util;
+package org.openmetadata.schema.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.validation.constraints.NotNull;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -88,8 +90,16 @@ public class ResultList<T> {
     this.data = data;
     paging =
         new Paging()
-            .withBefore(RestUtil.encodeCursor(beforeCursor))
-            .withAfter(RestUtil.encodeCursor(afterCursor))
+            .withBefore(
+                beforeCursor == null
+                    ? null
+                    : Base64.getUrlEncoder()
+                        .encodeToString(beforeCursor.getBytes(StandardCharsets.UTF_8)))
+            .withAfter(
+                afterCursor == null
+                    ? null
+                    : Base64.getUrlEncoder()
+                        .encodeToString(afterCursor.getBytes(StandardCharsets.UTF_8)))
             .withTotal(total);
   }
 
@@ -136,8 +146,16 @@ public class ResultList<T> {
     this.errors = errors;
     paging =
         new Paging()
-            .withBefore(RestUtil.encodeCursor(beforeCursor))
-            .withAfter(RestUtil.encodeCursor(afterCursor))
+            .withBefore(
+                beforeCursor == null
+                    ? null
+                    : Base64.getUrlEncoder()
+                        .encodeToString(beforeCursor.getBytes(StandardCharsets.UTF_8)))
+            .withAfter(
+                afterCursor == null
+                    ? null
+                    : Base64.getUrlEncoder()
+                        .encodeToString(afterCursor.getBytes(StandardCharsets.UTF_8)))
             .withTotal(total);
   }
 
