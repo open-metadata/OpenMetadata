@@ -132,6 +132,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -152,7 +153,6 @@ import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RdfTestUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
