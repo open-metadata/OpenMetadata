@@ -73,7 +73,7 @@ class UnityCatalogSamplerTest(TestCase):
         )
 
     @patch(
-        "metadata.sampler.sqlalchemy.unitycatalog.sampler.SQASampler.build_table_orm"
+        "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
     )
     def test_handle_array_column(self, mock_build_table_orm):
         """Test array column detection"""
