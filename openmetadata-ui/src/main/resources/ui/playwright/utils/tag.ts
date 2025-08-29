@@ -328,7 +328,9 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
+  const initialTagResponse = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
+  await initialTagResponse;
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -357,13 +359,22 @@ export const verifyTagPageUI = async (
   await page.getByRole('link', { name: classificationName }).click();
   await classificationTable;
 
+  await expect(page.locator('.activeCategory')).toContainText(
+    classificationName
+  );
+
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
   await res;
 
+  await expect(page.getByTestId('entity-header-name')).toContainText(
+    tag.data.name
+  );
+
   const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
   await page.getByRole('link', { name: 'Classifications' }).click();
   await classificationPage;
+  await page.waitForLoadState('networkidle');
 };
 
 export const editTagPageDescription = async (page: Page, tag: TagClass) => {
