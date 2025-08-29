@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
@@ -25,9 +24,12 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -40,8 +42,10 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.logstorage.S3LogStorage;
+import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -50,14 +54,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Testcontainers
-public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
+class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
   private static final String MINIO_ACCESS_KEY = "minioadmin";
   private static final String MINIO_SECRET_KEY = "minioadmin";
   private static final String TEST_BUCKET = "pipeline-logs-test";
-  private static final String COLLECTION_PATH = "services/ingestionPipelines";
 
   @Container
   private static final GenericContainer<?> minioContainer =
@@ -71,19 +73,42 @@ public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest
   private static MinioClient minioClient;
   private static DatabaseService databaseService;
   private static IngestionPipeline testPipeline;
+  private static S3LogStorage s3LogStorage;
+  private static StreamableLogsMetrics metrics;
   private static boolean initialized = false;
 
+  @BeforeEach
+  void cleanupBeforeTest() throws Exception {
+    if (initialized && minioClient != null && TEST_BUCKET != null) {
+      try {
+        // Clean up any existing test data
+        var objects =
+            minioClient.listObjects(
+                io.minio.ListObjectsArgs.builder()
+                    .bucket(TEST_BUCKET)
+                    .prefix("test-logs/")
+                    .recursive(true)
+                    .build());
+
+        for (var object : objects) {
+          minioClient.removeObject(
+              io.minio.RemoveObjectArgs.builder()
+                  .bucket(TEST_BUCKET)
+                  .object(object.get().objectName())
+                  .build());
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to clean up before test: {}", e.getMessage());
+      }
+    }
+  }
+
   @Test
-  @Order(1)
-  public void setupTestData() throws Exception {
+  void setupTestData() throws Exception {
     if (initialized) {
       return;
     }
-
-    // Wait for MinIO to be ready
-    Thread.sleep(2000); // Give MinIO a moment to fully start
-
-    // Initialize MinIO client
+    TestUtils.simulateWork(2000);
     String minioEndpoint =
         String.format("http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000));
     LOG.info("Connecting to MinIO at: {}", minioEndpoint);
@@ -94,7 +119,6 @@ public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest
             .credentials(MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
             .build();
 
-    // Create test bucket
     try {
       if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(TEST_BUCKET).build())) {
         minioClient.makeBucket(MakeBucketArgs.builder().bucket(TEST_BUCKET).build());
@@ -105,7 +129,38 @@ public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest
       throw new RuntimeException("MinIO setup failed", e);
     }
 
-    // Create a database service for testing
+    // Initialize S3LogStorage with MinIO configuration
+    org.openmetadata.schema.security.credentials.AWSCredentials awsCreds =
+        new org.openmetadata.schema.security.credentials.AWSCredentials()
+            .withAwsAccessKeyId(MINIO_ACCESS_KEY)
+            .withAwsSecretAccessKey(MINIO_SECRET_KEY)
+            .withAwsRegion("us-east-1")
+            .withEndPointURL(java.net.URI.create(minioEndpoint));
+
+    LogStorageConfiguration s3Config =
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName(TEST_BUCKET)
+            .withRegion("us-east-1")
+            .withPrefix("test-logs")
+            .withAwsConfig(awsCreds);
+
+    // Initialize metrics
+    metrics =
+        new StreamableLogsMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+
+    // Create and initialize S3LogStorage
+    s3LogStorage = new S3LogStorage();
+    Map<String, Object> initConfig = new HashMap<>();
+    initConfig.put("config", s3Config);
+    initConfig.put("metrics", metrics);
+    // For MinIO, pass endpoint and credentials directly
+    initConfig.put("endpoint", minioEndpoint);
+    initConfig.put("accessKey", MINIO_ACCESS_KEY);
+    initConfig.put("secretKey", MINIO_SECRET_KEY);
+    s3LogStorage.initialize(initConfig);
+    LOG.info("S3LogStorage initialized with MinIO");
+
     try {
       CreateDatabaseService createService =
           new CreateDatabaseService()
@@ -125,15 +180,138 @@ public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest
         throw e;
       }
     }
-
-    // Create test ingestion pipeline
     testPipeline = createTestPipeline();
-
     initialized = true;
   }
 
+  @Test
+  void testMetricsRecording() throws Exception {
+    setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.metrics";
+    UUID runId = UUID.randomUUID();
+
+    long initialWrites = metrics.getS3WritesCount();
+    long initialReads = metrics.getS3ReadsCount();
+    s3LogStorage.appendLogs(pipelineFQN, runId, "Test log for metrics\n");
+    s3LogStorage.flush();
+    TestUtils.simulateWork(1500);
+
+    s3LogStorage.getLogs(pipelineFQN, runId, null, 10);
+    s3LogStorage.listRuns(pipelineFQN, 10);
+    assertTrue(metrics.getS3WritesCount() > initialWrites, "S3 write count should increase");
+    assertTrue(metrics.getS3ReadsCount() > initialReads, "S3 read count should increase");
+  }
+
+  void testStreamingEndpoint() throws Exception {
+    setupTestData();
+    if (testPipeline == null) {
+      LOG.warn("Skipping streaming endpoint test - pipeline not created");
+      return;
+    }
+
+    String pipelineId = testPipeline.getId().toString();
+    String runId = UUID.randomUUID().toString();
+
+    WebTarget streamTarget =
+        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId + "/stream");
+
+    String logData = "Stream endpoint test log\n";
+    Response streamResponse =
+        streamTarget
+            .request(MediaType.TEXT_PLAIN)
+            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
+            .post(Entity.text(logData));
+
+    assertEquals(Response.Status.OK.getStatusCode(), streamResponse.getStatus());
+
+    // Give time for async processing
+    TestUtils.simulateWork(2000);
+
+    // Read logs back through REST endpoint
+    WebTarget getTarget =
+        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId);
+    Response getResponse =
+        getTarget
+            .request(MediaType.APPLICATION_JSON)
+            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
+            .get();
+
+    assertEquals(Response.Status.OK.getStatusCode(), getResponse.getStatus());
+
+    Map<String, Object> result =
+        JsonUtils.readValue(getResponse.readEntity(String.class), Map.class);
+    assertNotNull(result.get("logs"));
+    assertTrue(result.get("logs").toString().contains("Stream endpoint test log"));
+  }
+
+  @Test
+  void testMaxConcurrentStreamsLimit() throws Exception {
+    setupTestData();
+
+    // Create a storage with low max concurrent streams for testing
+    LogStorageConfiguration limitedConfig =
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName(TEST_BUCKET)
+            .withRegion("us-east-1")
+            .withPrefix("limited-test")
+            .withMaxConcurrentStreams(2); // Very low limit
+
+    S3LogStorage limitedStorage = new S3LogStorage();
+    Map<String, Object> initConfig = new HashMap<>();
+    initConfig.put("config", limitedConfig);
+    initConfig.put("metrics", metrics);
+    initConfig.put(
+        "endpoint",
+        String.format(
+            "http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000)));
+    initConfig.put("accessKey", MINIO_ACCESS_KEY);
+    initConfig.put("secretKey", MINIO_SECRET_KEY);
+    limitedStorage.initialize(initConfig);
+
+    // Try to create more streams than allowed
+    List<OutputStream> streams = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      try {
+        OutputStream stream =
+            limitedStorage.getLogOutputStream("test.pipeline.stream" + i, UUID.randomUUID());
+        streams.add(stream);
+      } catch (IOException e) {
+        // Expected to fail on the 3rd stream
+        assertTrue(e.getMessage().contains("Maximum concurrent log streams"));
+      }
+    }
+
+    // Clean up
+    for (OutputStream stream : streams) {
+      stream.close();
+    }
+    limitedStorage.close();
+  }
+
   @AfterAll
-  public static void cleanup() throws Exception {
+  static void cleanup() throws Exception {
+    // Clean up S3 bucket contents
+    if (minioClient != null && TEST_BUCKET != null) {
+      try {
+        // List and delete all objects in the test bucket
+        var objects =
+            minioClient.listObjects(
+                io.minio.ListObjectsArgs.builder().bucket(TEST_BUCKET).recursive(true).build());
+
+        for (var object : objects) {
+          minioClient.removeObject(
+              io.minio.RemoveObjectArgs.builder()
+                  .bucket(TEST_BUCKET)
+                  .object(object.get().objectName())
+                  .build());
+        }
+        LOG.info("Cleaned up S3 test objects");
+      } catch (Exception e) {
+        LOG.warn("Failed to clean up S3 objects: {}", e.getMessage());
+      }
+    }
+
     // Clean up test pipeline first (before deleting the service it depends on)
     if (testPipeline != null) {
       try {
@@ -156,163 +334,241 @@ public class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest
   }
 
   @Test
-  @Order(2)
-  public void testWriteAndReadLogsWithDefaultStorage() throws Exception {
+  void testWriteAndReadLogsWithS3Storage() throws Exception {
     setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.s3";
     UUID runId = UUID.randomUUID();
     String logContent = "Test log entry at " + new Date() + "\n";
 
-    // Write logs
-    WebTarget writeTarget =
-        getResource(
-            "services/ingestionPipelines/logs/"
-                + testPipeline.getFullyQualifiedName()
-                + "/"
-                + runId);
-    Response writeResponse =
-        SecurityUtil.addHeaders(writeTarget, ADMIN_AUTH_HEADERS)
-            .post(Entity.entity(logContent, MediaType.TEXT_PLAIN));
+    s3LogStorage.appendLogs(pipelineFQN, runId, logContent);
+    for (int i = 1; i <= 5; i++) {
+      s3LogStorage.appendLogs(pipelineFQN, runId, "Log line " + i + "\n");
+    }
+    s3LogStorage.flush();
+    TestUtils.simulateWork(1000);
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 100);
 
-    // For default storage, writing is not supported
-    assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), writeResponse.getStatus());
+    assertNotNull(logs);
+    assertTrue(logs.containsKey("logs"));
+    String retrievedLogs = (String) logs.get("logs");
+    assertNotNull(retrievedLogs);
+
+    assertTrue(retrievedLogs.contains("Test log entry at"));
+    assertTrue(retrievedLogs.contains("Log line 1"));
+    assertTrue(retrievedLogs.contains("Log line 5"));
+    TestUtils.simulateWork(1000);
+    assertTrue(
+        metrics.getS3WritesCount() > 0,
+        "S3 writes should be recorded. Count: " + metrics.getS3WritesCount());
+    assertTrue(
+        metrics.getS3ReadsCount() > 0,
+        "S3 reads should be recorded. Count: " + metrics.getS3ReadsCount());
   }
 
   @Test
-  @Order(3)
-  public void testLogPagination() throws Exception {
+  void testLogPaginationWithS3() throws Exception {
     setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.pagination";
     UUID runId = UUID.randomUUID();
 
-    // First write some logs
-    StringBuilder testLogs = new StringBuilder();
-    for (int i = 1; i <= 20; i++) {
-      testLogs.append("Log line ").append(i).append("\n");
+    for (int i = 1; i <= 100; i++) {
+      s3LogStorage.appendLogs(pipelineFQN, runId, String.format("Log line %03d\n", i));
     }
 
-    WebTarget writeTarget =
-        getResource(
-            "services/ingestionPipelines/logs/"
-                + testPipeline.getFullyQualifiedName()
-                + "/"
-                + runId);
-    Response writeResponse =
-        SecurityUtil.addHeaders(writeTarget, ADMIN_AUTH_HEADERS)
-            .post(Entity.entity(testLogs.toString(), MediaType.TEXT_PLAIN));
+    Map<String, Object> firstPage = s3LogStorage.getLogs(pipelineFQN, runId, null, 20);
+    assertNotNull(firstPage);
+    String firstPageLogs = (String) firstPage.get("logs");
+    assertNotNull(firstPageLogs);
 
-    // Writing might fail with default storage, but that's okay
-    if (writeResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-      // If writing succeeded, test pagination
+    int firstPageLines = firstPageLogs.split("\n").length;
+    assertEquals(20, firstPageLines, "First page should have 20 lines");
 
-      // Read logs with pagination - first 10 lines
-      WebTarget readTarget =
-          getResource(
-                  "services/ingestionPipelines/logs/"
-                      + testPipeline.getFullyQualifiedName()
-                      + "/"
-                      + runId)
-              .queryParam("limit", 10);
-      Response readResponse = SecurityUtil.addHeaders(readTarget, ADMIN_AUTH_HEADERS).get();
-      assertEquals(OK.getStatusCode(), readResponse.getStatus());
+    assertTrue(firstPageLogs.contains("Log line 001"));
+    assertTrue(firstPageLogs.contains("Log line 020"));
+    assertFalse(firstPageLogs.contains("Log line 021")); // Should not be in first page
 
-      Map<String, Object> logs = readResponse.readEntity(Map.class);
-      assertNotNull(logs);
-      assertTrue(logs.containsKey("logs"));
-      assertTrue(logs.containsKey("after"));
-      assertTrue(logs.containsKey("total"));
+    String afterCursor = (String) firstPage.get("after");
+    assertNotNull(afterCursor, "After cursor should be present for pagination");
 
-      String logContent = (String) logs.get("logs");
-      assertNotNull(logContent);
+    Map<String, Object> secondPage = s3LogStorage.getLogs(pipelineFQN, runId, afterCursor, 20);
+    String secondPageLogs = (String) secondPage.get("logs");
+    assertNotNull(secondPageLogs);
 
-      // If we have an after cursor, read next page
-      if (logs.get("after") != null) {
-        WebTarget nextPageTarget =
-            getResource(
-                    "services/ingestionPipelines/logs/"
-                        + testPipeline.getFullyQualifiedName()
-                        + "/"
-                        + runId)
-                .queryParam("after", logs.get("after"))
-                .queryParam("limit", 10);
-        Response nextPageResponse =
-            SecurityUtil.addHeaders(nextPageTarget, ADMIN_AUTH_HEADERS).get();
-        assertEquals(OK.getStatusCode(), nextPageResponse.getStatus());
-      }
-    } else {
-      // With default storage, writing fails but reading should still work (returns empty logs)
-      WebTarget readTarget =
-          getResource(
-                  "services/ingestionPipelines/logs/"
-                      + testPipeline.getFullyQualifiedName()
-                      + "/"
-                      + runId)
-              .queryParam("limit", 10);
-      Response readResponse = SecurityUtil.addHeaders(readTarget, ADMIN_AUTH_HEADERS).get();
-      assertEquals(OK.getStatusCode(), readResponse.getStatus());
+    assertTrue(secondPageLogs.contains("Log line 021"));
+    assertTrue(secondPageLogs.contains("Log line 040"));
+    assertFalse(secondPageLogs.contains("Log line 020")); // Should not be in second page
 
-      Map<String, Object> logs = readResponse.readEntity(Map.class);
-      assertNotNull(logs);
-      assertTrue(logs.containsKey("logs"));
-      assertTrue(logs.containsKey("after"));
-      assertTrue(logs.containsKey("total"));
+    Long total = (Long) firstPage.get("total");
+    assertTrue(total > 0, "Total size should be greater than 0");
+  }
+
+  @Test
+  void testListRunsWithS3() throws Exception {
+    setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.listruns";
+
+    List<UUID> expectedRunIds = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      UUID runId = UUID.randomUUID();
+      expectedRunIds.add(runId);
+      s3LogStorage.appendLogs(pipelineFQN, runId, "Log for run " + i + "\n");
+    }
+    s3LogStorage.flush();
+    TestUtils.simulateWork(1000);
+    List<UUID> actualRunIds = s3LogStorage.listRuns(pipelineFQN, 10);
+    assertNotNull(actualRunIds);
+    assertEquals(5, actualRunIds.size(), "Should return all 5 runs");
+    for (UUID expectedId : expectedRunIds) {
+      assertTrue(
+          actualRunIds.contains(expectedId), "Run ID " + expectedId + " should be in the list");
+    }
+    List<UUID> limitedRuns = s3LogStorage.listRuns(pipelineFQN, 3);
+    assertEquals(3, limitedRuns.size(), "Should respect limit of 3");
+  }
+
+  @Test
+  void testMultipartUploadForLargeLogs() throws Exception {
+    setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.multipart";
+    UUID runId = UUID.randomUUID();
+    StringBuilder largeLogs = new StringBuilder();
+    String line =
+        "This is a test log line that will be repeated many times to create large content. ";
+    int linesNeeded = (6 * 1024 * 1024) / line.length(); // ~6MB
+
+    for (int i = 0; i < linesNeeded; i++) {
+      largeLogs.append(line).append(i).append("\n");
+    }
+
+    s3LogStorage.appendLogs(pipelineFQN, runId, largeLogs.toString());
+    s3LogStorage.flush();
+    TestUtils.simulateWork(2000);
+
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 100);
+    assertNotNull(logs);
+    String retrievedLogs = (String) logs.get("logs");
+    assertNotNull(retrievedLogs);
+    assertTrue(retrievedLogs.length() > 0);
+    String objectKey =
+        String.format(
+            "test-logs/%s/%s/logs.txt", pipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_"), runId);
+    assertTrue(checkS3ObjectExists(objectKey), "S3 object should exist at: " + objectKey);
+  }
+
+  private boolean checkS3ObjectExists(String key) {
+    try {
+      minioClient.statObject(
+          io.minio.StatObjectArgs.builder().bucket(TEST_BUCKET).object(key).build());
+      return true;
+    } catch (Exception e) {
+      return false;
     }
   }
 
   @Test
-  @Order(4)
-  public void testListRuns() throws Exception {
-    setupTestData(); // Ensure setup has run
-    // List runs for the pipeline
-    WebTarget listTarget =
-        getResource("services/ingestionPipelines/logs/" + testPipeline.getFullyQualifiedName())
-            .queryParam("limit", 5);
-    Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-    assertEquals(OK.getStatusCode(), listResponse.getStatus());
+  void testDeleteLogs() throws Exception {
+    setupTestData();
+    String pipelineFQN = "test.pipeline.delete";
+    UUID runId = UUID.randomUUID();
 
-    Map<String, Object> result = listResponse.readEntity(Map.class);
-    assertNotNull(result);
-    assertTrue(result.containsKey("runs"));
-    List<String> runs = (List<String>) result.get("runs");
-    assertNotNull(runs);
+    s3LogStorage.appendLogs(pipelineFQN, runId, "Logs to be deleted\n");
+    s3LogStorage.flush();
+    TestUtils.simulateWork(1000);
+
+    assertTrue(s3LogStorage.logsExist(pipelineFQN, runId));
+    s3LogStorage.deleteLogs(pipelineFQN, runId);
+    TestUtils.simulateWork(500);
+    assertFalse(s3LogStorage.logsExist(pipelineFQN, runId));
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 10);
+    assertEquals("", logs.get("logs"));
   }
 
   @Test
-  @Order(5)
-  public void testS3LogStorageIntegration() throws Exception {
-    setupTestData(); // Ensure setup has run
-    // This test would require updating the application configuration to use S3 storage
-    // For now, we'll create a unit test for S3LogStorage
-
-    // Create S3 configuration
-    LogStorageConfiguration s3Config =
+  void testS3ConnectionFailure() throws Exception {
+    LogStorageConfiguration badConfig =
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
-            .withBucketName(TEST_BUCKET)
+            .withBucketName("non-existent-bucket")
             .withRegion("us-east-1")
             .withPrefix("test-logs");
 
-    // Test configuration is valid
-    assertNotNull(s3Config);
-    assertEquals(LogStorageConfiguration.Type.S_3, s3Config.getType());
-    assertEquals(TEST_BUCKET, s3Config.getBucketName());
+    S3LogStorage badStorage = new S3LogStorage();
+    Map<String, Object> initConfig = new HashMap<>();
+    initConfig.put("config", badConfig);
+    initConfig.put("endpoint", "http://invalid-endpoint:9999");
+    assertThrows(IOException.class, () -> badStorage.initialize(initConfig));
   }
 
   @Test
-  @Order(6)
-  public void testUnauthorizedAccess() throws Exception {
-    setupTestData(); // Ensure setup has run
+  void testLogBufferExpiration() throws Exception {
+    setupTestData();
+    String pipelineFQN = "test.pipeline.buffer";
     UUID runId = UUID.randomUUID();
 
-    // Try to read logs without authorization
-    WebTarget readTarget =
-        getResource(
-            "services/ingestionPipelines/logs/"
-                + testPipeline.getFullyQualifiedName()
-                + "/"
-                + runId);
-    Response readResponse = SecurityUtil.addHeaders(readTarget, null).get();
+    s3LogStorage.appendLogs(pipelineFQN, runId, "Buffered log entry\n");
+    TestUtils.simulateWork(6000); // Longer than buffer timeout
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 10);
+    assertTrue(logs.get("logs").toString().contains("Buffered log entry"));
+  }
 
-    // Should get unauthorized
-    assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), readResponse.getStatus());
+  @Test
+  void testEmptyLogsHandling() throws Exception {
+    setupTestData();
+    String pipelineFQN = "test.pipeline.empty";
+    UUID runId = UUID.randomUUID();
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 10);
+    assertNotNull(logs);
+    assertEquals("", logs.get("logs"));
+    assertNull(logs.get("after"));
+    assertEquals(0L, logs.get("total"));
+  }
+
+  @Test
+  void testConcurrentWrites() throws Exception {
+    setupTestData(); // Ensure setup has run
+    String pipelineFQN = "test.pipeline.concurrent";
+    UUID runId = UUID.randomUUID();
+
+    int threadCount = 10;
+    int logsPerThread = 10;
+    List<Thread> threads = new ArrayList<>();
+
+    for (int t = 0; t < threadCount; t++) {
+      final int threadId = t;
+      Thread thread =
+          new Thread(
+              () -> {
+                for (int i = 0; i < logsPerThread; i++) {
+                  try {
+                    s3LogStorage.appendLogs(
+                        pipelineFQN, runId, String.format("Thread %d - Log %d\n", threadId, i));
+                  } catch (IOException e) {
+                    fail("Failed to write logs: " + e.getMessage());
+                  }
+                }
+              });
+      threads.add(thread);
+      thread.start();
+    }
+
+    for (Thread thread : threads) {
+      thread.join();
+    }
+
+    Map<String, Object> logs = s3LogStorage.getLogs(pipelineFQN, runId, null, 1000);
+    String allLogs = (String) logs.get("logs");
+    assertNotNull(allLogs);
+
+    int totalLines = allLogs.split("\n").length;
+    assertEquals(
+        threadCount * logsPerThread, totalLines, "All logs from all threads should be present");
+
+    for (int t = 0; t < threadCount; t++) {
+      for (int i = 0; i < logsPerThread; i++) {
+        String expectedLog = String.format("Thread %d - Log %d", t, i);
+        assertTrue(allLogs.contains(expectedLog), "Log '" + expectedLog + "' should be present");
+      }
+    }
   }
 
   private static IngestionPipeline createTestPipeline() throws IOException {

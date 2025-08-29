@@ -19,6 +19,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 
 /**
  * Factory class for creating LogStorageInterface implementations based on configuration.
@@ -35,17 +36,23 @@ public class LogStorageFactory {
    *
    * @param logStorageConfig The log storage configuration
    * @param pipelineServiceClient The pipeline service client (used for default storage)
+   * @param metrics The streamable logs metrics instance
    * @return LogStorageInterface implementation
    * @throws IOException if initialization fails
    */
   public static LogStorageInterface create(
       LogStorageConfiguration logStorageConfig,
-      PipelineServiceClientInterface pipelineServiceClient)
+      PipelineServiceClientInterface pipelineServiceClient,
+      StreamableLogsMetrics metrics)
       throws IOException {
 
     if (logStorageConfig == null) {
       LOG.info("No log storage configuration provided, using default log storage");
       return createDefaultLogStorage(pipelineServiceClient);
+    }
+
+    if (logStorageConfig.getType() == null) {
+      throw new IllegalArgumentException("Log storage configuration type cannot be null");
     }
 
     String storageType = logStorageConfig.getType().value();
@@ -63,6 +70,7 @@ public class LogStorageFactory {
       case "s3":
         logStorage = new S3LogStorage();
         initConfig.put("config", logStorageConfig);
+        initConfig.put("metrics", metrics);
         break;
 
       default:

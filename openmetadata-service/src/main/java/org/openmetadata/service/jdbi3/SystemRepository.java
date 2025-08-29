@@ -641,7 +641,9 @@ public class SystemRepository {
 
       LogStorageInterface logStorage =
           LogStorageFactory.create(
-              logStorageConfig, null // We don't need pipeline service client for S3 storage
+              logStorageConfig,
+              null, // We don't need pipeline service client for S3 storage
+              null // Metrics not available in migration context
               );
 
       String testPipelineFQN = "system.validation.test";

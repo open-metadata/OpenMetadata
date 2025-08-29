@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.inject.Inject;
 import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -45,6 +46,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -57,6 +59,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -68,6 +71,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -77,6 +81,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -107,6 +112,8 @@ public class IngestionPipelineResource
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
 
+  @Inject private StreamableLogsMetrics streamableLogsMetrics;
+
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
     super.addHref(uriInfo, ingestionPipeline);
@@ -128,19 +135,30 @@ public class IngestionPipelineResource
     repository.setPipelineServiceClient(pipelineServiceClient);
 
     // Initialize log storage - always initialize with at least DefaultLogStorage
+    LogStorageConfiguration logStorageConfig =
+        config.getPipelineServiceClientConfiguration() != null
+            ? config.getPipelineServiceClientConfiguration().getLogStorageConfiguration()
+            : null;
+
+    // Set the configuration in repository so it knows what's enabled
+    repository.setLogStorageConfiguration(logStorageConfig);
+
     try {
       LogStorageInterface logStorage =
-          LogStorageFactory.create(
-              config.getPipelineServiceClientConfiguration().getLogStorageConfiguration(),
-              pipelineServiceClient);
+          LogStorageFactory.create(logStorageConfig, pipelineServiceClient, streamableLogsMetrics);
       repository.setLogStorage(logStorage);
+      LOG.info(
+          "Log storage initialized successfully: type={}",
+          logStorageConfig != null ? logStorageConfig.getType() : "default");
     } catch (Exception e) {
       LOG.warn("Failed to initialize configured log storage, using default implementation", e);
       try {
         // Fallback to default log storage that delegates to pipeline service client
         LogStorageInterface defaultLogStorage =
-            LogStorageFactory.create(null, pipelineServiceClient);
+            LogStorageFactory.create(null, pipelineServiceClient, streamableLogsMetrics);
         repository.setLogStorage(defaultLogStorage);
+        // Set a default configuration so isLogStorageEnabled() returns true
+        repository.setLogStorageConfiguration(new LogStorageConfiguration());
       } catch (Exception ex) {
         LOG.error("Failed to initialize default log storage", ex);
       }
@@ -1143,10 +1161,13 @@ public class IngestionPipelineResource
 
   @POST
   @Path("/logs/{fqn}/{runId}")
+  @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "writePipelineLogs",
       summary = "Write logs for a pipeline run",
-      description = "Write or append logs for a specific pipeline run identified by FQN and runId",
+      description =
+          "Write or append logs for a specific pipeline run identified by FQN and runId. "
+              + "Supports both simple text logs and structured log batches with compression.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1158,6 +1179,7 @@ public class IngestionPipelineResource
   public Response writePipelineLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpHeaders headers,
       @Parameter(
               description = "Fully qualified name of the ingestion pipeline",
               schema = @Schema(type = "string"))
@@ -1165,17 +1187,40 @@ public class IngestionPipelineResource
           String fqn,
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId,
-      @Parameter(description = "Log content to write") String logContent) {
+      @Parameter(description = "Log content - either raw string or LogBatch object")
+          Object logData) {
     try {
       // Authorize the request
       OperationContext operationContext =
           new OperationContext(entityType, MetadataOperation.EDIT_ALL);
       authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
 
+      // Parse log data
+      String logContent;
+      if (logData instanceof String) {
+        logContent = (String) logData;
+      } else if (logData instanceof Map) {
+        LogBatch batch = JsonUtils.convertValue(logData, LogBatch.class);
+        logContent = batch.getDecompressedLogs();
+        if (batch.getConnectorId() != null) {
+          logContent = String.format("[%s] %s", batch.getConnectorId(), logContent);
+        }
+      } else {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity("Invalid log data format")
+            .build();
+      }
+
+      // Set session cookie for ALB stickiness
+      String sessionCookie =
+          String.format(
+              "PIPELINE_SESSION=%s_%s; Path=/; Max-Age=86400",
+              fqn.replaceAll("[^a-zA-Z0-9]", "_"), runId);
+
       // Write logs using the repository's log storage
       repository.appendLogs(fqn, runId, logContent);
 
-      return Response.ok().build();
+      return Response.ok().header("Set-Cookie", sessionCookie).build();
     } catch (Exception e) {
       LOG.error("Failed to write logs for pipeline: {}, runId: {}", fqn, runId, e);
       return Response.serverError().entity(e.getMessage()).build();

@@ -45,6 +45,24 @@
       "type": "integer",
       "minimum": 0,
       "default": 30
+    },
+    "maxConcurrentStreams": {
+      "description": "Maximum number of concurrent log streams allowed",
+      "type": "integer",
+      "minimum": 1,
+      "default": 100
+    },
+    "streamTimeoutMinutes": {
+      "description": "Timeout in minutes for idle log streams before automatic cleanup",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
+    "asyncBufferSizeMB": {
+      "description": "Size of async buffer in MB for batching log writes",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
     }
   },
   "required": ["type"],

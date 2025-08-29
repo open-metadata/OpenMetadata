@@ -197,7 +197,7 @@ public class LogStorageTest {
 
   @Test
   void testLogStorageFactoryCreateDefault() throws IOException {
-    LogStorageInterface storage = LogStorageFactory.create(null, mockPipelineServiceClient);
+    LogStorageInterface storage = LogStorageFactory.create(null, mockPipelineServiceClient, null);
 
     assertNotNull(storage);
     assertInstanceOf(DefaultLogStorage.class, storage);
