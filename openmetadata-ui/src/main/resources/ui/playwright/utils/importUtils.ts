@@ -1056,9 +1056,8 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
   });
   await page.click('[data-testid="export-button-title"]');
 
-  await page.waitForSelector('[data-testid="export-entity-modal"]', {
-    state: 'visible',
-  });
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
   await page.fill('#fileName', fileName);
   await page.click('#submit-button');
 
