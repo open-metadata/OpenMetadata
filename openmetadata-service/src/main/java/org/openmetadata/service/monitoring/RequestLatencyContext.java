@@ -5,6 +5,7 @@ import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -58,6 +59,19 @@ public class RequestLatencyContext {
                 Timer.builder("request.latency.total")
                     .tag(ENDPOINT, normalizedEndpoint)
                     .description("Total request latency")
+                    .publishPercentileHistogram(true)
+                    .minimumExpectedValue(Duration.ofMillis(1))
+                    .maximumExpectedValue(Duration.ofSeconds(60))
+                    .serviceLevelObjectives(
+                        Duration.ofMillis(10),
+                        Duration.ofMillis(50),
+                        Duration.ofMillis(100),
+                        Duration.ofMillis(200),
+                        Duration.ofMillis(500),
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(2),
+                        Duration.ofSeconds(5),
+                        Duration.ofSeconds(10))
                     .register(Metrics.globalRegistry));
     LOG.debug("Created/retrieved timer for endpoint: {}, timer: {}", normalizedEndpoint, timer);
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
@@ -156,6 +170,19 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.database")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total database latency per request")
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(30))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1),
+                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
       if (context.dbTime > 0) {
         dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
@@ -169,6 +196,19 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.search")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Total search latency per request")
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(30))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1),
+                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
       if (context.searchTime > 0) {
         searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
@@ -182,6 +222,19 @@ public class RequestLatencyContext {
                   Timer.builder("request.latency.internal")
                       .tag(ENDPOINT, normalizedEndpoint)
                       .description("Internal processing latency per request")
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(10))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(1),
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1))
                       .register(Metrics.globalRegistry));
       if (context.internalTime > 0) {
         internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
