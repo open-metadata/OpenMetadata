@@ -64,8 +64,8 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import {
   Thread,
@@ -153,7 +153,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<boolean>(false);
   const [statusDropdownSelection, setStatusDropdownSelection] = useState<
     string[]
-  >([Status.Approved, Status.Draft, Status.InReview]);
+  >([EntityStatus.Approved, EntityStatus.Draft, EntityStatus.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -231,9 +231,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     fetchAllTasks();
   }, [fetchAllTasks]);
 
-  const glossaryTermStatus: Status | null = useMemo(() => {
+  const glossaryTermStatus: EntityStatus | null = useMemo(() => {
     if (!isGlossary) {
-      return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
+      return (
+        (activeGlossary as GlossaryTerm).entityStatus ?? EntityStatus.Approved
+      );
     }
 
     return null;
@@ -247,13 +249,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const updateGlossaryTermStatus = (
     terms: ModifiedGlossary[],
     targetFqn: string,
-    newStatus: Status
+    newStatus: EntityStatus
   ): ModifiedGlossary[] => {
     return terms.map((term) => {
       if (term.fullyQualifiedName === targetFqn) {
         return {
           ...term,
-          status: newStatus,
+          entityStatus: newStatus,
         };
       }
 
@@ -287,7 +289,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
         if (glossaryChildTerms && glossaryTermFqn) {
           const newStatus =
-            data.newValue === 'approved' ? Status.Approved : Status.Rejected;
+            data.newValue === 'approved'
+              ? EntityStatus.Approved
+              : EntityStatus.Rejected;
 
           const updatedTerms = updateGlossaryTermStatus(
             glossaryChildTerms,
@@ -392,7 +396,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           width: tableColumnsWidth.status,
         }),
         render: (_, record) => {
-          const status = record.status ?? Status.Approved;
+          const status = record.entityStatus ?? EntityStatus.Approved;
           const termFQN = record.fullyQualifiedName ?? '';
           const { permission, taskId } = permissionForApproveOrReject(
             record,
@@ -400,7 +404,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             termTaskThreads
           );
 
-          if (status === Status.InReview && permission) {
+          if (status === EntityStatus.InReview && permission) {
             return (
               <StatusAction
                 dataTestId={record.name}
@@ -428,7 +432,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </Popover>
           );
         },
-        onFilter: (value, record) => record.status === value,
+        onFilter: (value, record) => record.entityStatus === value,
       },
       {
         title: t('label.reviewer'),
@@ -475,8 +479,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         render: (_, record) => {
-          const status = record.status ?? Status.Approved;
-          const allowAddTerm = status === Status.Approved;
+          const status = record.entityStatus ?? EntityStatus.Approved;
+          const allowAddTerm = status === EntityStatus.Approved;
 
           return (
             <div className="d-flex items-center">
@@ -861,7 +865,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           })}
           placeholderText={t('message.no-glossary-term')}
           type={
-            permissions.Create && glossaryTermStatus === Status.Approved
+            permissions.Create && glossaryTermStatus === EntityStatus.Approved
               ? ERROR_PLACEHOLDER_TYPE.CREATE
               : ERROR_PLACEHOLDER_TYPE.NO_DATA
           }
@@ -872,7 +876,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }
 
   const filteredGlossaryTerms = glossaryTerms.filter((term) =>
-    selectedStatus.includes(term.status as string)
+    selectedStatus.includes(term.entityStatus as string)
   );
 
   return (
@@ -955,8 +959,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                     <StatusBadge
                       className="p-x-xs p-y-xss"
                       dataTestId=""
-                      label={Status.InReview}
-                      status={StatusClass[Status.InReview]}
+                      label={EntityStatus.InReview}
+                      status={StatusClass[EntityStatus.InReview]}
                     />
                   </span>
                 </span>

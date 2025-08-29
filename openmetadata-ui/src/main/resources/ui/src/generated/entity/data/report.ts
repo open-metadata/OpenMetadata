@@ -38,6 +38,10 @@ export interface Report {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Report.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * A unique name that identifies a report in the format 'ServiceName.ReportName'.
      */
     fullyQualifiedName?: string;
@@ -210,6 +214,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the Report.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

@@ -136,6 +136,10 @@
       "entityType": {
         "type": "keyword"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
