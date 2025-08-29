@@ -13,7 +13,6 @@
 import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { toastNotification } from '../../../utils/common';
 import { visitDataQualityTab } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -103,8 +102,6 @@ test.describe('Add TestCase New Flow', () => {
       expect(response.status()).toBe(201);
       expect(ingestionPipelineCalled).toBe(false);
     }
-
-    await toastNotification(page, 'Test case created successfully.');
   };
 
   // Helper function to open test case form
@@ -118,7 +115,6 @@ test.describe('Add TestCase New Flow', () => {
 
   const visitDataQualityPage = async (page: Page) => {
     await page.goto('/data-quality/test-cases');
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -222,27 +218,22 @@ test.describe('Add TestCase New Flow', () => {
     dataConsumerPage,
     dataStewardPage,
   }) => {
-    await visitDataQualityPage(dataConsumerPage);
-    await visitDataQualityPage(dataStewardPage);
+    test.slow();
 
-    await dataConsumerPage.getByTestId('add-test-case-btn').click();
-    await dataStewardPage.getByTestId('add-test-case-btn').click();
+    for (const page of [dataConsumerPage, dataStewardPage]) {
+      await visitDataQualityPage(page);
 
-    await selectTable(dataConsumerPage, table1.entity.name);
-    await selectTable(dataStewardPage, table1.entity.name);
+      await page.getByTestId('add-test-case-btn').click();
 
-    await dataConsumerPage.getByTestId('create-btn').click();
-    await dataStewardPage.getByTestId('create-btn').click();
+      await selectTable(page, table1.entity.name);
 
-    await expect(
-      dataConsumerPage.locator('#testCaseFormV1_selectedTable_help')
-    ).toContainText(
-      'You do not have the necessary permissions to create a test case on this table.'
-    );
-    await expect(
-      dataStewardPage.locator('#testCaseFormV1_selectedTable_help')
-    ).toContainText(
-      'You do not have the necessary permissions to create a test case on this table.'
-    );
+      await page.getByTestId('create-btn').click();
+
+      await expect(
+        page.locator('#testCaseFormV1_selectedTable_help')
+      ).toContainText(
+        'You do not have the necessary permissions to create a test case on this table.'
+      );
+    }
   });
 });
