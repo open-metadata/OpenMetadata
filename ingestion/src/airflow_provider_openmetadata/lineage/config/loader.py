@@ -14,7 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 import json
 import os
-from typing import Optional
+from typing import Optional, List
 
 from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
