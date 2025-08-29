@@ -48,28 +48,21 @@ public class RequestLatencyContext {
 
   /**
    * Start tracking a new request
-   * @deprecated Use startRequest(String endpoint, String method) instead
-   */
-  @Deprecated
-  public static void startRequest(String endpoint) {
-    startRequest(endpoint, "UNKNOWN");
-  }
-
-  /**
-   * Start tracking a new request
    */
   public static void startRequest(String endpoint, String method) {
-    RequestContext context = new RequestContext(endpoint, method);
+    // Normalize method to uppercase to ensure consistency
+    String normalizedMethod = method.toUpperCase();
+    RequestContext context = new RequestContext(endpoint, normalizedMethod);
     requestContext.set(context);
     String normalizedEndpoint = normalizeUri(endpoint);
-    String timerKey = normalizedEndpoint + "|" + method;
+    String timerKey = normalizedEndpoint + "|" + normalizedMethod;
     Timer timer =
         requestTimers.computeIfAbsent(
             timerKey,
             k ->
                 Timer.builder("request.latency.total")
                     .tag(ENDPOINT, normalizedEndpoint)
-                    .tag(METHOD, method)
+                    .tag(METHOD, normalizedMethod)
                     .description("Total request latency")
                     .publishPercentileHistogram(true)
                     .minimumExpectedValue(Duration.ofMillis(1))
@@ -88,7 +81,7 @@ public class RequestLatencyContext {
     LOG.debug(
         "Created/retrieved timer for endpoint: {}, method: {}, timer: {}",
         normalizedEndpoint,
-        method,
+        normalizedMethod,
         timer);
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos = System.nanoTime();
@@ -171,9 +164,11 @@ public class RequestLatencyContext {
           context.totalTime = context.requestTimerSample.stop(requestTimer);
         } else {
           LOG.warn(
-              "Request timer not found for endpoint: {}, method: {}",
+              "Request timer not found for endpoint: {}, method: {}, timerKey: {}, available keys: {}",
               normalizedEndpoint,
-              context.method);
+              context.method,
+              timerKey,
+              requestTimers.keySet());
         }
       }
 
