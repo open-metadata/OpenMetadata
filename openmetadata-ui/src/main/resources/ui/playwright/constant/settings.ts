@@ -19,6 +19,7 @@ export enum GlobalSettingsMenuCategory {
   SERVICES = 'services',
   BOTS = 'bots',
   APPLICATIONS = 'apps',
+  SSO = 'sso',
 }
 
 export enum ServiceTypes {
@@ -92,6 +93,7 @@ export enum GlobalSettingOptions {
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
   CHARTS = 'charts',
+  SSO = 'sso',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -226,6 +228,7 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
   ],
+  [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
 };
 
 export const SETTING_CUSTOM_PROPERTIES_PATH = {
