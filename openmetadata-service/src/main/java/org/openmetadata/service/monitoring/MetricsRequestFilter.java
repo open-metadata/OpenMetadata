@@ -40,7 +40,8 @@ public class MetricsRequestFilter implements ContainerRequestFilter, ContainerRe
 
     // Start request latency tracking using Dropwizard Metrics
     String uri = requestContext.getUriInfo().getPath();
-    RequestLatencyContext.startRequest(uri);
+    String method = requestContext.getMethod();
+    RequestLatencyContext.startRequest(uri, method);
   }
 
   @Override

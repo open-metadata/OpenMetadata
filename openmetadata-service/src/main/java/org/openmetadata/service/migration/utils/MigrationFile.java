@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
-import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
+import org.flywaydb.database.postgresql.PostgreSQLParser;
 import org.flywaydb.core.internal.parser.Parser;
 import org.flywaydb.core.internal.parser.ParsingContext;
 import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;

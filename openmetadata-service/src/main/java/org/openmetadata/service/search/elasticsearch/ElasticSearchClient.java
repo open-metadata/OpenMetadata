@@ -37,6 +37,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.ResponseException;
@@ -100,6 +101,7 @@ import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -175,6 +177,7 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
@@ -1736,6 +1739,19 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  public void updateEntityAsync(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.scriptedUpsert(true);
+      updateRequest.script(script);
+      updateElasticSearchAsync(updateRequest);
+    }
+  }
+
   @Override
   public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
     if (isClientAvailable) {
@@ -1945,6 +1961,36 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  public void updateElasticSearchAsync(UpdateRequest updateRequest) {
+    if (updateRequest != null && isClientAvailable) {
+      // Use WAIT_UNTIL for async updates - waits for next refresh but doesn't force immediate
+      // refresh
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+      LOG.debug("Sending async request to ElasticSearch: {}", updateRequest);
+
+      // The REST client has built-in retry with exponential backoff (default 3 retries, 30s
+      // timeout)
+      client.updateAsync(
+          updateRequest,
+          RequestOptions.DEFAULT,
+          new ActionListener<UpdateResponse>() {
+            @Override
+            public void onResponse(UpdateResponse updateResponse) {
+              LOG.debug(
+                  "Async update successful for doc: {}, result: {}",
+                  updateResponse.getId(),
+                  updateResponse.getResult());
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              // Log the error - the built-in retry already attempted 3 times before failing
+              LOG.error("Async update failed for doc: {} after retries", updateRequest.id(), e);
+            }
+          });
     }
   }
 
@@ -2383,38 +2429,63 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        // Use helper method to build HttpHost array
+        HttpHost[] httpHosts = SearchUtils.buildHttpHosts(esConfig);
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        if (StringUtils.isNotEmpty(esConfig.getUsername())
-            && StringUtils.isNotEmpty(esConfig.getPassword())) {
-          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-          credentialsProvider.setCredentials(
-              AuthScope.ANY,
-              new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-          restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder -> {
+        // Configure connection pooling
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              // Set connection pool sizes
+              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+              }
+              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+              }
+
+              // Configure authentication if provided
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                if (sslContext != null) {
-                  httpAsyncClientBuilder.setSSLContext(sslContext);
-                }
-                // Enable TCP keep alive strategy
-                if (esConfig.getKeepAliveTimeoutSecs() != null
-                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                  httpAsyncClientBuilder.setKeepAliveStrategy(
-                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-                }
-                return httpAsyncClientBuilder;
-              });
-        }
+              }
+
+              // Configure SSL if needed
+              SSLContext sslContext = null;
+              try {
+                sslContext = createElasticSearchSSLContext(esConfig);
+              } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+              }
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
+
+              return httpAsyncClientBuilder;
+            });
+
+        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+
+        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
+
         return new RestHighLevelClientBuilder(restClientBuilder.build())
             .setApiCompatibilityMode(true)
             .build();
