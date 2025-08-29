@@ -160,7 +160,7 @@ public class PatchOperationMetricsTest {
 
     // Start request context
     String endpoint = "/api/v1/tables/{id}";
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "PATCH");
 
     // Simulate complete PATCH flow
     // 1. Patch apply and preparation
@@ -195,6 +195,7 @@ public class PatchOperationMetricsTest {
         meterRegistry
             .find("request.latency.total")
             .tag("endpoint", MetricUtils.normalizeUri(endpoint))
+            .tag("method", "PATCH")
             .timer();
     assertNotNull(totalTimer);
     assertEquals(1, totalTimer.count());

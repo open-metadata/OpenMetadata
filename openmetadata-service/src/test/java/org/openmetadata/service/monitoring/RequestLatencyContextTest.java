@@ -69,7 +69,7 @@ class RequestLatencyContextTest {
   void testSimpleRequestWithDatabaseOperations() {
     String endpoint = "/api/v1/tables/test_endpoint";
 
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
     simulateWork(50);
 
     Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
@@ -108,11 +108,12 @@ class RequestLatencyContextTest {
     Timer dbTimer = null;
     Timer internalTimer = null;
 
-    // Method 1: Direct lookup with normalized endpoint
+    // Method 1: Direct lookup with normalized endpoint and method
     totalTimer =
         Metrics.globalRegistry
             .find("request.latency.total")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
 
     // If null, try without tags first to see if timer exists
@@ -128,10 +129,14 @@ class RequestLatencyContextTest {
       for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
         if (meter.getId().getName().equals("request.latency.total")) {
           String endpointTag = meter.getId().getTag("endpoint");
-          LOG.info("Found request.latency.total with endpoint tag: {}", endpointTag);
-          if (normalizedEndpoint.equals(endpointTag)) {
+          String methodTag = meter.getId().getTag("method");
+          LOG.info(
+              "Found request.latency.total with endpoint tag: {}, method tag: {}",
+              endpointTag,
+              methodTag);
+          if (normalizedEndpoint.equals(endpointTag) && "GET".equals(methodTag)) {
             totalTimer = (Timer) meter;
-            LOG.info("Matched timer for endpoint: {}", normalizedEndpoint);
+            LOG.info("Matched timer for endpoint: {}, method: {}", normalizedEndpoint, "GET");
           }
         }
       }
@@ -142,13 +147,15 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.latency.database")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
 
     if (dbTimer == null) {
       for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
         if (meter.getId().getName().equals("request.latency.database")) {
           String endpointTag = meter.getId().getTag("endpoint");
-          if (normalizedEndpoint.equals(endpointTag)) {
+          String methodTag = meter.getId().getTag("method");
+          if (normalizedEndpoint.equals(endpointTag) && "GET".equals(methodTag)) {
             dbTimer = (Timer) meter;
           }
         }
@@ -160,13 +167,15 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.latency.internal")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
 
     if (internalTimer == null) {
       for (io.micrometer.core.instrument.Meter meter : Metrics.globalRegistry.getMeters()) {
         if (meter.getId().getName().equals("request.latency.internal")) {
           String endpointTag = meter.getId().getTag("endpoint");
-          if (normalizedEndpoint.equals(endpointTag)) {
+          String methodTag = meter.getId().getTag("method");
+          if (normalizedEndpoint.equals(endpointTag) && "GET".equals(methodTag)) {
             internalTimer = (Timer) meter;
           }
         }
@@ -197,7 +206,7 @@ class RequestLatencyContextTest {
   void testRequestWithSearchOperations() {
     String endpoint = "/api/v1/search/query";
 
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
     simulateWork(20);
 
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -208,11 +217,16 @@ class RequestLatencyContextTest {
     RequestLatencyContext.endRequest();
 
     Gauge searchGauge =
-        Metrics.globalRegistry.find("request.percentage.search").tag("endpoint", endpoint).gauge();
+        Metrics.globalRegistry
+            .find("request.percentage.search")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .gauge();
     Gauge internalGauge =
         Metrics.globalRegistry
             .find("request.percentage.internal")
             .tag("endpoint", endpoint)
+            .tag("method", "GET")
             .gauge();
 
     assertNotNull(searchGauge);
@@ -232,7 +246,7 @@ class RequestLatencyContextTest {
   @Test
   void testComplexRequestWithAllComponents() {
     String endpoint = "/api/v1/complex/operation";
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
 
     simulateWork(30);
 
@@ -296,8 +310,10 @@ class RequestLatencyContextTest {
     thread1.join();
     thread2.join();
 
-    Timer timer1 = Metrics.timer("request.latency.total", "endpoint", "/api/v1/thread1");
-    Timer timer2 = Metrics.timer("request.latency.total", "endpoint", "/api/v1/thread2");
+    Timer timer1 =
+        Metrics.timer("request.latency.total", "endpoint", "/api/v1/thread1", "method", "GET");
+    Timer timer2 =
+        Metrics.timer("request.latency.total", "endpoint", "/api/v1/thread2", "method", "GET");
 
     assertEquals(1, timer1.count());
     assertEquals(1, timer2.count());
@@ -309,7 +325,7 @@ class RequestLatencyContextTest {
   }
 
   private void simulateRequest(String endpoint, long dbTime, long searchTime, long internalTime) {
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
 
     if (internalTime > 0) {
       simulateWork(internalTime);
@@ -336,7 +352,7 @@ class RequestLatencyContextTest {
     String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
 
     // Start PATCH request tracking
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "PATCH");
 
     // Simulate initial processing
     simulateWork(20);
@@ -369,21 +385,25 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.latency.total")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .timer();
     Timer dbTimer =
         Metrics.globalRegistry
             .find("request.latency.database")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .timer();
     Timer searchTimer =
         Metrics.globalRegistry
             .find("request.latency.search")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .timer();
     Timer internalTimer =
         Metrics.globalRegistry
             .find("request.latency.internal")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .timer();
 
     assertNotNull(totalTimer, "Total timer should exist");
@@ -418,11 +438,13 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.percentage.database")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .gauge();
     Gauge searchPercentage =
         Metrics.globalRegistry
             .find("request.percentage.search")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "PATCH")
             .gauge();
 
     assertNotNull(dbPercentage);
@@ -442,7 +464,7 @@ class RequestLatencyContextTest {
     String endpoint = "/api/v1/tables/{id}";
 
     try {
-      RequestLatencyContext.startRequest(endpoint);
+      RequestLatencyContext.startRequest(endpoint, "GET");
       simulateWork(50);
 
       Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
@@ -461,11 +483,13 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.latency.total")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
     Timer dbTimer =
         Metrics.globalRegistry
             .find("request.latency.database")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
 
     assertNotNull(totalTimer, "Total timer should exist even after error");
@@ -494,7 +518,7 @@ class RequestLatencyContextTest {
   void testZeroTimeOperations() {
     String endpoint = "/api/v1/tables/quick";
 
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
 
     Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
     RequestLatencyContext.endDatabaseOperation(dbSample);
@@ -509,11 +533,13 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.latency.database")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
     Timer searchTimer =
         Metrics.globalRegistry
             .find("request.latency.search")
             .tag("endpoint", normalizedEndpoint)
+            .tag("method", "GET")
             .timer();
 
     assertNotNull(dbTimer, "DB timer should exist even with zero time");
@@ -540,7 +566,11 @@ class RequestLatencyContextTest {
     LOG.info("\n=== Detailed Metrics for {} ===", endpoint);
 
     Timer totalTimer =
-        Metrics.globalRegistry.find("request.latency.total").tag("endpoint", endpoint).timer();
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .timer();
     LOG.info("Total Request:");
     LOG.info(
         "  Mean: {}ms",
@@ -554,13 +584,19 @@ class RequestLatencyContextTest {
         Metrics.globalRegistry
             .find("request.percentage.database")
             .tag("endpoint", endpoint)
+            .tag("method", "GET")
             .gauge();
     Gauge searchGauge =
-        Metrics.globalRegistry.find("request.percentage.search").tag("endpoint", endpoint).gauge();
+        Metrics.globalRegistry
+            .find("request.percentage.search")
+            .tag("endpoint", endpoint)
+            .tag("method", "GET")
+            .gauge();
     Gauge internalGauge =
         Metrics.globalRegistry
             .find("request.percentage.internal")
             .tag("endpoint", endpoint)
+            .tag("method", "GET")
             .gauge();
 
     if (dbGauge != null && searchGauge != null && internalGauge != null) {

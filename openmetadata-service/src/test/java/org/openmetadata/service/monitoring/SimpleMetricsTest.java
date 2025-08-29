@@ -44,7 +44,7 @@ public class SimpleMetricsTest {
     String endpoint = "/api/v1/test";
 
     // Start and end a request
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
     try {
       Thread.sleep(50);
     } catch (InterruptedException e) {
@@ -74,11 +74,18 @@ public class SimpleMetricsTest {
     LOG.info("Timer without tags: {}", timer1);
 
     Timer timer2 =
-        Metrics.globalRegistry.find("request.latency.total").tag("endpoint", normalized).timer();
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tag("endpoint", normalized)
+            .tag("method", "GET")
+            .timer();
     LOG.info("Timer with normalized endpoint: {}", timer2);
 
     Timer timer3 =
-        Metrics.globalRegistry.find("request.latency.total").tags("endpoint", normalized).timer();
+        Metrics.globalRegistry
+            .find("request.latency.total")
+            .tags("endpoint", normalized, "method", "GET")
+            .timer();
     LOG.info("Timer with tags method: {}", timer3);
 
     // At least one should work
