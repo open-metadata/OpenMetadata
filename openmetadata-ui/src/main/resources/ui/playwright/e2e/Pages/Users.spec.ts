@@ -139,7 +139,11 @@ test.describe('User with Admin Roles', () => {
   test('Update own admin details', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
 
-    await updateUserDetails(adminPage, updatedUserDetails.updatedDisplayName);
+    await updateUserDetails(
+      adminPage,
+      updatedUserDetails.updatedDisplayName,
+      true
+    );
   });
 
   test('Create and Delete user', async ({ adminPage }) => {

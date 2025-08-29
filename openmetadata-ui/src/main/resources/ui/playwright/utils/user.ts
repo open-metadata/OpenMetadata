@@ -298,9 +298,14 @@ export const handleUserUpdateDetails = async (
 
 export const updateUserDetails = async (
   page: Page,
-  updatedDisplayName: string
+  updatedDisplayName: string,
+  isAdmin?: boolean
 ) => {
-  await handleUserUpdateDetails(page, updatedDisplayName);
+  if (isAdmin) {
+    await handleAdminUpdateDetails(page, updatedDisplayName);
+  } else {
+    await handleUserUpdateDetails(page, updatedDisplayName);
+  }
 };
 
 export const softDeleteUser = async (

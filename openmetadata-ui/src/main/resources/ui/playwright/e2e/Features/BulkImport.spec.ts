@@ -937,7 +937,7 @@ test.describe('Bulk Import Export', () => {
       'should export data database schema details after edit changes',
       async () => {
         await dbEntity.visitEntityPage(page);
-        await performBulkDownload(page, dbEntity.entity.name);
+        await performBulkDownload(page, `${dbEntity.entity.name}-delete`);
       }
     );
 
