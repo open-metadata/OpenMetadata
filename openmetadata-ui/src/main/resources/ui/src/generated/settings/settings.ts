@@ -249,6 +249,10 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS configuration for OpenSearch IAM (SigV4) authentication.
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -866,6 +870,38 @@ export enum AuthProvider {
     Okta = "okta",
     Openmetadata = "openmetadata",
     Saml = "saml",
+}
+
+/**
+ * AWS configuration for OpenSearch IAM (SigV4) authentication.
+ */
+export interface Aws {
+    /**
+     * Optional AWS access key ID. If omitted and useIamAuth is true, the default credential
+     * provider chain is used.
+     */
+    accessKeyId?: string;
+    /**
+     * AWS region for signing requests (e.g., us-east-1).
+     */
+    region?: string;
+    /**
+     * Optional AWS secret access key (pair with accessKeyId).
+     */
+    secretAccessKey?: string;
+    /**
+     * AWS service name to sign for. Use 'es' for OpenSearch managed service, or 'aoss' for
+     * OpenSearch Serverless.
+     */
+    serviceName?: string;
+    /**
+     * Optional AWS session token (when using temporary credentials).
+     */
+    sessionToken?: string;
+    /**
+     * Enable SigV4 request signing to authenticate to OpenSearch.
+     */
+    useIamAuth?: boolean;
 }
 
 /**
