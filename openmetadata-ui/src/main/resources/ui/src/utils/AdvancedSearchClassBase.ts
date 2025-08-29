@@ -781,7 +781,7 @@ class AdvancedSearchClassBase {
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
-            entityField: EntityFields.ENTITY_TYPE,
+            entityField: 'entityType.keyword',
           }),
           useAsyncSearch: true,
         },
