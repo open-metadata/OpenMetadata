@@ -30,7 +30,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4 : undefined,
   maxFailures: 500,
@@ -53,7 +53,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
   },
@@ -72,6 +72,8 @@ export default defineConfig({
       dependencies: ['setup'],
       grepInvert: /data-insight/,
       testIgnore: ['**/nightly/**'],
+      testMatch:
+        '**/AdvancedSearch.spec.ts, **/Autopilot.spec.ts, **/DescriptionSuggestion.spec.ts, **/ObservabilityAlert.spec.ts, **/NotificationAlert.spec.ts, **/EntityVersionPages.spec.ts',
     },
     {
       name: 'data-insight-application',
