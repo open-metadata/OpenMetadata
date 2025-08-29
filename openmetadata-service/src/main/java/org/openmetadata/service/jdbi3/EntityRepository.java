@@ -178,6 +178,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -211,7 +212,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -1417,8 +1417,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
-      // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
@@ -2567,38 +2565,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final URI getHref(UriInfo uriInfo, UUID id) {
     return RestUtil.getHref(uriInfo, collectionPath, id);
-  }
-
-  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
-    if (!supportsDataProducts) {
-      return;
-    }
-
-    List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
-      // If no domains are being removed, nothing to do
-      return;
-    }
-
-    for (EntityReference domain : removedDomains) {
-      // Fetch domain data products
-      List<UUID> domainDataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      entityDataProducts.removeIf(
-          dataProduct -> {
-            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-            if (isNotDomainDataProduct) {
-              LOG.info(
-                  "Removing data product {} from entity {}",
-                  dataProduct.getFullyQualifiedName(),
-                  entity.getEntityReference().getType());
-            }
-            return isNotDomainDataProduct;
-          });
-    }
   }
 
   @Transaction
@@ -4105,8 +4071,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4171,8 +4135,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4209,7 +4171,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(

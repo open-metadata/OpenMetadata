@@ -188,6 +188,8 @@
                 <nonFilteredFileExtension>eot</nonFilteredFileExtension>
                 <nonFilteredFileExtension>svg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>png</nonFilteredFileExtension>
+                <nonFilteredFileExtension>js</nonFilteredFileExtension>
+                <nonFilteredFileExtension>css</nonFilteredFileExtension>
               </nonFilteredFileExtensions>
             </configuration>
           </execution>
