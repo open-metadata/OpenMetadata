@@ -270,6 +270,8 @@ export const verifyDomain = async (
 ) => {
   await checkDomainDisplayName(page, domain.displayName);
 
+  await expect(page.getByText(domain.description)).toBeVisible();
+
   expect(
     await page.locator(`[id="KnowledgePanel\\.Description"]`).textContent()
   ).toContain(domain.description);

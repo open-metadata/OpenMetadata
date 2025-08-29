@@ -14,7 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { waitForAllSkeletonLoadersToDisappear } from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
@@ -38,7 +38,7 @@ const waitForTourBadgeWithRetry = async (
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
-        await waitForAllSkeletonLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       } else {
         throw e;
       }
@@ -166,7 +166,7 @@ test.describe('Tour should work properly', () => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllSkeletonLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');
@@ -181,7 +181,7 @@ test.describe('Tour should work properly', () => {
       .click();
     await page.getByText('Take a product tour to get started!').click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllSkeletonLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');
@@ -202,7 +202,7 @@ test.describe('Tour should work properly', () => {
       await page.waitForLoadState('networkidle');
     }
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await waitForAllSkeletonLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
 
     await page.waitForSelector('#feedWidgetData');

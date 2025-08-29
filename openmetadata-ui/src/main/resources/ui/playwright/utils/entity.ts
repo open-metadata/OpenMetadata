@@ -38,9 +38,12 @@ import {
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
 
-export const waitForAllSkeletonLoadersToDisappear = async (page: Page) => {
+export const waitForAllLoadersToDisappear = async (
+  page: Page,
+  dataTestId = 'loader'
+) => {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const allLoaders = page.locator('[data-testid="entity-list-skeleton"]');
+    const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
     const count = await allLoaders.count();
 
     let allLoadersGone = true;
@@ -49,7 +52,7 @@ export const waitForAllSkeletonLoadersToDisappear = async (page: Page) => {
       const loader = allLoaders.nth(i);
       try {
         if (await loader.isVisible()) {
-          await loader.waitFor({ state: 'detached' });
+          await loader.waitFor({ state: 'detached', timeout: 1000 });
           allLoadersGone = false;
         }
       } catch {
@@ -73,7 +76,7 @@ export const visitEntityPage = async (data: {
   await page.waitForLoadState('networkidle');
 
   // Unified loader handling
-  await waitForAllSkeletonLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page);
 
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
