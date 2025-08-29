@@ -1,0 +1,103 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: om-parallel-workflow-
+  namespace: openmetadata
+spec:
+  entrypoint: parallel-ingestion
+  serviceAccountName: om-argo-sa
+  parallelism: 5 # Maximum concurrent pods
+
+  templates:
+    - name: parallel-ingestion
+      dag:
+        tasks:
+          # Discovery phase: Identify work units
+          - name: discover
+            template: discover-shards
+            arguments:
+              parameters:
+                - name: source
+                  value: "{{workflow.parameters.source}}"
+                - name: sink
+                  value: "{{workflow.parameters.sink}}"
+                - name: workflowConfig
+                  value: "{{workflow.parameters.workflowConfig}}"
+
+          # Processing phase: Execute in parallel
+          - name: process
+            template: process-shard
+            dependencies: [discover]
+            arguments:
+              parameters:
+                - name: shard
+                  value: "{{item}}"
+                - name: source
+                  value: "{{workflow.parameters.source}}"
+                - name: sink
+                  value: "{{workflow.parameters.sink}}"
+                - name: workflowConfig
+                  value: "{{workflow.parameters.workflowConfig}}"
+            withParam: "{{tasks.discover.outputs.parameters.shards}}"
+
+    # Discovery template
+    - name: discover-shards
+      inputs:
+        parameters:
+          - name: source
+          - name: sink
+          - name: workflowConfig
+      container:
+        image: om-parallel-worker:latest
+        imagePullPolicy: Never
+        command: [sh, -c]
+        args:
+          - |
+            echo '{"source": {{inputs.parameters.source}}, "sink": {{inputs.parameters.sink}}, "workflowConfig": {{inputs.parameters.workflowConfig}}}' > /tmp/workflow-config.json
+            python /app/ingestion/parallel/workflow_executor.py discover --config /tmp/workflow-config.json
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+      outputs:
+        parameters:
+          - name: shards
+            valueFrom:
+              path: /tmp/shards.json
+
+    # Processing template
+    - name: process-shard
+      inputs:
+        parameters:
+          - name: shard
+          - name: source
+          - name: sink
+          - name: workflowConfig
+      container:
+        image: om-parallel-worker:latest
+        imagePullPolicy: Never
+        command: [sh, -c]
+        args:
+          - |
+            echo '{"source": {{inputs.parameters.source}}, "sink": {{inputs.parameters.sink}}, "workflowConfig": {{inputs.parameters.workflowConfig}}}' > /tmp/workflow-config.json
+            python /app/ingestion/parallel/workflow_executor.py process --config /tmp/workflow-config.json '{{inputs.parameters.shard}}'
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        env:
+          - name: SHARD_ID
+            value: "{{inputs.parameters.shard}}"
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnFailure"
+        backoff:
+          duration: "30s"
+          factor: 2
+          maxDuration: "5m"
