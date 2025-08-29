@@ -203,6 +203,8 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
+    await page.waitForURL('**/signin');
+    await page.waitForLoadState('networkidle');
     await page.fill('input[id="email"]', userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
