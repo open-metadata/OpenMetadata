@@ -185,7 +185,10 @@ export const assignDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -221,7 +224,10 @@ export const updateDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -247,7 +253,10 @@ export const removeDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -282,7 +291,9 @@ export const assignDataProduct = async (
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
 
   await expect(
-    page.locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
@@ -290,7 +301,8 @@ export const assignDataProduct = async (
   );
 
   await page
-    .locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
 
@@ -325,7 +337,9 @@ export const removeDataProduct = async (
     .click();
 
   await expect(
-    page.locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
@@ -333,7 +347,8 @@ export const removeDataProduct = async (
   );
 
   await page
-    .locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
     .click();
   await patchReq;
 
