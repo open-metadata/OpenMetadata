@@ -500,6 +500,16 @@ export const updateExpiration = async (page: Page, expiry: number) => {
     `ccc d'th' MMMM, yyyy`
   );
 
+  // Wait for dropdown to close and ensure no overlays are present
+  await page.waitForTimeout(100);
+
+  // Click outside to close any open dropdowns
+  await page.mouse.click(1, 1);
+
+  // Wait for any dropdown animations to complete
+  await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+
+  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
