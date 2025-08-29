@@ -1262,7 +1262,7 @@ class DbtUnitTest(TestCase):
                                 if "schema_name" in call[1]:
                                     schema_name_used = call[1]["schema_name"]
                                     break
-                            self.assertEqual(schema_name_used, "*")
+                            self.assertEqual(schema_name_used, "test_schema")
 
     def test_yield_data_models_processes_sources_key(self):
         """Test that yield_data_models processes both nodes and sources keys from manifest"""
@@ -1288,7 +1288,7 @@ class DbtUnitTest(TestCase):
         self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "dbt_tests"))
 
     def test_yield_data_models_source_node_schema_handling(self):
-        """Test that source nodes use '*' as schema name in yield_data_models"""
+        """Test that source nodes has correct schema name in yield_data_models"""
         from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 
         # Create a mock source node
@@ -1346,4 +1346,4 @@ class DbtUnitTest(TestCase):
                                 if "schema_name" in call[1]:
                                     schema_name_used = call[1]["schema_name"]
                                     break
-                            self.assertEqual(schema_name_used, "*")
+                            self.assertEqual(schema_name_used, "actual_schema")
