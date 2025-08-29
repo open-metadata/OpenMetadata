@@ -1046,3 +1046,27 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
     page.getByRole('gridcell', { name: 'Playwright,Database', exact: true })
   ).not.toBeVisible(); // Display Name cell should be deleted
 };
+
+export const performBulkDownload = async (page: Page, fileName: string) => {
+  const downloadPromise = page.waitForEvent('download');
+
+  await page.click('[data-testid="manage-button"]');
+  await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
+    state: 'visible',
+  });
+  await page.click('[data-testid="export-button-title"]');
+
+  await page.waitForSelector('[data-testid="export-entity-modal"]', {
+    state: 'visible',
+  });
+  await page.fill('#fileName', fileName);
+  await page.click('#submit-button');
+
+  await page.waitForSelector('.message-banner-wrapper', {
+    state: 'detached',
+  });
+  const download = await downloadPromise;
+
+  // Wait for the download process to complete and save the downloaded file somewhere.
+  await download.saveAs('downloads/' + download.suggestedFilename());
+};
