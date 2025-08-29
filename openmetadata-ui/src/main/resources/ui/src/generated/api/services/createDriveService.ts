@@ -113,6 +113,7 @@ export interface Connection {
      * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
+    [property: string]: any;
 }
 
 /**
