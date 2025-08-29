@@ -86,7 +86,8 @@ class OpenMetadataLineageBackend(LineageBackend):
                     f"Using custom timeout={config.timeout}, retry={config.retry}, retry_wait={config.retry_wait}, retry_codes={config.retry_codes}"
                 )
             metadata = OpenMetadata(
-                config.metadata_config, additional_client_config_arguments=additional_client_config_arguments
+                config.metadata_config,
+                additional_client_config_arguments=additional_client_config_arguments,
             )
 
             runner = AirflowLineageRunner(
