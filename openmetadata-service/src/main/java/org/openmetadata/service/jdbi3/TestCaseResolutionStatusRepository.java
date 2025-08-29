@@ -60,6 +60,11 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  @Override
+  protected List<String> getExcludeSearchFields() {
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
+  }
+
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
       UUID stateId) {
     List<TestCaseResolutionStatus> testCaseResolutionStatuses = new ArrayList<>();
@@ -382,6 +387,7 @@ public class TestCaseResolutionStatusRepository
               """
               + condition;
     }
+
     return condition;
   }
 
