@@ -1273,7 +1273,26 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName) {
-    waitForTaskToBeCreated(fullyQualifiedName, 60000L * 2);
+    // Calculate timeout based on entity name complexity
+    long timeout = calculateTimeoutForEntityName(fullyQualifiedName);
+    waitForTaskToBeCreated(fullyQualifiedName, timeout);
+  }
+
+  private static long calculateTimeoutForEntityName(String fqn) {
+    // Base timeout
+    long baseTimeout = 120000L; // 2 minutes
+
+    // Add extra time for Unicode characters (they slow down workflow processing)
+    long unicodeChars =
+        fqn.codePoints()
+            .filter(cp -> cp > 127) // Non-ASCII characters
+            .count();
+
+    // Add 30 seconds per Unicode character (empirically determined)
+    long extraTimeout = unicodeChars * 30000L;
+
+    // Cap at 5 minutes maximum
+    return Math.min(baseTimeout + extraTimeout, 300000L);
   }
 
   public static void waitForTaskToBeCreated(String fullyQualifiedName, long timeout) {
