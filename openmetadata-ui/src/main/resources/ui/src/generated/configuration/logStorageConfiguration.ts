@@ -15,6 +15,10 @@
  */
 export interface LogStorageConfiguration {
     /**
+     * Size of async buffer in MB for batching log writes
+     */
+    asyncBufferSizeMB?: number;
+    /**
      * AWS credentials configuration
      */
     awsConfig?: AWSCredentials;
@@ -31,6 +35,10 @@ export interface LogStorageConfiguration {
      */
     expirationDays?: number;
     /**
+     * Maximum number of concurrent log streams allowed
+     */
+    maxConcurrentStreams?: number;
+    /**
      * S3 key prefix for organizing logs
      */
     prefix?: string;
@@ -42,6 +50,10 @@ export interface LogStorageConfiguration {
      * S3 storage class for log objects
      */
     storageClass?: StorageClass;
+    /**
+     * Timeout in minutes for idle log streams before automatic cleanup
+     */
+    streamTimeoutMinutes?: number;
     /**
      * Type of log storage implementation
      */
