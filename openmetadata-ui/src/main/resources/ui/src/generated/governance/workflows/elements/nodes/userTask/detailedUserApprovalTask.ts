@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 /**
- * Sets the GlossaryTerm Status to the configured value.
+ * Defines a Task for a given User to approve with detailed change information and
+ * suggestion capabilities.
  */
-export interface SetGlossaryTermStatusTask {
-    config?: NodeConfiguration;
+export interface DetailedUserApprovalTask {
+    branches?: string[];
+    config?:   NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -29,6 +31,7 @@ export interface SetGlossaryTermStatusTask {
      * Name that identifies this Node.
      */
     name?:    string;
+    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -36,23 +39,40 @@ export interface SetGlossaryTermStatusTask {
 
 export interface NodeConfiguration {
     /**
-     * Choose which Status to apply to the Glossary Term
+     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
+     * single reviewer can approve).
      */
-    glossaryTermStatus: Status;
+    approvalThreshold?: number;
+    /**
+     * People/Teams assigned to the Task.
+     */
+    assignees: Assignees;
+    /**
+     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
+     * single reviewer can reject). This allows for scenarios where you want multiple approvals
+     * but a single rejection can veto.
+     */
+    rejectionThreshold?: number;
 }
 
 /**
- * Choose which Status to apply to the Glossary Term
+ * People/Teams assigned to the Task.
  */
-export enum Status {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
+export interface Assignees {
+    /**
+     * Add the Reviewers to the assignees List.
+     */
+    addReviewers?: boolean;
+    /**
+     * List of team names to assign the task to.
+     */
+    teams?: string[];
+    /**
+     * List of user names to assign the task to.
+     */
+    users?: string[];
 }
 
 export interface InputNamespaceMap {
     relatedEntity: string;
-    updatedBy?:    string;
 }

@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -41,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
@@ -48,6 +50,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -57,6 +60,7 @@ import org.openmetadata.service.util.EntityUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "governanceWorkflows")
+@Slf4j
 public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
@@ -314,7 +318,13 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, workflowDefinition);
+
+    // Use WorkflowTransactionManager for atomic operation across both databases
+    WorkflowDefinition created =
+        WorkflowTransactionManager.createWorkflowDefinition(workflowDefinition);
+    return Response.status(Response.Status.CREATED)
+        .entity(repository.withHref(uriInfo, created))
+        .build();
   }
 
   @PATCH
@@ -396,7 +406,16 @@ public class WorkflowDefinitionResource
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, workflowDefinition);
+
+    // Let the TransactionManager handle all the logic within a single transaction
+    // This avoids cache issues and ensures atomic operations
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    PutResponse<WorkflowDefinition> response =
+        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(workflowDefinition, updatedBy);
+
+    return Response.status(response.getStatus())
+        .entity(repository.withHref(uriInfo, response.getEntity()))
+        .build();
   }
 
   @DELETE
@@ -426,7 +445,14 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    // Get the workflow to delete
+    WorkflowDefinition workflow =
+        repository.get(uriInfo, id, new EntityUtil.Fields(repository.getAllowedFields()));
+
+    // Use WorkflowTransactionManager for atomic deletion
+    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+
+    return Response.ok().build();
   }
 
   @DELETE
@@ -488,7 +514,14 @@ public class WorkflowDefinitionResource
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    // Get the workflow to delete
+    WorkflowDefinition workflow =
+        repository.getByName(uriInfo, fqn, new EntityUtil.Fields(repository.getAllowedFields()));
+
+    // Use WorkflowTransactionManager for atomic deletion
+    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+
+    return Response.ok().build();
   }
 
   @PUT

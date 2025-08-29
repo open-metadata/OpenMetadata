@@ -128,7 +128,8 @@ public class WorkflowInstanceListener implements JavaDelegate {
     String status = "FINISHED"; // Default
     if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {
       status = "FAILURE";
-    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)) {
+    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)
+        && variables.get(Workflow.EXCEPTION_VARIABLE) != null) {
       status = "EXCEPTION";
     }
     variables.put("status", status);
@@ -152,6 +153,15 @@ public class WorkflowInstanceListener implements JavaDelegate {
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {
-    return triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
+    // Handle PeriodicBatchEntityTrigger format: WorkflowNameTrigger-entityType
+    // Remove both the "Trigger" suffix and any entity type suffix
+    String withoutTrigger = triggerWorkflowDefinitionName.replaceFirst("Trigger(-.*)?$", "");
+
+    // If that didn't work, try just removing "Trigger" at the end
+    if (withoutTrigger.equals(triggerWorkflowDefinitionName)) {
+      withoutTrigger = triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
+    }
+
+    return withoutTrigger;
   }
 }

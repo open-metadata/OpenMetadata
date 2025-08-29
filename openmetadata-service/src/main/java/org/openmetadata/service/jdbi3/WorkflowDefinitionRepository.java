@@ -15,12 +15,21 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowDeploymentStrategy;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
+
+  // Strategy for controlling workflow deployment
+  private WorkflowDeploymentStrategy deploymentStrategy = WorkflowDeploymentStrategy.ALWAYS_DEPLOY;
+
+  public void setDeploymentStrategy(WorkflowDeploymentStrategy strategy) {
+    this.deploymentStrategy =
+        strategy != null ? strategy : WorkflowDeploymentStrategy.ALWAYS_DEPLOY;
+  }
 
   public WorkflowDefinitionRepository() {
     super(
@@ -39,18 +48,37 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void postCreate(WorkflowDefinition entity) {
-    WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // Use deployment strategy to determine if we should deploy
+    if (deploymentStrategy.shouldDeploy("create") && WorkflowHandler.isInitialized()) {
+      WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    }
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
-    WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    // Use deployment strategy to determine if we should deploy
+    if (deploymentStrategy.shouldDeploy("update") && WorkflowHandler.isInitialized()) {
+      // For PeriodicBatchEntityTrigger workflows, we need to undeploy the old version first
+      // to avoid having multiple timer events triggering simultaneously
+      if (original.getTrigger() != null
+          && "periodicBatchEntityTrigger".equals(original.getTrigger().getType())) {
+        LOG.info(
+            "Undeploying old periodic batch workflow before redeployment: {}", original.getName());
+        WorkflowHandler.getInstance().deleteWorkflowDefinition(original);
+      }
+
+      // Deploy the updated workflow
+      WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    }
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    // Use deployment strategy to determine if we should undeploy
+    if (deploymentStrategy.shouldDeploy("delete") && WorkflowHandler.isInitialized()) {
+      WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    }
   }
 
   @Override
