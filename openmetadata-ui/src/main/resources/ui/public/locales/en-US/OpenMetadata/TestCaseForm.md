@@ -13,7 +13,7 @@ The test level determines which test types will be available for selection.
 $$
 
 $$section
-### Table $(id="selectedTable")
+### Table $(id="table")
 
 Select the table on which you want to create the test case. You can search for tables by name or browse through the available options. The selected table will be the target for your data quality tests.
 
@@ -21,13 +21,13 @@ For column-level tests, you'll need to select a specific column after choosing t
 $$
 
 $$section
-### Column $(id="selectedColumn")
+### Column $(id="column")
 
 When creating column-level tests, select the specific column you want to test. The available columns are based on the selected table's schema. Column tests allow you to validate data at a granular level, checking for nulls, unique values, data formats, and more.
 $$
 
 $$section
-### Test Type $(id="testTypeId")
+### Test Type $(id="testType")
 
 Choose the type of test to apply based on your data quality requirements. Available test types depend on whether you selected table-level or column-level testing. Each test type has specific parameters and validation rules designed to check different aspects of data quality.
 
@@ -41,7 +41,7 @@ Common test types include:
 $$
 
 $$section
-### Name $(id="testName")
+### Name $(id="name")
 
 Provide a unique name for your test case. The name should be descriptive and follow these guidelines:
 - Must start with a letter

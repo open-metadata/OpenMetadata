@@ -61,8 +61,8 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  CreateIngestionPipeline,
   FluffyType as ConfigType,
+  CreateIngestionPipeline,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
@@ -352,7 +352,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'testName',
         required: false,
         label: t('label.name'),
-        id: 'root/testName',
+        id: 'root/name',
         type: FieldTypes.TEXT,
         placeholder: t('message.enter-test-case-name'),
         rules: [
@@ -402,13 +402,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'tags',
         required: false,
         label: t('label.tag-plural'),
-        id: 'root/tags',
+        id: 'tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/tags',
           },
           newLook: true,
         },
@@ -417,13 +418,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'glossaryTerms',
         required: false,
         label: t('label.glossary-term-plural'),
-        id: 'root/glossaryTerms',
+        id: 'glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'glossary-terms-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/glossaryTerms',
           },
           open: false,
           hasNoActionButtons: true,
@@ -846,7 +848,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   );
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
-    setActiveField(event.target.id);
+    if (event.target.id) {
+      console.log('focuskey', event.target.id);
+      setActiveField(event.target.id);
+    }
+  }, []);
+
+  const handleActiveField = useCallback((id: string) => {
+    console.log('activekey', id);
+    setActiveField(() => id);
   }, []);
 
   // =============================================
@@ -1024,7 +1034,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 }),
               },
             ]}>
-            <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
+            <SelectionCardGroup
+              options={TEST_LEVEL_OPTIONS}
+              onClick={() => handleActiveField('root/testLevel')}
+            />
           </Form.Item>
           <Form.Item
             label={t('label.select-entity', {
@@ -1056,6 +1069,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
+              id="root/table"
               notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
@@ -1082,6 +1096,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 showSearch
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id="root/column"
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder={t('label.select-entity', {
@@ -1157,6 +1172,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 data-testid="test-type"
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id="root/testType"
                 options={testTypeOptions}
                 placeholder={t('label.select-test-type')}
                 popupClassName="no-wrap-option"
@@ -1212,7 +1228,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             </Col>
 
             <Col span={24}>
-              <Card className="form-card-section" data-testid="scheduler-card">
+              <Card
+                className="form-card-section"
+                data-testid="scheduler-card"
+                id="root/cron"
+                onClick={() => handleActiveField('root/cron')}>
                 <div className="card-title-container">
                   <Typography.Paragraph className="card-title-text">
                     {t('label.create-entity', {
@@ -1325,18 +1345,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     <div className="drawer-footer-actions">{renderActionButtons}</div>
   );
 
-  const docPanel = (
-    <ServiceDocPanel
-      activeField={activeField}
-      serviceName={TEST_CASE_FORM}
-      serviceType={OPEN_METADATA as ServiceCategory}
-    />
-  );
-
   return (
     <Drawer
       destroyOnClose
-      className="custom-drawer-style"
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
       maskClosable={false}
@@ -1355,12 +1367,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         />
       }
       onClose={onCancel}>
-      <Row gutter={24}>
-        <Col className="drawer-form-content" span={14}>
-          {formContent}
-        </Col>
-        <Col span={10}>{docPanel}</Col>
-      </Row>
+      <div className="drawer-content-wrapper">
+        <div className="drawer-form-content">{formContent}</div>
+        <div className="drawer-doc-panel service-doc-panel markdown-parser">
+          <ServiceDocPanel
+            activeField={activeField}
+            serviceName={TEST_CASE_FORM}
+            serviceType={OPEN_METADATA as ServiceCategory}
+          />
+        </div>
+      </div>
     </Drawer>
   );
 };

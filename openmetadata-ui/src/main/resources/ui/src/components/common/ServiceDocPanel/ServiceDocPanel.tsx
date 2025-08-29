@@ -46,6 +46,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -116,6 +117,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       setMarkdownContent('');
     } finally {
       setIsLoading(false);
+      setIsMarkdownReady(true);
     }
   };
 
@@ -124,22 +126,44 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }, [serviceName, serviceType]);
 
   useEffect(() => {
+    if (!isMarkdownReady) {
+      return;
+    }
+
     const fieldName =
       serviceType === 'Applications'
         ? getActiveFieldNameForAppDocs(activeField)
         : getActiveFieldName(activeField);
+
     if (fieldName) {
-      const element = document.querySelector(`[data-id="${fieldName}"]`);
-      if (element) {
-        element.scrollIntoView({
-          block: 'center',
-          behavior: 'smooth',
-          inline: 'center',
-        });
-        element.setAttribute('data-highlighted', 'true');
-      }
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        // // Remove all previous highlights first
+        // const previousHighlighted = document.querySelectorAll(
+        //   '[data-highlighted="true"]'
+        // );
+        // previousHighlighted.forEach((el) => {
+        //   el.removeAttribute('data-highlighted');
+        // });
+
+        const element = document.querySelector(`[data-id="${fieldName}"]`);
+        if (element) {
+          element.scrollIntoView({
+            block: 'center',
+            behavior: 'smooth',
+            inline: 'center',
+          });
+          element.setAttribute('data-highlighted', 'true');
+        }
+      });
     }
-  }, [activeField, getActiveFieldName, serviceType]);
+  }, [
+    activeField,
+    getActiveFieldName,
+    serviceType,
+    isMarkdownReady,
+    markdownContent,
+  ]);
 
   if (isLoading) {
     return <Loader />;
