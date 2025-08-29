@@ -1575,7 +1575,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void validateAndRunSystemDataMigrations(boolean force) {
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-    DatasourceConfig.initialize(connType.label);
+    try {
+      DatasourceConfig.initialize(connType.label);
+    } catch (Exception e) {
+      DatasourceConfig.initialize(POSTGRES.label);
+    }
     MigrationWorkflow workflow =
         new MigrationWorkflow(
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
