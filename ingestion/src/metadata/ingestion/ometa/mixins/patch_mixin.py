@@ -20,6 +20,9 @@ from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.automations.response.queryRunnerResponse import (
+    QueryRunnerResponse,
+)
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -557,7 +560,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        result: Union[TestConnectionResult, ReverseIngestionResponse],
+        result: Union[
+            TestConnectionResult, ReverseIngestionResponse, QueryRunnerResponse
+        ],
         workflow_status: WorkflowStatus,
     ) -> None:
         """
@@ -570,17 +575,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         }
 
         # for deserializing into json convert enum object to string
-        if isinstance(result, TestConnectionResult):
-            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
-                "status"
-            ].value
-        else:
+        if isinstance(result, ReverseIngestionResponse):
             # Convert UUID in string
             data = result_data[PatchField.VALUE]
             data["serviceId"] = str(data["serviceId"])
             for operation_result in data["results"]:
                 operation_result["id"] = str(operation_result["id"])
-
+        else:
+            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+                "status"
+            ].value
         status_data: Dict = {
             PatchField.PATH: PatchPath.STATUS,
             PatchField.OPERATION: PatchOperation.ADD,
