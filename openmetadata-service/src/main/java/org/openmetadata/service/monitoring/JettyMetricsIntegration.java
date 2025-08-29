@@ -15,10 +15,10 @@ public class JettyMetricsIntegration {
   public static void registerJettyMetrics(Environment environment) {
     try {
       LOG.info("Registering Jetty metrics integration...");
-      
+
       // Create placeholder JettyMetrics that will be initialized later
       JettyMetrics placeholderJettyMetrics = new JettyMetrics(null);
-      
+
       // Register RequestMetricsFilter BEFORE server starts (when Jersey config is mutable)
       RequestMetricsFilter requestFilter = new RequestMetricsFilter(placeholderJettyMetrics);
       environment.jersey().register(requestFilter);
