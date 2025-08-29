@@ -14,10 +14,17 @@ public class JettyMetricsIntegration {
 
   public static void registerJettyMetrics(Environment environment) {
     try {
-      // Get the Jetty server instance from lifecycle
-      Server server = null;
+      LOG.info("Registering Jetty metrics integration...");
+      
+      // Create placeholder JettyMetrics that will be initialized later
+      JettyMetrics placeholderJettyMetrics = new JettyMetrics(null);
+      
+      // Register RequestMetricsFilter BEFORE server starts (when Jersey config is mutable)
+      RequestMetricsFilter requestFilter = new RequestMetricsFilter(placeholderJettyMetrics);
+      environment.jersey().register(requestFilter);
+      LOG.info("RequestMetricsFilter registered with Jersey");
 
-      // The server might not be available immediately, so we'll register a lifecycle listener
+      // Register a lifecycle listener to setup Jetty metrics after server starts
       environment
           .lifecycle()
           .addServerLifecycleListener(
@@ -25,20 +32,14 @@ public class JettyMetricsIntegration {
                 @Override
                 public void serverStarted(Server srv) {
                   try {
-                    // Create and register Jetty metrics
+                    LOG.info("Server started, initializing Jetty metrics...");
+
+                    // Initialize JettyMetrics for thread pool monitoring
                     JettyMetrics jettyMetrics = new JettyMetrics(srv);
-
-                    // Start the metrics
                     jettyMetrics.start();
-
-                    // Bind metrics to Prometheus registry
                     jettyMetrics.bindTo(Metrics.globalRegistry);
 
-                    // Register request metrics filter
-                    RequestMetricsFilter requestFilter = new RequestMetricsFilter(jettyMetrics);
-                    environment.jersey().register(requestFilter);
-
-                    // Add Jetty Statistics Handler for additional metrics
+                    // Add Jetty Statistics Handler for request/response statistics
                     StatisticsHandler statisticsHandler = new StatisticsHandler();
                     statisticsHandler.setHandler(srv.getHandler());
                     srv.setHandler(statisticsHandler);
@@ -47,7 +48,7 @@ public class JettyMetricsIntegration {
                     registerStatisticsHandlerMetrics(statisticsHandler);
 
                     LOG.info(
-                        "Jetty metrics integration complete - Monitoring enabled for thread pool, queue, and requests");
+                        "Jetty metrics integration complete - Thread pool and server statistics monitoring enabled");
                   } catch (Exception e) {
                     LOG.error("Failed to register Jetty metrics", e);
                   }
@@ -55,7 +56,7 @@ public class JettyMetricsIntegration {
               });
 
     } catch (Exception e) {
-      LOG.error("Failed to register Jetty metrics", e);
+      LOG.error("Failed to setup Jetty metrics integration", e);
     }
   }
 

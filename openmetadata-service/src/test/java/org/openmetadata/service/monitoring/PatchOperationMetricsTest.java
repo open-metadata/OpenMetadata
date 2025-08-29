@@ -42,7 +42,7 @@ public class PatchOperationMetricsTest {
         meterRegistry
             .find("entity.patch.apply")
             .tag("entity_type", entityType)
-            .tag("operation", "patch")
+            .tag("operation", "PATCH")
             .timer();
 
     assertNotNull(applyTimer, "Apply timer should be recorded");
@@ -260,7 +260,7 @@ public class PatchOperationMetricsTest {
   private void recordPatchMetrics(
       String entityType, long applyTime, long prepareTime, long validationTime, long updateTime) {
     io.micrometer.core.instrument.Tags tags =
-        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "patch");
+        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "PATCH");
     Metrics.timer("entity.patch.apply", tags).record(applyTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.prepare", tags).record(prepareTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.validation", tags).record(validationTime, TimeUnit.MILLISECONDS);
@@ -269,7 +269,7 @@ public class PatchOperationMetricsTest {
 
   private void recordPostUpdateMetrics(String entityType, long searchIndexTime, long rdfTime) {
     io.micrometer.core.instrument.Tags tags =
-        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "patch");
+        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "PATCH");
     Metrics.timer("entity.patch.search_index", tags).record(searchIndexTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.rdf_update", tags).record(rdfTime, TimeUnit.MILLISECONDS);
   }
@@ -288,7 +288,7 @@ public class PatchOperationMetricsTest {
       long databaseTime,
       long searchIndexTime) {
     io.micrometer.core.instrument.Tags tags =
-        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "patch");
+        io.micrometer.core.instrument.Tags.of("entity_type", entityType, "operation", "PATCH");
     Metrics.timer("entity.patch.consolidate", tags).record(consolidateTime, TimeUnit.MILLISECONDS);
     Metrics.timer("entity.patch.update_internal", tags)
         .record(updateInternalTime, TimeUnit.MILLISECONDS);

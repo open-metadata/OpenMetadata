@@ -26,6 +26,11 @@ public class JettyMetrics implements MeterBinder, Managed {
 
   @Override
   public void start() throws Exception {
+    if (server == null) {
+      LOG.debug("JettyMetrics created without server - metrics will be initialized later");
+      return;
+    }
+
     ThreadPool pool = server.getThreadPool();
     if (pool instanceof QueuedThreadPool) {
       this.threadPool = (QueuedThreadPool) pool;
@@ -43,6 +48,11 @@ public class JettyMetrics implements MeterBinder, Managed {
 
   @Override
   public void bindTo(MeterRegistry registry) {
+    if (server == null) {
+      LOG.debug("JettyMetrics bindTo called without server - skipping metrics registration");
+      return;
+    }
+
     if (threadPool == null) {
       ThreadPool pool = server.getThreadPool();
       if (pool instanceof QueuedThreadPool) {

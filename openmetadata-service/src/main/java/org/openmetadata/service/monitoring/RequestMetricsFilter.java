@@ -51,10 +51,14 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
           requestContext.getMethod());
     }
 
-    // Update metrics
+    // Update metrics (safely handle null jettyMetrics)
     if (jettyMetrics != null) {
-      jettyMetrics.recordRequestQueueTime(queueTimeMs);
-      jettyMetrics.incrementActiveRequests();
+      try {
+        jettyMetrics.recordRequestQueueTime(queueTimeMs);
+        jettyMetrics.incrementActiveRequests();
+      } catch (Exception e) {
+        LOG.debug("JettyMetrics not fully initialized yet, skipping update: {}", e.getMessage());
+      }
     }
 
     // Record queue time metric
@@ -72,7 +76,11 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
       throws IOException {
     // Decrement active requests
     if (jettyMetrics != null) {
-      jettyMetrics.decrementActiveRequests();
+      try {
+        jettyMetrics.decrementActiveRequests();
+      } catch (Exception e) {
+        LOG.debug("JettyMetrics not fully initialized yet, skipping decrement: {}", e.getMessage());
+      }
     }
 
     // Calculate total request time
