@@ -141,8 +141,13 @@ export const addOwner = async ({
     await page.getByRole('listitem', { name: owner, exact: true }).click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    const ownerItem = page.getByRole('listitem', {
+      name: owner,
+      exact: true,
+    });
 
+    await ownerItem.waitFor({ state: 'visible' });
+    await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
     await patchRequest;
@@ -533,11 +538,33 @@ export const assignTag = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
+  // Wait for the form to be visible and stable
+  await page.locator('#tagsForm_tags').waitFor({
+    state: 'visible',
+  });
+
+  // Check if page is still valid before proceeding
+  if (page.isClosed()) {
+    throw new Error('Page was closed during tag assignment');
+  }
+
+  // Wait a moment for any animations or state changes to complete
+  await page.waitForTimeout(500);
+
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
+
   await page.locator('#tagsForm_tags').fill(tag);
-  await searchTags;
+
+  try {
+    await searchTags;
+  } catch (error) {
+    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+    await page.locator('#tagsForm_tags').fill(tag);
+    await searchTags;
+  }
+
   await page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
     .first()
@@ -732,12 +759,29 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
+  // Wait for the form to be visible before proceeding
+  await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+
+  // Check if page is still valid before setting up waitForResponse
+  if (page.isClosed()) {
+    throw new Error('Page was closed during glossary term assignment');
+  }
+
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
 
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
+
+  try {
+    await searchGlossaryTerm;
+  } catch (error) {
+    // If the search response fails, check if the element is still available
+    await page
+      .locator('#tagsForm_tags')
+      .waitFor({ state: 'visible', timeout: 5000 });
+  }
+
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
   await page.waitForSelector(
@@ -957,14 +1001,18 @@ export const unFollowEntity = async (
   page: Page,
   endpoint: EntityTypeEndpoint
 ) => {
+  await page.waitForLoadState('networkidle');
+
+  const followButton = page.getByTestId('entity-follow-button');
+
+  await followButton.waitFor({ state: 'visible' });
+
+  await expect(followButton).toContainText('Unfollow');
+
   const unFollowResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers/*`
   );
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.getByTestId('entity-follow-button').click();
+  await followButton.click();
   await unFollowResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(

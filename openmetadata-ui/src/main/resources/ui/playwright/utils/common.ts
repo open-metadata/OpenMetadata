@@ -281,13 +281,17 @@ export const assignDataProduct = async (
   await searchDataProduct;
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page.locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    .click();
   await patchReq;
 
   await expect(
@@ -320,13 +324,17 @@ export const removeDataProduct = async (
     .locator('svg')
     .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page.locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .locator('.custom-dropdown-render [data-testid="saveAssociatedTag"]')
+    .click();
   await patchReq;
 
   await expect(
