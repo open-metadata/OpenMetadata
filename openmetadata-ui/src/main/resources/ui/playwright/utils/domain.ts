@@ -270,11 +270,9 @@ export const verifyDomain = async (
 ) => {
   await checkDomainDisplayName(page, domain.displayName);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
-  );
-
-  await expect(viewerContainerText).toContain(domain.description);
+  expect(
+    await page.locator(`[id="KnowledgePanel\\.Description"]`).textContent()
+  ).toContain(domain.description);
 
   if (!isEmpty(domain.owners) && !isUndefined(domain.owners)) {
     await expect(
