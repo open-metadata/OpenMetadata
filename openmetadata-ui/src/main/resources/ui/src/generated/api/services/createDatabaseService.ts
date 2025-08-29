@@ -55,7 +55,7 @@ export interface CreateDatabaseService {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -152,7 +152,7 @@ export interface DatabaseConnection {
  *
  * Epic FHIR Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -853,6 +853,7 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    [property: string]: any;
 }
 
 /**
