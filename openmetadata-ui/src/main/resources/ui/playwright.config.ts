@@ -64,11 +64,6 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: '**/*.setup.ts',
-      teardown: 'restore-policies',
-    },
-    {
-      name: 'restore-policies',
-      testMatch: '**/auth.teardown.ts',
     },
     {
       name: 'chromium',

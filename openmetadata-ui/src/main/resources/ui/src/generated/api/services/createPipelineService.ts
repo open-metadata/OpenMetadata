@@ -62,7 +62,7 @@ export interface CreatePipelineService {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -109,7 +109,7 @@ export interface PipelineConnection {
  *
  * Snowplow Pipeline Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
@@ -354,6 +354,7 @@ export interface ConfigClass {
      * Snowplow BDP Organization ID
      */
     organizationId?: string;
+    [property: string]: any;
 }
 
 /**

@@ -171,7 +171,7 @@ export interface FieldChange {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -182,7 +182,7 @@ export interface SearchConnection {
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Choose Auth Config Type.
      */
@@ -218,6 +218,7 @@ export interface ConfigClass {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**
