@@ -119,6 +119,12 @@ setup('authenticate all users', async ({ browser }) => {
       ownerUser.setDataConsumerRole(apiContext),
     ]);
 
+    // Wait for indexedDB databases to be available
+    await adminPage.waitForFunction(() => indexedDB.databases());
+
+    // Additional wait to ensure auth state is persisted
+    await adminPage.waitForTimeout(2000);
+
     // Save admin state
     await adminPage
       .context()
