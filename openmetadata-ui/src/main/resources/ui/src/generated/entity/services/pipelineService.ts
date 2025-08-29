@@ -444,7 +444,6 @@ export interface ConfigObject {
      * The azure subscription identifier.
      */
     subscription_id?: string;
-    [property: string]: any;
     /**
      * Cloud provider where Snowplow is deployed
      */
@@ -465,6 +464,7 @@ export interface ConfigObject {
      * Snowplow BDP Organization ID
      */
     organizationId?: string;
+    [property: string]: any;
 }
 
 /**
