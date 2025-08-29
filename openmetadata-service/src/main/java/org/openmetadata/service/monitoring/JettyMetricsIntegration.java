@@ -12,6 +12,8 @@ import org.eclipse.jetty.server.handler.StatisticsHandler;
 @Slf4j
 public class JettyMetricsIntegration {
 
+  private static StatisticsHandler statisticsHandler;
+
   public static void registerJettyMetrics(Environment environment) {
     try {
       LOG.info("Registering Jetty metrics integration...");
@@ -23,6 +25,11 @@ public class JettyMetricsIntegration {
       RequestMetricsFilter requestFilter = new RequestMetricsFilter(placeholderJettyMetrics);
       environment.jersey().register(requestFilter);
       LOG.info("RequestMetricsFilter registered with Jersey");
+
+      // Setup StatisticsHandler BEFORE server starts
+      statisticsHandler = new StatisticsHandler();
+      environment.getApplicationContext().insertHandler(statisticsHandler);
+      LOG.info("StatisticsHandler configured for Jetty metrics");
 
       // Register a lifecycle listener to setup Jetty metrics after server starts
       environment
@@ -39,16 +46,11 @@ public class JettyMetricsIntegration {
                     jettyMetrics.start();
                     jettyMetrics.bindTo(Metrics.globalRegistry);
 
-                    // Add Jetty Statistics Handler for request/response statistics
-                    StatisticsHandler statisticsHandler = new StatisticsHandler();
-                    statisticsHandler.setHandler(srv.getHandler());
-                    srv.setHandler(statisticsHandler);
-
-                    // Register statistics handler metrics
+                    // Register StatisticsHandler metrics now that server is running
                     registerStatisticsHandlerMetrics(statisticsHandler);
 
                     LOG.info(
-                        "Jetty metrics integration complete - Thread pool and server statistics monitoring enabled");
+                        "Jetty metrics integration complete - Thread pool and request statistics monitoring enabled");
                   } catch (Exception e) {
                     LOG.error("Failed to register Jetty metrics", e);
                   }
