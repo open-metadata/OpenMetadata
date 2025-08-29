@@ -119,6 +119,10 @@ export const ContractSemanticFormTab: React.FC<{
     ? semanticsFormData?.[editingKey]
     : undefined;
 
+  useEffect(() => {
+    onChange({ semantics: semanticsFormData });
+  }, [semanticsFormData]);
+
   return (
     <>
       <Card className="contract-semantic-form-container container bg-grey p-box">
@@ -149,10 +153,7 @@ export const ContractSemanticFormTab: React.FC<{
           className="new-form-style"
           form={form}
           layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onValuesChange={(_, allValues) => {
-            onChange(allValues);
-          }}>
+          validateMessages={VALIDATION_MESSAGES}>
           <Form.List name="semantics">
             {(fields, { add }) => {
               // Store the add function so it can be used outside
