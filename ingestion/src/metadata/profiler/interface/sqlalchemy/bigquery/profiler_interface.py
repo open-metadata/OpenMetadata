@@ -13,18 +13,22 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List, Type, cast
+import traceback
+from typing import Any, Dict, List, Optional, Type, cast
 
 from sqlalchemy import Column, inspect
 
+from ingestion.src.metadata.profiler.metrics.core import HybridMetric
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
+    thread_local,
 )
 from metadata.profiler.metrics.system.bigquery.system import (
     BigQuerySystemMetricsComputer,
 )
 from metadata.profiler.metrics.system.system import System
+from metadata.profiler.processor.bigquery.bigquery_runner import BigQueryQueryRunner
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -88,3 +92,65 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             else:
                 columns.append(column)
         return columns
+
+    def get_hybrid_metrics(
+        self,
+        column: Column,
+        metric: Type[HybridMetric],
+        column_results: Dict[str, Any],
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metric: metric to compute
+            column_results: results of the column
+        Returns:
+            dictionnary of results
+        """
+        dataset = self.sampler.get_dataset(column=column)
+        try:
+            return metric(column).fn(
+                dataset, column_results, self.session, self._get_schema_translate_map()
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            self.session.rollback()
+            return None
+
+    def _get_schema_translate_map(self) -> Optional[Dict]:
+        """
+        Compute schema translation map from raw dataset schema and entity database (project) name
+        """
+        raw_table = self.sampler.raw_dataset.__table__
+        dataset_name = getattr(raw_table, "schema", None)
+        project_name = getattr(self.table_entity.database, "name", None)
+
+        schema_translate_map = None
+        if project_name and dataset_name and "." not in dataset_name:
+            schema_translate_map = {dataset_name: f"{project_name}.{dataset_name}"}
+
+        return schema_translate_map
+
+    def _create_thread_safe_runner(self, session, column=None):
+        """Create a QueryRunner that applies schema_translate_map so queries use project.dataset.table
+        without mutating ORM table schema. BigQuery requires fully-qualified names when billing
+        project differs from data project.
+        """
+        # Build or refresh the thread-local runner
+        if not hasattr(thread_local, "runner") or not isinstance(
+            getattr(thread_local, "runner"), BigQueryQueryRunner
+        ):
+            thread_local.runner = BigQueryQueryRunner(
+                session=session,
+                dataset=self.sampler.get_dataset(column=column),
+                raw_dataset=self.sampler.raw_dataset,
+                partition_details=self.sampler.partition_details,
+                profile_sample_query=self.sampler.sample_query,
+            )
+            return thread_local.runner
+
+        thread_local.runner.dataset = self.sampler.get_dataset(column=column)
+        return thread_local.runner
