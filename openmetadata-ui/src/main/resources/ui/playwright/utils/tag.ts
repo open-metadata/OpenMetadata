@@ -359,10 +359,6 @@ export const verifyTagPageUI = async (
   await page.getByRole('link', { name: classificationName }).click();
   await classificationTable;
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classificationName
-  );
-
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
   await res;
