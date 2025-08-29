@@ -12,12 +12,79 @@
  */
 
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
+
+// Helper to check if a path should be served as index.html for SPA routing
+const shouldServeSPA = (url: string, accept = ''): boolean => {
+  const [pathname] = url.split('?');
+
+  // Skip non-GET or paths that should be handled normally
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/@') ||
+    pathname.startsWith('/src/') ||
+    pathname.startsWith('/node_modules/')
+  ) {
+    return false;
+  }
+
+  // List of known static file extensions
+  const staticExtensions = [
+    '.js',
+    '.mjs',
+    '.ts',
+    '.tsx',
+    '.jsx',
+    '.css',
+    '.less',
+    '.scss',
+    '.sass',
+    '.json',
+    '.xml',
+    '.yaml',
+    '.yml',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.svg',
+    '.ico',
+    '.webp',
+    '.woff',
+    '.woff2',
+    '.ttf',
+    '.eot',
+    '.mp4',
+    '.webm',
+    '.mp3',
+    '.wav',
+    '.pdf',
+    '.zip',
+    '.tar',
+    '.gz',
+    '.map',
+  ];
+
+  // Check if pathname ends with a known static file extension
+  const hasStaticExtension = staticExtensions.some((ext) =>
+    pathname.toLowerCase().endsWith(ext)
+  );
+
+  if (hasStaticExtension) {
+    return false;
+  }
+
+  // Must be an HTML request
+  return (
+    accept.includes('text/html') || accept.includes('application/xhtml+xml')
+  );
+};
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -31,12 +98,64 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: basePath,
+    appType: 'spa', // Explicitly set as SPA
     plugins: [
       {
         name: 'html-transform',
         transformIndexHtml(html: string) {
-          // Replace ${basePath} in all places except script src (handled by Vite's base config)
-          return html.replace(/\$\{basePath\}/g, basePath);
+          // Replace ${basePath} in all places with the actual base path
+          let transformed = html.replace(/\$\{basePath\}/g, basePath);
+
+          // In development, ensure base tag uses root path
+          if (mode === 'development') {
+            transformed = transformed.replace(
+              '<base href="/" />',
+              '<base href="/" />'
+            );
+          }
+
+          return transformed;
+        },
+      },
+      {
+        name: 'spa-fallback',
+        configureServer(server) {
+          server.middlewares.use(async (req, res, next) => {
+            if (
+              req.method === 'GET' &&
+              shouldServeSPA(req.url || '', req.headers.accept || '')
+            ) {
+              try {
+                let template = await fs.promises.readFile(
+                  path.resolve(__dirname, 'index.html'),
+                  'utf-8'
+                );
+                template = await server.transformIndexHtml(req.url!, template);
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'text/html');
+                res.end(template);
+
+                return;
+              } catch (e) {
+                server.ssrFixStacktrace(e as Error);
+                next(e);
+              }
+            }
+            next();
+          });
+        },
+        configurePreviewServer(server) {
+          return () => {
+            server.middlewares.use((req, res, next) => {
+              if (
+                req.method === 'GET' &&
+                shouldServeSPA(req.url || '', req.headers.accept || '')
+              ) {
+                req.url = '/index.html';
+              }
+              next();
+            });
+          };
         },
       },
       react(),
@@ -98,12 +217,18 @@ export default defineConfig(({ mode }) => {
       },
     },
 
+    preview: {
+      port: 3000,
+    },
+
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
       copyPublicDir: true,
       sourcemap: false,
       minify: mode === 'production' ? 'terser' : false,
+      // Ensure assets use absolute paths
+      assetsInlineLimit: 0,
       rollupOptions: {
         output: {
           manualChunks: {
