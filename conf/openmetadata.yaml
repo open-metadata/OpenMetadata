@@ -59,22 +59,9 @@ server:
       acceptorThreads: 1  # Admin endpoint needs minimal resources
       selectorThreads: 1
       
-  # Enable response compression
+  # Response compression disabled for maximum throughput
   gzip:
-    enabled: true
-    syncFlush: true
-    minimumEntitySize: 256B  # Only compress responses > 256 bytes
-    bufferSize: 8KiB
-    deflateCompressionLevel: 6  # Balance between CPU and compression ratio
-    includedMethods: [GET, POST, PUT, PATCH]
-    compressedMimeTypes:
-      - application/json
-      - application/xml
-      - text/html
-      - text/plain
-      - text/css
-      - text/javascript
-      - application/javascript
+    enabled: false
 
   # Thread pool configuration for request processing
   maxThreads: ${SERVER_MAX_THREADS:-200}  # Increased for 1000 concurrent users
