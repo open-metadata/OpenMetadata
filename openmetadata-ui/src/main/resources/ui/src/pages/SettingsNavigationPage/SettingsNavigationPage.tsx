@@ -77,20 +77,11 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   );
 
   const disableSave = useMemo(() => {
-    // Get the initial hidden keys from the current navigation
-    const initialHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigation);
+    // Get the current navigation items from the modified tree data
+    const currentNavigationItems = getNavigationItems(treeData, hiddenKeys);
 
-    // Get the current navigation items from the tree data
-    const currentNavigationItems =
-      getNavigationItems(treeData, hiddenKeys) || [];
-
-    // Get the current hidden keys from the current navigation items
-    const currentHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigationItems) || [];
-
-    // Check if the initial hidden keys are the same as the current hidden keys
-    return isEqual(initialHiddenKeys, currentHiddenKeys);
+    // Compare the entire structure including order, names, hidden status, and all properties
+    return isEqual(currentNavigation, currentNavigationItems);
   }, [currentNavigation, treeData, hiddenKeys]);
 
   const handleSave = async () => {
