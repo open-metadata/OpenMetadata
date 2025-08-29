@@ -32,7 +32,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 4 : 3,
+  workers: process.env.CI ? 4 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -53,7 +53,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
   },
@@ -72,12 +72,6 @@ export default defineConfig({
       dependencies: ['setup'],
       grepInvert: /data-insight/,
       testIgnore: ['**/nightly/**'],
-      testMatch: [
-        '**/AddTestCaseNewFlow.spec.ts',
-        '**/Tour.spec.ts',
-        '**/ApiServiceRest.spec.ts',
-        '**/Domains.spec.ts',
-      ],
     },
     {
       name: 'data-insight-application',

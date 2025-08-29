@@ -142,8 +142,6 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('saveButton').click();
 };
 
-test.slow();
-
 test.describe('Tour should work properly', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -163,6 +161,8 @@ test.describe('Tour should work properly', () => {
   });
 
   test('Tour should work from help section', async ({ page }) => {
+    test.slow();
+
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -192,6 +192,7 @@ test.describe('Tour should work properly', () => {
 
   test('Tour should work from URL directly', async ({ page }) => {
     await page.goto('/tour');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
     const isWelcomeScreenVisible = await page
       .getByTestId('welcome-screen')
       .isVisible();
