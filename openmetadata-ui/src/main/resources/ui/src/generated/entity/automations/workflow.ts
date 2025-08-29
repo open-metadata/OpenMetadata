@@ -598,7 +598,7 @@ export interface TestServiceConnectionRequest {
  * Security Connection.
  */
 export interface RequestConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -823,7 +823,7 @@ export interface RequestConnection {
  *
  * Apache Ranger Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -2262,6 +2262,7 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    [property: string]: any;
 }
 
 /**
