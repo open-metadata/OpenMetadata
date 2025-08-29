@@ -13,7 +13,8 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
 import { createTableDescriptionSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
@@ -24,13 +25,11 @@ const user2 = new UserClass();
 const user3 = new UserClass();
 let entityLinkList: string[];
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 test.describe('Description Suggestions Table Entity', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.create(apiContext);
     await table2.create(apiContext);
 
@@ -51,7 +50,7 @@ test.describe('Description Suggestions Table Entity', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+    const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.delete(apiContext);
     await table2.delete(apiContext);
     await user1.delete(apiContext);
@@ -60,12 +59,13 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+  test('View, Close, Reject and Accept the Suggestions', async ({
+    browser,
+  }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
 
-  test('View, Close, Reject and Accept the Suggestions', async ({ page }) => {
     await test.step('View and Open the Suggestions', async () => {
+      await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
       await expect(page.getByText('Suggested Descriptions')).toBeVisible();
@@ -227,9 +227,14 @@ test.describe('Description Suggestions Table Entity', () => {
       ).not.toBeVisible();
       await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
     });
+
+    await afterAction();
   });
 
-  test('Reject All Suggestions', async ({ page }) => {
+  test('Reject All Suggestions', async ({ browser }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+
+    await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
     const allAvatarSuggestion = page
@@ -258,12 +263,14 @@ test.describe('Description Suggestions Table Entity', () => {
     await expect(page.getByTestId('accept-all-suggestions')).not.toBeVisible();
     await expect(page.getByTestId('reject-all-suggestions')).not.toBeVisible();
     await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
+
+    await afterAction();
   });
 
   test('Fetch on avatar click and then all Pending Suggestions button click', async ({
     browser,
-    page,
   }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
     const { afterAction: afterAction2, apiContext: apiContext2 } =
       await performUserLogin(browser, user1);
     const { afterAction: afterAction3, apiContext: apiContext3 } =
@@ -277,6 +284,7 @@ test.describe('Description Suggestions Table Entity', () => {
       await createTableDescriptionSuggestions(apiContext4, entityLink);
     }
 
+    await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
     const avatarSuggestion = page.waitForResponse(
@@ -305,6 +313,7 @@ test.describe('Description Suggestions Table Entity', () => {
     // Click the first avatar
     await expect(allAvatarSuggestion).toHaveCount(4);
 
+    await afterAction();
     await afterAction2();
     await afterAction3();
     await afterAction4();
@@ -312,8 +321,8 @@ test.describe('Description Suggestions Table Entity', () => {
 
   test('Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions', async ({
     browser,
-    page,
   }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
     const { afterAction: afterAction2, apiContext: apiContext2 } =
       await performUserLogin(browser, user1);
     const { afterAction: afterAction3, apiContext: apiContext3 } =
@@ -327,6 +336,7 @@ test.describe('Description Suggestions Table Entity', () => {
       await createTableDescriptionSuggestions(apiContext4, entityLink);
     }
 
+    await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
     for (let index = 0; index < 3; index++) {
@@ -369,16 +379,21 @@ test.describe('Description Suggestions Table Entity', () => {
       }
     }
 
+    await afterAction();
     await afterAction2();
     await afterAction3();
     await afterAction4();
   });
 
   test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
-    page,
+    browser,
   }) => {
     // Jumping from one table to another table to check if the suggestions are fetched correctly
     // due to provider boundary on entity.
+
+    const { page, afterAction } = await performAdminLogin(browser);
+
+    await redirectToHomePage(page);
 
     const suggestionFetchCallResponse = page.waitForResponse(
       '/api/v1/suggestions?entityFQN=*&limit=10'
@@ -391,5 +406,7 @@ test.describe('Description Suggestions Table Entity', () => {
     );
     await table.visitEntityPage(page);
     await suggestionFetchCallResponse2;
+
+    await afterAction();
   });
 });
