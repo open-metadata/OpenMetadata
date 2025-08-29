@@ -55,7 +55,7 @@ export interface CreateDatabaseService {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -154,7 +154,7 @@ export interface DatabaseConnection {
  *
  * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -872,6 +872,7 @@ export interface ConfigClass {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
