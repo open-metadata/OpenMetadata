@@ -692,7 +692,7 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Tier'
+      'Description'
     );
     await selectOption(
       page,
@@ -702,7 +702,7 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--value .ant-select'),
-      'Tier.Tier1'
+      'Incomplete'
     );
 
     const queryResponse = page.waitForResponse(
