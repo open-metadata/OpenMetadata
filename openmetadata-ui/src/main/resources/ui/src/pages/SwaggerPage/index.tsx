@@ -11,18 +11,28 @@
  *  limitations under the License.
  */
 
+import { useEffect, useState } from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { getOidcToken } from '../../utils/SwTokenStorageUtils';
 import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
   const { theme } = useApplicationStore();
-  const idToken = getOidcToken();
+  const [idToken, setIdToken] = useState<string>('');
+
+  const fetchIdToken = async () => {
+    const token = await getOidcToken();
+    setIdToken(token);
+  };
+
+  useEffect(() => {
+    fetchIdToken();
+  }, []);
 
   return (
     <div

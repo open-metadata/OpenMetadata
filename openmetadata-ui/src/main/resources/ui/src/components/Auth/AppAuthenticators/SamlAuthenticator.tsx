@@ -36,7 +36,7 @@ import {
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
-} from '../../../utils/LocalStorageUtils';
+} from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -51,14 +51,14 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
-      const refreshToken = getRefreshToken();
+      const refreshToken = await getRefreshToken();
 
       const response = await refreshSAMLToken({
         refreshToken: refreshToken as string,
       });
 
-      setRefreshToken(response.refreshToken);
-      setOidcToken(response.accessToken);
+      await setRefreshToken(response.refreshToken);
+      await setOidcToken(response.accessToken);
 
       return Promise.resolve(response);
     };
@@ -73,7 +73,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = async () => {
-      const token = getOidcToken();
+      const token = await getOidcToken();
       if (token) {
         try {
           await postSamlLogout();

@@ -30,7 +30,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(),
 }));
 
-jest.mock('../../../utils/LocalStorageUtils', () => ({
+jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   getRefreshToken: () => getRefreshToken(),
   setOidcToken: (token: string) => setOidcToken(token),
   setRefreshToken: (token: string) => setRefreshToken(token),

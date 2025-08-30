@@ -12,14 +12,14 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { setOidcToken, setRefreshToken } from '../../utils/LocalStorageUtils';
+import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -28,14 +28,20 @@ const SamlCallback = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
 
-  useEffect(() => {
+  const processLogin = useCallback(async () => {
     // get #id_token from hash params in the URL
     const params = new URLSearchParams(location.search);
     const idToken = params.get('id_token');
     const name = params.get('name');
     const email = params.get('email');
-    if (idToken) {
-      setOidcToken(idToken);
+
+    if (!idToken) {
+      return;
+    }
+
+    try {
+      await setOidcToken(idToken);
+
       const oidcUser: OidcUser = {
         id_token: idToken,
         scope: '',
@@ -50,14 +56,20 @@ const SamlCallback = () => {
 
       const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
       if (refreshToken) {
-        setRefreshToken(refreshToken);
+        await setRefreshToken(refreshToken);
         // Remove refresh token from cookie storage, don't want to keep it in the browser
         cookieStorage.removeItem(REFRESH_TOKEN_KEY);
       }
 
-      handleSuccessfulLogin(oidcUser);
+      await handleSuccessfulLogin(oidcUser);
+    } catch {
+      // Error handling is already done in handleSuccessfulLogin
     }
-  }, [location]);
+  }, [location, handleSuccessfulLogin]);
+
+  useEffect(() => {
+    processLogin();
+  }, [processLogin]);
 
   return (
     <>

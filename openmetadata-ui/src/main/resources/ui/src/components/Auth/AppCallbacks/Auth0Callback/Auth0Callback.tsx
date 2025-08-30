@@ -14,7 +14,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { VFC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { setOidcToken } from '../../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../../AuthProviders/AuthProvider';
 import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
 
@@ -25,19 +25,20 @@ const Auth0Callback: VFC = () => {
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
-        setOidcToken(token?.__raw || '');
-        const oidcUser: OidcUser = {
-          id_token: token?.__raw || '',
-          scope: '',
-          profile: {
-            email: user?.email || '',
-            name: user?.name || '',
-            picture: user?.picture || '',
-            locale: user?.locale || '',
-            sub: user?.sub || '',
-          },
-        };
-        handleSuccessfulLogin(oidcUser);
+        setOidcToken(token?.__raw || '').then(() => {
+          const oidcUser: OidcUser = {
+            id_token: token?.__raw || '',
+            scope: '',
+            profile: {
+              email: user?.email || '',
+              name: user?.name || '',
+              picture: user?.picture || '',
+              locale: user?.locale || '',
+              sub: user?.sub || '',
+            },
+          };
+          handleSuccessfulLogin(oidcUser);
+        });
       })
       .catch((err) => {
         return (
