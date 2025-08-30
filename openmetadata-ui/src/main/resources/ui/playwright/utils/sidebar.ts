@@ -33,13 +33,15 @@ export const sidebarClick = async (page: Page, id: string) => {
     await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
 
-    const targetElement = page.locator(
-      `[data-testid="app-bar-item-${items[1]}"]`
-    );
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${items[1]}"]`)
+      .first();
     await targetElement.waitFor({ state: 'visible' });
     await targetElement.click();
   } else {
-    const targetElement = page.locator(`[data-testid="app-bar-item-${id}"]`);
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${id}"]`)
+      .first();
     await targetElement.waitFor({ state: 'visible' });
     await targetElement.click();
   }
