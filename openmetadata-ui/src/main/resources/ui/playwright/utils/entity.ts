@@ -141,8 +141,13 @@ export const addOwner = async ({
     await page.getByRole('listitem', { name: owner, exact: true }).click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    const ownerItem = page.getByRole('listitem', {
+      name: owner,
+      exact: true,
+    });
 
+    await ownerItem.waitFor({ state: 'visible' });
+    await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
     await patchRequest;
@@ -257,9 +262,10 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await expect(
-    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
-  ).not.toBeVisible();
+  await page
+    .getByTestId(dataTestId ?? 'owner-link')
+    .getByTestId(ownerName)
+    .waitFor({ state: 'hidden' });
 };
 
 export const addMultiOwner = async (data: {
@@ -541,11 +547,25 @@ export const assignTag = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
+  // Wait for the form to be visible and stable
+  await page.locator('#tagsForm_tags').waitFor({
+    state: 'visible',
+  });
+
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
+
   await page.locator('#tagsForm_tags').fill(tag);
-  await searchTags;
+
+  try {
+    await searchTags;
+  } catch (error) {
+    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+    await page.locator('#tagsForm_tags').fill(tag);
+    await searchTags;
+  }
+
   await page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
     .first()
@@ -740,12 +760,28 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
+  // Wait for the form to be visible before proceeding
+  await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
 
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
+
+  try {
+    await searchGlossaryTerm;
+  } catch (error) {
+    // If the search response fails, retry
+    await page
+      .locator('#tagsForm_tags')
+      .waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+
+    await searchGlossaryTerm;
+  }
+
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
   await page.waitForSelector(
@@ -753,11 +789,18 @@ export const assignGlossaryTerm = async (
     { state: 'visible' }
   );
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('custom-drop-down-menu')
+    .getByTestId('saveAssociatedTag')
+    .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(
+    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+  ).not.toBeVisible();
 
   await expect(
     page
@@ -858,9 +901,14 @@ export const removeGlossaryTerm = async (
       { state: 'visible' }
     );
 
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+    await expect(
+      page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+    ).toBeEnabled();
 
-    await page.getByTestId('saveAssociatedTag').click();
+    await page
+      .getByTestId('custom-drop-down-menu')
+      .getByTestId('saveAssociatedTag')
+      .click();
     await patchRequest;
 
     await expect(
@@ -965,14 +1013,18 @@ export const unFollowEntity = async (
   page: Page,
   endpoint: EntityTypeEndpoint
 ) => {
+  await page.waitForLoadState('networkidle');
+
+  const followButton = page.getByTestId('entity-follow-button');
+
+  await followButton.waitFor({ state: 'visible' });
+
+  await expect(followButton).toContainText('Unfollow');
+
   const unFollowResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers/*`
   );
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.getByTestId('entity-follow-button').click();
+  await followButton.click();
   await unFollowResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
@@ -1343,9 +1395,16 @@ export const removeDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill('');
 
-  const updateRequest = page.waitForResponse((req) =>
-    ['PUT', 'PATCH'].includes(req.request().method())
-  );
+  const updateRequest = page.waitForResponse((response) => {
+    const method = response.request().method();
+    const url = response.url();
+
+    // Check Analytics Api Does Not Intterupt With PUT CAll
+    return (
+      (method === 'PUT' || method === 'PATCH') &&
+      !url.includes('api/v1/analytics/web/events/collect')
+    );
+  });
   await page.click('[data-testid="save-button"]');
   await updateRequest;
 

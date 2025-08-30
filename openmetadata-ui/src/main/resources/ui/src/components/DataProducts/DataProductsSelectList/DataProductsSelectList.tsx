@@ -128,7 +128,10 @@ const DataProductsSelectList = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+      <Space
+        className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+        data-testid="data-product-dropdown-actions"
+        size={8}>
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
