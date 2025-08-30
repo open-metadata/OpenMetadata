@@ -63,11 +63,12 @@ test.describe('Widgets', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
   test('Activity Feed', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
 
@@ -89,9 +90,6 @@ test.describe('Widgets', () => {
   test('Data Assets', async ({ page }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
-
     await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
 
     await removeAndVerifyWidget(
@@ -109,9 +107,6 @@ test.describe('Widgets', () => {
 
   test('My Data', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
 
@@ -133,9 +128,6 @@ test.describe('Widgets', () => {
   test('KPI', async ({ page }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
-
     await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
 
     await removeAndVerifyWidget(
@@ -153,9 +145,6 @@ test.describe('Widgets', () => {
 
   test('Total Data Assets', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
 
@@ -177,9 +166,6 @@ test.describe('Widgets', () => {
   test('Following Assets', async ({ page }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
-
     await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
 
     await verifyDataFilters(page, 'KnowledgePanel.Following');
@@ -200,9 +186,6 @@ test.describe('Widgets', () => {
   test('Domains', async ({ page }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
-
     await expect(page.getByTestId('KnowledgePanel.Domains')).not.toBeVisible();
 
     await addAndVerifyWidget(
@@ -222,9 +205,6 @@ test.describe('Widgets', () => {
 
   test('My Tasks', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.MyTask')).not.toBeVisible();
 
