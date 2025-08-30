@@ -203,7 +203,11 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.fill('input[id="email"]', userName);
+    await page.waitForLoadState('domcontentloaded');
+
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
     const loginRes = page.waitForResponse('/api/v1/users/login');
