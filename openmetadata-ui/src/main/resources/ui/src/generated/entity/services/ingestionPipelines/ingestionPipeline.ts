@@ -2181,6 +2181,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -2751,7 +2752,7 @@ export interface ServiceConnections {
  * Drive Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -2982,7 +2983,7 @@ export interface ServiceConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -4453,6 +4454,7 @@ export interface ConfigClass {
      * SharePoint site URL
      */
     siteUrl?: string;
+    [property: string]: any;
 }
 
 /**
