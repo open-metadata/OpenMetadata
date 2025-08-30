@@ -24,11 +24,11 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
-  private dashboardName = `pw-dashboard-${uuid()}`;
-  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
-  private projectName = `pw-project-${uuid()}`;
+  private dashboardName = `pw.dashboard%${uuid()}`;
+  private dashboardDataModelName = `pw.dashboard%data-model-${uuid()}`;
+  private projectName = `pw.project%${uuid()}`;
   service = {
-    name: `pw-dashboard-service-${uuid()}`,
+    name: `pw.dashboard%service-${uuid()}`,
     serviceType: 'Superset',
     connection: {
       config: {
