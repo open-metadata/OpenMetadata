@@ -189,7 +189,7 @@ const TotalDataAssetsWidget = ({
         actionButtonText={t('label.browse-assets')}
         description={t('message.no-data-for-total-assets')}
         icon={
-          <TotalDataAssetsEmptyIcon height={SIZE.LARGE} width={SIZE.LARGE} />
+          <TotalDataAssetsEmptyIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('label.no-data-assets-to-display')}
       />

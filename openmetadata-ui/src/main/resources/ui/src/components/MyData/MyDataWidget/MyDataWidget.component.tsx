@@ -191,7 +191,7 @@ const MyDataWidgetInternal = ({
         actionButtonText={t('label.explore-assets')}
         description={t('message.no-owned-data')}
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('label.no-records')}
       />

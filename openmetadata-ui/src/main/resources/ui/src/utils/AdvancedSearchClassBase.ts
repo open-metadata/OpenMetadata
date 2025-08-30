@@ -745,6 +745,19 @@ class AdvancedSearchClassBase {
         },
       },
 
+      [EntityFields.CERTIFICATION]: {
+        label: t('label.certification'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.DATA_ASSET],
+            entityField: EntityFields.CERTIFICATION,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
       [EntityFields.TIER]: {
         label: t('label.tier'),
         type: 'select',

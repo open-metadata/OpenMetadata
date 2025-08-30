@@ -144,8 +144,8 @@ const MyTaskWidget = ({
             icon={
               <MyTaskNoDataIcon
                 data-testid="my-task-no-data-icon"
-                height={SIZE.LARGE}
-                width={SIZE.LARGE}
+                height={SIZE.MEDIUM}
+                width={SIZE.MEDIUM}
               />
             }
             title={t('label.no-tasks-yet')}

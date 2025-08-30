@@ -52,7 +52,7 @@ const DataAssetsWidget = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
+    DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW
   );
 
   const widgetData = useMemo(
@@ -119,7 +119,7 @@ const DataAssetsWidget = ({
     () => (
       <WidgetEmptyState
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.no-data-assets-yet')}
       />

@@ -35,6 +35,7 @@ import {
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { AssetCertification } from '../../../../generated/type/assetCertification';
 import {
   SearchIndexSearchSourceMapping,
   SearchSourceAlias,
@@ -55,6 +56,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -123,7 +125,9 @@ const CuratedAssetsWidget = ({
     [data, isLoading]
   );
 
-  const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
+  const sourceIcon = searchClassBase.getEntityIcon(
+    selectedResource?.length === 1 ? selectedResource?.[0] : ''
+  );
 
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {
@@ -136,7 +140,7 @@ const CuratedAssetsWidget = ({
   }, []);
 
   const prepareData = useCallback(async () => {
-    if (selectedResource?.[0]) {
+    if (selectedResource?.length) {
       try {
         setIsLoading(true);
         const sortField = getSortField(selectedSortBy);
@@ -145,10 +149,10 @@ const CuratedAssetsWidget = ({
         // Expand 'all' selection to individual entity types for the API call
         const expandedResources = getExpandedResourceList(selectedResource);
 
-        // Use SearchIndex.ALL when 'all' is selected, otherwise use the first selected resource
+        // Use SearchIndex.ALL when 'all' is selected, otherwise use all the selected resource
         const searchIndex = selectedResource.includes(EntityType.ALL)
           ? SearchIndex.ALL
-          : (selectedResource[0] as SearchIndex);
+          : (selectedResource as SearchIndex[]);
 
         const res = await searchQuery({
           query: '',
@@ -299,8 +303,8 @@ const CuratedAssetsWidget = ({
         icon={
           <CuratedAssetsNoDataIcon
             data-testid="curated-assets-no-data-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         title={t('message.curated-assets-no-data-message')}
@@ -318,8 +322,8 @@ const CuratedAssetsWidget = ({
         icon={
           <CuratedAssetsEmptyIcon
             data-testid="curated-assets-empty-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         onActionClick={handleModalOpen}
@@ -332,6 +336,7 @@ const CuratedAssetsWidget = ({
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
       const title = getEntityName(item);
       const description = get(item, 'description');
+      const certification = get(item, 'certification');
 
       return (
         <Link
@@ -351,11 +356,18 @@ const CuratedAssetsWidget = ({
               )}
             />
             <div className="flex flex-col curated-assets-list-item-content">
-              <Typography.Text
-                className="entity-list-item-title"
-                ellipsis={{ tooltip: true }}>
-                {title}
-              </Typography.Text>
+              <div className="flex items-center gap-1">
+                <Typography.Text
+                  className="entity-list-item-title"
+                  ellipsis={{ tooltip: true }}>
+                  {title}
+                </Typography.Text>
+                {certification && (
+                  <CertificationTag
+                    certification={certification as AssetCertification}
+                  />
+                )}
+              </div>
               {description && (
                 <RichTextEditorPreviewerV1
                   className="max-two-lines entity-list-item-description"
