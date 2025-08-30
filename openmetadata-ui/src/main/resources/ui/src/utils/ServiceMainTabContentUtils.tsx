@@ -32,8 +32,10 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
+import { stringToHTML } from './StringsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -48,7 +50,8 @@ export const getServiceMainTabColumns = (
   handleDisplayNameUpdate?: (
     entityData: EntityName,
     id?: string
-  ) => Promise<void>
+  ) => Promise<void>,
+  searchValue?: string
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
@@ -57,12 +60,14 @@ export const getServiceMainTabColumns = (
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={record.displayName}
+        displayName={stringToHTML(
+          highlightSearchText(record.displayName, searchValue)
+        )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={record.name}
+        name={stringToHTML(highlightSearchText(record.name, searchValue))}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),
@@ -74,7 +79,9 @@ export const getServiceMainTabColumns = (
     width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerNew markdown={description} />
+        <RichTextEditorPreviewerNew
+          markdown={highlightSearchText(description, searchValue)}
+        />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
