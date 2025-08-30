@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import '@openmetadata/ui-core-components/dist/styles/globals.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';

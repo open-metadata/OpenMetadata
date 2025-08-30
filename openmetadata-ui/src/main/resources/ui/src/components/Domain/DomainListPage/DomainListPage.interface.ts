@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,16 @@
  *  limitations under the License.
  */
 
-module.exports = {
-  plugins: [require('autoprefixer')],
-};
+import { Domain } from '../../../generated/entity/domains/domain';
+
+export interface DomainListPageProps {
+  domains: Domain[];
+  loading: boolean;
+  onAddDomain: () => void;
+  onDomainClick: (domain: Domain) => void;
+}
+
+export interface DomainCardProps {
+  domain: Domain;
+  onClick: () => void;
+}
