@@ -2888,6 +2888,8 @@ export interface ServiceConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -3168,6 +3170,8 @@ export interface ConfigObject {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -3254,6 +3258,8 @@ export interface ConfigObject {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -3361,6 +3367,9 @@ export interface ConfigObject {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4044,6 +4053,16 @@ export interface ConfigObject {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -6335,6 +6354,7 @@ export enum PurpleType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",

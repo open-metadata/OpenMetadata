@@ -279,6 +279,8 @@ export interface RequestConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -540,6 +542,8 @@ export interface ConfigObject {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -769,6 +773,8 @@ export interface ConfigObject {
      *
      * Password
      *
+     * Password to connect to ServiceNow.
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -871,6 +877,9 @@ export interface ConfigObject {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -1298,6 +1307,16 @@ export interface ConfigObject {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -4067,6 +4086,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",

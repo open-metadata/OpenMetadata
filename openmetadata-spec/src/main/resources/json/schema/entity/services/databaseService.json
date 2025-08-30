@@ -62,7 +62,8 @@
         "Exasol",
         "Cockroach",
         "SSAS",
-        "Epic"
+        "Epic",
+        "ServiceNow"
       ],
       "javaEnums": [
         {
@@ -208,6 +209,9 @@
         },
         {
           "name": "Epic"
+        },
+        {
+          "name": "ServiceNow"
         }
       ]
     },
@@ -358,6 +362,9 @@
             },
             {
               "$ref": "./connections/database/epicConnection.json"
+            },
+            {
+              "$ref": "./connections/database/serviceNowConnection.json"
             }
           ]
         }
