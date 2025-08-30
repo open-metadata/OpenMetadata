@@ -141,6 +141,7 @@ class Histogram(HybridMetric):
         sample: Optional[DeclarativeMeta],
         res: Dict[str, Any],
         session: Optional[Session] = None,
+        schema_translate_map: Optional[Dict] = None,
     ):
         """
         Build the histogram query
@@ -203,8 +204,11 @@ class Histogram(HybridMetric):
             starting_bin_bound = ending_bin_bound
             ending_bin_bound += bin_width
 
-        rows = session.query(*case_stmts).select_from(sample).first()
+        query = session.query(*case_stmts).select_from(sample)
+        if schema_translate_map:
+            query = query.execution_options(schema_translate_map=schema_translate_map)
 
+        rows = query.first()
         if rows:
             return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
         return None
@@ -245,9 +249,11 @@ class Histogram(HybridMetric):
 
         bins = list(np.arange(num_bins) * bin_width + res_min)
         bins_label = [
-            self._format_bin_labels(bins[i], bins[i + 1])
-            if i < len(bins) - 1
-            else self._format_bin_labels(bins[i])
+            (
+                self._format_bin_labels(bins[i], bins[i + 1])
+                if i < len(bins) - 1
+                else self._format_bin_labels(bins[i])
+            )
             for i in range(len(bins))
         ]
 

@@ -285,6 +285,13 @@ class ClickHouseTableMetricComputer(BaseTableMetricComputer):
 class BigQueryTableMetricComputer(BaseTableMetricComputer):
     """BigQuery Table Metric Computer"""
 
+    def _qualify_dataset(self, dataset: str) -> str:
+        """Return project-qualified dataset if not already qualified."""
+        project = getattr(self._entity.database, "name", None)
+        if project and dataset and "." not in dataset:
+            return f"{project}.{dataset}"
+        return dataset
+
     def compute(self):
         """compute table metrics for bigquery"""
         try:
@@ -304,8 +311,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
 
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -338,18 +344,12 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             *self._get_col_names_and_count(),
         ]
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
-        schema = (
-            self.schema_name.startswith(
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}."
-            )
-            and self.schema_name
-            or f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}"
-        )
+
+        schema = self._qualify_dataset(self.schema_name)
         query = self._build_query(
             columns,
             self._build_table("__TABLES__", schema),
