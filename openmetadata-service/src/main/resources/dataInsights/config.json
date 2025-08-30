@@ -12,7 +12,7 @@
       "extension",
       "votes",
       "fullyQualifiedName",
-      "domain",
+      "domains",
       "dataProducts",
       "certification"
     ],
@@ -97,7 +97,7 @@
     ],
     "dataProduct": [
       "experts",
-      "domain",
+      "domains",
       "assets"
     ],
     "glossaryTerm": [
