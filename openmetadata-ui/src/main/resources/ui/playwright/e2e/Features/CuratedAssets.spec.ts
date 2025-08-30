@@ -58,7 +58,6 @@ test.describe('Curated Assets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    await page.getByTestId('sidebar-toggle').click();
     await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 

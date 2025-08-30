@@ -101,9 +101,6 @@ setup('authenticate all users', async ({ browser }) => {
     const newAdminPage = await browser.newPage();
     await admin.login(newAdminPage);
 
-    // Close the leftside bar to run tests smoothly
-    await newAdminPage.getByTestId('sidebar-toggle').click();
-
     await newAdminPage.waitForURL('**/my-data');
 
     const { apiContext, afterAction } = await getApiContext(adminPage);

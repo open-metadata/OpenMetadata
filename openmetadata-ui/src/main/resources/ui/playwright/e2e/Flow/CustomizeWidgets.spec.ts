@@ -40,7 +40,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser, page }) => {
+base.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
@@ -60,7 +60,6 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    await page.getByTestId('sidebar-toggle').click();
     await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 

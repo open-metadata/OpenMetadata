@@ -29,9 +29,13 @@ export const clickOnLogo = async (page: Page) => {
 export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
-    await page.click(
+    await page.hover(
       `[data-testid="left-sidebar"] [data-menu-id*="${items[0]}"]`
     );
+    await page.waitForSelector(`[data-testid="app-bar-item-${items[1]}"]`, {
+      state: 'visible',
+    });
+
     await page.click(`[data-testid="app-bar-item-${items[1]}"]`);
   } else {
     await page.click(`[data-testid="app-bar-item-${id}"]`);
