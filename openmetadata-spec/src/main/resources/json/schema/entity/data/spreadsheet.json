@@ -6,9 +6,7 @@
   "description": "This schema defines the Spreadsheet entity. A Spreadsheet is a file containing multiple worksheets/tabs, such as Google Sheets or Excel files.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Spreadsheet",
-  "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "spreadsheetMimeType": {
       "description": "MIME type for spreadsheet files",
@@ -24,13 +22,13 @@
         "Other"
       ],
       "javaEnums": [
-        {"name": "GoogleSheets"},
-        {"name": "ExcelXlsx"},
-        {"name": "ExcelXls"},
-        {"name": "OpenDocument"},
-        {"name": "Csv"},
-        {"name": "Tsv"},
-        {"name": "Other"}
+        { "name": "GoogleSheets" },
+        { "name": "ExcelXlsx" },
+        { "name": "ExcelXls" },
+        { "name": "OpenDocument" },
+        { "name": "Csv" },
+        { "name": "Tsv" },
+        { "name": "Other" }
       ]
     }
   },
@@ -157,7 +155,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Spreadsheet belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -187,6 +185,6 @@
       "$ref": "../../type/assetCertification.json"
     }
   },
-  "required": ["id", "name", "spreadsheet"],
+  "required": ["id", "name"],
   "additionalProperties": false
 }

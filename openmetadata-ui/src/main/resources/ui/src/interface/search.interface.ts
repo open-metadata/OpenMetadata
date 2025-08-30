@@ -38,11 +38,13 @@ import { Domain } from '../generated/entity/domains/domain';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
+import { StorageService } from '../generated/entity/services/storageService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
@@ -181,9 +183,13 @@ export interface SearchServiceSearchSource
 
 export interface StorageServiceSearchSource
   extends SearchSourceBase,
-    SearchService {}
+    StorageService {}
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface DriveServiceSearchSource
+  extends SearchSourceBase,
+    DriveService {}
 
 export interface APICollectionSearchSource
   extends SearchSourceBase,
@@ -219,6 +225,7 @@ export type ExploreSearchSource =
   | MessagingServiceSearchSource
   | SearchServiceSearchSource
   | StorageServiceSearchSource
+  | DriveServiceSearchSource
   | DomainSearchSource
   | SearchIndexSearchSource
   | APIServiceSearchSource
@@ -253,6 +260,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
+  [SearchIndex.DRIVE_SERVICE]: DriveServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
   [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;

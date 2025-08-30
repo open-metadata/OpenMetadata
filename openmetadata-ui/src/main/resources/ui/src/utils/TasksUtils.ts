@@ -441,6 +441,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
     }
 
+    case EntityType.DIRECTORY: {
+      return [service(ServiceCategory.DRIVE_SERVICES), activeEntity];
+    }
+
     case EntityType.DATABASE_SCHEMA: {
       return [
         service(ServiceCategory.DATABASE_SERVICES),

@@ -235,6 +235,16 @@ class GlobalSettingsClassBase {
             icon: MetadataIcon,
           },
           {
+            label: t('label.drive-plural'),
+            description: t('message.page-sub-header-for-drive'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.DRIVE_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
+            icon: MetadataIcon,
+          },
+          {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
             isProtected: true,
@@ -629,6 +639,15 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
+            icon: SchemaIcon,
+          },
+          {
+            label: t('label.directory'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.directory'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
             icon: SchemaIcon,
           },
           {

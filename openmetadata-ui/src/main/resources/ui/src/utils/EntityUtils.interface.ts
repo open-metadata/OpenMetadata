@@ -150,3 +150,9 @@ export enum FormattedStorageServiceType {
   Gcs = 'GCS',
   S3 = 'S3',
 }
+
+export enum FormattedDriveServiceType {
+  CustomDrive = 'Custom Drive',
+  GoogleDrive = 'Google Drive',
+  SharePoint = 'Share Point',
+}

@@ -25,6 +25,10 @@ import {
 } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import {
+  DriveConnection,
+  DriveService,
+} from '../generated/entity/services/driveService';
+import {
   MessagingConnection,
   MessagingService,
 } from '../generated/entity/services/messagingService';
@@ -96,7 +100,8 @@ export type DomainSupportedServiceTypes =
   | PipelineService
   | MlmodelService
   | StorageService
-  | SecurityService;
+  | SecurityService
+  | DriveService;
 
 export type ServicesType =
   | DatabaseService
@@ -108,7 +113,8 @@ export type ServicesType =
   | StorageService
   | SearchService
   | APIService
-  | SecurityService;
+  | SecurityService
+  | DriveService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -124,7 +130,8 @@ export type ConfigData =
   | MetadataConnection
   | StorageConnection
   | SearchConnection
-  | SecurityConnection;
+  | SecurityConnection
+  | DriveConnection;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;

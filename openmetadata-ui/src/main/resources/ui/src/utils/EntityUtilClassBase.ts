@@ -35,6 +35,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
@@ -58,6 +59,7 @@ import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
   FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
   FormattedMessagingServiceType,
   FormattedMetadataServiceType,
   FormattedMlModelServiceType,
@@ -100,6 +102,7 @@ class EntityUtilClassBase {
       ...FormattedMessagingServiceType,
       ...FormattedAPIServiceType,
       ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
     });
   }
 
@@ -317,6 +320,34 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -346,7 +377,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityDetailComponent(entityType: string) {
+  public getEntityDetailComponent(entityType: string): FC | null {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -380,6 +411,8 @@ class EntityUtilClassBase {
         return APIEndpointPage;
       case EntityType.METRIC:
         return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
 
       default:
         return null;
@@ -438,6 +471,9 @@ class EntityUtilClassBase {
       }
       case EntityType.METRIC: {
         return ResourceEntity.METRIC;
+      }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
       }
 
       default: {
