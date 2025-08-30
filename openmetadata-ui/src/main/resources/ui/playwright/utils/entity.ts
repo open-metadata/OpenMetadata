@@ -365,6 +365,14 @@ export const addMultiOwner = async (data: {
       const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
       await updateButton.click();
       await patchRequest;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await page.waitForSelector('[data-testid="select-owner-tabs"] ', {
+        state: 'detached',
+      });
     }
   }
 
