@@ -220,7 +220,11 @@ export const selectOption = async (
     state: 'visible',
   });
 
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
+  await optionLocator.waitFor({ state: 'visible' });
+  await optionLocator.click();
 };
 
 export const fillRule = async (
