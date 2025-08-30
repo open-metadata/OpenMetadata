@@ -35,7 +35,7 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -200,6 +200,7 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 const fillCommonFormItems = async (

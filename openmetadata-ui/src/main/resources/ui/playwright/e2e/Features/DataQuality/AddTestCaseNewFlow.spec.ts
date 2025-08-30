@@ -130,15 +130,6 @@ test.describe('Add TestCase New Flow', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('Add Table Test Case', async ({ page }) => {
     const testCaseDetails = {
       testType: 'table row count to equal',
