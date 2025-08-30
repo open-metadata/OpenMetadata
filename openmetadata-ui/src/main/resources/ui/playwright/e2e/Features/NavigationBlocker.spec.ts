@@ -78,7 +78,11 @@ test.describe('Navigation Blocker Tests', () => {
     ).toBeEnabled();
 
     // Try to navigate to another page by clicking a sidebar link
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Navigation blocker modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
@@ -114,7 +118,11 @@ test.describe('Navigation Blocker Tests', () => {
     });
 
     // Try to navigate away
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
@@ -153,7 +161,11 @@ test.describe('Navigation Blocker Tests', () => {
     });
 
     // Try to navigate to settings page
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
@@ -204,7 +216,11 @@ test.describe('Navigation Blocker Tests', () => {
     ).toBeDisabled();
 
     // Try to navigate away after saving
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Navigation should happen immediately without modal
     await adminPage.waitForLoadState('networkidle');

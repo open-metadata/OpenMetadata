@@ -30,7 +30,6 @@ export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.hover('[data-testid="left-sidebar"]');
-    await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
 
     const targetElement = page
