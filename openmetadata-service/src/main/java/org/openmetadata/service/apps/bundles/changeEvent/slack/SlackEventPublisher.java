@@ -71,8 +71,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination, client, event, json);
+          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, json);
       targets.add(getTarget(client, webhook, json));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, json);
