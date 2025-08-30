@@ -384,9 +384,11 @@ public class SubscriptionUtil {
 
   public static Set<String> getTargetsForAlert(
       SubscriptionAction action,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
+      SubscriptionDestination destination,
       ChangeEvent event) {
+    SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
+    SubscriptionDestination.SubscriptionType type = destination.getType();
+    
     Set<String> receiverUrls = new HashSet<>();
     if (event.getEntityType().equals(THREAD)) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
@@ -430,13 +432,12 @@ public class SubscriptionUtil {
 
   public static List<Invocation.Builder> getTargetsForWebhookAlert(
       Webhook webhook,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
+      SubscriptionDestination destination,
       Client client,
       ChangeEvent event,
       String outgoingMessage) {
     List<Invocation.Builder> targets = new ArrayList<>();
-    for (String url : getTargetsForAlert(webhook, category, type, event)) {
+    for (String url : getTargetsForAlert(webhook, destination, event)) {
       targets.add(appendHeadersAndQueryParamsToTarget(client, url, webhook, outgoingMessage));
     }
     return targets;
