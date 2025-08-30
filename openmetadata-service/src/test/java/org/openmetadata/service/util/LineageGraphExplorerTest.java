@@ -34,9 +34,9 @@ import org.openmetadata.service.resources.lineage.LineageResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResourceTest;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
+public class LineageGraphExplorerTest extends OpenMetadataApplicationTest {
 
-  private static DownstreamTraversalService traversalService;
+  private static LineageGraphExplorer traversalService;
   private static CollectionDAO dao;
   private static TableResourceTest tableResourceTest;
   private static DashboardResourceTest dashboardResourceTest;
@@ -51,7 +51,7 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     dao = Entity.getCollectionDAO();
-    traversalService = new DownstreamTraversalService(dao);
+    traversalService = new LineageGraphExplorer(dao);
 
     tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test);
@@ -109,19 +109,22 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
     addLineage(tableB.getEntityReference(), dashboardC.getEntityReference());
 
     // Test depth 1: should only find Table B
-    Set<EntityReference> depth1 = traversalService.findDownstream(tableA.getId(), "table", 1);
+    Set<EntityReference> depth1 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 1);
     assertEquals(1, depth1.size());
     assertTrue(containsEntity(depth1, tableB.getId()));
     assertFalse(containsEntity(depth1, dashboardC.getId()));
 
     // Test depth 2: should find both Table B and Dashboard C
-    Set<EntityReference> depth2 = traversalService.findDownstream(tableA.getId(), "table", 2);
+    Set<EntityReference> depth2 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 2);
     assertEquals(2, depth2.size());
     assertTrue(containsEntity(depth2, tableB.getId()));
     assertTrue(containsEntity(depth2, dashboardC.getId()));
 
     // Test unlimited depth (null): should find both
-    Set<EntityReference> unlimited = traversalService.findDownstream(tableA.getId(), "table", null);
+    Set<EntityReference> unlimited =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", null);
     assertEquals(2, unlimited.size());
     assertTrue(containsEntity(unlimited, tableB.getId()));
     assertTrue(containsEntity(unlimited, dashboardC.getId()));
@@ -142,7 +145,7 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
 
     // Test with unlimited depth - should not cause infinite loop
     Set<EntityReference> downstream =
-        traversalService.findDownstream(tableX.getId(), "table", null);
+        traversalService.findUniqueEntitiesDownstream(tableX.getId(), "table", null);
     assertEquals(2, downstream.size());
     assertTrue(containsEntity(downstream, pipelineY.getId()));
     assertTrue(containsEntity(downstream, dashboardZ.getId()));
@@ -158,7 +161,7 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
 
     // Test downstream traversal
     Set<EntityReference> downstream =
-        traversalService.findDownstream(isolatedTable.getId(), "table", null);
+        traversalService.findUniqueEntitiesDownstream(isolatedTable.getId(), "table", null);
     assertTrue(downstream.isEmpty());
   }
 
@@ -187,7 +190,7 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
 
     // Test with unlimited depth
     Set<EntityReference> downstream =
-        traversalService.findDownstream(sourceTable.getId(), "table", null);
+        traversalService.findUniqueEntitiesDownstream(sourceTable.getId(), "table", null);
     assertEquals(5, downstream.size());
     assertTrue(containsEntity(downstream, dashboard1.getId()));
     assertTrue(containsEntity(downstream, dashboard2.getId()));
@@ -212,21 +215,25 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
     addLineage(dashboardD.getEntityReference(), pipelineE.getEntityReference());
 
     // Test various depth limits
-    Set<EntityReference> depth0 = traversalService.findDownstream(tableA.getId(), "table", 0);
+    Set<EntityReference> depth0 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 0);
     assertTrue(depth0.isEmpty());
 
-    Set<EntityReference> depth1 = traversalService.findDownstream(tableA.getId(), "table", 1);
+    Set<EntityReference> depth1 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 1);
     assertEquals(1, depth1.size());
     assertTrue(containsEntity(depth1, tableB.getId()));
 
-    Set<EntityReference> depth3 = traversalService.findDownstream(tableA.getId(), "table", 3);
+    Set<EntityReference> depth3 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 3);
     assertEquals(3, depth3.size());
     assertTrue(containsEntity(depth3, tableB.getId()));
     assertTrue(containsEntity(depth3, tableC.getId()));
     assertTrue(containsEntity(depth3, dashboardD.getId()));
     assertFalse(containsEntity(depth3, pipelineE.getId()));
 
-    Set<EntityReference> depth5 = traversalService.findDownstream(tableA.getId(), "table", 5);
+    Set<EntityReference> depth5 =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 5);
     assertEquals(4, depth5.size());
     assertTrue(containsEntity(depth5, pipelineE.getId()));
   }
@@ -248,14 +255,15 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
 
     // Using null depth should find all downstream entities
     Set<EntityReference> unlimitedDepth =
-        traversalService.findDownstream(tableA.getId(), "table", null);
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", null);
     assertEquals(3, unlimitedDepth.size());
     assertTrue(containsEntity(unlimitedDepth, tableB.getId()));
     assertTrue(containsEntity(unlimitedDepth, tableC.getId()));
     assertTrue(containsEntity(unlimitedDepth, tableD.getId()));
 
     // Using specific depth limit
-    Set<EntityReference> limitedDepth = traversalService.findDownstream(tableA.getId(), "table", 2);
+    Set<EntityReference> limitedDepth =
+        traversalService.findUniqueEntitiesDownstream(tableA.getId(), "table", 2);
     assertEquals(2, limitedDepth.size());
     assertTrue(containsEntity(limitedDepth, tableB.getId()));
     assertTrue(containsEntity(limitedDepth, tableC.getId()));
@@ -277,7 +285,8 @@ public class DownstreamTraversalServiceIT extends OpenMetadataApplicationTest {
     addLineage(pipeline.getEntityReference(), derivedTable.getEntityReference());
 
     // Test traversal across different entity types
-    Set<EntityReference> downstream = traversalService.findDownstream(table.getId(), "table", null);
+    Set<EntityReference> downstream =
+        traversalService.findUniqueEntitiesDownstream(table.getId(), "table", null);
     assertEquals(3, downstream.size());
     assertTrue(containsEntity(downstream, dashboard.getId()));
     assertTrue(containsEntity(downstream, pipeline.getId()));
