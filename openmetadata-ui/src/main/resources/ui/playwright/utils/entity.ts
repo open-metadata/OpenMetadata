@@ -544,14 +544,6 @@ export const assignTag = async (
     state: 'visible',
   });
 
-  // Check if page is still valid before proceeding
-  if (page.isClosed()) {
-    throw new Error('Page was closed during tag assignment');
-  }
-
-  // Wait a moment for any animations or state changes to complete
-  await page.waitForTimeout(500);
-
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
@@ -763,11 +755,6 @@ export const assignGlossaryTerm = async (
   // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  // Check if page is still valid before setting up waitForResponse
-  if (page.isClosed()) {
-    throw new Error('Page was closed during glossary term assignment');
-  }
-
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
@@ -777,10 +764,14 @@ export const assignGlossaryTerm = async (
   try {
     await searchGlossaryTerm;
   } catch (error) {
-    // If the search response fails, check if the element is still available
+    // If the search response fails, retry
     await page
       .locator('#tagsForm_tags')
       .waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+
+    await searchGlossaryTerm;
   }
 
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
@@ -790,11 +781,18 @@ export const assignGlossaryTerm = async (
     { state: 'visible' }
   );
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('custom-drop-down-menu')
+    .getByTestId('saveAssociatedTag')
+    .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(
+    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+  ).not.toBeVisible();
 
   await expect(
     page
@@ -895,9 +893,14 @@ export const removeGlossaryTerm = async (
       { state: 'visible' }
     );
 
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+    await expect(
+      page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
+    ).toBeEnabled();
 
-    await page.getByTestId('saveAssociatedTag').click();
+    await page
+      .getByTestId('custom-drop-down-menu')
+      .getByTestId('saveAssociatedTag')
+      .click();
     await patchRequest;
 
     await expect(
@@ -1384,9 +1387,16 @@ export const removeDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill('');
 
-  const updateRequest = page.waitForResponse((req) =>
-    ['PUT', 'PATCH'].includes(req.request().method())
-  );
+  const updateRequest = page.waitForResponse((response) => {
+    const method = response.request().method();
+    const url = response.url();
+
+    // Check Analytics Api Does Not Intterupt With PUT CAll
+    return (
+      (method === 'PUT' || method === 'PATCH') &&
+      !url.includes('api/v1/analytics/web/events/collect')
+    );
+  });
   await page.click('[data-testid="save-button"]');
   await updateRequest;
 
