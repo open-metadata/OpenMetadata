@@ -95,8 +95,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
             webhook,
-            subscriptionDestination.getCategory(),
-            WEBHOOK,
+            subscriptionDestination,
             client,
             event,
             JsonUtils.pojoToJson(event));
