@@ -13,7 +13,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
@@ -157,7 +156,6 @@ test.describe('Tour should work properly', () => {
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await user.login(page);
-    await redirectToHomePage(page);
   });
 
   test('Tour should work from help section', async ({ page }) => {
