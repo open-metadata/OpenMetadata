@@ -383,12 +383,10 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> getTargetsForAlert(
-      SubscriptionAction action,
-      SubscriptionDestination destination,
-      ChangeEvent event) {
+      SubscriptionAction action, SubscriptionDestination destination, ChangeEvent event) {
     SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
     SubscriptionDestination.SubscriptionType type = destination.getType();
-    
+
     Set<String> receiverUrls = new HashSet<>();
     if (event.getEntityType().equals(THREAD)) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
@@ -412,6 +410,21 @@ public class SubscriptionUtil {
       EntityInterface entityInterface = getEntity(event);
       receiverUrls.addAll(
           buildReceivers(action, category, type, event.getEntityType(), entityInterface.getId()));
+
+      // Add lineage downstream receivers if enabled
+      if (Boolean.TRUE.equals(destination.getNotifyDownstream())
+          && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
+        LineageGraphExplorer lineageExplorer = new LineageGraphExplorer(Entity.getCollectionDAO());
+
+        Set<EntityReference> downstreamEntities =
+            lineageExplorer.findUniqueEntitiesDownstream(
+                entityInterface.getId(), event.getEntityType(), destination.getDownstreamDepth());
+
+        for (EntityReference downstream : downstreamEntities) {
+          receiverUrls.addAll(
+              buildReceivers(action, category, type, downstream.getType(), downstream.getId()));
+        }
+      }
     }
 
     return receiverUrls;
