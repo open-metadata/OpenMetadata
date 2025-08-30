@@ -204,9 +204,10 @@ export const selectOption = async (
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  const optionLocator = page.locator(
-    `.ant-select-dropdown:visible [title="${optionTitle}"]`
-  );
+
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
   await optionLocator.waitFor({ state: 'visible' });
   await optionLocator.click();
 };

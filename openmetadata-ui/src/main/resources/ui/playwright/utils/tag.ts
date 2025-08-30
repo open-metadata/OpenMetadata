@@ -328,6 +328,7 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
+  await page.waitForLoadState('domcontentloaded');
   const initialTagResponse = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await initialTagResponse;
