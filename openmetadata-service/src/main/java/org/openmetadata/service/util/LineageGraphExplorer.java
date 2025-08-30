@@ -13,15 +13,15 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 @Slf4j
-public final class DownstreamTraversalService {
+public final class LineageGraphExplorer {
   private final CollectionDAO dao;
   private static final int RELATIONSHIP_UPSTREAM = Relationship.UPSTREAM.ordinal();
 
-  public DownstreamTraversalService(CollectionDAO dao) {
+  public LineageGraphExplorer(CollectionDAO dao) {
     this.dao = dao;
   }
 
-  public Set<EntityReference> findDownstream(UUID id, String type, Integer maxDepth) {
+  public Set<EntityReference> findUniqueEntitiesDownstream(UUID id, String type, Integer maxDepth) {
     if (maxDepth != null && maxDepth == 0) {
       return Set.of();
     }
