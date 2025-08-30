@@ -329,9 +329,15 @@ export const verifyTagPageUI = async (
 ) => {
   await redirectToHomePage(page);
   await page.waitForLoadState('domcontentloaded');
-  const initialTagResponse = page.waitForResponse(`/api/v1/tags/name/*`);
-  await tag.visitPage(page);
-  await initialTagResponse;
+
+  const [initialTagResponse] = await Promise.all([
+    page.waitForResponse(/\/api\/v1\/tags\/name\/.*/),
+    tag.visitPage(page),
+  ]);
+
+  const tagData = await initialTagResponse.json();
+
+  expect(tagData.name).toBe(tag.data.name);
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
