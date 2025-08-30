@@ -58,11 +58,13 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   value,
   onChange,
   className,
+  onClick,
   disabled = false,
 }: SelectionCardGroupProps) => {
   const handleOptionSelect = (selectedValue: string) => {
     if (!disabled) {
       onChange?.(selectedValue);
+      onClick?.();
     }
   };
 

@@ -32,7 +32,14 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
@@ -44,15 +51,18 @@ import {
 } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { OPEN_METADATA } from '../../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  CreateIngestionPipeline,
   FluffyType as ConfigType,
+  CreateIngestionPipeline,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
@@ -102,6 +112,7 @@ import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import ScheduleIntervalV1 from '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
@@ -198,6 +209,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [isCheckingPermissions, setIsCheckingPermissions] =
     useState<boolean>(false);
   const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
+
+  const [activeField, setActiveField] = useState<string>('');
 
   // =============================================
   // HOOKS - Form Watches
@@ -339,7 +352,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'testName',
         required: false,
         label: t('label.name'),
-        id: 'root/testName',
+        id: 'root/name',
         type: FieldTypes.TEXT,
         placeholder: t('message.enter-test-case-name'),
         rules: [
@@ -389,13 +402,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'tags',
         required: false,
         label: t('label.tag-plural'),
-        id: 'root/tags',
+        id: 'tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/tags',
           },
           newLook: true,
         },
@@ -404,13 +418,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'glossaryTerms',
         required: false,
         label: t('label.glossary-term-plural'),
-        id: 'root/glossaryTerms',
+        id: 'glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'glossary-terms-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/glossaryTerms',
           },
           open: false,
           hasNoActionButtons: true,
@@ -832,6 +847,18 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     [createTestCaseObj, testSuite, selectedTable, table, onFormSubmit, onCancel]
   );
 
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+    if (event.target.id) {
+      console.log('focuskey', event.target.id);
+      setActiveField(event.target.id);
+    }
+  }, []);
+
+  const handleActiveField = useCallback((id: string) => {
+    console.log('activekey', id);
+    setActiveField(() => id);
+  }, []);
+
   // =============================================
   // EFFECT HOOKS
   // =============================================
@@ -993,6 +1020,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           scrollMode: 'if-needed',
         }}
         onFinish={handleSubmit}
+        onFocus={handleFieldFocus}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
@@ -1006,7 +1034,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 }),
               },
             ]}>
-            <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
+            <SelectionCardGroup
+              options={TEST_LEVEL_OPTIONS}
+              onClick={() => handleActiveField('root/testLevel')}
+            />
           </Form.Item>
           <Form.Item
             label={t('label.select-entity', {
@@ -1038,6 +1069,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
+              id="root/table"
               notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
@@ -1064,6 +1096,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 showSearch
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id="root/column"
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder={t('label.select-entity', {
@@ -1139,6 +1172,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 data-testid="test-type"
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id="root/testType"
                 options={testTypeOptions}
                 placeholder={t('label.select-test-type')}
                 popupClassName="no-wrap-option"
@@ -1194,7 +1228,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             </Col>
 
             <Col span={24}>
-              <Card className="form-card-section" data-testid="scheduler-card">
+              <Card
+                className="form-card-section"
+                data-testid="scheduler-card"
+                id="root/cron"
+                onClick={() => handleActiveField('root/cron')}>
                 <div className="card-title-container">
                   <Typography.Paragraph className="card-title-text">
                     {t('label.create-entity', {
@@ -1310,15 +1348,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   return (
     <Drawer
       destroyOnClose
-      className="custom-drawer-style"
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
       maskClosable={false}
       placement="right"
-      size="large"
       title={t('label.add-entity', {
         entity: t('label.test-case'),
       })}
+      width="75%"
       {...drawerProps}
       extra={
         <Button
@@ -1329,7 +1367,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         />
       }
       onClose={onCancel}>
-      <div className="drawer-form-content">{formContent}</div>
+      <div className="drawer-content-wrapper">
+        <div className="drawer-form-content">{formContent}</div>
+        <div className="drawer-doc-panel service-doc-panel markdown-parser">
+          <ServiceDocPanel
+            activeField={activeField}
+            serviceName={TEST_CASE_FORM}
+            serviceType={OPEN_METADATA as ServiceCategory}
+          />
+        </div>
+      </div>
     </Drawer>
   );
 };
