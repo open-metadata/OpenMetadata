@@ -262,9 +262,10 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await expect(
-    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
-  ).not.toBeVisible();
+  await page
+    .getByTestId(dataTestId ?? 'owner-link')
+    .getByTestId(ownerName)
+    .waitFor({ state: 'hidden' });
 };
 
 export const addMultiOwner = async (data: {
