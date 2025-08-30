@@ -63,9 +63,10 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     List<TagLabel> tags = new ArrayList<>();
     for (EntityInterface parent : parentEntities) {
       if (parent.getTags() != null) {
-        tags.addAll(Entity.getEntityTags(getResource(), parent));
+        tags.addAll(Entity.getEntityTags(parent.getEntityReference().getType(), parent));
       }
     }
+    tags.addAll(Entity.getEntityTags(getResource(), entity));
     return getUniqueTags(tags);
   }
 
