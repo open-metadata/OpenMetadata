@@ -69,8 +69,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
           teamsMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       String eventJson = JsonUtils.pojoToJson(teamsMessage);
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination, client, event, eventJson);
+          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, eventJson);
       targets.add(getTarget(client, webhook, eventJson));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, teamsMessage);
