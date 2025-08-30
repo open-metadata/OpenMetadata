@@ -46,6 +46,7 @@ export class ContainerClass extends EntityClass {
   entity = {
     name: this.containerName,
     displayName: this.containerName,
+    description: 'description',
     service: this.service.name,
     dataModel: {
       isPartitioned: true,

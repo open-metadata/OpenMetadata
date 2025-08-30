@@ -95,6 +95,7 @@ export class TopicClass extends EntityClass {
       schemaFields: this.children,
     },
     partitions: 128,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

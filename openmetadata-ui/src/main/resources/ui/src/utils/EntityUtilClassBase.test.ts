@@ -99,6 +99,11 @@ jest.mock('../pages/StoredProcedure/StoredProcedurePage', () => jest.fn());
 jest.mock('../pages/TableDetailsPageV1/TableDetailsPageV1', () => jest.fn());
 jest.mock('../pages/TopicDetails/TopicDetailsPage.component', () => jest.fn());
 
+jest.mock('../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
+}));
+
 describe('EntityUtilClassBase', () => {
   let entityUtil: EntityUtilClassBase;
 

@@ -26,6 +26,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { EDataContractTab } from '../../constants/DataContract.constants';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
   ContractExecutionStatus,
@@ -221,4 +222,17 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.all]: i18n.t('label.all'),
   [TestCaseType.table]: i18n.t('label.table'),
   [TestCaseType.column]: i18n.t('label.column'),
+};
+
+export const getContractTabLabel = (tabKey: EDataContractTab): string => {
+  switch (tabKey) {
+    case EDataContractTab.CONTRACT_DETAIL:
+      return i18n.t('label.contract-detail-plural');
+    case EDataContractTab.SCHEMA:
+      return i18n.t('label.schema');
+    case EDataContractTab.SEMANTICS:
+      return i18n.t('label.semantic-plural');
+    case EDataContractTab.QUALITY:
+      return i18n.t('label.quality');
+  }
 };
