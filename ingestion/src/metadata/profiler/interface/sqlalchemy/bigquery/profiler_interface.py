@@ -18,12 +18,12 @@ from typing import Any, Dict, List, Optional, Type, cast
 
 from sqlalchemy import Column, inspect
 
-from ingestion.src.metadata.profiler.metrics.core import HybridMetric
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
     thread_local,
 )
+from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.system.bigquery.system import (
     BigQuerySystemMetricsComputer,
 )
