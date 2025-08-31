@@ -44,7 +44,8 @@ public final class ColumnUtil {
         .withPrecision(column.getPrecision())
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
-        .withChildren(children);
+        .withChildren(children)
+        .withTranslations(column.getTranslations()); // Preserve translations
   }
 
   public static void setColumnFQN(String parentFQN, List<Column> columns) {

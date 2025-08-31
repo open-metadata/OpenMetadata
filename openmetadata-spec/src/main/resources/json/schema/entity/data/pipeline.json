@@ -6,13 +6,20 @@
   "description": "This schema defines the Pipeline entity. A pipeline enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Pipeline",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "statusType": {
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": ["Successful", "Failed", "Pending", "Skipped"],
+      "enum": [
+        "Successful",
+        "Failed",
+        "Pending",
+        "Skipped"
+      ],
       "javaEnums": [
         {
           "name": "Successful"
@@ -31,7 +38,10 @@
     "pipelineState": {
       "description": "Enum defining the possible Pipeline State.",
       "type": "string",
-      "enum": ["Active", "Inactive"],
+      "enum": [
+        "Active",
+        "Inactive"
+      ],
       "javaEnums": [
         {
           "name": "Active"
@@ -74,7 +84,15 @@
         "transformationType": {
           "description": "Type of transformation",
           "type": "string",
-          "enum": ["filter", "aggregate", "join", "pivot", "custom", "extract", "load"]
+          "enum": [
+            "filter",
+            "aggregate",
+            "join",
+            "pivot",
+            "custom",
+            "extract",
+            "load"
+          ]
         },
         "transformationLogic": {
           "description": "SQL or code executed",
@@ -99,7 +117,10 @@
         }
       },
       "additionalProperties": false,
-      "required": ["name", "executionStatus"]
+      "required": [
+        "name",
+        "executionStatus"
+      ]
     },
     "task": {
       "type": "object",
@@ -162,7 +183,9 @@
           "$ref": "../../type/entityReferenceList.json"
         }
       },
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false
     },
     "pipelineStatus": {
@@ -230,7 +253,10 @@
         }
       },
       "additionalProperties": false,
-      "required": ["timestamp", "executionStatus"]
+      "required": [
+        "timestamp",
+        "executionStatus"
+      ]
     },
     "datasetUsage": {
       "type": "object",
@@ -263,7 +289,9 @@
           "type": "string"
         }
       },
-      "required": ["datasetFQN"]
+      "required": [
+        "datasetFQN"
+      ]
     },
     "datasetGeneration": {
       "type": "object",
@@ -290,7 +318,12 @@
         "mode": {
           "description": "Write mode",
           "type": "string",
-          "enum": ["overwrite", "append", "merge", "upsert"]
+          "enum": [
+            "overwrite",
+            "append",
+            "merge",
+            "upsert"
+          ]
         },
         "partitions": {
           "description": "Partitions written",
@@ -304,7 +337,9 @@
           "type": "string"
         }
       },
-      "required": ["datasetFQN"]
+      "required": [
+        "datasetFQN"
+      ]
     },
     "executionMetrics": {
       "type": "object",
@@ -385,9 +420,9 @@
       "description": "Description of this Pipeline.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -485,16 +520,20 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "scheduleInterval": {
       "description": "Scheduler Interval for the pipeline in cron format.",
       "type": "string",
       "default": null
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -512,6 +551,10 @@
       "maxLength": 32
     }
   },
-  "required": ["id", "name", "service"],
+  "required": [
+    "id",
+    "name",
+    "service"
+  ],
   "additionalProperties": false
 }

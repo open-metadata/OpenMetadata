@@ -99,7 +99,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
-          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash,translations";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -222,14 +222,20 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam)
             .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, locale);
   }
 
   @GET
@@ -263,8 +269,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description = "Locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, locale);
   }
 
   @GET
@@ -301,8 +313,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description = "Locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, locale);
   }
 
   @GET
@@ -436,8 +454,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                   "Optional source of the change. If the change is made by a user use 'Manual'.",
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
-          ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
+          ChangeSource changeSource,
+      @Parameter(
+              description = "Locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return patchInternal(uriInfo, securityContext, id, patch, locale, changeSource);
   }
 
   @PATCH
@@ -470,8 +494,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "Context of the change",
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
-          ChangeSource changeSource) {
-    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
+          ChangeSource changeSource,
+      @Parameter(
+              description = "Locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, locale, changeSource);
   }
 
   @GET

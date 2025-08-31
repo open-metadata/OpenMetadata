@@ -6,7 +6,9 @@
   "description": "This schema defines the APICollection entity. API Collection allows user to group multiple APIs together. In OpenAPI specification its marked as a Tag.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.APICollection",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a API Collection instance.",
@@ -93,6 +95,10 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "domains": {
       "description": "Domains the API Collection belongs to. When not set, the API Collection inherits the domain from the API service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
@@ -119,6 +125,11 @@
       "maxLength": 32
     }
   },
-  "required": ["id", "name", "service", "endpointURL"],
+  "required": [
+    "id",
+    "name",
+    "service",
+    "endpointURL"
+  ],
   "additionalProperties": false
 }

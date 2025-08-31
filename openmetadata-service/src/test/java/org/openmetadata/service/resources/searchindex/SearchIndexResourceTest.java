@@ -1065,4 +1065,120 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
           field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
     }
   }
+
+  @Test
+  void test_fieldTranslations(TestInfo test) throws IOException {
+    // Create a search index with fields
+    String indexName = getEntityName(test) + UUID.randomUUID();
+    String defaultDisplayName = "Default Display Name";
+    String defaultDescription = "Default Description";
+
+    List<SearchIndexField> fields =
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("field1")
+                .withDataType(SearchIndexDataType.TEXT)
+                .withDisplayName("Field One")
+                .withDescription("First field description"),
+            new SearchIndexField()
+                .withName("field2")
+                .withDataType(SearchIndexDataType.KEYWORD)
+                .withDisplayName("Field Two")
+                .withDescription("Second field description"));
+
+    CreateSearchIndex createRequest =
+        createRequest(indexName)
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withFields(fields);
+
+    SearchIndex searchIndex = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID searchIndexId = searchIndex.getId();
+
+    // Store original JSON for patch comparison
+    String originalJson = JsonUtils.pojoToJson(searchIndex);
+
+    // Update field translations to Spanish
+    for (SearchIndexField field : searchIndex.getFields()) {
+      if (field.getName().equals("field1")) {
+        field.setDisplayName("Campo Uno");
+        field.setDescription("Descripción del primer campo");
+      } else if (field.getName().equals("field2")) {
+        field.setDisplayName("Campo Dos");
+        field.setDescription("Descripción del segundo campo");
+      }
+    }
+
+    // Patch with Spanish locale
+    WebTarget target = getResource(searchIndexId);
+    target = target.queryParam("locale", "es");
+    String updatedJson = JsonUtils.pojoToJson(searchIndex);
+    com.fasterxml.jackson.databind.JsonNode patch =
+        com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+    SearchIndex patchedIndex =
+        TestUtils.patch(target, patch, SearchIndex.class, ADMIN_AUTH_HEADERS);
+
+    // Verify Spanish translations - GET with locale=es and fields=fields
+    target = getResource(searchIndexId);
+    target = target.queryParam("locale", "es").queryParam("fields", "fields");
+    SearchIndex indexWithEs = TestUtils.get(target, SearchIndex.class, ADMIN_AUTH_HEADERS);
+
+    SearchIndexField field1Es =
+        indexWithEs.getFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1Es);
+    assertEquals("Campo Uno", field1Es.getDisplayName());
+    assertEquals("Descripción del primer campo", field1Es.getDescription());
+
+    SearchIndexField field2Es =
+        indexWithEs.getFields().stream()
+            .filter(f -> f.getName().equals("field2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field2Es);
+    assertEquals("Campo Dos", field2Es.getDisplayName());
+    assertEquals("Descripción del segundo campo", field2Es.getDescription());
+
+    // Verify English content remains unchanged - GET with locale=en and fields=fields
+    target = getResource(searchIndexId);
+    target = target.queryParam("locale", "en").queryParam("fields", "fields");
+    SearchIndex indexWithEn = TestUtils.get(target, SearchIndex.class, ADMIN_AUTH_HEADERS);
+
+    SearchIndexField field1En =
+        indexWithEn.getFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1En);
+    assertEquals("Field One", field1En.getDisplayName());
+    assertEquals("First field description", field1En.getDescription());
+
+    SearchIndexField field2En =
+        indexWithEn.getFields().stream()
+            .filter(f -> f.getName().equals("field2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field2En);
+    assertEquals("Field Two", field2En.getDisplayName());
+    assertEquals("Second field description", field2En.getDescription());
+
+    // Test non-existent locale - GET with locale=fr
+    target = getResource(searchIndexId);
+    target = target.queryParam("locale", "fr").queryParam("fields", "fields");
+    SearchIndex indexWithFr = TestUtils.get(target, SearchIndex.class, ADMIN_AUTH_HEADERS);
+
+    SearchIndexField field1Fr =
+        indexWithFr.getFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1Fr);
+    // Should return empty strings for non-existent locale
+    assertEquals("", field1Fr.getDisplayName());
+    assertEquals("", field1Fr.getDescription());
+  }
 }

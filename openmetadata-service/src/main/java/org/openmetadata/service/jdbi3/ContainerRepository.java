@@ -65,6 +65,41 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
+  protected void initializeChildrenTranslations(Container container) {
+    // Ensure the container has a translations field
+    if (container.getTranslations() == null) {
+      container.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+
+    // Initialize translations for all columns in data model
+    if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
+      for (Column column : container.getDataModel().getColumns()) {
+        initializeColumnTranslations(column);
+      }
+    }
+  }
+
+  private void initializeColumnTranslations(Column column) {
+    if (column == null) {
+      return;
+    }
+
+    if (column.getTranslations() == null) {
+      column.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+    if (column.getTranslations().getTranslations() == null) {
+      column.getTranslations().setTranslations(new ArrayList<>());
+    }
+
+    // Recursively handle nested columns
+    if (column.getChildren() != null) {
+      for (Column child : column.getChildren()) {
+        initializeColumnTranslations(child);
+      }
+    }
+  }
+
+  @Override
   public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(
@@ -81,6 +116,15 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFieldsInBulk(EntityUtil.Fields fields, List<Container> entities) {
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    // Use UUID as key since the container object reference might change
+    Map<UUID, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (Container container : entities) {
+      if (container.getTranslations() != null) {
+        translationsMap.put(container.getId(), container.getTranslations());
+      }
+    }
+
     // Always set default service field for all containers
     fetchAndSetDefaultService(entities);
 
@@ -88,6 +132,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     setInheritedFields(entities, fields);
     for (Container entity : entities) {
       clearFieldsInternal(entity, fields);
+    }
+
+    // Restore translations after clearing fields
+    for (Container container : entities) {
+      container.setTranslations(translationsMap.get(container.getId()));
     }
   }
 

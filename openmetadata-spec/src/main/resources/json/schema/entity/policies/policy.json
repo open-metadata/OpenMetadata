@@ -5,7 +5,9 @@
   "description": "A `Policy` defines control that needs to be applied across different Data Entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.policies.Policy",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "rules": {
       "description": "A set of rules associated with the Policy.",
@@ -74,11 +76,11 @@
       "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"
     },
-    "teams" : {
+    "teams": {
       "description": "Teams that use this policy directly and not through roles.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "roles" : {
+    "roles": {
       "description": "Roles that use this policy.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -87,31 +89,39 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "allowDelete" : {
+    "allowDelete": {
       "description": "Some system policies can't be deleted",
-      "type" : "boolean"
+      "type": "boolean"
     },
-    "allowEdit" : {
+    "allowEdit": {
       "description": "Some system roles can't be edited",
-      "type" : "boolean"
+      "type": "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "rules"],
+  "required": [
+    "id",
+    "name",
+    "rules"
+  ],
   "additionalProperties": false
 }

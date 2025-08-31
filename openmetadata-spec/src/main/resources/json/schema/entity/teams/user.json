@@ -5,7 +5,9 @@
   "description": "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.User",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "authenticationMechanism": {
       "type": "object",
@@ -26,7 +28,11 @@
           ]
         },
         "authType": {
-          "enum": ["JWT", "SSO", "BASIC"]
+          "enum": [
+            "JWT",
+            "SSO",
+            "BASIC"
+          ]
         }
       },
       "additionalProperties": false
@@ -136,6 +142,10 @@
       "type": "boolean",
       "default": false
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "roles": {
       "description": "Roles that the user has been assigned.",
       "$ref": "../../type/entityReferenceList.json"
@@ -148,7 +158,7 @@
       "description": "If the User has verified the mail",
       "type": "boolean"
     },
-    "domains" : {
+    "domains": {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -160,7 +170,7 @@
       "description": "Last time the user was active in the system.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-     "personaPreferences": {
+    "personaPreferences": {
       "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",
       "type": "array",
       "items": {
@@ -170,5 +180,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "email"]
+  "required": [
+    "id",
+    "name",
+    "email"
+  ]
 }

@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
@@ -42,6 +43,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -489,5 +491,124 @@ public class DashboardDataModelResourceTest
 
     // Cleanup: Hard delete the test entity to avoid affecting other tests
     deleteEntity(dataModel.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_columnTranslations(TestInfo test) throws IOException {
+    // Create a dashboard data model with columns
+    String modelName = getEntityName(test) + UUID.randomUUID();
+    String defaultDisplayName = "Default Display Name";
+    String defaultDescription = "Default Description";
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column()
+                .withName("column1")
+                .withDataType(STRING)
+                .withDisplayName("Column One")
+                .withDescription("First column description"),
+            new Column()
+                .withName("column2")
+                .withDataType(INT)
+                .withDisplayName("Column Two")
+                .withDescription("Second column description"));
+
+    CreateDashboardDataModel createRequest =
+        createRequest(modelName)
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withColumns(columns);
+
+    DashboardDataModel dataModel = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID dataModelId = dataModel.getId();
+
+    // Store original JSON for patch comparison
+    String originalJson = JsonUtils.pojoToJson(dataModel);
+
+    // Update column translations to Spanish
+    for (Column column : dataModel.getColumns()) {
+      if (column.getName().equals("column1")) {
+        column.setDisplayName("Columna Uno");
+        column.setDescription("Descripción de la primera columna");
+      } else if (column.getName().equals("column2")) {
+        column.setDisplayName("Columna Dos");
+        column.setDescription("Descripción de la segunda columna");
+      }
+    }
+
+    // Patch with Spanish locale
+    WebTarget target = getResource(dataModelId);
+    target = target.queryParam("locale", "es");
+    String updatedJson = JsonUtils.pojoToJson(dataModel);
+    com.fasterxml.jackson.databind.JsonNode patch =
+        com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+    DashboardDataModel patchedModel =
+        TestUtils.patch(target, patch, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    // Verify Spanish translations - GET with locale=es and fields=columns
+    target = getResource(dataModelId);
+    target = target.queryParam("locale", "es").queryParam("fields", "columns");
+    DashboardDataModel modelWithEs =
+        TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Es =
+        modelWithEs.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Es);
+    assertEquals("Columna Uno", col1Es.getDisplayName());
+    assertEquals("Descripción de la primera columna", col1Es.getDescription());
+
+    Column col2Es =
+        modelWithEs.getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2Es);
+    assertEquals("Columna Dos", col2Es.getDisplayName());
+    assertEquals("Descripción de la segunda columna", col2Es.getDescription());
+
+    // Verify English content remains unchanged - GET with locale=en and fields=columns
+    target = getResource(dataModelId);
+    target = target.queryParam("locale", "en").queryParam("fields", "columns");
+    DashboardDataModel modelWithEn =
+        TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1En =
+        modelWithEn.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1En);
+    assertEquals("Column One", col1En.getDisplayName());
+    assertEquals("First column description", col1En.getDescription());
+
+    Column col2En =
+        modelWithEn.getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2En);
+    assertEquals("Column Two", col2En.getDisplayName());
+    assertEquals("Second column description", col2En.getDescription());
+
+    // Test non-existent locale - GET with locale=fr
+    target = getResource(dataModelId);
+    target = target.queryParam("locale", "fr").queryParam("fields", "columns");
+    DashboardDataModel modelWithFr =
+        TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Fr =
+        modelWithFr.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Fr);
+    // Should return empty strings for non-existent locale
+    assertEquals("", col1Fr.getDisplayName());
+    assertEquals("", col1Fr.getDescription());
   }
 }

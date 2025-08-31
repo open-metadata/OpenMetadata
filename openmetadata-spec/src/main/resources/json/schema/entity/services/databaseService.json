@@ -12,7 +12,9 @@
   "definitions": {
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
       "enum": [
         "BigQuery",
@@ -446,19 +448,27 @@
       "type": "boolean",
       "default": false
     },
-    "dataProducts" : {
-      "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
-    "domains" : {
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
       "description": "Domains the Database service belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "ingestionRunner" : {
+    "ingestionRunner": {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
   "additionalProperties": false
 }

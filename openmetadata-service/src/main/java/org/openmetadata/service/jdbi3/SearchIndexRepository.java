@@ -77,6 +77,41 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  protected void initializeChildrenTranslations(SearchIndex searchIndex) {
+    // Ensure the searchIndex has a translations field
+    if (searchIndex.getTranslations() == null) {
+      searchIndex.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+
+    // Initialize translations for all fields
+    if (searchIndex.getFields() != null) {
+      for (SearchIndexField field : searchIndex.getFields()) {
+        initializeFieldTranslations(field);
+      }
+    }
+  }
+
+  private void initializeFieldTranslations(SearchIndexField field) {
+    if (field == null) {
+      return;
+    }
+
+    if (field.getTranslations() == null) {
+      field.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+    if (field.getTranslations().getTranslations() == null) {
+      field.getTranslations().setTranslations(new ArrayList<>());
+    }
+
+    // Recursively handle nested fields
+    if (field.getChildren() != null) {
+      for (SearchIndexField child : field.getChildren()) {
+        initializeFieldTranslations(child);
+      }
+    }
+  }
+
+  @Override
   public void setFullyQualifiedName(SearchIndex searchIndex) {
     searchIndex.setFullyQualifiedName(
         FullyQualifiedName.add(
@@ -140,11 +175,26 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
+
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    // Use UUID as key since the searchIndex object reference might change
+    Map<UUID, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (SearchIndex searchIndex : entities) {
+      if (searchIndex.getTranslations() != null) {
+        translationsMap.put(searchIndex.getId(), searchIndex.getTranslations());
+      }
+    }
+
     // Bulk fetch and set service for all search indexes first
     fetchAndSetServices(entities);
 
     // Then call parent's implementation which handles standard fields
     super.setFieldsInBulk(fields, entities);
+
+    // Restore translations after clearing fields
+    for (SearchIndex searchIndex : entities) {
+      searchIndex.setTranslations(translationsMap.get(searchIndex.getId()));
+    }
   }
 
   private void fetchAndSetServices(List<SearchIndex> searchIndexes) {
@@ -303,7 +353,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         .withFullyQualifiedName(field.getFullyQualifiedName())
         .withDataType(field.getDataType())
         .withDataTypeDisplay(field.getDataTypeDisplay())
-        .withChildren(children);
+        .withChildren(children)
+        .withTranslations(field.getTranslations()); // Preserve translations
   }
 
   @Override

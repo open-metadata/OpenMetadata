@@ -67,6 +67,9 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
@@ -5211,5 +5214,119 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
     schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_columnTranslations(TestInfo test) throws HttpResponseException {
+    // Test translations for table columns
+    String tableName = getEntityName(test);
+    String defaultDisplayName = "Test Table";
+    String defaultDescription = "Test table for column translations";
+
+    // Create a table with columns
+    List<Column> columns = new ArrayList<>();
+    Column col1 =
+        new Column()
+            .withName("column1")
+            .withDisplayName("Column One")
+            .withDescription("First column description")
+            .withDataType(STRING);
+    Column col2 =
+        new Column()
+            .withName("column2")
+            .withDisplayName("Column Two")
+            .withDescription("Second column description")
+            .withDataType(INT);
+    columns.add(col1);
+    columns.add(col2);
+
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withColumns(columns)
+            .withTableConstraints(null); // No constraints for this test
+
+    Table table = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID tableId = table.getId();
+
+    try {
+      // Update column translations for Spanish
+      String originalJson = JsonUtils.pojoToJson(table);
+
+      // Update column display names and descriptions for Spanish
+      for (Column column : table.getColumns()) {
+        if (column.getName().equals("column1")) {
+          column.setDisplayName("Columna Uno");
+          column.setDescription("Descripción de la primera columna");
+        } else if (column.getName().equals("column2")) {
+          column.setDisplayName("Columna Dos");
+          column.setDescription("Descripción de la segunda columna");
+        }
+      }
+
+      // Patch with Spanish locale
+      WebTarget target = getResource(tableId);
+      target = target.queryParam("locale", "es");
+      String updatedJson = JsonUtils.pojoToJson(table);
+      JsonNode patch =
+          JsonDiff.asJson(
+              new ObjectMapper().readTree(originalJson), new ObjectMapper().readTree(updatedJson));
+      Table patchedTable = TestUtils.patch(target, patch, Table.class, ADMIN_AUTH_HEADERS);
+
+      // Verify Spanish translations - GET with locale=es and fields=columns
+      target = getResource(tableId);
+      target = target.queryParam("locale", "es").queryParam("fields", "columns");
+      Table tableWithEs = TestUtils.get(target, Table.class, ADMIN_AUTH_HEADERS);
+
+      Column col1Es =
+          tableWithEs.getColumns().stream()
+              .filter(c -> c.getName().equals("column1"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col1Es);
+      assertEquals("Columna Uno", col1Es.getDisplayName());
+      assertEquals("Descripción de la primera columna", col1Es.getDescription());
+
+      Column col2Es =
+          tableWithEs.getColumns().stream()
+              .filter(c -> c.getName().equals("column2"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col2Es);
+      assertEquals("Columna Dos", col2Es.getDisplayName());
+      assertEquals("Descripción de la segunda columna", col2Es.getDescription());
+
+      // Verify English content remains unchanged - GET with locale=en and fields=columns
+      target = getResource(tableId);
+      target = target.queryParam("locale", "en").queryParam("fields", "columns");
+      Table tableWithEn = TestUtils.get(target, Table.class, ADMIN_AUTH_HEADERS);
+
+      Column col1En =
+          tableWithEn.getColumns().stream()
+              .filter(c -> c.getName().equals("column1"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col1En);
+      assertEquals("Column One", col1En.getDisplayName());
+      assertEquals("First column description", col1En.getDescription());
+
+      Column col2En =
+          tableWithEn.getColumns().stream()
+              .filter(c -> c.getName().equals("column2"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col2En);
+      assertEquals("Column Two", col2En.getDisplayName());
+      assertEquals("Second column description", col2En.getDescription());
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      // Clean up
+      deleteEntity(tableId, ADMIN_AUTH_HEADERS);
+    }
   }
 }

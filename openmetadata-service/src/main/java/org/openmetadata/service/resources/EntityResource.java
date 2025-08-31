@@ -77,6 +77,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TranslationPatchUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -145,6 +146,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       int limitParam,
       String before,
       String after) {
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, null);
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      String locale) {
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
@@ -157,6 +171,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         limitParam,
         before,
         after,
+        locale,
         listOperationContext,
         resourceContext);
   }
@@ -169,6 +184,30 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       int limitParam,
       String before,
       String after,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    return listInternal(
+        uriInfo,
+        securityContext,
+        fields,
+        filter,
+        limitParam,
+        before,
+        after,
+        null,
+        operationContext,
+        resourceContext);
+  }
+
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      String locale,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     RestUtil.validateCursors(before, after);
@@ -184,6 +223,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     } else { // Forward paging or first page
       resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
+
+    // Apply translations if locale is specified and not 'en' (default)
+    if (locale != null
+        && !locale.isEmpty()
+        && !"en".equals(locale)
+        && resultList.getData() != null) {
+      for (T entity : resultList.getData()) {
+        org.openmetadata.service.util.TranslationUtil.applyTranslations(entity, locale);
+      }
+    }
+
     return addHref(uriInfo, resultList);
   }
 
@@ -211,6 +261,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       String fieldsParam,
       Include include) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, null);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      String locale) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getInternal(
@@ -219,6 +279,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         id,
         fields,
         include,
+        locale,
         operationContext,
         getResourceContextById(id));
   }
@@ -231,8 +292,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getInternal(
+        uriInfo, securityContext, id, fields, include, null, operationContext, resourceContext);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      Fields fields,
+      Include include,
+      String locale,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, include, false));
+
+    // Fetch entity with locale support - repository will handle translations
+    T entity = repository.get(uriInfo, id, fields, include, false, locale);
+
+    return addHref(uriInfo, entity);
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -271,6 +349,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String name,
       String fieldsParam,
       Include include) {
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, null);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      String locale) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     return getByNameInternal(
@@ -279,6 +367,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         name,
         fields,
         include,
+        locale,
         operationContext,
         getResourceContextByName(name));
   }
@@ -291,8 +380,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getByNameInternal(
+        uriInfo, securityContext, name, fields, include, null, operationContext, resourceContext);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      Fields fields,
+      Include include,
+      String locale,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+
+    // Fetch entity with locale support - repository will handle translations
+    T entity = repository.getByName(uriInfo, name, fields, include, false, locale);
+
+    return addHref(uriInfo, entity);
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -387,6 +493,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       UUID id,
       JsonPatch patch,
+      String locale,
+      ChangeSource changeSource) {
+    // Process the patch based on locale
+    JsonPatch processedPatch = patch;
+    boolean isTranslationPatch = locale != null && !locale.isEmpty() && !"en".equals(locale);
+    if (isTranslationPatch) {
+      // Transform patch operations on displayName/description to translation updates
+      processedPatch = TranslationPatchUtil.handleTranslationPatch(patch, locale, false);
+      // For translation patches, we need to ensure translations field is loaded
+      PatchResponse<T> patchResponse =
+          repository.patchWithTranslations(
+              uriInfo,
+              id,
+              securityContext.getUserPrincipal().getName(),
+              processedPatch,
+              changeSource);
+      return patchResponse.toResponse();
+    }
+    return patchInternal(uriInfo, securityContext, id, processedPatch, changeSource);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
       ChangeSource changeSource) {
     // Get If-Match header from ThreadLocal set by ETagRequestFilter
     String ifMatchHeader =
@@ -435,6 +567,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, fqn, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      String locale,
+      ChangeSource changeSource) {
+    // Process the patch based on locale
+    JsonPatch processedPatch = patch;
+    if (locale != null && !locale.isEmpty() && !"en".equals(locale)) {
+      // Transform patch operations on displayName/description to translation updates
+      processedPatch = TranslationPatchUtil.handleTranslationPatch(patch, locale, false);
+    }
+    return patchInternal(uriInfo, securityContext, fqn, processedPatch, changeSource);
   }
 
   public Response patchInternal(

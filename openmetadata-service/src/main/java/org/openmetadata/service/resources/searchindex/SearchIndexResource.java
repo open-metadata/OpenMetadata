@@ -152,10 +152,16 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, locale);
   }
 
   @GET
@@ -215,8 +221,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, locale);
   }
 
   @GET
@@ -255,8 +267,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, locale);
   }
 
   @GET
@@ -332,6 +350,11 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
+      @Parameter(
+              description = "Language locale (e.g., 'en', 'es', 'fr') for storing translations",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          String locale,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -341,7 +364,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return patchInternal(uriInfo, securityContext, id, patch, locale, null);
   }
 
   @PATCH
@@ -361,6 +384,11 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Parameter(description = "Name of the SearchIndex", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
+      @Parameter(
+              description = "Language locale (e.g., 'en', 'es', 'fr') for storing translations",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          String locale,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -370,7 +398,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return patchInternal(uriInfo, securityContext, fqn, patch, locale, null);
   }
 
   @PUT

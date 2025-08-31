@@ -5,7 +5,9 @@
   "description": "This schema defines the Persona entity. A `Persona` is a job function associated with a user. An Example, Data Engineer or Data Consumer is a Persona of a user in Metadata world.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Persona",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -59,7 +61,7 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -67,8 +69,15 @@
       "description": "When true, this persona is the system-wide default persona that will be applied to users who don't have any persona assigned or no default persona set.",
       "type": "boolean",
       "default": false
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     }
   },
-  "required": ["id", "name"],
+  "required": [
+    "id",
+    "name"
+  ],
   "additionalProperties": false
 }

@@ -175,6 +175,10 @@
       "type": "boolean",
       "default": false
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "sourceUrl": {
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"

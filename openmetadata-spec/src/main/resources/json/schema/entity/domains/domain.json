@@ -6,11 +6,13 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.domains.Domain",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
-    "domainType" : {
-      "description" : "Type of a domain",
-      "type" : "string",
+    "domainType": {
+      "description": "Type of a domain",
+      "type": "string",
       "enum": [
         "Source-aligned",
         "Consumer-aligned",
@@ -62,12 +64,12 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "parent" : {
-      "description" : "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
-      "$ref" : "../../type/entityReference.json"
+    "parent": {
+      "description": "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
+      "$ref": "../../type/entityReference.json"
     },
-    "children" : {
-      "description" : "Children domains or sub-domains.",
+    "children": {
+      "description": "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "owners": {
@@ -77,18 +79,18 @@
     "experts": {
       "description": "List of users who are experts in this Domain.",
       "$ref": "../../type/entityReferenceList.json",
-      "default" : null
+      "default": null
     },
     "assets": {
       "description": "Data assets collection that is part of this domain.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags associated with the Domain.",
       "type": "array",
-       "items": {
+      "items": {
         "$ref": "../../type/tagLabel.json"
-       },
+      },
       "default": []
     },
     "changeDescription": {
@@ -103,11 +105,20 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "description", "domainType"],
+  "required": [
+    "id",
+    "name",
+    "description",
+    "domainType"
+  ],
   "additionalProperties": false
 }

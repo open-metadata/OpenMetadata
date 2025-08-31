@@ -80,6 +80,41 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
+  protected void initializeChildrenTranslations(Topic topic) {
+    // Ensure the topic has a translations field
+    if (topic.getTranslations() == null) {
+      topic.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+
+    // Initialize translations for all fields in message schema
+    if (topic.getMessageSchema() != null && topic.getMessageSchema().getSchemaFields() != null) {
+      for (Field field : topic.getMessageSchema().getSchemaFields()) {
+        initializeFieldTranslations(field);
+      }
+    }
+  }
+
+  private void initializeFieldTranslations(Field field) {
+    if (field == null) {
+      return;
+    }
+
+    if (field.getTranslations() == null) {
+      field.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+    if (field.getTranslations().getTranslations() == null) {
+      field.getTranslations().setTranslations(new ArrayList<>());
+    }
+
+    // Recursively handle nested fields
+    if (field.getChildren() != null) {
+      for (Field child : field.getChildren()) {
+        initializeFieldTranslations(child);
+      }
+    }
+  }
+
+  @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(
         FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
@@ -139,6 +174,15 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<Topic> entities) {
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    // Use UUID as key since the topic object reference might change
+    Map<UUID, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (Topic topic : entities) {
+      if (topic.getTranslations() != null) {
+        translationsMap.put(topic.getId(), topic.getTranslations());
+      }
+    }
+
     // Always set default service field for all topics
     fetchAndSetDefaultService(entities);
 
@@ -146,6 +190,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     fetchAndSetTopicSpecificFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+
+    // Restore translations after clearing fields
+    for (Topic topic : entities) {
+      topic.setTranslations(translationsMap.get(topic.getId()));
+    }
   }
 
   private void fetchAndSetTopicSpecificFields(List<Topic> topics, Fields fields) {
@@ -301,7 +350,8 @@ public class TopicRepository extends EntityRepository<Topic> {
         .withFullyQualifiedName(field.getFullyQualifiedName())
         .withDataType(field.getDataType())
         .withDataTypeDisplay(field.getDataTypeDisplay())
-        .withChildren(children);
+        .withChildren(children)
+        .withTranslations(field.getTranslations()); // Preserve translations
   }
 
   private void validateSchemaFieldTags(List<Field> fields) {
