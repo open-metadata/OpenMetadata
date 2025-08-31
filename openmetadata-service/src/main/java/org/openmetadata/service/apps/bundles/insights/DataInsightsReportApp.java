@@ -34,7 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AbstractGlobalNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
@@ -47,6 +47,7 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.Utilities;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
@@ -54,7 +55,7 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 @SuppressWarnings("unused")
-public class DataInsightsReportApp extends AbstractNativeApplication {
+public class DataInsightsReportApp extends AbstractGlobalNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
   private static final String PREVIOUS_TOTAL_ASSET_COUNT = "PreviousTotalAssetCount";
   private static final String CURRENT_TOTAL_ASSET_COUNT = "CurrentTotalAssetCount";
@@ -91,7 +92,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     try {
       DataInsightsReportAppConfig insightAlertConfig =
-          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
+          JsonUtils.convertValue(
+              AppBoundConfigurationUtil.getAppConfiguration(app),
+              DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
         sendToAdmins(searchRepository.getSearchClient(), timeConfig);

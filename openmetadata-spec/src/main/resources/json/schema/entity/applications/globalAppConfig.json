@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/globalAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlobalAppConfig",
+  "description": "Global Configuration for platform-wide applications",
+  "javaType": "org.openmetadata.schema.entity.app.GlobalAppConfiguration",
+  "javaInterfaces": [
+    "org.openmetadata.schema.GlobalAppConfig"
+  ],
+  "type": "object",
+  "properties": {
+    "appConfiguration": {
+      "description": "Application Configuration object.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
+    },
+    "privateConfiguration": {
+      "description": "Application Private configuration loaded at runtime.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
+    },
+    "appSchedule": {
+      "description": "In case the app supports scheduling, list of different app schedules",
+      "$ref": "./app.json/#/definitions/appSchedule"
+    },
+    "eventSubscriptions": {
+      "description": "Event Subscriptions for the Application.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "pipeline": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json"
+    },
+    "openMetadataServerConnection": {
+      "$ref": "../services/connections/metadata/openMetadataConnection.json"
+    }
+  },
+  "additionalProperties": false
+}

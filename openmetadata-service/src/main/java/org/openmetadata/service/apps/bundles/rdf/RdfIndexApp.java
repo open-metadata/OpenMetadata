@@ -35,7 +35,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AbstractGlobalNativeApplication;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -44,11 +44,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class RdfIndexApp extends AbstractNativeApplication {
+public class RdfIndexApp extends AbstractGlobalNativeApplication {
   private static final String ALL = "all";
   private static final int DEFAULT_BATCH_SIZE = 100;
 
@@ -68,7 +69,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    jobData =
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class);
   }
 
   @Override
@@ -81,8 +84,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG);
       if (appConfigJson != null) {
         jobData = JsonUtils.readValue(appConfigJson, EventPublisherJob.class);
-      } else if (getApp() != null && getApp().getAppConfiguration() != null) {
-        jobData = JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
+      } else if (getApp() != null
+          && AppBoundConfigurationUtil.getAppConfiguration(getApp()) != null) {
+        jobData =
+            JsonUtils.convertValue(
+                AppBoundConfigurationUtil.getAppConfiguration(getApp()), EventPublisherJob.class);
       } else {
         LOG.error("Unable to initialize jobData from JobDataMap or App configuration");
         throw new IllegalStateException("JobData is not initialized");
@@ -103,7 +109,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
       Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, Map.class);
-      getApp().setAppConfiguration(jsonAppConfig);
+      AppBoundConfigurationUtil.setAppConfiguration(getApp(), jsonAppConfig);
     }
 
     try {

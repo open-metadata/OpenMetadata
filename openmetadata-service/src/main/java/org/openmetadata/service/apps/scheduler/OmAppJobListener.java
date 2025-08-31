@@ -22,6 +22,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -56,7 +57,8 @@ public class OmAppJobListener implements JobListener {
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
       ApplicationConfig appConfig =
-          JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
+          JsonUtils.convertValue(
+              AppBoundConfigurationUtil.getAppConfiguration(jobApp), ApplicationConfig.class);
       ApplicationConfig overrideConfig =
           JsonUtils.convertValue(
               jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),

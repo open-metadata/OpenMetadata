@@ -1054,7 +1054,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     EventPublisherJob config =
-        (JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class))
+        (JsonUtils.convertValue(
+                AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class))
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
@@ -1167,7 +1168,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
     DataInsightsAppConfig config =
-        JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class)
+        JsonUtils.convertValue(
+                AppBoundConfigurationUtil.getAppConfiguration(app), DataInsightsAppConfig.class)
             .withBatchSize(batchSize)
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);

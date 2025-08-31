@@ -1,44 +1,26 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
-
 import io.dropwizard.configuration.ConfigurationException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.apps.managers.ExternalJobSchedulerManager;
+import org.openmetadata.service.apps.managers.InstallManager;
+import org.openmetadata.service.apps.managers.InternalJobSchedulerManager;
+import org.openmetadata.service.apps.managers.JobAppConfigUpdater;
+import org.openmetadata.service.apps.managers.UninstallManager;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
-import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
 import org.quartz.SchedulerException;
-import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
@@ -46,15 +28,26 @@ public class ApplicationHandler {
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
   private final AppRepository appRepository;
-  private final AppMarketPlaceRepository appMarketPlaceRepository;
-  private final EventSubscriptionRepository eventSubscriptionRepository;
   private final ConfigurationReader configReader = new ConfigurationReader();
+
+  private final InstallManager installManager;
+  private final UninstallManager uninstallManager;
+  private final InternalJobSchedulerManager internalSchedulerManager;
+  @Getter private final ExternalJobSchedulerManager externalSchedulerManager;
+  private final JobAppConfigUpdater jobAppConfigUpdater;
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
     this.appRepository = new AppRepository();
-    this.appMarketPlaceRepository = new AppMarketPlaceRepository();
-    this.eventSubscriptionRepository = new EventSubscriptionRepository();
+
+    // Initialize managers with dependencies
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    this.installManager = new InstallManager(collectionDAO);
+    this.uninstallManager = new UninstallManager();
+    this.internalSchedulerManager = new InternalJobSchedulerManager();
+    this.jobAppConfigUpdater = new JobAppConfigUpdater();
+    this.externalSchedulerManager =
+        new ExternalJobSchedulerManager(installManager, jobAppConfigUpdater);
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -76,7 +69,8 @@ public class ApplicationHandler {
 
       if (appPrivateConfig.getParameters() != null
           && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
-        app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+        // Private configuration is now handled through AppBoundConfigurationUtil
+        // app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
       }
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
@@ -120,7 +114,7 @@ public class ApplicationHandler {
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
       runAppInit(app, daoCollection, searchRepository).install(installedBy);
-      installEventSubscriptions(app, installedBy);
+      installManager.installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -145,41 +139,6 @@ public class ApplicationHandler {
       throw AppException.byMessage(
           app.getName(), "install", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  private void installEventSubscriptions(App app, String installedBy) {
-    AppMarketPlaceDefinition definition = appMarketPlaceRepository.getDefinition(app);
-    Map<String, EntityReference> eventSubscriptionsReferences =
-        listOrEmpty(app.getEventSubscriptions()).stream()
-            .collect(Collectors.toMap(EntityReference::getName, e -> e));
-    definition.getEventSubscriptions().stream()
-        .map(
-            request ->
-                Optional.ofNullable(eventSubscriptionsReferences.get(request.getName()))
-                    .flatMap(
-                        sub ->
-                            Optional.ofNullable(
-                                eventSubscriptionRepository.findByNameOrNull(
-                                    sub.getName(), Include.ALL)))
-                    .orElseGet(
-                        () -> {
-                          EventSubscription createdEventSub =
-                              eventSubscriptionRepository.create(
-                                  null,
-                                  // TODO need to get the actual user
-                                  new EventSubscriptionMapper()
-                                      .createToEntity(request, installedBy));
-                          appRepository.addEventSubscription(app, createdEventSub);
-                          return createdEventSub;
-                        }))
-        .forEach(
-            eventSub -> {
-              try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, true);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
   }
 
   public void configureApplication(
@@ -208,29 +167,10 @@ public class ApplicationHandler {
         | IllegalAccessException e) {
       throw new RuntimeException(e);
     }
-    deleteEventSubscriptions(app, deletedBy);
+    uninstallManager.deleteEventSubscriptions(app, deletedBy);
   }
 
-  private void deleteEventSubscriptions(App app, String deletedBy) {
-    listOrEmpty(app.getEventSubscriptions())
-        .forEach(
-            eventSubscriptionReference -> {
-              try {
-                EventSubscription eventSub =
-                    eventSubscriptionRepository.find(
-                        eventSubscriptionReference.getId(), Include.ALL);
-                EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSub);
-                eventSubscriptionRepository.delete(deletedBy, eventSub.getId(), false, true);
-
-              } catch (EntityNotFoundException e) {
-                LOG.debug("Event subscription {} not found", eventSubscriptionReference.getId());
-              } catch (SchedulerException e) {
-                throw new RuntimeException(e);
-              }
-            });
-  }
-
-  public AbstractNativeApplication runAppInit(
+  public AbstractNativeApplicationBase runAppInit(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository)
       throws ClassNotFoundException,
           NoSuchMethodException,
@@ -240,7 +180,7 @@ public class ApplicationHandler {
     return runAppInit(app, daoCollection, searchRepository, false);
   }
 
-  public AbstractNativeApplication runAppInit(
+  public AbstractNativeApplicationBase runAppInit(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, boolean forDelete)
       throws ClassNotFoundException,
           NoSuchMethodException,
@@ -249,9 +189,9 @@ public class ApplicationHandler {
           IllegalAccessException {
     // add private runtime properties
     setAppRuntimeProperties(app);
-    Class<? extends AbstractNativeApplication> clz =
-        Class.forName(app.getClassName()).asSubclass(AbstractNativeApplication.class);
-    AbstractNativeApplication resource =
+    Class<? extends AbstractNativeApplicationBase> clz =
+        Class.forName(app.getClassName()).asSubclass(AbstractNativeApplicationBase.class);
+    AbstractNativeApplicationBase resource =
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
             .newInstance(daoCollection, searchRepository);
     // Raise preview message if the app is in Preview mode
@@ -265,77 +205,18 @@ public class ApplicationHandler {
   }
 
   public void migrateQuartzConfig(App application) throws SchedulerException {
-    JobDetail jobDetails =
-        AppScheduler.getInstance()
-            .getScheduler()
-            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-    if (jobDetails == null) {
-      return;
-    }
-    JobDataMap jobDataMap = jobDetails.getJobDataMap();
-    if (jobDataMap == null) {
-      return;
-    }
-    String appInfo = jobDataMap.getString(APP_INFO_KEY);
-    if (appInfo == null) {
-      return;
-    }
-    LOG.info("migrating app quartz configuration for {}", application.getName());
-    App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
-    App currentApp = appRepository.getDao().findEntityById(application.getId());
-    updatedApp.setOpenMetadataServerConnection(null);
-    updatedApp.setPrivateConfiguration(null);
-    updatedApp.setScheduleType(currentApp.getScheduleType());
-    updatedApp.setAppSchedule(currentApp.getAppSchedule());
-    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
-    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
-    EntityRepository<App>.EntityUpdater updater =
-        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
-    updater.update();
-    AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
-    AppScheduler.getInstance().scheduleApplication(updatedApp);
-    LOG.info("migrated app configuration for {}", application.getName());
+    internalSchedulerManager.migrateQuartzConfig(application);
   }
 
   public void fixCorruptedInstallation(App application) throws SchedulerException {
-    JobDetail jobDetails =
-        AppScheduler.getInstance()
-            .getScheduler()
-            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-    if (jobDetails == null) {
-      return;
-    }
-    JobDataMap jobDataMap = jobDetails.getJobDataMap();
-    if (jobDataMap == null) {
-      return;
-    }
-    String appName = jobDataMap.getString(APP_NAME);
-    if (appName == null) {
-      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
-      App app = appRepository.getDao().findEntityByName(application.getName());
-      AppScheduler.getInstance().deleteScheduledApplication(app);
-      AppScheduler.getInstance().scheduleApplication(app);
-    }
+    internalSchedulerManager.fixCorruptedInstallation(application);
   }
 
   public void removeOldJobs(App app) throws SchedulerException {
-    Collection<JobKey> jobKeys =
-        AppScheduler.getInstance()
-            .getScheduler()
-            .getJobKeys(GroupMatcher.groupContains(APPS_JOB_GROUP));
-    jobKeys.forEach(
-        jobKey -> {
-          try {
-            Class<?> clz =
-                AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
-            if (!jobKey.getName().equals(app.getName())
-                && clz.getName().equals(app.getClassName())) {
-              LOG.info("deleting old job {}", jobKey.getName());
-              AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
-            }
-          } catch (SchedulerException e) {
-            LOG.error("Error deleting job {}", jobKey.getName(), e);
-          }
-        });
+    internalSchedulerManager.removeOldJobs(app);
+  }
+
+  public JobAppConfigUpdater getJobAppConfigUpdater() {
+    return jobAppConfigUpdater;
   }
 }

@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/serviceAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ServiceAppConfig",
+  "description": "Service Configuration for service-bound applications",
+  "javaType": "org.openmetadata.schema.entity.app.ServiceAppConfiguration",
+  "javaInterfaces": [
+    "org.openmetadata.schema.ServiceAppConfig"
+  ],
+  "type": "object",
+  "properties": {
+    "serviceRef": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "appConfiguration": {
+      "description": "Application Configuration object.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
+    },
+    "privateConfiguration": {
+      "description": "Application Private configuration loaded at runtime.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
+    },
+    "appSchedule": {
+      "description": "In case the app supports scheduling, list of different app schedules",
+      "$ref": "./app.json#/definitions/appSchedule"
+    },
+    "eventSubscriptions": {
+      "description": "Event Subscriptions for the Application.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "pipeline": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json"
+    },
+    "openMetadataServerConnection": {
+      "$ref": "../services/connections/metadata/openMetadataConnection.json"
+    }
+  },
+  "required": ["serviceRef"],
+  "additionalProperties": false
+}

@@ -85,10 +85,6 @@
       "type": "boolean",
       "default": true
     },
-    "appConfiguration": {
-      "description": "Application Configuration object.",
-      "$ref": "../configuration/applicationConfig.json#/definitions/appConfig"
-    },
     "appLogoUrl": {
       "description": "Application Logo Url.",
       "type": "string",
@@ -131,6 +127,14 @@
       "description": "The app will be installable only if this flag is set to true.",
       "type": "boolean",
       "default": true
+    },
+    "appBoundType": {
+      "description": "This schema defines the scope of the application.",
+      "$ref": "../app.json#/definitions/appBoundType"
+    },
+    "appBoundConfiguration": {
+      "description": "Configuration for the application based on its bound type.",
+      "$ref": "../app.json#/definitions/appBoundConfiguration"
     }
   },
   "additionalProperties": false,

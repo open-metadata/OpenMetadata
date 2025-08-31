@@ -35,7 +35,6 @@ public class AppMarketPlaceMapper
             .withAgentType(create.getAgentType())
             .withScheduleType(create.getScheduleType())
             .withRuntime(create.getRuntime())
-            .withAppConfiguration(create.getAppConfiguration())
             .withPermission(create.getPermission())
             .withAppLogoUrl(create.getAppLogoUrl())
             .withAppScreenshots(create.getAppScreenshots())
@@ -44,7 +43,8 @@ public class AppMarketPlaceMapper
             .withAllowConfiguration(create.getAllowConfiguration())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
-            .withEventSubscriptions(create.getEventSubscriptions());
+            .withAppBoundType(create.getAppBoundType())
+            .withAppBoundConfiguration(create.getAppBoundConfiguration());
 
     // Validate App
     validateApplication(app);

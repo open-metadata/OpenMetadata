@@ -29,12 +29,6 @@
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
       "default": null
     },
-    "appConfiguration": {
-      "description": "Application Configuration object."
-    },
-    "appSchedule": {
-      "$ref": "./app.json#/definitions/appSchedule"
-    },
     "domains" : {
       "description": "Fully qualified names of the domains the Application belongs to.",
       "type": "array",
@@ -46,6 +40,14 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "appBoundType": {
+      "description": "This schema defines the scope of the application.",
+      "$ref": "./app.json#/definitions/appBoundType"
+    },
+    "appBoundConfiguration": {
+      "description": "Configuration for the application based on its bound type.",
+      "$ref": "./app.json#/definitions/appBoundConfiguration"
     }
   },
   "additionalProperties": false

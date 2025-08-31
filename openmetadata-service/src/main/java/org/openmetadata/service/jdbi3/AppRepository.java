@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
@@ -30,6 +29,7 @@ import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -352,7 +352,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionById(
@@ -364,7 +364,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(
@@ -377,7 +377,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeById(
@@ -390,7 +390,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   @Override
@@ -410,7 +410,7 @@ public class AppRepository extends EntityRepository<App> {
 
   public App addEventSubscription(App app, EventSubscription eventSubscription) {
     EntityReference existing =
-        listOrEmpty(app.getEventSubscriptions()).stream()
+        AppBoundConfigurationUtil.getEventSubscriptions(app).stream()
             .filter(e -> e.getId().equals(eventSubscription.getId()))
             .findFirst()
             .orElse(null);
@@ -423,9 +423,11 @@ public class AppRepository extends EntityRepository<App> {
         Entity.APPLICATION,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    List<EntityReference> newSubs =
+        new ArrayList<>(AppBoundConfigurationUtil.getEventSubscriptions(app));
     newSubs.add(eventSubscription.getEntityReference());
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    AppBoundConfigurationUtil.setEventSubscriptions(app, newSubs);
+    App updated = JsonUtils.deepCopy(app, App.class);
     updated.setOpenMetadataServerConnection(null);
     getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
@@ -438,9 +440,11 @@ public class AppRepository extends EntityRepository<App> {
         eventSubscriptionId,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    List<EntityReference> newSubs =
+        new ArrayList<>(AppBoundConfigurationUtil.getEventSubscriptions(app));
     newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    AppBoundConfigurationUtil.setEventSubscriptions(app, newSubs);
+    App updated = JsonUtils.deepCopy(app, App.class);
     updated.setOpenMetadataServerConnection(null);
     getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
@@ -469,12 +473,12 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      recordChange("appBoundType", original.getAppBoundType(), updated.getAppBoundType());
       recordChange(
-          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-      recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+          "appBoundConfiguration",
+          original.getAppBoundConfiguration(),
+          updated.getAppBoundConfiguration());
       recordChange("bot", original.getBot(), updated.getBot());
-      recordChange(
-          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
     }
   }
 }

@@ -22,16 +22,17 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AbstractGlobalNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class DataRetention extends AbstractNativeApplication {
+public class DataRetention extends AbstractGlobalNativeApplication {
   private static final int BATCH_SIZE = 10_000;
 
   private DataRetentionConfiguration dataRetentionConfiguration;
@@ -56,7 +57,8 @@ public class DataRetention extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     this.dataRetentionConfiguration =
-        JsonUtils.convertValue(app.getAppConfiguration(), DataRetentionConfiguration.class);
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(app), DataRetentionConfiguration.class);
     if (CommonUtil.nullOrEmpty(this.dataRetentionConfiguration)) {
       LOG.warn("No retention policy configuration provided. Cleanup tasks will not run.");
     }

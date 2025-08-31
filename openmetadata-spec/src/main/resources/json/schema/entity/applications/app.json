@@ -121,6 +121,42 @@
         }
       ]
     },
+    "appBoundConfiguration": {
+      "description": "Configuration for the application based on its bound type.",
+      "javaType": "org.openmetadata.schema.entity.app.AppBoundConfiguration",
+      "type": "object",
+      "properties": {
+        "globalAppConfig": {
+          "description": "Configuration for Global Application.",
+          "$ref": "./globalAppConfig.json"
+        },
+        "serviceAppConfig": {
+          "description": "Configuration for Service Application.",
+          "type": "array",
+          "items": {
+            "$ref": "./serviceAppConfig.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "appBoundType": {
+      "javaType": "org.openmetadata.schema.entity.app.AppBoundType",
+      "description": "This schema defines the scope of the application.",
+      "type": "string",
+      "enum": [
+        "global",
+        "service"
+      ],
+      "javaEnums": [
+        {
+          "name": "Global"
+        },
+        {
+          "name": "Service"
+        }
+      ]
+    },
     "executionContext": {
       "description": "Execution Configuration.",
       "oneOf": [
@@ -255,26 +291,10 @@
       "type": "boolean",
       "default": false
     },
-    "appConfiguration": {
-      "description": "Application Configuration object.",
-      "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
-    },
-    "privateConfiguration": {
-      "description": "Application Private configuration loaded at runtime.",
-      "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
-    },
     "preview": {
       "type": "boolean",
       "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
-    },
-    "pipelines": {
-      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReferenceList.json"
-    },
-    "appSchedule": {
-      "description": "In case the app supports scheduling, list of different app schedules",
-      "$ref": "#/definitions/appSchedule"
     },
     "openMetadataServerConnection": {
       "$ref": "../services/connections/metadata/openMetadataConnection.json"
@@ -301,9 +321,13 @@
       "type": "boolean",
       "default": false
     },
-    "eventSubscriptions": {
-      "description": "Event Subscriptions for the Application.",
-      "$ref": "../../type/entityReferenceList.json"
+    "appBoundType": {
+      "description": "This schema defines the scope of the application.",
+      "$ref": "#/definitions/appBoundType"
+    },
+    "appBoundConfiguration": {
+      "description": "Configuration for the application based on its bound type.",
+      "$ref": "#/definitions/appBoundConfiguration"
     }
   },
   "additionalProperties": false,

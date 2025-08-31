@@ -39,6 +39,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -111,7 +112,8 @@ public class RunAppImpl {
   }
 
   private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
-    Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
+    Object config =
+        JsonUtils.deepCopy(AppBoundConfigurationUtil.getAppConfiguration(app), Object.class);
 
     switch (app.getName()) {
       case "CollateAIApplication" -> config =
@@ -251,7 +253,7 @@ public class RunAppImpl {
 
     Map<String, Object> ingestionPipelineConfig =
         JsonUtils.readOrConvertValue(ingestionPipeline.getSourceConfig().getConfig(), Map.class);
-    ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
+    ingestionPipelineConfig.put("appConfig", AppBoundConfigurationUtil.getAppConfiguration(app));
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
     pipelineServiceClient.deployPipeline(

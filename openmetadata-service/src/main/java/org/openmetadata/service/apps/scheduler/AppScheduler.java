@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps.scheduler;
 
 import static com.cronutils.model.CronType.UNIX;
-import static org.openmetadata.service.apps.AbstractNativeApplication.getAppRuntime;
+import static org.openmetadata.service.apps.AbstractNativeApplicationBase.getAppRuntime;
 import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
 
 import com.cronutils.mapper.CronMapper;
@@ -11,6 +11,7 @@ import com.cronutils.parser.CronParser;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -29,6 +30,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -70,6 +72,8 @@ public class AppScheduler {
 
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
+  public static final String SERVICE_APPS_JOB_GROUP_PREFIX = "OMServiceAppsJobGroup";
+  public static final String SERVICE_APPS_TRIGGER_GROUP_PREFIX = "OMServiceAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String APP_NAME = "appName";
   public static String APP_CONFIG_KEY = "configOverride";
@@ -179,7 +183,9 @@ public class AppScheduler {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
         JobDetail jobDetail = jobBuilder(application, application.getName());
-        if (!application.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+        if (!AppBoundConfigurationUtil.getAppSchedule(application)
+            .getScheduleTimeline()
+            .equals(ScheduleTimeline.NONE)) {
           Trigger trigger = trigger(application);
           scheduler.scheduleJob(jobDetail, trigger);
         }
@@ -209,7 +215,7 @@ public class AppScheduler {
     dataMap.put(APP_NAME, app.getName());
     dataMap.put(
         "triggerType",
-        Optional.ofNullable(app.getAppSchedule())
+        Optional.ofNullable(AppBoundConfigurationUtil.getAppSchedule(app))
             .map(v -> v.getScheduleTimeline().value())
             .orElse(null));
     Class<? extends NativeApplication> clz =
@@ -225,7 +231,7 @@ public class AppScheduler {
   private Trigger trigger(App app) {
     return TriggerBuilder.newTrigger()
         .withIdentity(app.getName(), APPS_TRIGGER_GROUP)
-        .withSchedule(getCronSchedule(app.getAppSchedule()))
+        .withSchedule(getCronSchedule(AppBoundConfigurationUtil.getAppSchedule(app)))
         .build();
   }
 
@@ -300,6 +306,84 @@ public class AppScheduler {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
+    }
+  }
+
+  public void triggerOnDemandServiceApplication(
+      App application, String serviceId, Map<String, Object> config) {
+    if (application.getFullyQualifiedName() == null) {
+      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
+    }
+    try {
+      String serviceJobGroupName = getServiceJobGroupName(serviceId);
+      String serviceTriggerGroupName = getServiceTriggerGroupName(serviceId);
+      String jobName = getServiceJobName(application.getName(), serviceId);
+      String onDemandJobName = String.format("%s-%s", jobName, ON_DEMAND_JOB);
+
+      JobDetail jobDetailScheduled =
+          scheduler.getJobDetail(new JobKey(jobName, serviceJobGroupName));
+      JobDetail jobDetailOnDemand =
+          scheduler.getJobDetail(new JobKey(onDemandJobName, serviceJobGroupName));
+
+      // Check if the job is already running
+      List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+      for (JobExecutionContext context : currentJobs) {
+        if ((jobDetailScheduled != null
+                && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
+            || (jobDetailOnDemand != null
+                && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
+          throw new UnhandledServerException(
+              "Service-bound job is already running for service "
+                  + serviceId
+                  + ", please wait for it to complete.");
+        }
+      }
+
+      AppRuntime context = getAppRuntime(application);
+      if (Boolean.FALSE.equals(context.getEnabled())) {
+        LOG.info("[Applications] Service-bound app cannot be triggered since it is disabled");
+        return;
+      }
+
+      // Create on-demand job for service
+      JobDataMap dataMap = new JobDataMap();
+      dataMap.put(APP_NAME, application.getName());
+      dataMap.put("serviceId", serviceId);
+      dataMap.put("triggerType", ON_DEMAND_JOB);
+      dataMap.put(APP_CONFIG_KEY, config);
+
+      Class<? extends NativeApplication> clz =
+          (Class<? extends NativeApplication>) Class.forName(application.getClassName());
+
+      JobDetail newJobDetail =
+          JobBuilder.newJob(clz)
+              .withIdentity(onDemandJobName, serviceJobGroupName)
+              .usingJobData(dataMap)
+              .requestRecovery(false)
+              .build();
+
+      Trigger trigger =
+          TriggerBuilder.newTrigger()
+              .withIdentity(onDemandJobName, serviceTriggerGroupName)
+              .startNow()
+              .build();
+      scheduler.scheduleJob(newJobDetail, trigger);
+
+      LOG.info(
+          "Triggered on-demand service-bound application {} for service {}",
+          application.getName(),
+          serviceId);
+    } catch (ObjectAlreadyExistsException ex) {
+      LOG.error(
+          "On-demand job already exists for {} and service {}", application.getName(), serviceId);
+      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
+    } catch (SchedulerException | ClassNotFoundException ex) {
+      LOG.error(
+          "Failed to trigger on-demand service job for {} and service {}",
+          application.getName(),
+          serviceId,
+          ex);
+      throw new UnhandledServerException("Failed to trigger service-bound application on demand.");
     }
   }
 
@@ -381,5 +465,159 @@ public class AppScheduler {
     } catch (SchedulerException ex) {
       LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
     }
+  }
+
+  public void scheduleServiceBoundApplication(App application, String serviceId) {
+    try {
+      String serviceJobGroupName = getServiceJobGroupName(serviceId);
+      String serviceTriggerGroupName = getServiceTriggerGroupName(serviceId);
+      String jobName = getServiceJobName(application.getName(), serviceId);
+
+      if (scheduler.getJobDetail(new JobKey(jobName, serviceJobGroupName)) != null) {
+        LOG.info(
+            "Job already exists for the service-bound application {} and service {}, rescheduling it",
+            application.getName(),
+            serviceId);
+        scheduler.rescheduleJob(
+            new TriggerKey(jobName, serviceTriggerGroupName),
+            serviceJobTrigger(application, serviceId));
+        return;
+      }
+
+      AppRuntime context = getAppRuntime(application);
+      if (Boolean.TRUE.equals(context.getEnabled())) {
+        JobDetail jobDetail = serviceJobBuilder(application, serviceId);
+        if (!Objects.requireNonNull(AppBoundConfigurationUtil.getAppSchedule(application))
+            .getScheduleTimeline()
+            .equals(ScheduleTimeline.NONE)) {
+          Trigger trigger = serviceJobTrigger(application, serviceId);
+          scheduler.scheduleJob(jobDetail, trigger);
+        }
+      } else {
+        LOG.info("[Applications] Service-bound app cannot be scheduled since it is disabled");
+      }
+    } catch (Exception ex) {
+      LOG.error("Failed in setting up job Scheduler for Service-bound Application", ex);
+      throw new UnhandledServerException(
+          "Failed in scheduling Job for the Service-bound Application", ex);
+    }
+  }
+
+  public void deleteServiceBoundApplication(App app, String serviceId) throws SchedulerException {
+    String serviceJobGroupName = getServiceJobGroupName(serviceId);
+    String serviceTriggerGroupName = getServiceTriggerGroupName(serviceId);
+    String jobName = getServiceJobName(app.getName(), serviceId);
+
+    // Scheduled Jobs
+    scheduler.deleteJob(new JobKey(jobName, serviceJobGroupName));
+    scheduler.unscheduleJob(new TriggerKey(jobName, serviceTriggerGroupName));
+
+    // OnDemand Jobs
+    String onDemandJobName = String.format("%s-%s", jobName, ON_DEMAND_JOB);
+    scheduler.deleteJob(new JobKey(onDemandJobName, serviceJobGroupName));
+    scheduler.unscheduleJob(new TriggerKey(onDemandJobName, serviceTriggerGroupName));
+  }
+
+  public void deleteAllServiceBoundApplicationJobs(App app) throws SchedulerException {
+    // For service-bound apps, we need to find and delete jobs across all service groups
+    // that contain jobs for this specific app
+    List<org.openmetadata.schema.entity.app.ServiceAppConfiguration> serviceConfigs =
+        AppBoundConfigurationUtil.getAllServiceConfigurations(app);
+
+    for (org.openmetadata.schema.entity.app.ServiceAppConfiguration serviceConfig :
+        serviceConfigs) {
+      String serviceId = serviceConfig.getServiceRef().getId().toString();
+      try {
+        deleteServiceBoundApplication(app, serviceId);
+        LOG.info("Deleted service-bound jobs for app {} and service {}", app.getName(), serviceId);
+      } catch (SchedulerException e) {
+        LOG.error(
+            "Failed to delete service-bound jobs for app {} and service {}",
+            app.getName(),
+            serviceId,
+            e);
+      }
+    }
+  }
+
+  public void deleteAllJobsForService(String serviceId) throws SchedulerException {
+    String serviceJobGroupName = getServiceJobGroupName(serviceId);
+    String serviceTriggerGroupName = getServiceTriggerGroupName(serviceId);
+
+    // Delete all jobs in the service group
+    scheduler
+        .getJobKeys(GroupMatcher.jobGroupEquals(serviceJobGroupName))
+        .forEach(
+            jobKey -> {
+              try {
+                scheduler.deleteJob(jobKey);
+                LOG.info("Deleted job: {} from service group: {}", jobKey, serviceJobGroupName);
+              } catch (SchedulerException e) {
+                LOG.error("Failed to delete job: {}", jobKey, e);
+              }
+            });
+
+    // Delete all triggers in the service group
+    scheduler
+        .getTriggerKeys(GroupMatcher.triggerGroupEquals(serviceTriggerGroupName))
+        .forEach(
+            triggerKey -> {
+              try {
+                scheduler.unscheduleJob(triggerKey);
+                LOG.info(
+                    "Unscheduled trigger: {} from service group: {}",
+                    triggerKey,
+                    serviceTriggerGroupName);
+              } catch (SchedulerException e) {
+                LOG.error("Failed to unschedule trigger: {}", triggerKey, e);
+              }
+            });
+  }
+
+  private String getServiceJobGroupName(String serviceId) {
+    return String.format("%s_%s", SERVICE_APPS_JOB_GROUP_PREFIX, serviceId);
+  }
+
+  private String getServiceTriggerGroupName(String serviceId) {
+    return String.format("%s_%s", SERVICE_APPS_TRIGGER_GROUP_PREFIX, serviceId);
+  }
+
+  private String getServiceJobName(String appName, String serviceId) {
+    return String.format("%s_%s", appName, serviceId);
+  }
+
+  private JobDetail serviceJobBuilder(App app, String serviceId) throws ClassNotFoundException {
+    String jobName = getServiceJobName(app.getName(), serviceId);
+    String groupName = getServiceJobGroupName(serviceId);
+
+    JobDataMap dataMap = new JobDataMap();
+    dataMap.put(APP_NAME, app.getName());
+    dataMap.put("serviceId", serviceId);
+    dataMap.put(
+        "triggerType",
+        Optional.ofNullable(AppBoundConfigurationUtil.getAppSchedule(app))
+            .map(v -> v.getScheduleTimeline().value())
+            .orElse(null));
+
+    Class<? extends NativeApplication> clz =
+        (Class<? extends NativeApplication>) Class.forName(app.getClassName());
+
+    JobBuilder jobBuilder =
+        JobBuilder.newJob(clz)
+            .withIdentity(jobName, groupName)
+            .usingJobData(dataMap)
+            .requestRecovery(false);
+
+    return jobBuilder.build();
+  }
+
+  private Trigger serviceJobTrigger(App app, String serviceId) {
+    String jobName = getServiceJobName(app.getName(), serviceId);
+    String groupName = getServiceTriggerGroupName(serviceId);
+
+    return TriggerBuilder.newTrigger()
+        .withIdentity(jobName, groupName)
+        .withSchedule(getCronSchedule(AppBoundConfigurationUtil.getAppSchedule(app)))
+        .build();
   }
 }
