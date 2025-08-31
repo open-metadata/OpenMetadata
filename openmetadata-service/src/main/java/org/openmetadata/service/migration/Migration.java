@@ -1,11 +1,9 @@
 package org.openmetadata.service.migration;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -21,15 +19,15 @@ public final class Migration {
   private Migration() {}
 
   /**
-   * Run a query to MySQL to retrieve the last migrated Flyway version. If the Flyway table DATABASE_CHANGE_LOG does not
-   * exist, we will stop the Catalog App and inform users how to run Flyway.
+   * Run a query to retrieve the last migrated version from the DATABASE_CHANGE_LOG table.
+   * This table is maintained by the native migration system.
    */
   public static Optional<String> lastMigrated(Jdbi jdbi) {
     try {
       return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxVersion);
     } catch (StatementException e) {
       throw new IllegalArgumentException(
-          "Exception encountered when trying to obtain last migrated Flyway version."
+          "Exception encountered when trying to obtain last migrated version."
               + " Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.",
           e);
     }
@@ -40,21 +38,16 @@ public final class Migration {
     return Collections.max(migrationFiles);
   }
 
-  /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
+  /** Read the native migrations path from the config and return a list of all version directories. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
     try (Stream<String> names =
-        Files.walk(Paths.get(conf.getFlywayPath()))
-            .filter(Files::isRegularFile)
-            .map(Path::toFile)
-            .map(File::getName)
-            .map(Migration::cleanName)) {
+        Files.walk(Paths.get(conf.getNativePath()), 1)
+            .filter(Files::isDirectory)
+            .map(Path::getFileName)
+            .map(Path::toString)
+            .filter(name -> name.matches("\\d+\\.\\d+\\.\\d+.*"))) {
 
       return names.collect(Collectors.toList());
     }
-  }
-
-  /** Given a Flyway migration filename, e.g., v001__my_file.sql, return the version information "001". */
-  private static String cleanName(String name) {
-    return Arrays.asList(name.split("_")).get(0).replace("v", "");
   }
 }

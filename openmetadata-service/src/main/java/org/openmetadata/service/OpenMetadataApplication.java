@@ -54,7 +54,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -106,7 +105,6 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -264,7 +262,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .buildValidatorFactory()
             .getValidator());
 
-    // Validate flyway Migrations
+    // Validate native migrations
     validateMigrations(jdbi, catalogConfig);
 
     // Register Authorizer
@@ -571,21 +569,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
       throws IOException {
-    LOG.info("Validating Flyway migrations");
-    Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
-    String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
-    if (lastMigrated.isEmpty()) {
-      throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.");
-    }
-    if (lastMigrated.get().compareTo(maxMigration) < 0) {
-      throw new IllegalStateException(
-          "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
-              + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/deployment/upgrade ");
-    }
-
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
@@ -595,6 +578,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getMigrationConfiguration().getFlywayPath(),
             conf,
             false);
     migrationWorkflow.loadMigrations();
