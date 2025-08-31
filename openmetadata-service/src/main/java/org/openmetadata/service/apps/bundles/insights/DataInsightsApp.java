@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -522,11 +521,5 @@ public class DataInsightsApp extends AbstractGlobalNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
-  }
-
-  @Override
-  public void triggerForService(UUID serviceId, Map<String, Object> config) {
-    LOG.debug("DataInsightsApp triggerForService called for service: {}", serviceId);
-    // DataInsightsApp is a global application and does not support service-specific triggers
   }
 }
