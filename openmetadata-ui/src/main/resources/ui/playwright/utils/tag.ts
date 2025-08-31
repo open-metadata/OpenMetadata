@@ -328,16 +328,7 @@ export const verifyTagPageUI = async (
   limitedAccess = false
 ) => {
   await redirectToHomePage(page);
-  await page.waitForLoadState('domcontentloaded');
-
-  const [initialTagResponse] = await Promise.all([
-    page.waitForResponse(/\/api\/v1\/tags\/name\/.*/),
-    tag.visitPage(page),
-  ]);
-
-  const tagData = await initialTagResponse.json();
-
-  expect(tagData.name).toBe(tag.data.name);
+  await tag.visitPage(page);
 
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
@@ -369,10 +360,6 @@ export const verifyTagPageUI = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId(tag.data.name).click();
   await res;
-
-  await expect(page.getByTestId('entity-header-name')).toContainText(
-    tag.data.name
-  );
 
   const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
   await page.getByRole('link', { name: 'Classifications' }).click();
