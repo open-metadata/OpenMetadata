@@ -349,15 +349,37 @@ export const addMultiOwner = async (data: {
       exact: true,
     });
 
-    if (type === 'Teams') {
-      if (isSelectableInsideForm) {
-        await ownerItem.click();
+    // Wait for the item to exist and be visible before clicking
+    try {
+      await ownerItem.waitFor({ state: 'visible' });
+
+      if (type === 'Teams') {
+        if (isSelectableInsideForm) {
+          await ownerItem.click();
+        } else {
+          const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+          await ownerItem.click();
+          await patchRequest;
+        }
       } else {
-        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
         await ownerItem.click();
-        await patchRequest;
       }
-    } else {
+    } catch (error) {
+      // Re-search if owner not found initially
+      await page
+        .locator('[data-testid="owner-select-users-search-bar"]')
+        .clear();
+      await page.fill(
+        '[data-testid="owner-select-users-search-bar"]',
+        ownerName
+      );
+      await searchOwner;
+      await page.waitForSelector(
+        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+        { state: 'detached' }
+      );
+
+      await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
     }
   }
@@ -755,23 +777,29 @@ export const assignGlossaryTerm = async (
   // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
-  );
-
+  // Fill the input first
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
 
+  // Then wait for the search response with error handling
   try {
-    await searchGlossaryTerm;
+    await page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        glossaryTerm.displayName
+      )}*`,
+      { timeout: 10000 } // Add explicit timeout
+    );
   } catch (error) {
-    // If the search response fails, retry
-    await page
-      .locator('#tagsForm_tags')
-      .waitFor({ state: 'visible', timeout: 5000 });
-
+    // Retry once if the search fails
+    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
     await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
 
-    await searchGlossaryTerm;
+    const retrySearch = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        glossaryTerm.displayName
+      )}*`,
+      { timeout: 10000 }
+    );
+    await retrySearch;
   }
 
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
