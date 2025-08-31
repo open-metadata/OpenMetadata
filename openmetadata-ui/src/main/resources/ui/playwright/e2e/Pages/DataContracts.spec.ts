@@ -183,7 +183,8 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
-        DATA_CONTRACT_SEMANTICS1.rules[0].field
+        DATA_CONTRACT_SEMANTICS1.rules[0].field,
+        true
       );
       await selectOption(
         page,
@@ -193,7 +194,8 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        'admin'
+        'admin',
+        true
       );
       await page.getByRole('button', { name: 'Add New Rule' }).click();
 
@@ -203,7 +205,8 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator2.locator('.rule--field .ant-select'),
-        DATA_CONTRACT_SEMANTICS1.rules[1].field
+        DATA_CONTRACT_SEMANTICS1.rules[1].field,
+        true
       );
       await selectOption(
         page,
@@ -241,7 +244,8 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator3.locator('.group--field .ant-select'),
-        DATA_CONTRACT_SEMANTICS2.rules[0].field
+        DATA_CONTRACT_SEMANTICS2.rules[0].field,
+        true
       );
       await selectOption(
         page,
@@ -596,7 +600,8 @@ test.describe('Data Contracts', () => {
         await selectOption(
           page,
           ruleLocator.locator('.group--field .ant-select'),
-          DATA_CONTRACT_SEMANTICS1.rules[0].field
+          DATA_CONTRACT_SEMANTICS1.rules[0].field,
+          true
         );
         await selectOption(
           page,
@@ -606,7 +611,8 @@ test.describe('Data Contracts', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          'admin'
+          'admin',
+          true
         );
         await page.getByTestId('save-semantic-button').click();
 
