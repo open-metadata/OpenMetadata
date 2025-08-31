@@ -57,7 +57,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 test.describe('Customize Landing Page Flow', () => {
   test('Check all default widget present', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    await adminPage.getByTestId('welcome-screen-close-btn').click();
     await checkAllDefaultWidgets(adminPage);
   });
 

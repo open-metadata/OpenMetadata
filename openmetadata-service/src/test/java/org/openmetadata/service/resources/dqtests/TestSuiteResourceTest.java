@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -68,7 +69,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 

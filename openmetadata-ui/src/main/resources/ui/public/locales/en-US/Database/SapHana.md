@@ -22,9 +22,9 @@ ALTER USER openmetadata DISABLE PASSWORD LIFETIME;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-You can find further information on the SAP Hana connector in the [docs](https://docs.open-metadata.org/connectors/database/sap-hana).
+You can find further information on the SAP Hana connector in the <a href="https://docs.open-metadata.org/connectors/database/sap-hana" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -37,7 +37,7 @@ $$section
 ### Connection $(id="connection")
 We support two possible connection types:
 1. **SQL Connection**, where you will the username, password and host.
-2. **HDB User Store** [connection](https://help.sap.com/docs/SAP_HANA_PLATFORM/b3ee5778bc2e4a089d3299b82ec762a7/dd95ac9dbb571014a7d7f0234d762fdb.html?version=2.0.05&locale=en-US). Note that the HDB Store will need to be locally available to the instance running the ingestion process. If you are unsure about this setting, you can run the ingestion process passing the usual SQL connection details.
+2. **HDB User Store** <a href="https://help.sap.com/docs/SAP_HANA_PLATFORM/b3ee5778bc2e4a089d3299b82ec762a7/dd95ac9dbb571014a7d7f0234d762fdb.html?version=2.0.05&locale=en-US" target="_blank">connection</a>. Note that the HDB Store will need to be locally available to the instance running the ingestion process. If you are unsure about this setting, you can run the ingestion process passing the usual SQL connection details.
 $$
 
 ## SQL Connection

@@ -97,6 +97,7 @@ export interface Connection {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**
