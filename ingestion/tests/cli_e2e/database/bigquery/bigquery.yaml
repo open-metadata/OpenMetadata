@@ -5,6 +5,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      billingProjectId: $E2E_BQ_PROJECT_ID2
       taxonomyProjectID:  
         - $E2E_BQ_PROJECT_ID
         - $E2E_BQ_PROJECT_ID2

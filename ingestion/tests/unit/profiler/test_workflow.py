@@ -67,6 +67,7 @@ TABLE = Table(
     databaseSchema=EntityReference(
         id=uuid.uuid4(), name="schema", type="databaseSchema"
     ),
+    serviceType="BigQuery",
     tableProfilerConfig=TableProfilerConfig(
         profileSample=80.0,
     ),  # type: ignore
