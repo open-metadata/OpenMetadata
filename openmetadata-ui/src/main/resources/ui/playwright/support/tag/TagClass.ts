@@ -70,6 +70,7 @@ export class TagClass {
       this.responseData.classification.displayName
     );
     await page.getByTestId(this.data.name).waitFor({ state: 'visible' });
+    await page.getByText(this.data.displayName).waitFor({ state: 'attached' });
     await page.getByTestId(this.data.name).click();
     await page.waitForLoadState('networkidle');
   }
