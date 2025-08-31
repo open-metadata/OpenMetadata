@@ -97,13 +97,31 @@ bootstrap/sql/migrations/
 - `MigrationFile`: Handler for native OpenMetadata migrations
 - `MigrationProcess`: Executes individual migration steps
 
+## SQL Statement Parsing
+
+**Important**: While OpenMetadata has removed Flyway as the migration framework, we still use **Flyway's SQL parsers** for reliable statement splitting:
+
+- **MySQL**: Uses `org.flywaydb.database.mysql.MySQLParser`
+- **PostgreSQL**: Uses `org.flywaydb.database.postgresql.PostgreSQLParser`
+
+This ensures proper handling of:
+- Complex SQL statements with string literals containing semicolons
+- Comments (both `--` and `/* */` style)
+- Escaped characters and quotes
+- Database-specific SQL syntax
+
+The parsers split SQL files into individual statements via `SqlStatementIterator`, which is far more reliable than simple string splitting.
+
+**Dependencies**: Requires `flyway-core` and `flyway-mysql` for SQL parsing only (not migration management).
+
 ## Key Design Decisions
 
-1. **Backward Compatibility**: Flyway migrations continue to work during transition period
-2. **Single Source of Truth**: All migrations are tracked in `SERVER_CHANGE_LOG` regardless of type
-3. **Database Agnostic**: Separate migration files for MySQL and PostgreSQL
-4. **Execution Order**: Flyway → Native → Extensions ensures proper dependency resolution
-5. **Migration Tracking**: v000 Flyway migration creates the tracking infrastructure before any other migrations
+1. **Hybrid Approach**: Custom migration management + Flyway SQL parsing for reliability
+2. **Backward Compatibility**: Flyway migrations continue to work during transition period
+3. **Single Source of Truth**: All migrations are tracked in `SERVER_CHANGE_LOG` regardless of type
+4. **Database Agnostic**: Separate migration files for MySQL and PostgreSQL
+5. **Execution Order**: Flyway → Native → Extensions ensures proper dependency resolution
+6. **Migration Tracking**: v000 Flyway migration creates the tracking infrastructure before any other migrations
 
 ## Future Roadmap
 
