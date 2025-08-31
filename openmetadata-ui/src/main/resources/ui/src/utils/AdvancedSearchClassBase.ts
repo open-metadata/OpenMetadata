@@ -786,6 +786,19 @@ class AdvancedSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityFields.ENTITY_TYPE_KEYWORD]: {
+        label: t('label.entity-type-plural', { entity: t('label.entity') }),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex,
+            entityField: EntityFields.ENTITY_TYPE_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityFields.SUGGESTED_DESCRIPTION]: {
         label: t('label.suggested-description'),
         type: 'select',

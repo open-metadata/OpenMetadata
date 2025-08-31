@@ -38,7 +38,8 @@ export enum AdvancedFields {
 export enum EntityFields {
   SERVICE_TYPE = 'serviceType',
   DATA_MODEL_TYPE = 'dataModelType',
-  ENTITY_TYPE = 'entityType.keyword',
+  ENTITY_TYPE = 'entityType',
+  ENTITY_TYPE_KEYWORD = 'entityType.keyword',
   TABLE_TYPE = 'tableType',
   COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
