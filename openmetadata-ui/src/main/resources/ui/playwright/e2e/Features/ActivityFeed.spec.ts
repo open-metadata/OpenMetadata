@@ -16,7 +16,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { navigateToCustomizeLandingPage } from '../../utils/customizeLandingPage';
 import { selectPersona } from '../../utils/customizeNavigation';
 
@@ -117,7 +117,6 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
   });
 
   test('renders widget wrapper and header with sort dropdown', async ({
