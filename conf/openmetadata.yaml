@@ -245,7 +245,7 @@ database:
     wrapperDialect: ${DB_AWS_WRAPPER_DIALECT:aurora-pg}
     
     # Reader selection strategy for read/write splitting
-    readerHostSelectorStrategy: ${DB_AWS_READER_HOST_SELECTOR_STRATEGY:-leastConnections}
+    readerHostSelectorStrategy: ${DB_AWS_READER_HOST_SELECTOR_STRATEGY:-roundRobin}
     
     # Read/Write splitting configuration
     readWriteSplitting.readerAny: ${DB_AWS_RWS_READER_ANY:-true}
