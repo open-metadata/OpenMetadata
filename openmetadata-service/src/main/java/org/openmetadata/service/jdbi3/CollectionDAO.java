@@ -916,7 +916,6 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void update(@BindUUID("id") UUID id, @Bind("json") String json);
 
-    @ReadOnly
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
@@ -1610,7 +1609,6 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
-    @ReadOnly
     @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
     long getTotalRelationshipCount();
 
@@ -2977,7 +2975,6 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int countAllEventsWithStatuses(@Bind("id") String id);
 
-    @ReadOnly
     @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
     int countFailedEventsById(@Bind("id") String id);
 
@@ -5268,11 +5265,9 @@ public interface CollectionDAO {
         @Bind("afterId") String afterId,
         @Bind("relation") int relation);
 
-    @ReadOnly
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
 
-    @ReadOnly
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
     int checkUserNameExists(@Bind("name") String name);
 
@@ -6533,12 +6528,10 @@ public interface CollectionDAO {
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
-    @ReadOnly
     @SqlQuery("SELECT configType,json FROM openmetadata_settings")
     @RegisterRowMapper(SettingsRowMapper.class)
     List<Settings> getAllConfig() throws StatementException;
 
-    @ReadOnly
     @SqlQuery("SELECT configType, json FROM openmetadata_settings WHERE configType = :configType")
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;

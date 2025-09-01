@@ -239,7 +239,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     Properties props = config.getDataSourceProperties();
 
     // Set default AWS JDBC Driver properties
-    props.put("wrapperPlugins", "readWriteSplitting,failover2,efm2");
+    props.put("wrapperPlugins", "readWriteSplitting,failover,efm2");
     props.put("wrapperLoggerLevel", "INFO");
     props.put("wrapperDialect", "aurora-pg");
 
@@ -247,7 +247,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.put("readWriteSplitting.readerAny", "true");
     props.put("readWriteSplitting.connectionPoolSize", "10");
     props.put("readWriteSplitting.maxIdleTime", "300000");
-    props.put("readerHostSelectorStrategy", "leastConnections");
+    props.put("readWriteSplittingConnectionStrategy", "leastConnections");
 
     // Default failover configuration
     props.put("failover.enableClusterAwareFailover", "true");
@@ -268,12 +268,13 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
             || key.startsWith("readWriteSplitting")
             || key.startsWith("failover.")
             || key.startsWith("efm2.")
-            || key.equals("readerHostSelectorStrategy")) {
+            || key.equals("clusterId")
+            || key.equals("clusterRegion")) {
           props.put(key, entry.getValue());
         }
       }
     }
-
+    
     // CRITICAL: Remove conflicting PostgreSQL properties that prevent AWS driver read replica usage
     // These properties interfere with AWS JDBC driver's read/write splitting
     props.remove("targetServerType");
