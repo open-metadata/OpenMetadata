@@ -61,8 +61,8 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  FluffyType as ConfigType,
   CreateIngestionPipeline,
+  FluffyType as ConfigType,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
@@ -594,7 +594,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: SearchIndex.TABLE,
-          includeFields: TABLE_SEARCH_FIELDS,
           fetchSource: true,
           trackTotalHits: true,
         });
@@ -613,6 +612,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           return {
             label: hit._source.fullyQualifiedName,
             value: hit._source.fullyQualifiedName,
+            onclick: () => {
+              handleActiveField('root/selected-entity');
+            },
             data: hit._source,
           };
         });
@@ -1090,11 +1092,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
-              id="root/table"
+              id={selectedTable ? `root/selected-entity` : 'root/table'}
               notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
               })}
+              onChange={(value) =>
+                handleActiveField(value ? `root/selected-entity` : 'root/table')
+              }
             />
           </Form.Item>
 
@@ -1397,6 +1402,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <div className="drawer-doc-panel service-doc-panel markdown-parser">
           <ServiceDocPanel
             activeField={activeField}
+            selectedEntity={selectedTableData}
             serviceName={TEST_CASE_FORM}
             serviceType={OPEN_METADATA as ServiceCategory}
           />

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { first, last } from 'lodash';
+import { first, last, noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,16 +22,18 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './service-doc-panel.less';
-
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
+  selectedEntity?: SearchedDataProps['data'][number]['_source'];
 }
 
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
@@ -40,6 +42,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   activeField,
   isWorkflow,
   workflowType,
+  selectedEntity,
 }) => {
   const { i18n } = useTranslation();
 
@@ -149,7 +152,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         const element = document.querySelector(`[data-id="${fieldName}"]`);
         if (element) {
           element.scrollIntoView({
-            block: 'center',
+            block: fieldName === 'selected-entity' ? 'start' : 'center',
             behavior: 'smooth',
             inline: 'center',
           });
@@ -161,12 +164,25 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   const docsPanel = useMemo(() => {
     return (
-      <RichTextEditorPreviewer
-        enableSeeMoreVariant={false}
-        markdown={markdownContent}
-      />
+      <>
+        <div className="entity-summary-in-docs" data-id="selected-entity">
+          {serviceName === 'TestCaseForm' && selectedEntity && (
+            <EntitySummaryPanel
+              entityDetails={{
+                details: selectedEntity,
+              }}
+              handleClosePanel={noop}
+            />
+          )}
+        </div>
+
+        <RichTextEditorPreviewer
+          enableSeeMoreVariant={false}
+          markdown={markdownContent}
+        />
+      </>
     );
-  }, [markdownContent]);
+  }, [markdownContent, serviceName, selectedEntity]);
 
   if (isLoading) {
     return <Loader />;
