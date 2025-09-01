@@ -68,18 +68,26 @@ test.describe('Explore Sort Order Filter', () => {
       await page.waitForLoadState('networkidle');
 
       await page.getByRole('button', { name: 'Data Assets' }).click();
-
+      await page.waitForResponse('api/v1/search/aggregate?*');
       await page.waitForSelector(
         'data-testid="drop-down-menu" data-testid="loader"',
         {
           state: 'detached',
         }
       );
-
-      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
-        state: 'visible',
-      });
-      await page.getByTestId(`${filter}-checkbox`).check();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('search-input')
+        .fill(filter.toLowerCase());
+      await page.waitForResponse('api/v1/search/aggregate?*');
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
+      await page.waitForSelector(
+        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
+        {
+          state: 'visible',
+        }
+      );
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
@@ -94,10 +102,13 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
 
-      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
-        state: 'visible',
-      });
-      await page.getByTestId(`${filter}-checkbox`).uncheck();
+      await page.waitForSelector(
+        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
+        {
+          state: 'visible',
+        }
+      );
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
       await page.getByTestId('update-btn').click();
 
       await afterAction();
