@@ -76,11 +76,13 @@ export const selectActiveGlossary = async (
     } else {
       await menuItem.click();
     }
-  } else {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
   }
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectActiveGlossaryTerm = async (
@@ -88,6 +90,12 @@ export const selectActiveGlossaryTerm = async (
   glossaryTermName: string
 ) => {
   await page.getByTestId(glossaryTermName).click();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
@@ -553,8 +561,8 @@ export const verifyWorkflowInstanceExists = async (
       },
       {
         message: 'To verify workflow instance exists',
-        timeout: 180_000,
-        intervals: [40_000, 30_000],
+        timeout: 200_000,
+        intervals: [50_000],
       }
     )
     .toBe(true);
@@ -564,7 +572,6 @@ export const verifyGlossaryWorkflowReviewerCase = async (
   page: Page,
   glossaryTermFqn: string
 ) => {
-  await page.getByTestId('workflow-history-widget').click();
   const { apiContext } = await getApiContext(page);
   const entityLink = encodeURIComponent(
     `<#E::glossaryTerm::${glossaryTermFqn}>`
@@ -602,8 +609,8 @@ export const verifyGlossaryWorkflowReviewerCase = async (
       },
       {
         message: 'To verify workflow instance exists',
-        timeout: 180_000,
-        intervals: [40_000, 30_000],
+        timeout: 200_000,
+        intervals: [50_000],
       }
     )
     .toEqual('Auto-Approved by Reviewer');

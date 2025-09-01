@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -71,6 +72,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -95,6 +97,7 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -1016,6 +1019,83 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
     assertFalse(
         retrievedEntityTypes.contains("test"),
         "The test entity type should not be added to allowedFields");
+  }
+
+  @Test
+  void testGetEntityRulesSettingByType() throws HttpResponseException {
+    // Test table entity type - should include only enabled rules applicable to tables
+    List<SemanticsRule> tableRules = getEntityRules("table");
+
+    assertFalse(tableRules.isEmpty(), "Table rules should not be empty");
+
+    // Should contain general enabled rules
+    assertTrue(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Should contain general ownership rule");
+
+    assertTrue(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Should contain domains rule");
+
+    // Should NOT contain disabled rules (even if they are table-specific)
+    assertFalse(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Data Products are not allowed")),
+        "Should not contain disabled data products rule");
+
+    assertFalse(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Tables can only have a single Glossary Term")),
+        "Should not contain disabled table-specific glossary term rule");
+
+    // Test dashboard entity type - should only get general enabled rules
+    List<SemanticsRule> dashboardRules = getEntityRules("dashboard");
+
+    assertFalse(dashboardRules.isEmpty(), "Dashboard rules should not be empty");
+
+    // Should contain general enabled rules
+    assertTrue(
+        dashboardRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Dashboard should get ownership rule");
+
+    assertTrue(
+        dashboardRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Dashboard should get domains rule");
+
+    // Test team entity type - should get rules but exclude those that ignore team
+    List<SemanticsRule> teamRules = getEntityRules("team");
+
+    assertFalse(teamRules.isEmpty(), "Team rules should not be empty");
+
+    // Should contain general ownership rule
+    assertTrue(
+        teamRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Team should get ownership rule");
+
+    // Should NOT contain domains rule since team is in ignoredEntities
+    assertFalse(
+        teamRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Team should not get domains rule as it's in ignored entities");
+  }
+
+  private static List<SemanticsRule> getEntityRules(String entityType)
+      throws HttpResponseException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    WebTarget target = getResource("system/settings/entityRulesSettings/" + entityType);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    String responseString = response.readEntity(String.class);
+    try {
+      return objectMapper.readValue(responseString, new TypeReference<List<SemanticsRule>>() {});
+    } catch (Exception e) {
+      throw new HttpResponseException(
+          500, "Failed to parse " + entityType + " response: " + e.getMessage());
+    }
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {

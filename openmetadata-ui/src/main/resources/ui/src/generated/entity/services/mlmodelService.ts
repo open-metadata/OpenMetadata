@@ -222,6 +222,7 @@ export interface Connection {
      * location/region of google cloud project
      */
     location?: string;
+    [property: string]: any;
 }
 
 /**
