@@ -1471,7 +1471,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
   }
 
-  private void dropAllTables() throws Exception {
+  // This was before handled via flyway's clean command.
+  private void dropAllTables() {
     try (Handle handle = jdbi.open()) {
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
       if (connType == ConnectionType.MYSQL) {
