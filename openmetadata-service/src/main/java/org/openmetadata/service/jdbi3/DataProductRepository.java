@@ -217,7 +217,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
 
-    EntityUtil.populateEntityReferences(request.getAssets());
+    ArrayList<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
+    EntityUtil.populateEntityReferences(assets);
 
     // Get the data product reference for validation
     DataProduct dataProduct = find(entityId, ALL);
@@ -225,12 +226,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Fetch all asset entities in bulk for validation
     List<EntityInterface> assetEntities = new ArrayList<>();
-    if (isAdd && !request.getAssets().isEmpty()) {
-      assetEntities = Entity.getEntities(request.getAssets(), "domains,dataProducts", ALL);
+    if (isAdd && !assets.isEmpty()) {
+      assetEntities = Entity.getEntities(assets, "domains,dataProducts", ALL);
     }
 
-    for (int i = 0; i < request.getAssets().size(); i++) {
-      EntityReference ref = request.getAssets().get(i);
+    for (int i = 0; i < assets.size(); i++) {
+      EntityReference ref = assets.get(i);
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       try {
