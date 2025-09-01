@@ -479,21 +479,18 @@ public abstract class OpenMetadataApplicationTest {
 
       LOG.info("Redis container started at {}:{}", redisHost, redisPort);
 
-      // Add Redis configuration overrides
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
+      // Add Redis configuration overrides for the new cache system
+      // Note: redis.url should be host:port without the redis:// scheme
+      String redisUrl = String.format("%s:%d", redisHost, redisPort);
+      configOverrides.add(ConfigOverride.config("cache.provider", "redis"));
+      configOverrides.add(ConfigOverride.config("cache.redis.url", redisUrl));
+      configOverrides.add(ConfigOverride.config("cache.redis.keyspace", "om:test"));
+      configOverrides.add(ConfigOverride.config("cache.redis.passwordRef", "test-password"));
+      configOverrides.add(ConfigOverride.config("cache.redis.connectTimeoutMs", "2000"));
+      configOverrides.add(ConfigOverride.config("cache.redis.poolSize", "16"));
+      configOverrides.add(ConfigOverride.config("cache.entityTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.relationshipTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.tagTtlSeconds", "900"));
 
       LOG.info("Redis configuration overrides added");
     } else {

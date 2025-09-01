@@ -458,3 +458,83 @@ rdf:
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+
+# Cache Configuration
+# Caching layer for entity metadata, relationships, and tag usage to reduce database load
+# Default: Disabled (uses NoopCacheProvider)
+cache:
+  # Cache provider: none (default) or redis
+  provider: ${CACHE_PROVIDER:-none}
+  
+  # TTL (Time To Live) settings in seconds
+  entityTtlSeconds: ${CACHE_ENTITY_TTL:-3600}             # 1 hour for entities
+  relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-3600} # 1 hour for relationships
+  tagTtlSeconds: ${CACHE_TAG_TTL:-3600}                   # 1 hour for tags
+  
+  # Redis configuration
+  redis:
+    # Redis connection URL
+    # Standalone: redis://localhost:6379
+    # AWS ElastiCache: redis://my-cluster.abc123.cache.amazonaws.com:6379
+    url: ${CACHE_REDIS_URL:-redis://localhost:6379}
+    
+    # Authentication for standalone Redis
+    username: ${CACHE_REDIS_USERNAME:-}
+    passwordRef: ${CACHE_REDIS_PASSWORD:-}  # Reference to password in secrets manager
+    
+    # Key namespace prefix (useful for multi-tenant deployments)
+    keyspace: ${CACHE_REDIS_KEYSPACE:-"om:prod"}
+    
+    # Connection pool settings
+    poolSize: ${CACHE_REDIS_POOL_SIZE:-64}
+    connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
+    
+    # AWS ElastiCache IAM Authentication (only if using ElastiCache)
+    useIamAuth: ${CACHE_REDIS_USE_IAM:-false}
+    awsRegion: ${CACHE_REDIS_AWS_REGION:-}
+    awsUseInstanceProfile: ${CACHE_REDIS_AWS_INSTANCE_PROFILE:-true}
+    # If not using instance profile, provide credentials:
+    awsAccessKey: ${AWS_ACCESS_KEY_ID:-}
+    awsSecretKey: ${AWS_SECRET_ACCESS_KEY:-}
+    tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes
+
+# Example configurations:
+#
+# 1. Cache disabled (default for development/testing)
+#    cache:
+#      provider: none
+#
+# 2. Standalone Redis with password authentication
+#    cache:
+#      provider: redis
+#      redis:
+#        url: redis://localhost:6379
+#        passwordRef: ${REDIS_PASSWORD}
+#
+# 2b. Standalone Redis with username and password authentication
+#    cache:
+#      provider: redis
+#      redis:
+#        url: redis://localhost:6379
+#        username: ${REDIS_USERNAME}
+#        passwordRef: ${REDIS_PASSWORD}
+#
+# 3. AWS ElastiCache with IAM authentication (using EC2 instance profile)
+#    cache:
+#      provider: redis
+#      redis:
+#        url: redis://my-cluster.abc123.cache.amazonaws.com:6379
+#        useIamAuth: true
+#        awsRegion: us-west-2
+#        awsUseInstanceProfile: true
+#
+# 4. AWS ElastiCache with IAM authentication (using access keys)
+#    cache:
+#      provider: redis
+#      redis:
+#        url: redis://my-cluster.abc123.cache.amazonaws.com:6379
+#        useIamAuth: true
+#        awsRegion: us-west-2
+#        awsUseInstanceProfile: false
+#        awsAccessKey: ${AWS_ACCESS_KEY_ID}
+#        awsSecretKey: ${AWS_SECRET_ACCESS_KEY}

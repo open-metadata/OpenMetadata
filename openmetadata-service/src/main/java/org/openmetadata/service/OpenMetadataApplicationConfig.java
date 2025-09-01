@@ -154,6 +154,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
 
+  @JsonProperty("cache")
+  private org.openmetadata.service.cache.CacheConfig cacheConfig;
+
+  public org.openmetadata.service.cache.CacheConfig getCacheConfig() {
+    if (cacheConfig == null) {
+      cacheConfig = new org.openmetadata.service.cache.CacheConfig();
+    }
+    return cacheConfig;
+  }
+
   @Override
   public String toString() {
     return "catalogConfig{"

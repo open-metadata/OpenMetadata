@@ -1,0 +1,94 @@
+# Cache Configuration for OpenMetadata
+# This is a sample configuration for enabling Redis cache
+
+# Default configuration (cache disabled)
+cache:
+  provider: none  # Options: none, redis
+
+---
+
+# Redis Standalone Configuration
+cache:
+  provider: redis
+  entityTtlSeconds: 1800
+  relationshipTtlSeconds: 1800
+  tagTtlSeconds: 1800
+  
+  redis:
+    url: redis://localhost:6379
+    cluster: false
+    keyspace: "om:prod"
+    connectTimeoutMs: 2000
+    soTimeoutMs: 2000
+    poolSize: 64
+    compression: none
+    usePipelining: true
+    healthCheckIntervalSec: 15
+
+---
+
+# Redis with Password Authentication
+cache:
+  provider: redis
+  redis:
+    url: redis://redis-server:6379
+    passwordRef: ${REDIS_PASSWORD:-}  # Can be set via environment variable
+    keyspace: "om:prod"
+
+---
+
+# AWS ElastiCache with IAM Authentication
+cache:
+  provider: redis
+  redis:
+    url: redis://my-cluster.abc123.cache.amazonaws.com:6379
+    cluster: false
+    keyspace: "om:prod"
+    useIamAuth: true
+    awsRegion: us-west-2
+    awsUseInstanceProfile: true  # Use EC2 instance profile
+    tokenRefreshIntervalSeconds: 900  # Refresh token every 15 minutes
+
+---
+
+# AWS ElastiCache with IAM Role Assumption
+cache:
+  provider: redis
+  redis:
+    url: redis://my-cluster.abc123.cache.amazonaws.com:6379
+    cluster: false
+    keyspace: "om:prod"
+    useIamAuth: true
+    awsRegion: us-west-2
+    awsRoleArn: arn:aws:iam::123456789012:role/OpenMetadataCacheRole
+    awsAccessKey: ${AWS_ACCESS_KEY_ID}
+    awsSecretKey: ${AWS_SECRET_ACCESS_KEY}
+    tokenRefreshIntervalSeconds: 900
+
+---
+
+# Redis Cluster Configuration
+cache:
+  provider: redis
+  redis:
+    url: redis://redis-cluster-node1:7000
+    cluster: true
+    keyspace: "om:prod"
+    useIamAuth: false
+    passwordRef: ${REDIS_CLUSTER_PASSWORD:-}
+
+---
+
+# High Performance Configuration
+cache:
+  provider: redis
+  entityTtlSeconds: 900    # Lower TTL for more frequent updates
+  relationshipTtlSeconds: 900
+  tagTtlSeconds: 1800
+  
+  redis:
+    url: redis://high-perf-redis:6379
+    keyspace: "om:prod"
+    poolSize: 128         # Larger connection pool
+    compression: lz4      # Enable compression for large payloads
+    usePipelining: true

@@ -563,6 +563,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Add Micrometer bundle for Prometheus metrics
     bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
 
+    // Add Cache bundle for Redis/cache support
+    bootstrap.addBundle(new org.openmetadata.service.cache.CacheBundle());
+
     super.initialize(bootstrap);
   }
 

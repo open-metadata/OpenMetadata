@@ -181,6 +181,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
@@ -1298,6 +1299,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Invalidate cache entries when entity is deleted
+   */
+  protected void invalidateCache(T entity) {
+    try {
+      // Invalidate Guava LoadingCache entries
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
+      CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+
+      // Invalidate Redis cache entries
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        cachedEntityDao.invalidateBase(entityType, entity.getId());
+        cachedEntityDao.invalidateByName(entityType, entity.getFullyQualifiedName());
+        cachedEntityDao.invalidateReference(entityType, entity.getId());
+        cachedEntityDao.invalidateReferenceByName(entityType, entity.getFullyQualifiedName());
+      }
+
+      // Invalidate relationship caches
+      var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+      if (cachedRelationshipDao != null) {
+        cachedRelationshipDao.invalidateOwners(entityType, entity.getId());
+        cachedRelationshipDao.invalidateDomains(entityType, entity.getId());
+      }
+
+      // Invalidate tag caches
+      var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+      if (cachedTagUsageDao != null) {
+        cachedTagUsageDao.invalidateTags(entityType, entity.getId());
+      }
+
+      LOG.debug("Invalidated cache for deleted entity: {} {}", entityType, entity.getId());
+    } catch (Exception e) {
+      LOG.warn("Failed to invalidate cache for entity: {} {}", entityType, entity.getId(), e);
+    }
+  }
+
+  /**
    * Count how many relationship fields are requested to determine if batch fetching is beneficial
    */
   private int countRelationshipFields(Fields fields) {
@@ -1366,6 +1404,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Update RDF
     RdfUpdater.updateEntity(entity);
+  }
+
+  /**
+   * Write-through cache implementation - stores entity in cache after DB operations
+   */
+  protected void writeThroughCache(T entity, boolean update) {
+    try {
+      // Update Guava LoadingCache for local caching
+      CACHE_WITH_ID.put(new ImmutablePair<>(entityType, entity.getId()), entity);
+      CACHE_WITH_NAME.put(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()), entity);
+
+      // Update Redis cache for distributed caching
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        // Store entity in cache after DB write
+        String entityJson = JsonUtils.pojoToJson(entity);
+        cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+
+        // Also store by name for fast lookups
+        cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+
+        // Store relationships if present
+        var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+        if (cachedRelationshipDao != null) {
+          if (entity.getOwners() != null && !entity.getOwners().isEmpty()) {
+            String ownersJson = JsonUtils.pojoToJson(entity.getOwners());
+            cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
+          }
+          if (entity.getDomains() != null && !entity.getDomains().isEmpty()) {
+            String domainsJson = JsonUtils.pojoToJson(entity.getDomains());
+            cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
+          }
+        }
+
+        // Store tags if present
+        var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+        if (cachedTagUsageDao != null && entity.getTags() != null && !entity.getTags().isEmpty()) {
+          String tagsJson = JsonUtils.pojoToJson(entity.getTags());
+          cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+        }
+
+        // Store entity reference for fast reference lookups
+        EntityReference entityRef = entity.getEntityReference();
+        if (entityRef != null) {
+          String refJson = JsonUtils.pojoToJson(entityRef);
+          cachedEntityDao.putReference(entityType, entity.getId(), refJson);
+          cachedEntityDao.putReferenceByName(entityType, entity.getFullyQualifiedName(), refJson);
+        }
+
+        LOG.debug(
+            "Write-through cache: stored {} {} in cache (update={})",
+            entityType,
+            entity.getId(),
+            update);
+      }
+    } catch (Exception e) {
+      // Cache write failures should not fail the operation
+      LOG.warn("Failed to write entity to cache: {} {}", entityType, entity.getId(), e);
+    }
   }
 
   protected void postCreate(List<T> entities) {
@@ -2056,6 +2153,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
+
+    // Also invalidate Redis cache
+    invalidateCache(entity);
   }
 
   @Transaction
@@ -2113,6 +2213,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
     postCreate(entity);
+
+    // Write-through cache: store entity in cache after creation
+    writeThroughCache(entity, false);
+
     return entity;
   }
 
@@ -4951,12 +5055,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void storeNewVersion() {
       EntityRepository.this.storeEntity(updated, true);
+      // Write-through cache after update
+      EntityRepository.this.writeThroughCache(updated, true);
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
       EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      // Write-through cache after update
+      EntityRepository.this.writeThroughCache(updated, true);
     }
 
     public final boolean updatedByBot() {
