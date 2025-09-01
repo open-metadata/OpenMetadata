@@ -32,3 +32,31 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 1 and 128';
 
 export const DELETE_TERM = 'DELETE';
+
+export const COMMON_TIER_TAG = [
+  {
+    id: 'd9b52629-0288-4d29-99bf-ecdd1713d285',
+    name: 'Tier1',
+    fullyQualifiedName: 'Tier.Tier1',
+  },
+  {
+    id: 'fafc6234-f036-4e02-9666-20e30ceb593b',
+    name: 'Tier2',
+    fullyQualifiedName: 'Tier.Tier2',
+  },
+  {
+    id: 'de9dba4b-a92c-4a58-a3d8-93e72f315a29',
+    name: 'Tier3',
+    fullyQualifiedName: 'Tier.Tier3',
+  },
+  {
+    id: '9ee864ea-d8e6-4ecc-9017-57d1e72e501e',
+    name: 'Tier4',
+    fullyQualifiedName: 'Tier.Tier4',
+  },
+  {
+    id: '36c08b3b-85b5-460b-86b7-806857314883',
+    name: 'Tier5',
+    fullyQualifiedName: 'Tier.Tier5',
+  },
+];

@@ -42,7 +42,7 @@ export interface WorkflowStatesData {
   subInstanceStates: WorkflowInstanceState[];
 }
 export interface ServiceInsightWidgetCommonProps {
-  serviceName: string;
+  serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
 }
 export interface ChartsResults {
@@ -73,6 +73,5 @@ export interface CollateAgentLiveInfo
 export interface TotalAssetsCount {
   name: string;
   value: number;
-  fill: string;
   icon: JSX.Element;
 }

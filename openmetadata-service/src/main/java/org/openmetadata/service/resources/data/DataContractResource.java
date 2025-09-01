@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -73,7 +74,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/dataContracts")
@@ -85,7 +86,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
-  static final String FIELDS = "owners,reviewers";
+  static final String FIELDS = "owners,reviewers,extension";
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -872,8 +873,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    DataContractResult result = repository.validateContract(dataContract);
-    return Response.ok(result).build();
+    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
+    return result.toResponse();
   }
 
   // Add runId and dataContractFQN to the result if not incoming

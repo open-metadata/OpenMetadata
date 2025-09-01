@@ -88,9 +88,7 @@ openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
 
 #UI - Dereferenced Schemas
-openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/governanceSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/*
 
 
 #vscode
@@ -127,6 +125,14 @@ ingestion/tests/cli_e2e/**/*test.yaml
 
 # Tests
 **/metastore_db/
+
+# Docker volumes for local development
+docker-volumes/
+**/docker-volumes/
+docker/docker-compose-quickstart/docker-volumes/
+docker/development/docker-volumes/
+fuseki-volume/
+search-volume/
 
 # Cursor rules
 .cursorrules

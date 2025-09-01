@@ -55,8 +55,6 @@ export class EntityDataClass {
   static readonly user3 = new UserClass();
   static readonly team1 = new TeamClass();
   static readonly team2 = new TeamClass();
-  static readonly tierTag1 = new TagClass({ classification: 'Tier' });
-  static readonly tierTag2 = new TagClass({ classification: 'Tier' });
   static readonly certificationTag1 = new TagClass({
     classification: 'Certification',
   });
@@ -126,12 +124,9 @@ export class EntityDataClass {
             this.user3.create(apiContext),
             this.team1.create(apiContext),
             this.team2.create(apiContext),
-            this.tierTag1.create(apiContext),
-            this.tierTag2.create(apiContext),
             this.certificationTag1.create(apiContext),
             this.certificationTag2.create(apiContext),
             this.classification1.create(apiContext),
-            this.metric1.create(apiContext),
           ]
         : [];
 
@@ -209,6 +204,9 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.create(apiContext));
     }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.create(apiContext));
+    }
 
     await Promise.allSettled(promises);
 
@@ -243,8 +241,6 @@ export class EntityDataClass {
             this.user3.delete(apiContext),
             this.team1.delete(apiContext),
             this.team2.delete(apiContext),
-            this.tierTag1.delete(apiContext),
-            this.tierTag2.delete(apiContext),
             this.certificationTag1.delete(apiContext),
             this.certificationTag2.delete(apiContext),
             this.classification1.delete(apiContext),
@@ -252,7 +248,6 @@ export class EntityDataClass {
             this.dataProduct1.delete(apiContext),
             this.dataProduct2.delete(apiContext),
             this.dataProduct3.delete(apiContext),
-            this.metric1.delete(apiContext),
           ]
         : [];
 
@@ -329,6 +324,9 @@ export class EntityDataClass {
     }
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.delete(apiContext));
     }
 
     return await Promise.allSettled(promises);

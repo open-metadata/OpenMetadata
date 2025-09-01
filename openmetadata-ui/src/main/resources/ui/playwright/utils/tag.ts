@@ -282,14 +282,12 @@ export const addTagToTableColumn = async (
     tagName,
     tagFqn,
     tagDisplayName,
-    tableId,
     columnNumber,
     rowName,
   }: {
     tagName: string;
     tagFqn: string;
     tagDisplayName: string;
-    tableId: string;
     columnNumber: number;
     rowName: string;
   }
@@ -304,11 +302,7 @@ export const addTagToTableColumn = async (
     page.locator('[data-testid="tag-selector"] > .ant-select-selector')
   ).toContainText(tagDisplayName);
 
-  const saveAssociatedTag = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'PATCH' &&
-      response.url().includes(`/api/v1/tables/${tableId}`)
-  );
+  const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 

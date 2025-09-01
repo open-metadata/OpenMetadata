@@ -266,7 +266,6 @@ const ContractDetail: React.FC<{
         setValidateLoading(true);
         await validateContractById(contract.id);
         showSuccessToast(t('message.contract-validation-trigger-successfully'));
-        fetchLatestContractResults();
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {

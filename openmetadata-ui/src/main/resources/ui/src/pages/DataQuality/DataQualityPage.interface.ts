@@ -12,8 +12,8 @@
  */
 
 import { EntityType } from '../../enums/entity.enum';
+import { TestCaseType } from '../../enums/TestSuite.enum';
 import { TestCaseStatus, TestSummary } from '../../generated/tests/testCase';
-import { TestCaseType } from '../../rest/testAPI';
 
 export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',

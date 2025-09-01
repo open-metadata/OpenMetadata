@@ -28,12 +28,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.ResultList;
 
 @ExtendWith(MockitoExtension.class)
 class UserMetricsServletTest {

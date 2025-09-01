@@ -14,17 +14,37 @@ import { test } from '@playwright/test';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
+
+const creationConfig: EntityDataClassCreationConfig = {
+  all: true,
+  table: true,
+  entityDetails: true,
+  topic: true,
+  dashboard: true,
+  mlModel: true,
+  pipeline: true,
+  dashboardDataModel: true,
+  apiCollection: true,
+  searchIndex: true,
+  container: true,
+  storedProcedure: true,
+  apiEndpoint: true,
+  database: true,
+  databaseSchema: true,
+  metric: true,
+};
 
 test.describe('Explore Sort Order Filter', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
+    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await afterAction();
   });
 
@@ -56,11 +76,29 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
 
+      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
+        state: 'visible',
+      });
       await page.getByTestId(`${filter}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
+
+      await page.getByRole('button', { name: 'Data Assets' }).click();
+
+      await page.waitForSelector(
+        'data-testid="drop-down-menu" data-testid="loader"',
+        {
+          state: 'detached',
+        }
+      );
+
+      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
+        state: 'visible',
+      });
+      await page.getByTestId(`${filter}-checkbox`).uncheck();
+      await page.getByTestId('update-btn').click();
 
       await afterAction();
     });

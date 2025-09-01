@@ -31,6 +31,7 @@ import org.openmetadata.service.util.AsciiTable;
 public class MigrationWorkflow {
   public static final String SUCCESS_MSG = "Success";
   public static final String FAILED_MSG = "Failed due to : ";
+  public static final String CURRENT = "Current";
   private List<MigrationProcess> migrations;
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
@@ -269,7 +270,12 @@ public class MigrationWorkflow {
     printToAsciiTable(columns.stream().toList(), allRows, "No Server Migration To be Run");
   }
 
-  public void runMigrationWorkflows() {
+  /**
+   * Run the Migration Workflow
+   * @param computeAllContext If true, compute the context for each executed migration. Otherwise, we'll only compute
+   *                          the context for the initial and last state of the database.
+   */
+  public void runMigrationWorkflows(boolean computeAllContext) {
     List<String> columns =
         Arrays.asList(
             "Version",
@@ -281,12 +287,18 @@ public class MigrationWorkflow {
     List<List<String>> allRows = new ArrayList<>();
     try (Handle transactionHandler = jdbi.open()) {
       MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
-      if (currentMaxMigrationVersion.isPresent()) {
-        LOG.debug("Current Max version {}", currentMaxMigrationVersion.get());
-        context.computeInitialContext(currentMaxMigrationVersion.get());
-      } else {
-        context.computeInitialContext("1.1.0");
-      }
+      String currentVersion = currentMaxMigrationVersion.orElse(CURRENT);
+      LOG.debug("Current Max version {}", currentVersion);
+      // Add the current version context
+      context.computeInitialContext(currentVersion);
+      allRows.add(
+          List.of(
+              currentVersion,
+              CURRENT,
+              CURRENT,
+              CURRENT,
+              CURRENT,
+              context.getMigrationContext().get(currentVersion).getResults().toString()));
       LOG.info("[MigrationWorkflow] WorkFlow Started");
       try {
         for (MigrationProcess process : migrations) {
@@ -311,8 +323,9 @@ public class MigrationWorkflow {
             // Post DDL Scripts
             runPostDDLChanges(row, process);
 
-            // Build Context
-            context.computeMigrationContext(process);
+            // Build Context only if required (during ops), or if it's the last migration
+            context.computeMigrationContext(
+                process, computeAllContext || migrations.indexOf(process) == migrations.size() - 1);
             row.add(
                 context.getMigrationContext().get(process.getVersion()).getResults().toString());
 

@@ -15,6 +15,7 @@ import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
@@ -29,7 +30,6 @@ import {
   DataQualityDimensions,
   TestPlatform,
 } from '../generated/tests/testDefinition';
-import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,

@@ -100,7 +100,9 @@ for (const EntityClass of entities) {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
+
         await visitLineageTab(page);
+
         await verifyColumnLayerInactive(page);
         // enable fullscreen
         await page.getByTestId('full-screen').click();

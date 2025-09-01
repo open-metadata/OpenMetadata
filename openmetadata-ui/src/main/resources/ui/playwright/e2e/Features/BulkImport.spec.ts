@@ -38,6 +38,8 @@ import {
   fillRowDetails,
   fillStoredProcedureCode,
   firstTimeGridAddRowAction,
+  performColumnSelectAndDeleteOperation,
+  performDeleteOperationOnEntity,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -878,7 +880,229 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test('Range selection', async ({ page }) => {
+  test('Keyboard Delete selection', async ({ page }) => {
+    test.slow(true);
+
+    const dbEntity = new DatabaseClass();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await dbEntity.create(apiContext);
+
+    await test.step('should export data database schema details', async () => {
+      await dbEntity.visitEntityPage(page);
+
+      const downloadPromise = page.waitForEvent('download');
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="export-button-title"]');
+      await page.fill('#fileName', dbEntity.entity.name);
+      await page.click('#submit-button');
+
+      const download = await downloadPromise;
+
+      // Wait for the download process to complete and save the downloaded file somewhere.
+      await download.saveAs('downloads/' + download.suggestedFilename());
+    });
+
+    await test.step(
+      'should import and perform edit operation on entity',
+      async () => {
+        await dbEntity.visitEntityPage(page);
+
+        await page.click('[data-testid="manage-button"] > .anticon');
+        await page.click('[data-testid="import-button-title"]');
+        const fileInput = await page.$('[type="file"]');
+        await fileInput?.setInputFiles([
+          'downloads/' + dbEntity.entity.name + '.csv',
+        ]);
+
+        // Adding manual wait for the file to load
+        await page.waitForTimeout(500);
+
+        // Adding some assertion to make sure that CSV loaded correctly
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await expect(page.getByTestId('add-row-btn')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Previous' })
+        ).toBeVisible();
+
+        // Click on first cell and edit
+        await page.click('.rdg-cell[role="gridcell"]');
+        await fillRowDetails(
+          {
+            ...databaseDetails1,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain1.responseData,
+          },
+          page,
+          undefined,
+          true
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
+          page
+        );
+
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        await validateImportStatus(page, {
+          passed: '9',
+          processed: '9',
+          failed: '0',
+        });
+
+        const rowStatus = [
+          'Entity created',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+        ];
+
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
+        await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
+
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
+        await toastNotification(page, /details updated successfully/);
+      }
+    );
+
+    await test.step(
+      'should export data database schema details after edit changes',
+      async () => {
+        await dbEntity.visitEntityPage(page);
+
+        const downloadPromise = page.waitForEvent('download');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="export-button-title"]');
+        await page.fill('#fileName', `${dbEntity.entity.name}-delete`);
+        await page.click('#submit-button');
+
+        const download = await downloadPromise;
+
+        // Wait for the download process to complete and save the downloaded file somewhere.
+        await download.saveAs('downloads/' + download.suggestedFilename());
+      }
+    );
+
+    await test.step('Perform Column Select and Delete Operation', async () => {
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
+      ]);
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
+
+      // Perform Delete Operation  on Edit Operation on Entity
+      await performColumnSelectAndDeleteOperation(page);
+    });
+
+    await test.step('Perform Cell Delete Operation and Save', async () => {
+      await page.locator('.rdg-cell-name').first().click();
+
+      // Perform Delete Operation on Edit Operation on Entity
+      await performDeleteOperationOnEntity(page);
+
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      await validateImportStatus(page, {
+        passed: '10',
+        processed: '10',
+        failed: '0',
+      });
+
+      const rowStatus = [
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+      ];
+
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
+
+    await test.step('should verify the removed value from entity', async () => {
+      await page.getByTestId('column-name').first().click();
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .getByText('No description')
+      ).toBeVisible();
+
+      await expect(
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      ).toBeVisible();
+
+      await expect(
+        page.getByTestId('glossary-container').getByTestId('add-tag')
+      ).toBeVisible();
+
+      await expect(page.getByTestId('Tier')).toContainText('No Tier');
+
+      await expect(page.getByTestId('certification-label')).toContainText(
+        'No Certification'
+      );
+
+      await expect(page.getByTestId('owner-label')).toContainText('No Owners');
+
+      await expect(page.getByTestId('no-domain-text')).toBeVisible();
+    });
+
+    await dbEntity.delete(apiContext);
+    await afterAction();
+  });
+
+  // Skip this test for now, since it is not working in AUT but working in local and CI
+  // <Mostly around the config since it is working in local and CI and not working in AUT>
+  test.skip('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
 

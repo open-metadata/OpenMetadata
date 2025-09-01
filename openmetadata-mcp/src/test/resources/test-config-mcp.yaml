@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  enableVirtualThreads: true
+  maxQueuedRequests: 1024  
 
 
 # Above configuration for running http is fine for dev and testing.
