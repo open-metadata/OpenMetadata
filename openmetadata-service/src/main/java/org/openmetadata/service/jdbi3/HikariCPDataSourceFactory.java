@@ -237,6 +237,28 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
   private void configureAWSJDBCDriver(HikariConfig config) {
     Properties props = config.getDataSourceProperties();
+
+    // Set default AWS JDBC Driver properties
+    props.put("wrapperPlugins", "readWriteSplitting,failover2,efm2");
+    props.put("wrapperLoggerLevel", "INFO");
+    props.put("wrapperDialect", "aurora-pg");
+
+    // Default read/write splitting configuration
+    props.put("readWriteSplitting.readerAny", "true");
+    props.put("readWriteSplitting.connectionPoolSize", "10");
+    props.put("readWriteSplitting.maxIdleTime", "300000");
+    props.put("readerHostSelectorStrategy", "leastConnections");
+
+    // Default failover configuration
+    props.put("failover.enableClusterAwareFailover", "true");
+    props.put("failover.clusterTopologyRefreshRateMs", "30000");
+    props.put("failover.readerFailoverTimeoutMs", "30000");
+
+    // Default enhanced failure monitoring
+    props.put("efm2.enable", "true");
+    props.put("efm2.monitoringIntervalMs", "5000");
+
+    // Override with AWS-specific properties from configuration
     Map<String, String> properties = getProperties();
     if (properties != null) {
       // Only copy AWS JDBC driver specific properties
