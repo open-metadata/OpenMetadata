@@ -71,14 +71,14 @@ const AddDataContract: React.FC<{
     contract || ({} as DataContract)
   );
 
-  const entityContractTab = useMemo(
+  const entityContractTabs = useMemo(
     () =>
       SUPPORTED_CONTRACT_TAB[entityType as keyof typeof SUPPORTED_CONTRACT_TAB],
     [entityType]
   );
 
   const [activeTab, setActiveTab] = useState(
-    entityContractTab[0]?.toString() ||
+    entityContractTabs[0]?.toString() ||
       EDataContractTab.CONTRACT_DETAIL.toString()
   );
 
@@ -126,42 +126,42 @@ const AddDataContract: React.FC<{
   );
 
   const currentActiveTabIndex = useMemo(
-    () => entityContractTab.findIndex((tab) => tab.toString() === activeTab),
-    [entityContractTab, activeTab]
+    () => entityContractTabs.findIndex((tab) => tab.toString() === activeTab),
+    [entityContractTabs, activeTab]
   );
 
   const onNext = useCallback(async () => {
     if (
       currentActiveTabIndex !== -1 &&
-      currentActiveTabIndex < entityContractTab.length - 1
+      currentActiveTabIndex < entityContractTabs.length - 1
     ) {
-      setActiveTab(entityContractTab[currentActiveTabIndex + 1].toString());
+      setActiveTab(entityContractTabs[currentActiveTabIndex + 1].toString());
     }
-  }, [setActiveTab, currentActiveTabIndex, entityContractTab]);
+  }, [setActiveTab, currentActiveTabIndex, entityContractTabs]);
 
   const onPrev = useCallback(() => {
     if (currentActiveTabIndex > 0) {
-      setActiveTab(entityContractTab[currentActiveTabIndex - 1].toString());
+      setActiveTab(entityContractTabs[currentActiveTabIndex - 1].toString());
     }
-  }, [setActiveTab, currentActiveTabIndex, entityContractTab]);
+  }, [setActiveTab, currentActiveTabIndex, entityContractTabs]);
 
   // Optimized helper functions using single index calculation
   const currentTabInfo = useMemo(() => {
     return {
       hasNext:
         currentActiveTabIndex !== -1 &&
-        currentActiveTabIndex < entityContractTab.length - 1,
+        currentActiveTabIndex < entityContractTabs.length - 1,
       nextTabLabel:
         currentActiveTabIndex !== -1 &&
-        currentActiveTabIndex < entityContractTab.length - 1
-          ? getContractTabLabel(entityContractTab[currentActiveTabIndex + 1])
+        currentActiveTabIndex < entityContractTabs.length - 1
+          ? getContractTabLabel(entityContractTabs[currentActiveTabIndex + 1])
           : '',
       prevTabLabel:
         currentActiveTabIndex > 0
-          ? getContractTabLabel(entityContractTab[currentActiveTabIndex - 1])
+          ? getContractTabLabel(entityContractTabs[currentActiveTabIndex - 1])
           : '',
     };
-  }, [currentActiveTabIndex, entityContractTab]);
+  }, [currentActiveTabIndex, entityContractTabs]);
 
   const items = useMemo(() => {
     const tabs = [
@@ -175,9 +175,11 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
         children: (
           <ContractDetailFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+            }}
             initialValues={contract}
-            isNextVisible={currentTabInfo.hasNext}
-            nextLabel={currentTabInfo.nextTabLabel}
             onChange={onFormChange}
             onNext={onNext}
           />
@@ -193,9 +195,11 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SCHEMA.toString(),
         children: (
           <ContractSchemaFormTab
-            isNextVisible={currentTabInfo.hasNext}
-            nextLabel={currentTabInfo.nextTabLabel}
-            prevLabel={currentTabInfo.prevTabLabel}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             selectedSchema={
               contract?.schema?.map((column) => column.name) || []
             }
@@ -215,10 +219,12 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SEMANTICS.toString(),
         children: (
           <ContractSemanticFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             initialValues={contract}
-            isNextVisible={currentTabInfo.hasNext}
-            nextLabel={currentTabInfo.nextTabLabel}
-            prevLabel={currentTabInfo.prevTabLabel}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -248,9 +254,9 @@ const AddDataContract: React.FC<{
       },
     ];
 
-    return tabs.filter((tab) => entityContractTab.includes(Number(tab.key)));
+    return tabs.filter((tab) => entityContractTabs.includes(Number(tab.key)));
   }, [
-    entityContractTab,
+    entityContractTabs,
     contract,
     onFormChange,
     onNext,

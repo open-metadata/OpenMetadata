@@ -40,17 +40,17 @@ export const ContractSemanticFormTab: React.FC<{
   onNext: () => void;
   onPrev: () => void;
   initialValues?: Partial<DataContract>;
-  nextLabel?: string;
-  prevLabel?: string;
-  isNextVisible?: boolean;
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
 }> = ({
   onChange,
   onNext,
   onPrev,
-  nextLabel,
-  prevLabel,
   initialValues,
-  isNextVisible = true,
+  buttonProps: { nextLabel, prevLabel, isNextVisible = true },
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();

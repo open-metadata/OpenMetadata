@@ -470,30 +470,34 @@ const ContractDetail: React.FC<{
                 </ExpandableCard>
               </Col>
 
-              <Col span={24}>
-                <ExpandableCard
-                  cardProps={{
-                    className: 'expandable-card-contract',
-                    title: (
-                      <div className="contract-card-title-container">
-                        <Typography.Text className="contract-card-title">
-                          {t('label.schema')}
-                        </Typography.Text>
-                        <Typography.Text className="contract-card-description">
-                          {t('message.expected-schema-structure-of-this-asset')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }}>
-                  <Table
-                    columns={schemaColumns}
-                    dataSource={schemaDetail}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
-                  />
-                </ExpandableCard>
-              </Col>
+              {!isEmpty(schemaDetail) && (
+                <Col span={24}>
+                  <ExpandableCard
+                    cardProps={{
+                      className: 'expandable-card-contract',
+                      title: (
+                        <div className="contract-card-title-container">
+                          <Typography.Text className="contract-card-title">
+                            {t('label.schema')}
+                          </Typography.Text>
+                          <Typography.Text className="contract-card-description">
+                            {t(
+                              'message.expected-schema-structure-of-this-asset'
+                            )}
+                          </Typography.Text>
+                        </div>
+                      ),
+                    }}>
+                    <Table
+                      columns={schemaColumns}
+                      dataSource={schemaDetail}
+                      pagination={false}
+                      rowKey="name"
+                      size="small"
+                    />
+                  </ExpandableCard>
+                </Col>
+              )}
             </Row>
           </Col>
 

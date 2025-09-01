@@ -348,6 +348,15 @@ entitiesWithDataContracts.forEach((EntityClass) => {
         await expect(
           page.getByTestId('data-contract-latest-result-btn')
         ).toContainText('Contract Failed');
+        await expect(
+          page.locator('.contract-execution-chart-container')
+        ).toBeVisible();
+
+        if (entitySupportsSchema(entityType)) {
+          await expect(page.locator('.table-container')).toBeVisible();
+        } else {
+          await expect(page.locator('.table-container')).not.toBeVisible();
+        }
 
         await addOwner({
           page,

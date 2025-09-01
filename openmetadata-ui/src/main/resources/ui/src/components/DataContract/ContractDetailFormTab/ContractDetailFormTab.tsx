@@ -24,9 +24,16 @@ export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
   onNext: () => void;
   onChange: (formData: Partial<DataContract>) => void;
-  nextLabel?: string;
-  isNextVisible?: boolean;
-}> = ({ initialValues, onNext, nextLabel, onChange, isNextVisible = true }) => {
+  buttonProps: {
+    nextLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({
+  initialValues,
+  onNext,
+  onChange,
+  buttonProps: { nextLabel, isNextVisible = true },
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
