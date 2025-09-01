@@ -13,6 +13,8 @@
 Validator for table custom SQL Query test case
 """
 
+from typing import List, Optional
+
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -39,3 +41,39 @@ class TableCustomSQLQueryValidator(
                 if len(runner.query(sql_expression))
             ]
         )
+
+    def compute_row_count(self) -> Optional[int]:
+        """Compute row count for the given column
+
+        Returns:
+            Optional[int]: Total number of rows across all dataframes
+        """
+        runner: List["DataFrame"] = self.runner  # type: ignore
+
+        if not runner:
+            return None
+
+        total_rows = 0
+        partition_expression = next(
+            (
+                param.value
+                for param in self.test_case.parameterValues
+                if param.name == "partitionExpression"
+            ),
+            None,
+        )
+        for dataframe in runner:
+            if dataframe is not None:
+                if partition_expression:
+                    try:
+                        total_rows += len(dataframe.query(partition_expression))
+                    except Exception as e:
+                        logger.error(
+                            "Error executing partition expression, "
+                            f"expression may be invalid: {partition_expression} - {e}"
+                        )
+                        return None
+                else:
+                    total_rows += len(dataframe.index)
+
+        return total_rows if total_rows > 0 else None

@@ -218,6 +218,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  PipelineServiceType.Spark,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -315,6 +316,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
+    'rootProcessingEngine',
     'name',
     'displayName',
     ...SERVICE_FILTER_PATTERN_FIELDS,

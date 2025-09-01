@@ -32,11 +32,11 @@ test.describe('SubDomain Pagination', () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
-    const { page, apiContext, afterAction } = await createNewPage(browser);
+    test.slow(true);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     await domain.create(apiContext);
-
-    await redirectToHomePage(page);
 
     const createPromises = [];
     for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {
@@ -55,15 +55,7 @@ test.describe('SubDomain Pagination', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Delete all subdomains in parallel
-    const deletePromises = subDomains.map((subDomain) =>
-      subDomain.delete(apiContext)
-    );
-    await Promise.all(deletePromises);
-
     await domain.delete(apiContext);
-
     await afterAction();
   });
 

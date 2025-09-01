@@ -44,6 +44,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.RdfTestUtils.*;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
@@ -191,6 +192,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -201,6 +203,7 @@ import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -243,7 +246,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
@@ -290,9 +292,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static final String ENTITY_LINK_MATCH_ERROR =
       "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
-  public static final String MULTIDOMAIN_RULE_ERROR =
-      "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: "
-          + "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
@@ -679,6 +678,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException;
 
   public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -689,7 +698,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getEntitySemantics()
         .forEach(
             rule -> {
-              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+              if (ruleName.equals(rule.getName())) {
                 rule.setEnabled(enable);
               }
             });
@@ -1201,8 +1210,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test
@@ -3576,7 +3585,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and update the entity with extension field intA to a new value
     JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
     jsonNode.set("intA", intAValue);
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     change = getChangeDescription(entity, MINOR_UPDATE);
     fieldUpdated(
         change,
@@ -3598,7 +3607,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
@@ -4525,6 +4534,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
+
+    // Verify entity is removed from RDF if enabled
+    // Note: Some entities like DataProduct don't support soft delete and are always hard deleted
+    boolean actuallyHardDeleted = hardDelete || !supportsSoftDelete;
+
+    if (!actuallyHardDeleted) {
+      // For soft delete, entity should still exist but marked as deleted
+      verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+    } else {
+      // For hard delete, entity should not exist in RDF
+      verifyEntityNotInRdf(entity.getFullyQualifiedName());
+    }
+
     return entity;
   }
 
@@ -4616,6 +4638,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Validate that change event was created
     validateChangeEvents(
         entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+
+    // Verify entity in RDF if enabled
+    verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+
     return entity;
   }
 
@@ -4770,6 +4796,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 
@@ -4810,6 +4854,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 

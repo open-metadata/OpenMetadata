@@ -863,7 +863,11 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col className="border-default border-radius-sm p-lg" span={24}>
-                <Space className="w-full" direction="vertical" size={16}>
+                <Space
+                  className="w-full"
+                  data-testid="loader"
+                  direction="vertical"
+                  size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
