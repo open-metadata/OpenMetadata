@@ -27,7 +27,6 @@ import {
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const creationConfig: EntityDataClassCreationConfig = {
@@ -74,7 +73,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPage(page);
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -106,7 +104,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
-    await EntityDataClass.table2.visitEntityPage(page);
     await EntityDataClass.table2.patch({
       apiContext,
       patchData: [
@@ -139,20 +136,38 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     });
 
     // Add Tier To the topic 1
-    await EntityDataClass.topic1.visitEntityPage(page);
-    await assignTier(
-      page,
-      COMMON_TIER_TAG[0].name,
-      EntityDataClass.topic1.endpoint
-    );
+    await EntityDataClass.topic1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[0].name,
+            tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Add Tier To the topic 2
-    await EntityDataClass.topic2.visitEntityPage(page);
-    await assignTier(
-      page,
-      COMMON_TIER_TAG[1].name,
-      EntityDataClass.topic2.endpoint
-    );
+    await EntityDataClass.topic2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[1].name,
+            tagFQN: COMMON_TIER_TAG[1].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Update Search Criteria here
     searchCriteria = {
