@@ -2567,38 +2567,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
-    if (!supportsDataProducts) {
-      return;
-    }
-
-    List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
-      // If no domains are being removed, nothing to do
-      return;
-    }
-
-    for (EntityReference domain : removedDomains) {
-      // Fetch domain data products
-      List<UUID> domainDataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      entityDataProducts.removeIf(
-          dataProduct -> {
-            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-            if (isNotDomainDataProduct) {
-              LOG.info(
-                  "Removing data product {} from entity {}",
-                  dataProduct.getFullyQualifiedName(),
-                  entity.getEntityReference().getType());
-            }
-            return isNotDomainDataProduct;
-          });
-    }
-  }
-
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
@@ -2773,9 +2741,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, toEntity, relationship, fromEntityType);
     ensureSingleRelationship(
         toEntity, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final EntityReference getFromEntityRef(
@@ -2784,20 +2762,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(
         entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.info(
+            "Skipping deleted entity reference in getFromEntityRef: {} {} - {}",
+            records.get(0).getType(),
+            records.get(0).getId(),
+            e.getMessage());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
-    return !records.isEmpty()
-        ? records.stream()
-            .map(fromRef -> Entity.getEntityReferenceById(fromRef.getType(), fromRef.getId(), ALL))
-            .collect(Collectors.toList())
-        : null;
+    if (!records.isEmpty()) {
+      List<EntityReference> refs = new ArrayList<>();
+      for (EntityRelationshipRecord record : records) {
+        try {
+          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
+        } catch (EntityNotFoundException e) {
+          // Skip deleted entities
+          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
+        }
+      }
+      return refs.isEmpty() ? null : refs;
+    }
+    return null;
   }
 
   public final EntityReference getToEntityRef(
@@ -2806,9 +2803,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findToRecords(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(
         entityType, fromId, records, relationship.value(), toEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public static void ensureSingleRelationship(
@@ -4103,8 +4110,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4169,8 +4174,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4207,7 +4210,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(
