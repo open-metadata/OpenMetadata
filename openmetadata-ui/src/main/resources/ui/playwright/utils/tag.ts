@@ -64,8 +64,6 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  await page.waitForLoadState('networkidle');
-
   await page.waitForSelector(
     '[data-testid="tags-container"] [data-testid="loader"]',
     { state: 'detached' }
@@ -366,7 +364,6 @@ export const verifyTagPageUI = async (
   const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
   await page.getByRole('link', { name: 'Classifications' }).click();
   await classificationPage;
-  await page.waitForLoadState('networkidle');
 };
 
 export const editTagPageDescription = async (page: Page, tag: TagClass) => {
