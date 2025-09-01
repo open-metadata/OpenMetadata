@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
-import { colors, shadows } from './colors';
+import { shadows } from './shadows';
 
-export const dataDisplayTheme: Components<Theme> = {
+export const dataDisplayTheme = (colors: any): Components<Theme> => ({
   MuiCard: {
     styleOverrides: {
       root: {
@@ -654,4 +654,4 @@ export const dataDisplayTheme: Components<Theme> = {
       },
     },
   },
-} as any;
+});

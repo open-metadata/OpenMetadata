@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
-import { colors } from './colors';
 
-export const navigationTheme: Components<Theme> = {
+export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiTabs: {
     styleOverrides: {
       root: {
@@ -349,4 +348,4 @@ export const navigationTheme: Components<Theme> = {
       },
     },
   },
-};
+});

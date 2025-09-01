@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import { FC, useEffect } from 'react';
+import { FC, useEffect, useMemo } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
@@ -38,13 +38,19 @@ import { getBasePath } from './utils/HistoryUtils';
 import { ThemeProvider } from '@mui/material/styles';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import muiTheme from './theme/mui-theme';
+import { createMuiTheme } from './theme/createMuiTheme';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
     useApplicationStore();
+
+  // Create dynamic MUI theme based on user customizations
+  const muiTheme = useMemo(
+    () => createMuiTheme(applicationConfig?.customTheme),
+    [applicationConfig?.customTheme]
+  );
 
   const fetchApplicationConfig = async () => {
     try {

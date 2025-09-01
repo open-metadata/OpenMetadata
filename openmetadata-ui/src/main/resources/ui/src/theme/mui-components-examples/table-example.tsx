@@ -28,6 +28,7 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useTheme,
 } from '@mui/material';
 import {
   ArrowLeft,
@@ -39,10 +40,10 @@ import {
   Settings01,
   Tag03,
 } from '@untitledui/icons';
-import { colors } from '../colors';
 import { ThemedCheckbox as Checkbox } from '../themed-checkbox';
 
 export function TableExample() {
+  const theme = useTheme();
   // Domain table data based on screenshot
   const domains = [
     {
@@ -205,14 +206,12 @@ export function TableExample() {
                         width: 40,
                         height: 40,
                         backgroundColor:
-                          colors[
-                            domain.iconColor as keyof typeof colors
-                          ]?.[200] || colors.gray[200],
+                          theme.palette.allShades[domain.iconColor]?.[200] ||
+                          theme.palette.allShades.gray[200],
                         color: 'white',
                         border: `1px solid ${
-                          colors[
-                            domain.iconColor as keyof typeof colors
-                          ]?.[300] || colors.gray[300]
+                          theme.palette.allShades[domain.iconColor]?.[300] ||
+                          theme.palette.allShades.gray[300]
                         }90`,
                       }}>
                       <domain.icon size={20} />
@@ -292,7 +291,9 @@ export function TableExample() {
           <Button
             color="secondary"
             size="small"
-            startIcon={<ArrowLeft style={{ color: colors.gray[400] }} />}
+            startIcon={
+              <ArrowLeft style={{ color: theme.palette.allShades.gray[400] }} />
+            }
             variant="contained">
             Previous
           </Button>
@@ -308,7 +309,11 @@ export function TableExample() {
 
           <Button
             color="secondary"
-            endIcon={<ArrowRight style={{ color: colors.gray[400] }} />}
+            endIcon={
+              <ArrowRight
+                style={{ color: theme.palette.allShades.gray[400] }}
+              />
+            }
             size="small"
             variant="contained">
             Next

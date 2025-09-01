@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { colors } from './colors';
-
-export const formTheme = {
+export const formTheme = (colors: any) => ({
   MuiTextField: {
     defaultProps: {
       variant: 'outlined',
@@ -45,6 +43,10 @@ export const formTheme = {
           color: colors.gray[700],
           margin: 0,
           padding: 0,
+
+          '&.Mui-error': {
+            color: colors.error[600],
+          },
         },
         '& .MuiInputLabel-shrink': {
           transform: 'none',
@@ -78,7 +80,7 @@ export const formTheme = {
             },
           },
           '&.Mui-focused': {
-            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px rgb(127, 86, 217) inset`,
+            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
             '& .MuiOutlinedInput-notchedOutline': {
               border: 'none',
             },
@@ -94,7 +96,7 @@ export const formTheme = {
           '&.Mui-error': {
             boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.error[300]} inset`,
             '&.Mui-focused': {
-              boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px rgb(217, 45, 32) inset`,
+              boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.error[600]} inset`,
             },
           },
         },
@@ -222,6 +224,10 @@ export const formTheme = {
           color: colors.gray[700],
           margin: 0,
           padding: 0,
+
+          '&.Mui-error': {
+            color: colors.error[600],
+          },
         },
         '& .MuiInputLabel-shrink': {
           transform: 'none',
@@ -260,7 +266,7 @@ export const formTheme = {
         },
 
         '&.Mui-focused': {
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px rgb(127, 86, 217) inset`,
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
         },
 
         '&.Mui-disabled': {
@@ -272,7 +278,7 @@ export const formTheme = {
         '&.Mui-error': {
           boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.error[300]} inset`,
           '&.Mui-focused': {
-            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px rgb(217, 45, 32) inset`,
+            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.error[600]} inset`,
           },
         },
       },
@@ -553,4 +559,4 @@ export const formTheme = {
       },
     },
   },
-};
+});

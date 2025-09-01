@@ -13,15 +13,16 @@
 import type { Components, Theme } from '@mui/material/styles';
 import {
   buttonConstants,
-  colors,
   createIconButtonColorVariant,
   createIconButtonSizeVariant,
-} from './colors';
+} from './buttonConstants';
 
-export const buttonTheme: Pick<
+export const buttonTheme = (
+  colors: any
+): Pick<
   Components<Theme>,
   'MuiButtonBase' | 'MuiButton' | 'MuiIconButton' | 'MuiButtonGroup'
-> = {
+> => ({
   MuiButtonBase: {
     defaultProps: {
       disableRipple: true,
@@ -243,7 +244,7 @@ export const buttonTheme: Pick<
           outlineOffset: '2px',
         },
 
-        ...createIconButtonColorVariant('secondary'),
+        ...createIconButtonColorVariant('secondary', colors),
 
         ...createIconButtonSizeVariant('medium'),
       },
@@ -252,8 +253,8 @@ export const buttonTheme: Pick<
       sizeMedium: createIconButtonSizeVariant('medium'),
       sizeLarge: createIconButtonSizeVariant('large'),
 
-      colorPrimary: createIconButtonColorVariant('tertiary'),
-      colorSecondary: createIconButtonColorVariant('secondary'),
+      colorPrimary: createIconButtonColorVariant('tertiary', colors),
+      colorSecondary: createIconButtonColorVariant('secondary', colors),
     },
   },
   MuiButtonGroup: {
@@ -346,4 +347,4 @@ export const buttonTheme: Pick<
       },
     },
   },
-};
+});

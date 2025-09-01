@@ -10,19 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox as MuiCheckbox, CheckboxProps } from '@mui/material';
+import {
+  Checkbox as MuiCheckbox,
+  CheckboxProps,
+  useTheme,
+} from '@mui/material';
 import React from 'react';
 
 // Small size checkbox icons (16x16, size-4)
-const CheckboxBlankIcon = ({ disabled }: { disabled?: boolean }) => {
+const CheckboxBlankIcon = ({
+  disabled,
+  theme,
+}: {
+  disabled?: boolean;
+  theme: any;
+}) => {
   return (
     <div
       style={{
         width: 16,
         height: 16,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(255 255 255)', // Gray-50 when disabled, white when normal
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.background.paper,
         borderRadius: 4,
-        boxShadow: '0 0 0 1px rgb(213 215 218) inset', // Always gray-300 border
+        boxShadow: `0 0 0 1px ${theme.palette.grey[300]} inset`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -33,15 +45,25 @@ const CheckboxBlankIcon = ({ disabled }: { disabled?: boolean }) => {
   );
 };
 
-const CheckboxCheckedIcon = ({ disabled }: { disabled?: boolean }) => {
+const CheckboxCheckedIcon = ({
+  disabled,
+  theme,
+}: {
+  disabled?: boolean;
+  theme: any;
+}) => {
   return (
     <div
       style={{
         width: 16,
         height: 16,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(127 86 217)', // Gray-50 when disabled, brand-600 when enabled
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.primary.main,
         borderRadius: 4,
-        boxShadow: disabled ? '0 0 0 1px rgb(213 215 218) inset' : 'none', // Gray-300 border when disabled, no border when enabled
+        boxShadow: disabled
+          ? `0 0 0 1px ${theme.palette.grey[300]} inset`
+          : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -56,7 +78,11 @@ const CheckboxCheckedIcon = ({ disabled }: { disabled?: boolean }) => {
         width="12">
         <path
           d="M11.6666 3.5L5.24992 9.91667L2.33325 7"
-          stroke={disabled ? 'rgb(213 215 218)' : 'white'} // Gray-300 when disabled, white when enabled
+          stroke={
+            disabled
+              ? theme.palette.grey[300]
+              : theme.palette.primary.contrastText
+          }
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2"
@@ -66,15 +92,25 @@ const CheckboxCheckedIcon = ({ disabled }: { disabled?: boolean }) => {
   );
 };
 
-const CheckboxIndeterminateIcon = ({ disabled }: { disabled?: boolean }) => {
+const CheckboxIndeterminateIcon = ({
+  disabled,
+  theme,
+}: {
+  disabled?: boolean;
+  theme: any;
+}) => {
   return (
     <div
       style={{
         width: 16,
         height: 16,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(127 86 217)', // Gray-50 when disabled, brand-600 when enabled
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.primary.main,
         borderRadius: 4,
-        boxShadow: disabled ? '0 0 0 1px rgb(213 215 218) inset' : 'none', // Gray-300 border when disabled, no border when enabled
+        boxShadow: disabled
+          ? `0 0 0 1px ${theme.palette.grey[300]} inset`
+          : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -89,7 +125,11 @@ const CheckboxIndeterminateIcon = ({ disabled }: { disabled?: boolean }) => {
         width="10">
         <path
           d="M2.91675 7H11.0834"
-          stroke={disabled ? 'rgb(213 215 218)' : 'white'} // Gray-300 when disabled, white when enabled
+          stroke={
+            disabled
+              ? theme.palette.grey[300]
+              : theme.palette.primary.contrastText
+          }
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2"
@@ -100,15 +140,23 @@ const CheckboxIndeterminateIcon = ({ disabled }: { disabled?: boolean }) => {
 };
 
 // Medium size checkbox icons (20x20, size-5)
-const CheckboxBlankIconMedium = ({ disabled }: { disabled?: boolean }) => {
+const CheckboxBlankIconMedium = ({
+  disabled,
+  theme,
+}: {
+  disabled?: boolean;
+  theme: any;
+}) => {
   return (
     <div
       style={{
         width: 20,
         height: 20,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(255 255 255)', // Gray-50 when disabled, white when normal
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.background.paper,
         borderRadius: 6,
-        boxShadow: '0 0 0 1px rgb(213 215 218) inset', // Always gray-300 border
+        boxShadow: `0 0 0 1px ${theme.palette.grey[300]} inset`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -119,15 +167,25 @@ const CheckboxBlankIconMedium = ({ disabled }: { disabled?: boolean }) => {
   );
 };
 
-const CheckboxCheckedIconMedium = ({ disabled }: { disabled?: boolean }) => {
+const CheckboxCheckedIconMedium = ({
+  disabled,
+  theme,
+}: {
+  disabled?: boolean;
+  theme: any;
+}) => {
   return (
     <div
       style={{
         width: 20,
         height: 20,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(127 86 217)', // Gray-50 when disabled, brand-600 when enabled
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.primary.main,
         borderRadius: 6,
-        boxShadow: disabled ? '0 0 0 1px rgb(213 215 218) inset' : 'none', // Gray-300 border when disabled, no border when enabled
+        boxShadow: disabled
+          ? `0 0 0 1px ${theme.palette.grey[300]} inset`
+          : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -142,7 +200,11 @@ const CheckboxCheckedIconMedium = ({ disabled }: { disabled?: boolean }) => {
         width="14">
         <path
           d="M11.6666 3.5L5.24992 9.91667L2.33325 7"
-          stroke={disabled ? 'rgb(213 215 218)' : 'white'} // Gray-300 when disabled, white when enabled
+          stroke={
+            disabled
+              ? theme.palette.grey[300]
+              : theme.palette.primary.contrastText
+          }
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2"
@@ -154,17 +216,23 @@ const CheckboxCheckedIconMedium = ({ disabled }: { disabled?: boolean }) => {
 
 const CheckboxIndeterminateIconMedium = ({
   disabled,
+  theme,
 }: {
   disabled?: boolean;
+  theme: any;
 }) => {
   return (
     <div
       style={{
         width: 20,
         height: 20,
-        backgroundColor: disabled ? 'rgb(250 250 250)' : 'rgb(127 86 217)', // Gray-50 when disabled, brand-600 when enabled
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.primary.main,
         borderRadius: 6,
-        boxShadow: disabled ? '0 0 0 1px rgb(213 215 218) inset' : 'none', // Gray-300 border when disabled, no border when enabled
+        boxShadow: disabled
+          ? `0 0 0 1px ${theme.palette.grey[300]} inset`
+          : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -179,7 +247,11 @@ const CheckboxIndeterminateIconMedium = ({
         width="14">
         <path
           d="M2.91675 7H11.0834"
-          stroke={disabled ? 'rgb(213 215 218)' : 'white'} // Gray-300 when disabled, white when enabled
+          stroke={
+            disabled
+              ? theme.palette.grey[300]
+              : theme.palette.primary.contrastText
+          }
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2"
@@ -194,26 +266,27 @@ export const ThemedCheckbox = React.forwardRef<
   HTMLButtonElement,
   CheckboxProps
 >(({ size = 'small', disabled, ...props }, ref) => {
+  const theme = useTheme();
   const isMedium = size === 'medium';
 
-  // Create icon components with disabled prop
+  // Create icon components with disabled prop and theme
   const BlankIcon = () =>
     isMedium ? (
-      <CheckboxBlankIconMedium disabled={disabled} />
+      <CheckboxBlankIconMedium disabled={disabled} theme={theme} />
     ) : (
-      <CheckboxBlankIcon disabled={disabled} />
+      <CheckboxBlankIcon disabled={disabled} theme={theme} />
     );
   const CheckedIcon = () =>
     isMedium ? (
-      <CheckboxCheckedIconMedium disabled={disabled} />
+      <CheckboxCheckedIconMedium disabled={disabled} theme={theme} />
     ) : (
-      <CheckboxCheckedIcon disabled={disabled} />
+      <CheckboxCheckedIcon disabled={disabled} theme={theme} />
     );
   const IndeterminateIcon = () =>
     isMedium ? (
-      <CheckboxIndeterminateIconMedium disabled={disabled} />
+      <CheckboxIndeterminateIconMedium disabled={disabled} theme={theme} />
     ) : (
-      <CheckboxIndeterminateIcon disabled={disabled} />
+      <CheckboxIndeterminateIcon disabled={disabled} theme={theme} />
     );
 
   return (

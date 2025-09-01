@@ -2252,6 +2252,11 @@
   dependencies:
     "@lit-labs/ssr-dom-shim" "^1.2.0"
 
+"@material/material-color-utilities@^0.3.0":
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/@material/material-color-utilities/-/material-color-utilities-0.3.0.tgz#681b0ecd0820ac012d50d371912227f6b2dc7817"
+  integrity sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==
+
 "@melloware/react-logviewer@^6.2.0":
   version "6.2.0"
   resolved "https://registry.yarnpkg.com/@melloware/react-logviewer/-/react-logviewer-6.2.0.tgz#cc17baddfa5db8d23c9ab95a1e1c23c85ca19c15"

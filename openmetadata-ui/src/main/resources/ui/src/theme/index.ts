@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// Re-export everything from mui-theme for now
-// This will be the main entry point for the theme system
-export * from './mui-theme';
-export { default } from './mui-theme';
+
+// Main entry point for the dynamic MUI theme system
+export { buttonConstants } from './buttonConstants';
+export { createMuiTheme } from './createMuiTheme';
+export {
+  generateAllMuiPalettes,
+  generateMuiPalette,
+} from './generateMuiPalettes';
+export { shadows } from './shadows';
