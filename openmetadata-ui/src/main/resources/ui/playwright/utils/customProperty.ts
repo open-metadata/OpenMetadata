@@ -836,14 +836,16 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     page,
     ruleLocator.locator('.rule--field .ant-select'),
     'Custom Properties',
-    true
+    true,
+    false
   );
 
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
     entityType,
-    true
+    true,
+    false
   );
 
   await selectOption(

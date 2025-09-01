@@ -198,7 +198,8 @@ export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string,
-  isSearchable = false
+  isSearchable = false,
+  verifySelection = true
 ) => {
   if (isSearchable) {
     // Force click on the selector to ensure it opens even if there's an existing selection
@@ -222,14 +223,12 @@ export const selectOption = async (
 
   await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
 
-  await page.waitForSelector(
-    `.ant-select-dropdown:visible [title="${optionTitle}"]`,
-    {
-      state: 'hidden',
-    }
-  );
-
-  await expect(dropdownLocator).toContainText(optionTitle);
+  // Useful in case of custom property advanced search selection
+  // In case of custom property selections, the DOM tree structure changes
+  // resulting in the previous selectors not working after selection of option.
+  if (verifySelection) {
+    await expect(dropdownLocator).toContainText(optionTitle);
+  }
 };
 
 export const fillRule = async (
