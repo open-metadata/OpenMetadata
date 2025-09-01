@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import jakarta.json.JsonPatch;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -64,7 +63,7 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
     EntityStatus newStatus = EntityStatus.fromValue(status);
-    if (!Objects.equals(newStatus, glossaryTerm.getEntityStatus())) {
+    if (newStatus != glossaryTerm.getEntityStatus()) {
       String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
       glossaryTerm.setEntityStatus(newStatus);
