@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LOCAL_STORAGE_AUTO_PILOT_STATUS } from '../constants/LocalStorage.constants';
 import { OM_SESSION_KEY } from '../hooks/useApplicationStore';
-import { AutoPilotStatus } from './LocalStorageUtils.interface';
 
 export const getOidcToken = (): string => {
   return (
@@ -39,39 +37,4 @@ export const setRefreshToken = (token: string) => {
 
   session.refreshTokenKey = token;
   localStorage.setItem(OM_SESSION_KEY, JSON.stringify(session));
-};
-
-export const getAutoPilotStatuses = (): Array<AutoPilotStatus> => {
-  return JSON.parse(
-    localStorage.getItem(LOCAL_STORAGE_AUTO_PILOT_STATUS) ?? '[]'
-  );
-};
-
-export const updateAutoPilotStatus = (workflowStatus: AutoPilotStatus) => {
-  const currentStatuses = getAutoPilotStatuses();
-  // Remove the status if it already exists for the serviceFQN
-  const filteredStatuses = currentStatuses.filter(
-    (status) => status.serviceFQN !== workflowStatus.serviceFQN
-  );
-  // Add the new status
-  const updatedStatuses: Array<AutoPilotStatus> = [
-    ...filteredStatuses,
-    workflowStatus,
-  ];
-
-  localStorage.setItem(
-    LOCAL_STORAGE_AUTO_PILOT_STATUS,
-    JSON.stringify(updatedStatuses)
-  );
-};
-
-export const removeAutoPilotStatus = (serviceFQN: string) => {
-  const currentStatuses = getAutoPilotStatuses();
-  const filteredStatuses = currentStatuses.filter(
-    (status) => status.serviceFQN !== serviceFQN
-  );
-  localStorage.setItem(
-    LOCAL_STORAGE_AUTO_PILOT_STATUS,
-    JSON.stringify(filteredStatuses)
-  );
 };

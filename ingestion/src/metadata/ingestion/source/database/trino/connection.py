@@ -20,7 +20,6 @@ from requests import Session
 from sqlalchemy.engine import Engine
 from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
-from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -53,6 +52,7 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.credentials import get_azure_access_token
 
 
 # pylint: disable=unused-argument
@@ -82,17 +82,11 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_copy = deepcopy(connection)
 
         if hasattr(connection.authType, "azureConfig"):
-            azure_client = AzureClient(connection.authType.azureConfig).create_client()
-            if not connection.authType.azureConfig.scopes:
-                raise ValueError(
-                    "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
-                )
-            access_token_obj = azure_client.get_token(
-                *connection.authType.azureConfig.scopes.split(",")
-            )
+            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+            access_token = get_azure_access_token(auth_type)
             if not connection.connectionOptions:
                 connection.connectionOptions = init_empty_connection_options()
-            connection.connectionOptions.root["access_token"] = access_token_obj.token
+            connection.connectionOptions.root["access_token"] = access_token
 
         # Update the connection with the connection arguments
         connection_copy.connectionArguments = self.build_connection_args(
@@ -355,12 +349,4 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         Get the azure token for the trino connection
         """
         auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
-
-        if not auth_type.azureConfig.scopes:
-            raise ValueError(
-                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
-            )
-
-        azure_client = AzureClient(auth_type.azureConfig).create_client()
-
-        return azure_client.get_token(*auth_type.azureConfig.scopes.split(",")).token
+        return get_azure_access_token(auth_type)

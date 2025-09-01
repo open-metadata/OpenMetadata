@@ -98,7 +98,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(pageType, tab, customizedPage)
+    getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
@@ -106,8 +106,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   >(null);
 
   useEffect(() => {
-    setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
-  }, [customizedPage, tab, pageType]);
+    setLayout(
+      getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+    );
+  }, [customizedPage, tab, pageType, isVersionView]);
 
   const onThreadPanelClose = useCallback(() => {
     setThreadLink('');

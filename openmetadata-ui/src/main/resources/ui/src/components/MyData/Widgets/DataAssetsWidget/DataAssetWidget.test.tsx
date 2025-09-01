@@ -110,7 +110,9 @@ describe('DataAssetsWidget', () => {
 
     renderDataAssetsWidget();
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
   });
@@ -137,7 +139,9 @@ describe('DataAssetsWidget', () => {
 
     renderDataAssetsWidget();
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
     expect(
       await screen.findByText('label.data-asset-plural')

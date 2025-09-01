@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+
 export enum DataContractMode {
   YAML,
   UI,
@@ -28,3 +30,14 @@ export enum EDataContractTab {
   SEMANTICS,
   QUALITY,
 }
+
+export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
+  EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.OWNERS,
+  EntityReferenceFields.NAME,
+  EntityReferenceFields.DESCRIPTION,
+  EntityReferenceFields.TIER,
+  EntityReferenceFields.SERVICE,
+  EntityReferenceFields.DISPLAY_NAME,
+  EntityReferenceFields.DELETED,
+];

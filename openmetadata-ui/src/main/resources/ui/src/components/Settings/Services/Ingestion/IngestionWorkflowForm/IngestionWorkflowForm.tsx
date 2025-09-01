@@ -31,6 +31,7 @@ import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -74,7 +75,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
   const isIncrementalExtractionSupported =
-    serviceData?.connection.config.supportsIncrementalMetadataExtraction;
+    serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -126,10 +127,23 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     }
   };
 
-  const customFields: RegistryFieldsType = {
-    BooleanField: BooleanFieldTemplate,
-    ArrayField: WorkflowArrayFieldTemplate,
-  };
+  const customFields = useMemo(() => {
+    const fields: RegistryFieldsType = {
+      BooleanField: BooleanFieldTemplate,
+      ArrayField: WorkflowArrayFieldTemplate,
+    };
+
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+
+    if (
+      !isUndefined(SparkAgentField) &&
+      pipeLineType === PipelineType.Profiler
+    ) {
+      fields['/schemas/rootProcessingEngine'] = SparkAgentField;
+    }
+
+    return fields;
+  }, [pipeLineType]);
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {

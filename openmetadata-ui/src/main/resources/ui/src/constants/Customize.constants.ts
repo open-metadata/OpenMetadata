@@ -26,6 +26,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.PROFILER]: 'label.data-observability',
   [EntityTabs.INCIDENTS]: 'label.incident-plural',
   [EntityTabs.LINEAGE]: 'label.lineage',
+  [EntityTabs.KNOWLEDGE_GRAPH]: 'label.knowledge-graph',
   [EntityTabs.VIEW_DEFINITION]: 'label.view-definition',
   [EntityTabs.DBT]: 'label.dbt-lowercase',
   [EntityTabs.CHILDREN]: 'label.children',
@@ -76,7 +77,8 @@ export type CustomizeEntityType =
   | EntityType.GLOSSARY
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
-  | EntityType.METRIC;
+  | EntityType.METRIC
+  | EntityType.CHART;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -96,4 +98,5 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
   [EntityType.CONTAINER]: PageType.Container,
   [EntityType.METRIC]: PageType.Metric,
+  [EntityType.CHART]: PageType.Chart,
 };

@@ -62,7 +62,7 @@ describe('ProfilerConfigurationPage', () => {
     expect(
       await screen.findByText('TitleBreadcrumb.component')
     ).toBeInTheDocument();
-    expect(await screen.findByText('PageHeader.component')).toBeInTheDocument();
+    expect(await screen.findAllByText('PageHeader.component')).toHaveLength(2);
     expect(await screen.findByText('label.data-type')).toBeInTheDocument();
     expect(await screen.findByText('label.disable')).toBeInTheDocument();
     expect(await screen.findByText('label.metric-type')).toBeInTheDocument();

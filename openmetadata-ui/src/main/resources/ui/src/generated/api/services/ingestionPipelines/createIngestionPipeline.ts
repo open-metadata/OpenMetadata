@@ -248,6 +248,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * DriveService Metadata Pipeline Configuration.
+ *
  * SearchService Metadata Pipeline Configuration.
  *
  * TestSuite Pipeline Configuration.
@@ -369,6 +371,8 @@ export interface Pipeline {
      * Number of Threads to use in order to parallelize Table ingestion.
      *
      * Number of Threads to use in order to parallelize lineage ingestion.
+     *
+     * Number of Threads to use in order to parallelize Drive ingestion.
      */
     threads?: number;
     /**
@@ -378,6 +382,9 @@ export interface Pipeline {
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
+     * instead of raw name (e.g. file_name)
      */
     useFqnForFiltering?: boolean;
     /**
@@ -613,6 +620,62 @@ export interface Pipeline {
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to turn off fetching metadata for directories.
+     */
+    includeDirectories?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for files.
+     */
+    includeFiles?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for spreadsheets.
+     */
+    includeSpreadsheets?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for worksheets.
+     */
+    includeWorksheets?: boolean;
+    /**
+     * Optional configuration to soft delete directories in OpenMetadata if the source
+     * directories are deleted. Also, if the directory is deleted, all the associated entities
+     * like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted
+     */
+    markDeletedDirectories?: boolean;
+    /**
+     * Optional configuration to soft delete files in OpenMetadata if the source files are
+     * deleted. Also, if the file is deleted, all the associated entities like lineage, etc.,
+     * with that file will be deleted
+     */
+    markDeletedFiles?: boolean;
+    /**
+     * Optional configuration to soft delete spreadsheets in OpenMetadata if the source
+     * spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated
+     * entities like worksheets, lineage, etc., with that spreadsheet will be deleted
+     */
+    markDeletedSpreadsheets?: boolean;
+    /**
+     * Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets
+     * are deleted. Also, if the worksheet is deleted, all the associated entities like lineage,
+     * etc., with that worksheet will be deleted
+     */
+    markDeletedWorksheets?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
      * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
      */
     includeIndexTemplate?: boolean;
@@ -779,9 +842,21 @@ export interface Pipeline {
  *
  * Regex to only fetch containers that matches the pattern.
  *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ *
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch tags that matches the pattern.
  */
@@ -936,13 +1011,19 @@ export interface CollateAIAppConfig {
  * Action to take on those entities. E.g., propagate description through lineage, auto
  * tagging, etc.
  *
- * Apply Tags to the selected assets.
+ * Apply Classification Tags to the selected assets.
  *
- * Remove Tags Action Type
+ * Remove Classification Tags Action Type
+ *
+ * Apply Glossary Terms to the selected assets.
+ *
+ * Remove Glossary Terms Action Type
  *
  * Add domains to the selected assets.
  *
  * Remove domains from the selected assets.
+ *
+ * Apply Tags to the selected assets.
  *
  * Add a Custom Property to the selected assets.
  *
@@ -974,6 +1055,12 @@ export interface Action {
      * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
+     *
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
@@ -988,6 +1075,9 @@ export interface Action {
     /**
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
+     *
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
      *
      * Update the domains even if they are defined in the asset. By default, we will only apply
      * the domains to assets without domains.
@@ -1017,9 +1107,9 @@ export interface Action {
      */
     overwriteMetadata?: boolean;
     /**
-     * Tags to apply
+     * Classification Tags to apply (source must be 'Classification')
      *
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
     tags?: TierElement[];
     /**
@@ -1029,13 +1119,23 @@ export interface Action {
     /**
      * Remove tags from all the children and parent of the selected assets.
      *
+     * Remove terms from all the children and parent of the selected assets.
+     *
      * Remove descriptions from all the children and parent of the selected assets.
      */
     applyToAll?: boolean;
     /**
      * Remove tags by its label type
+     *
+     * Remove terms by its label type
      */
     labels?: LabelElement[];
+    /**
+     * Glossary Terms to apply
+     *
+     * Glossary Terms to remove
+     */
+    terms?: TierElement[];
     /**
      * Domains to apply
      */
@@ -1120,6 +1220,8 @@ export interface Action {
 
 /**
  * Remove tags by its label type
+ *
+ * Remove terms by its label type
  */
 export enum LabelElement {
     Automated = "Automated",
@@ -1146,7 +1248,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",
@@ -1381,7 +1483,11 @@ export interface TestCaseParameterValue {
  *
  * Add Tags action type.
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
+ *
+ * Add Terms action type.
+ *
+ * Remove Terms Action Type.
  *
  * Add Domain Action Type.
  *
@@ -1422,6 +1528,7 @@ export enum ActionType {
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTermsAction = "AddTermsAction",
     AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
@@ -1432,6 +1539,7 @@ export enum ActionType {
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTermsAction = "RemoveTermsAction",
     RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
@@ -1562,6 +1670,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -1742,6 +1851,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials for Google Drive API
  */
 export interface DbtSecurityConfigClass {
     /**
@@ -2124,9 +2235,11 @@ export interface ServiceConnections {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -2166,6 +2279,8 @@ export interface ServiceConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Google BigQuery Connection Config
  *
@@ -2258,6 +2373,8 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2346,8 +2463,14 @@ export interface ServiceConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -2416,6 +2539,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -2426,6 +2551,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -2469,6 +2596,8 @@ export interface ConfigClass {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      *
      * BigQuery APIs URL.
      *
@@ -2752,6 +2881,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -2766,6 +2897,11 @@ export interface ConfigClass {
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
      *
      * API key to authenticate with the SAP ERP APIs.
      *
@@ -2827,6 +2963,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -2836,6 +2974,8 @@ export interface ConfigClass {
      */
     sslConfig?: SSLConfigObject;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
@@ -2949,6 +3089,10 @@ export interface ConfigClass {
      */
     orgId?: string;
     /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -2964,6 +3108,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -2973,6 +3119,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -3000,6 +3148,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -3018,6 +3168,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -3370,6 +3523,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3758,6 +3919,29 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
+    [property: string]: any;
 }
 
 /**
@@ -4847,6 +5031,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -4982,6 +5168,15 @@ export interface ElasticsSearch {
      * Type of sink component ex: metadata
      */
     type: string;
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -5590,6 +5785,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -5629,6 +5826,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum PurpleType {
     Adls = "ADLS",
@@ -5648,6 +5851,7 @@ export enum PurpleType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -5668,12 +5872,15 @@ export enum PurpleType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -5718,6 +5925,7 @@ export enum PurpleType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
@@ -5799,6 +6007,8 @@ export interface StorageMetadataBucketDetails {
  *
  * Object Store Source Config Metadata Pipeline type
  *
+ * Drive Source Config Metadata Pipeline type
+ *
  * Search Source Config Metadata Pipeline type
  *
  * DBT Config Pipeline type
@@ -5819,6 +6029,7 @@ export enum FluffyType {
     DatabaseMetadata = "DatabaseMetadata",
     DatabaseUsage = "DatabaseUsage",
     Dbt = "DBT",
+    DriveMetadata = "DriveMetadata",
     MessagingMetadata = "MessagingMetadata",
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",

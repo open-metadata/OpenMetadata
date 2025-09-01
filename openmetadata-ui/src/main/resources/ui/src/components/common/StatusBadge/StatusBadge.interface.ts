@@ -21,6 +21,7 @@ export enum StatusType {
   Pending = 'pending',
   InReview = 'inReview',
   Deprecated = 'deprecated',
+  Version = 'version',
 }
 
 export interface StatusBadgeProps {

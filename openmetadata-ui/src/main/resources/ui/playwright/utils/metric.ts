@@ -184,14 +184,24 @@ export const updateRelatedMetric = async (
     state: 'visible',
   });
 
+  // Wait for the metrics API call to complete
+  const metricsResponsePromise1 = page.waitForResponse(
+    '/api/v1/metrics/name/*?fields=*'
+  );
   await page
     .getByRole('link', { name: dataAsset.entity.name, exact: true })
     .click();
+  await metricsResponsePromise1;
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  // Wait for the metrics API call to complete
+  const metricsResponsePromise2 = page.waitForResponse(
+    '/api/v1/metrics/name/*?fields=*'
+  );
   await page.getByRole('link', { name: title }).click();
+  await metricsResponsePromise2;
 };
 
 export const addMetric = async (page: Page) => {

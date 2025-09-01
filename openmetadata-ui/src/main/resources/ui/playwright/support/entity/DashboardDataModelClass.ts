@@ -69,7 +69,7 @@ export class DashboardDataModelClass extends EntityClass {
   constructor(name?: string) {
     super(EntityTypeEndpoint.DataModel);
     this.service.name = name ?? this.service.name;
-    this.type = 'Dashboard Data Model';
+    this.type = 'DashboardDataModel';
     this.childrenTabId = 'model';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Dashboard;

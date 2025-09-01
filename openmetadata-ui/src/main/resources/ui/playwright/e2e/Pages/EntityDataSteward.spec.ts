@@ -12,6 +12,7 @@
  */
 import { Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -115,11 +116,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(
-        page,
-        'Tier1',
-        EntityDataClass.tierTag1.data.displayName
-      );
+      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[0].name);
     });
 
     test('Update description', async ({ page }) => {
@@ -173,7 +170,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
         }) => {

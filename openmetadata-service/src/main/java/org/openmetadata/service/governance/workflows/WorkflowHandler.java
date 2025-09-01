@@ -436,4 +436,8 @@ public class WorkflowHandler {
                 runtimeService.deleteProcessInstance(
                     instance.getId(), "Terminating all instances due to user request."));
   }
+
+  public RuntimeService getRuntimeService() {
+    return processEngine.getRuntimeService();
+  }
 }

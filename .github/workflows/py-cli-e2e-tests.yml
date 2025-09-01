@@ -18,7 +18,7 @@ on:
       e2e-tests:
         description: "E2E Tests to run"
         required: True
-        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]'
       debug:
         description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
+        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
     environment: test
 
     steps:
@@ -118,8 +118,8 @@ jobs:
         E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
         E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
         E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
-        E2E_TABLEAU_USERNAME: ${{ secrets.E2E_TABLEAU_USERNAME }}
-        E2E_TABLEAU_PASSWORD: ${{ secrets.E2E_TABLEAU_PASSWORD }}
+        E2E_TABLEAU_PAT_NAME: ${{ secrets.E2E_TABLEAU_PAT_NAME }}
+        E2E_TABLEAU_PAT_SECRET: ${{ secrets.E2E_TABLEAU_PAT_SECRET }}
         E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
         E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
         E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}

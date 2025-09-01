@@ -40,6 +40,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { TestSuiteType } from '../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -53,7 +54,6 @@ import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualit
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
-  TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';

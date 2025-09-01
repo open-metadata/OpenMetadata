@@ -76,11 +76,13 @@ export const selectActiveGlossary = async (
     } else {
       await menuItem.click();
     }
-  } else {
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
   }
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectActiveGlossaryTerm = async (
@@ -88,6 +90,12 @@ export const selectActiveGlossaryTerm = async (
   glossaryTermName: string
 ) => {
   await page.getByTestId(glossaryTermName).click();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')
@@ -526,6 +534,86 @@ export const verifyTaskCreated = async (
       }
     )
     .toContain(glossaryTermData);
+};
+
+export const verifyWorkflowInstanceExists = async (
+  page: Page,
+  glossaryTermFqn: string
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+
+  await expect
+    .poll(
+      async () => {
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
+        const endTs = new Date().getTime();
+
+        const workflowInstanceResponse = await apiContext
+          .get(
+            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
+          )
+          .then((res) => res.json());
+
+        return workflowInstanceResponse?.data?.length > 0;
+      },
+      {
+        message: 'To verify workflow instance exists',
+        timeout: 200_000,
+        intervals: [50_000],
+      }
+    )
+    .toBe(true);
+};
+
+export const verifyGlossaryWorkflowReviewerCase = async (
+  page: Page,
+  glossaryTermFqn: string
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+
+  await expect
+    .poll(
+      async () => {
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
+        const endTs = new Date().getTime();
+
+        const workflowInstanceResponse = await apiContext
+          .get(
+            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
+          )
+          .then((res) => res.json());
+
+        if (workflowInstanceResponse?.data?.length === 0) {
+          return '';
+        }
+
+        const workflowInstanceId = workflowInstanceResponse?.data[0]?.id;
+
+        if (!workflowInstanceId) {
+          return '';
+        }
+
+        const workflowInstanceState = await apiContext
+          .get(
+            `api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
+          )
+          .then((res) => res.json());
+
+        return workflowInstanceState?.data[0]?.stage?.displayName ?? '';
+      },
+      {
+        message: 'To verify workflow instance exists',
+        timeout: 200_000,
+        intervals: [50_000],
+      }
+    )
+    .toEqual('Auto-Approved by Reviewer');
 };
 
 export const validateGlossaryTermTask = async (

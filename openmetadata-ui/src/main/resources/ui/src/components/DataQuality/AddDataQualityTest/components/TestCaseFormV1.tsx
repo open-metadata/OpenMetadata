@@ -963,7 +963,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         <div className="floating-error-alert">
           <AlertBar
             defafultExpand
-            className="h-full custom-alert-description"
+            className="test-case-form-alert custom-alert-description"
             message={errorMessage}
             type="error"
           />
@@ -1038,6 +1038,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
+              notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
               })}
@@ -1071,10 +1072,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               />
             </Form.Item>
           )}
-        </Card>
-
-        <Card className="form-card-section" data-testid="test-details-card">
-          {generateFormFields(testDetailsFormFields)}
         </Card>
 
         <Card className="form-card-section" data-testid="test-type-card">
@@ -1172,12 +1169,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             generateFormFields(computeRowCountField)}
         </Card>
 
+        <Card className="form-card-section" data-testid="test-details-card">
+          {generateFormFields(testDetailsFormFields)}
+        </Card>
+
         {shouldShowScheduler && (
           <Row gutter={[20, 20]}>
             <Col span={24}>
               <AlertBar
                 defafultExpand
-                className="h-full custom-alert-description"
+                className="test-case-form-alert custom-alert-description"
                 message={
                   <Transi18next
                     i18nKey="message.entity-pipeline-information"
