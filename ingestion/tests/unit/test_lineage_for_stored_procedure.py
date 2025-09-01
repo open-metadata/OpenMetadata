@@ -40,8 +40,12 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_procedure_graph
-from metadata.ingestion.source.database.stored_procedures_mixin import (
+from metadata.ingestion.source.database.lineage_processors import (
     ProcedureAndProcedureGraph,
+    _yield_procedure_lineage,
+    is_lineage_query,
+)
+from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
     StoredProcedureLineageMixin,
 )
@@ -60,6 +64,7 @@ class MockStoredProcedureSource(StoredProcedureLineageMixin):
         self.source_config.storedProcedureFilterPattern = None
         self.source_config.incrementalLineageProcessing = False
         self.source_config.processCrossDatabaseLineage = False
+        self.source_config.crossDatabaseServiceNames = []
         self.source_config.parsingTimeoutLimit = 30
 
         self.metadata = Mock()
@@ -68,6 +73,7 @@ class MockStoredProcedureSource(StoredProcedureLineageMixin):
         self.service_connection.type.value = "mysql"
         self.procedure_graph_map = {}
         self.engine = Mock()
+        self.dialect = Mock()
 
     def get_stored_procedure_queries_dict(self):
         return {}
@@ -131,14 +137,23 @@ class StoredProcedureLineageTest(TestCase):
         )
 
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.return_value = [mock_result]
 
             # Call the method that should create the graph
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
 
@@ -163,13 +178,22 @@ class StoredProcedureLineageTest(TestCase):
         )
 
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.return_value = [mock_result]
 
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
 
@@ -192,15 +216,24 @@ class StoredProcedureLineageTest(TestCase):
         )
 
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.return_value = [
                 mock_result
             ]  # Return a result so the loop iterates
 
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
 
@@ -345,42 +378,30 @@ class StoredProcedureLineageTest(TestCase):
     def test_is_lineage_query_types(self):
         """Test that correct query types are identified as lineage queries"""
         # Test positive cases
+        self.assertTrue(is_lineage_query("MERGE", "MERGE INTO target USING source"))
+        self.assertTrue(is_lineage_query("UPDATE", "UPDATE table SET col = 1"))
         self.assertTrue(
-            self.source.is_lineage_query("MERGE", "MERGE INTO target USING source")
-        )
-        self.assertTrue(
-            self.source.is_lineage_query("UPDATE", "UPDATE table SET col = 1")
-        )
-        self.assertTrue(
-            self.source.is_lineage_query(
+            is_lineage_query(
                 "CREATE_TABLE_AS_SELECT", "CREATE TABLE new AS SELECT * FROM old"
             )
         )
         self.assertTrue(
-            self.source.is_lineage_query(
-                "INSERT", "INSERT INTO target SELECT * FROM source"
-            )
+            is_lineage_query("INSERT", "INSERT INTO target SELECT * FROM source")
         )
 
         # Test negative cases
         self.assertFalse(
-            self.source.is_lineage_query(
-                "INSERT", "INSERT INTO target VALUES (1, 2, 3)"
-            )
+            is_lineage_query("INSERT", "INSERT INTO target VALUES (1, 2, 3)")
         )
-        self.assertFalse(self.source.is_lineage_query("SELECT", "SELECT * FROM table"))
+        self.assertFalse(is_lineage_query("SELECT", "SELECT * FROM table"))
 
     def test_is_lineage_query_case_insensitive(self):
         """Test that lineage query detection is case insensitive"""
         self.assertTrue(
-            self.source.is_lineage_query(
-                "INSERT", "insert into target select * from source"
-            )
+            is_lineage_query("INSERT", "insert into target select * from source")
         )
         self.assertTrue(
-            self.source.is_lineage_query(
-                "INSERT", "INSERT INTO TARGET SELECT * FROM SOURCE"
-            )
+            is_lineage_query("INSERT", "INSERT INTO TARGET SELECT * FROM SOURCE")
         )
 
     # ==========================================
@@ -409,15 +430,24 @@ class StoredProcedureLineageTest(TestCase):
     def test_procedure_lineage_with_exception_handling(self):
         """Test that exceptions in lineage processing propagate up (current behavior)"""
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.side_effect = Exception("Test exception")
 
             # Current implementation lets exceptions propagate up
             with self.assertRaises(Exception) as cm:
                 list(
-                    self.source._yield_procedure_lineage(
-                        self.test_query, self.test_procedure
+                    _yield_procedure_lineage(
+                        metadata=self.source.metadata,
+                        service_name=self.source.service_name,
+                        dialect=self.source.dialect,
+                        processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                        crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                        parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                        query_by_procedure=self.test_query,
+                        procedure=self.test_procedure,
+                        procedure_graph_map=self.source.procedure_graph_map,
+                        enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                     )
                 )
 
@@ -446,7 +476,7 @@ class StoredProcedureLineageTest(TestCase):
 
         # Mock lineage processing
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.return_value = [
                 mock_result
@@ -454,8 +484,17 @@ class StoredProcedureLineageTest(TestCase):
 
             # Process lineage
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
 
@@ -484,19 +523,37 @@ class StoredProcedureLineageTest(TestCase):
         )
 
         with patch(
-            "metadata.ingestion.source.database.stored_procedures_mixin.get_lineage_by_query"
+            "metadata.ingestion.source.database.lineage_processors.get_lineage_by_query"
         ) as mock_lineage:
             mock_lineage.return_value = [mock_result]
 
             # Call twice with same procedure
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
             list(
-                self.source._yield_procedure_lineage(
-                    self.test_query, self.test_procedure
+                _yield_procedure_lineage(
+                    metadata=self.source.metadata,
+                    service_name=self.source.service_name,
+                    dialect=self.source.dialect,
+                    processCrossDatabaseLineage=self.source.source_config.processCrossDatabaseLineage,
+                    crossDatabaseServiceNames=self.source.source_config.crossDatabaseServiceNames,
+                    parsingTimeoutLimit=self.source.source_config.parsingTimeoutLimit,
+                    query_by_procedure=self.test_query,
+                    procedure=self.test_procedure,
+                    procedure_graph_map=self.source.procedure_graph_map,
+                    enableTempTableLineage=self.source.source_config.enableTempTableLineage,
                 )
             )
 

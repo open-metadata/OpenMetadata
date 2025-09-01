@@ -109,6 +109,8 @@ def _yield_procedure_lineage(
     metadata: OpenMetadata,
     service_name: str,
     dialect: Dialect,
+    processCrossDatabaseLineage: bool,
+    crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     query_by_procedure: QueryByProcedure,
     procedure: StoredProcedure,
@@ -126,6 +128,11 @@ def _yield_procedure_lineage(
 
         graph = procedure_graph_map.get(procedure.fullyQualifiedName.root).graph
 
+    # Prepare service names for lineage processing
+    service_names = [service_name]
+    if processCrossDatabaseLineage and crossDatabaseServiceNames:
+        service_names.extend(crossDatabaseServiceNames)
+
     if is_lineage_query(
         query_type=query_by_procedure.query_type,
         query_text=query_by_procedure.query_text,
@@ -133,7 +140,7 @@ def _yield_procedure_lineage(
         for either_lineage in get_lineage_by_query(
             metadata,
             query=query_by_procedure.query_text,
-            service_name=service_name,
+            service_names=service_names,
             database_name=query_by_procedure.query_database_name,
             schema_name=query_by_procedure.query_schema_name,
             dialect=dialect,
@@ -156,6 +163,8 @@ def procedure_lineage_processor(
     metadata: OpenMetadata,
     service_name: str,
     dialect: Dialect,
+    processCrossDatabaseLineage: bool,
+    crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,
@@ -171,6 +180,8 @@ def procedure_lineage_processor(
                 metadata=metadata,
                 service_name=service_name,
                 dialect=dialect,
+                processCrossDatabaseLineage=processCrossDatabaseLineage,
+                crossDatabaseServiceNames=crossDatabaseServiceNames,
                 parsingTimeoutLimit=parsingTimeoutLimit,
                 procedure_graph_map=procedure_graph_map,
                 enableTempTableLineage=enableTempTableLineage,
@@ -275,6 +286,8 @@ def query_lineage_processor(
     metadata: OpenMetadata,
     dialect: Dialect,
     graph: nx.DiGraph,
+    processCrossDatabaseLineage: bool,
+    crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     serviceName: str,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -284,10 +297,15 @@ def query_lineage_processor(
 
     for table_query in table_queries or []:
         if not _query_already_processed(metadata, table_query):
+            # Prepare service names for lineage processing
+            service_names = [table_query.serviceName]
+            if processCrossDatabaseLineage and crossDatabaseServiceNames:
+                service_names.extend(crossDatabaseServiceNames)
+
             lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
                 metadata,
                 query=table_query.query,
-                service_name=table_query.serviceName,
+                service_names=service_names,
                 database_name=table_query.databaseName,
                 schema_name=table_query.databaseSchema,
                 dialect=dialect,
@@ -317,8 +335,10 @@ def view_lineage_processor(
     views: List[TableView],
     queue: Queue,
     metadata: OpenMetadata,
-    serviceName: str,
+    service_name: str,
     connectionType: str,
+    processCrossDatabaseLineage: bool,
+    crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     overrideViewLineage: bool,
 ) -> Iterable[Either[AddLineageRequest]]:
@@ -327,10 +347,15 @@ def view_lineage_processor(
     """
     try:
         for view in views:
+            # Prepare service names for lineage processing
+            service_names = [service_name]
+            if processCrossDatabaseLineage and crossDatabaseServiceNames:
+                service_names.extend(crossDatabaseServiceNames)
+
             for lineage in get_view_lineage(
                 view=view,
                 metadata=metadata,
-                service_name=serviceName,
+                service_names=service_names,
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
             ):
@@ -338,7 +363,7 @@ def view_lineage_processor(
                     view_fqn = fqn.build(
                         metadata=metadata,
                         entity_type=Table,
-                        service_name=serviceName,
+                        service_name=service_name,
                         database_name=view.db_name,
                         schema_name=view.schema_name,
                         table_name=view.table_name,

@@ -200,6 +200,8 @@ class StoredProcedureLineageMixin(ABC):
             self.metadata,
             self.service_name,
             dialect,
+            self.source_config.processCrossDatabaseLineage,
+            self.source_config.crossDatabaseServiceNames,
             self.source_config.parsingTimeoutLimit,
             self.procedure_graph_map,
             self.source_config.enableTempTableLineage,

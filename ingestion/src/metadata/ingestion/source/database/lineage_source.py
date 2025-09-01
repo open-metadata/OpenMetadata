@@ -97,13 +97,22 @@ class LineageSource(QueryParserSource, ABC):
             chunk_size: Size of chunks to process
             processor_timeout: Maximum time in seconds to wait for a processor process
         """
-        multiprocessing_supported = can_spawn_child_process()
+        # TODO: We are not using multiprocessing yet since processes don't share
+        # the objects natively and creates separate copies. That will break the
+        # graph functionality for temporary lineage processing. Need to find a
+        # better solution for handling shared graphs or pulling graph update states
+        # to parent process.
+        # + It causes log level to be not applied correctly. For reference, if parent
+        # process is running with log level debug the child processes will have
+        # unset log level.
+        # multiprocessing_supported = can_spawn_child_process()
+        multiprocessing_supported = False
 
         if not multiprocessing_supported:
             logger.debug(
                 "Current process cannot spawn child processes. "
                 "Lineage processing will be performed in the same process with "
-                " multithreading."
+                "multithreading."
             )
 
         def chunk_generator():
@@ -369,6 +378,8 @@ class LineageSource(QueryParserSource, ABC):
             self.metadata,
             self.dialect,
             self.graph,
+            self.source_config.processCrossDatabaseLineage,
+            self.source_config.crossDatabaseServiceNames,
             self.source_config.parsingTimeoutLimit,
             self.config.serviceName,
         )
@@ -415,6 +426,8 @@ class LineageSource(QueryParserSource, ABC):
             self.metadata,
             self.config.serviceName,
             self.service_connection.type.value,
+            self.source_config.processCrossDatabaseLineage,
+            self.source_config.crossDatabaseServiceNames,
             self.source_config.parsingTimeoutLimit,
             self.source_config.overrideViewLineage,
         )

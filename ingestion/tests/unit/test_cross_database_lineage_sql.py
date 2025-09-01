@@ -22,9 +22,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureCode,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
-    DatabaseServiceQueryLineagePipeline,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import (
@@ -32,6 +29,9 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_via_table_entity,
     get_table_entities_from_query,
     search_table_entities,
+)
+from metadata.ingestion.source.database.lineage_processors import (
+    _yield_procedure_lineage,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -482,30 +482,32 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 mock_parser_instance.query_parsing_success = True
                 mock_parser.return_value = mock_parser_instance
 
-                # Mock get_source_table_names to return a source table (from sql_lineage module)
+                # Mock get_lineage_by_query which is what get_view_lineage actually calls
+                # Since get_view_lineage imports it, we need to patch it where it's used
                 with patch(
-                    "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-                ) as mock_source:
-                    mock_source.return_value = [("", "source_table")]
+                    "metadata.utils.db_utils.get_lineage_by_query"
+                ) as mock_get_lineage:
+                    # Return empty list to simulate successful lineage processing
+                    mock_get_lineage.return_value = []
 
-                    # Mock search_table_entities to return a table from second service
-                    with patch(
-                        "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-                    ) as mock_search:
-                        mock_search.return_value = [self.mock_table2]
-
-                        result = list(
-                            get_view_lineage(
-                                view=mock_view,
-                                metadata=self.mock_metadata,
-                                service_names=["service1", "service2"],
-                                connection_type="snowflake",
-                            )
+                    result = list(
+                        get_view_lineage(
+                            view=mock_view,
+                            metadata=self.mock_metadata,
+                            service_names=["service1", "service2"],
+                            connection_type="snowflake",
                         )
+                    )
 
-                        # Verify that view lineage was attempted with multiple services
-                        self.assertIsInstance(result, list)
-                        mock_search.assert_called()
+                    # Verify that view lineage was attempted with multiple services
+                    self.assertIsInstance(result, list)
+                    # Verify get_lineage_by_query was called with the service_names list
+                    mock_get_lineage.assert_called()
+                    call_kwargs = mock_get_lineage.call_args.kwargs
+                    # Check that service_names was passed as a list
+                    self.assertEqual(
+                        call_kwargs["service_names"], ["service1", "service2"]
+                    )
 
     def test_get_view_lineage_with_postgres_schema_fallback(self):
         """Test get_view_lineage with Postgres schema fallback"""
@@ -537,31 +539,26 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 mock_parser_instance.query_parsing_success = True
                 mock_parser.return_value = mock_parser_instance
 
-                # Mock get_source_table_names to return a source table (from sql_lineage module)
+                # Mock get_lineage_by_query which is what get_view_lineage actually calls
                 with patch(
-                    "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-                ) as mock_source:
-                    mock_source.return_value = [("", "source_table")]
+                    "metadata.utils.db_utils.get_lineage_by_query"
+                ) as mock_get_lineage:
+                    # Return empty list to simulate successful lineage processing
+                    mock_get_lineage.return_value = []
 
-                    # Mock search_table_entities to return a table
-                    with patch(
-                        "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-                    ) as mock_search:
-                        mock_search.return_value = [self.mock_table1]
-
-                        result = list(
-                            get_view_lineage(
-                                view=mock_view,
-                                metadata=self.mock_metadata,
-                                service_names=["service1", "service2"],
-                                connection_type="postgres",
-                            )
+                    result = list(
+                        get_view_lineage(
+                            view=mock_view,
+                            metadata=self.mock_metadata,
+                            service_names=["service1", "service2"],
+                            connection_type="postgres",
                         )
+                    )
 
-                        # Verify that view lineage was attempted with schema fallback
-                        self.assertIsInstance(result, list)
-                        # Should be called with schema_fallback=True for Postgres
-                        mock_search.assert_called()
+                    # Verify that view lineage was attempted with schema fallback
+                    self.assertIsInstance(result, list)
+                    # Verify get_lineage_by_query was called
+                    mock_get_lineage.assert_called()
 
     def test_stored_procedure_lineage_cross_database(self):
         """Test stored procedure lineage with cross-database support"""
@@ -596,15 +593,17 @@ class CrossDatabaseLineageSQLTest(TestCase):
             def __init__(self, mock_metadata):
                 self.metadata = mock_metadata
                 self.service_name = "service1"
-                self.source_config = DatabaseServiceQueryLineagePipeline(
-                    processCrossDatabaseLineage=True,
-                    crossDatabaseServiceNames=["service2"],
-                )
+                self.source_config = MagicMock()
+                self.source_config.processCrossDatabaseLineage = True
+                self.source_config.crossDatabaseServiceNames = ["service2"]
+                self.source_config.parsingTimeoutLimit = 30
+                self.source_config.enableTempTableLineage = False
                 self.service_connection = MagicMock()
                 self.service_connection.type.value = "mysql"
                 self.stored_procedure_query_lineage = False
                 self.procedure_graph_map = {}
                 self.status = MagicMock()
+                self.dialect = MagicMock()
 
             def get_stored_procedure_queries_dict(self):
                 """Mock implementation of abstract method"""
@@ -635,7 +634,18 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
                 # Test the _yield_procedure_lineage method
                 result = list(
-                    mixin._yield_procedure_lineage(mock_query, mock_procedure)
+                    _yield_procedure_lineage(
+                        metadata=mixin.metadata,
+                        service_name=mixin.service_name,
+                        dialect=mixin.dialect,
+                        processCrossDatabaseLineage=mixin.source_config.processCrossDatabaseLineage,
+                        crossDatabaseServiceNames=mixin.source_config.crossDatabaseServiceNames,
+                        parsingTimeoutLimit=mixin.source_config.parsingTimeoutLimit,
+                        query_by_procedure=mock_query,
+                        procedure=mock_procedure,
+                        procedure_graph_map=mixin.procedure_graph_map,
+                        enableTempTableLineage=mixin.source_config.enableTempTableLineage,
+                    )
                 )
 
                 # Verify that the method was called with the correct service names

@@ -587,7 +587,8 @@ def can_spawn_child_process() -> bool:
     """
     Check if the current process can spawn a child process
     """
+    # pylint: disable=import-outside-toplevel
     from multiprocessing import Process
 
     process = Process(target=lambda: None)
-    return not process._config.get("daemon")
+    return not process.daemon

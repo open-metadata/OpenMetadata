@@ -594,7 +594,7 @@ def _create_lineage_by_table_name(
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: Optional[EntityReference] = None,
-    graph: DiGraph = None,
+    graph: Optional[DiGraph] = None,
     schema_fallback: bool = False,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
@@ -715,7 +715,7 @@ def get_lineage_by_query(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    graph: DiGraph = None,
+    graph: Optional[DiGraph] = None,
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
     service_name: Optional[str] = None,  # backward compatibility for python sdk
@@ -841,7 +841,7 @@ def get_lineage_via_table_entity(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    graph: DiGraph = None,
+    graph: Optional[DiGraph] = None,
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
 ) -> Iterable[Either[AddLineageRequest]]:

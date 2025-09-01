@@ -97,11 +97,16 @@ class TestDbUtils(TestCase):
         self.assertEqual(get_host_from_host_port("localhost"), "localhost")
         self.assertEqual(get_host_from_host_port("example.com"), "example.com")
 
+    @patch("metadata.utils.db_utils.get_lineage_by_query")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_success_with_lineage_parser(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self,
+        mock_fqn,
+        mock_lineage_parser_class,
+        mock_dialect_mapper,
+        mock_get_lineage_by_query,
     ):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
@@ -146,6 +151,20 @@ class TestDbUtils(TestCase):
 
         self.metadata.get_by_name = mock_get_by_name
 
+        # Mock get_lineage_by_query to return a lineage result
+        mock_lineage_result = Either(
+            right=AddLineageRequest(
+                edge={
+                    "fromEntity": {
+                        "id": str(source_table_entity.id.root),
+                        "type": "table",
+                    },
+                    "toEntity": {"id": str(self.table_entity.id.root), "type": "table"},
+                }
+            )
+        )
+        mock_get_lineage_by_query.return_value = [mock_lineage_result]
+
         # Execute function
         result = list(
             get_view_lineage(
@@ -165,11 +184,16 @@ class TestDbUtils(TestCase):
         mock_dialect_mapper.dialect_of.assert_called_once_with(self.connection_type)
         mock_lineage_parser_class.assert_called_once()
 
+    @patch("metadata.utils.db_utils.get_lineage_by_query")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_success_with_fallback(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self,
+        mock_fqn,
+        mock_lineage_parser_class,
+        mock_dialect_mapper,
+        mock_get_lineage_by_query,
     ):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
@@ -215,6 +239,20 @@ class TestDbUtils(TestCase):
             return None
 
         self.metadata.get_by_name = mock_get_by_name
+
+        # Mock get_lineage_by_query to return a lineage result
+        mock_lineage_result = Either(
+            right=AddLineageRequest(
+                edge={
+                    "fromEntity": {
+                        "id": str(source_table_entity.id.root),
+                        "type": "table",
+                    },
+                    "toEntity": {"id": str(self.table_entity.id.root), "type": "table"},
+                }
+            )
+        )
+        mock_get_lineage_by_query.return_value = [mock_lineage_result]
 
         # Execute function
         result = list(
@@ -309,11 +347,16 @@ class TestDbUtils(TestCase):
         mock_lineage_parser_class.assert_called_once()
         mock_get_lineage_via_table_entity.assert_called_once()
 
+    @patch("metadata.utils.db_utils.get_lineage_by_query")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_postgres_schema_fallback(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self,
+        mock_fqn,
+        mock_lineage_parser_class,
+        mock_dialect_mapper,
+        mock_get_lineage_by_query,
     ):
         """Test that Postgres views use public schema fallback"""
         # Setup mocks
@@ -356,6 +399,20 @@ class TestDbUtils(TestCase):
             return None
 
         self.metadata.get_by_name = mock_get_by_name
+
+        # Mock get_lineage_by_query to return a lineage result
+        mock_lineage_result = Either(
+            right=AddLineageRequest(
+                edge={
+                    "fromEntity": {
+                        "id": str(source_table_entity.id.root),
+                        "type": "table",
+                    },
+                    "toEntity": {"id": str(self.table_entity.id.root), "type": "table"},
+                }
+            )
+        )
+        mock_get_lineage_by_query.return_value = [mock_lineage_result]
 
         # Execute function
         result = list(
@@ -439,11 +496,16 @@ class TestDbUtils(TestCase):
         # Assertions
         self.assertEqual(len(result), 0)
 
+    @patch("metadata.utils.db_utils.get_lineage_by_query")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
     @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_non_postgres_service(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self,
+        mock_fqn,
+        mock_lineage_parser_class,
+        mock_dialect_mapper,
+        mock_get_lineage_by_query,
     ):
         """Test view lineage for non-Postgres services"""
         # Setup mocks
@@ -494,6 +556,26 @@ class TestDbUtils(TestCase):
             return None
 
         metadata.get_by_name = mock_get_by_name
+
+        # Mock get_lineage_by_query to return a lineage result
+        from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+        from metadata.ingestion.api.models import Either
+
+        mock_lineage_result = Either(
+            right=AddLineageRequest(
+                edge={
+                    "fromEntity": {
+                        "id": str(source_table_entity.id.root),
+                        "type": "table",
+                    },
+                    "toEntity": {
+                        "id": str(self.table_entity_non_postgres.id.root),
+                        "type": "table",
+                    },
+                }
+            )
+        )
+        mock_get_lineage_by_query.return_value = [mock_lineage_result]
 
         # Execute function with mysql connection type
         result = list(
