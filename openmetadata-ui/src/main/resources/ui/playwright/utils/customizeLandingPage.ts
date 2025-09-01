@@ -135,8 +135,9 @@ export const removeAndVerifyWidget = async (
     widgetKey,
   });
 
+  const saveResponse = page.waitForResponse('/api/v1/docStore');
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+  await saveResponse;
 
   await redirectToHomePage(page);
 
@@ -163,8 +164,9 @@ export const addAndVerifyWidget = async (
 
   await expect(page.getByTestId(widgetKey)).toBeVisible();
 
+  const saveResponse = page.waitForResponse('/api/v1/docStore/*');
   await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('networkidle');
+  await saveResponse;
 
   await redirectToHomePage(page);
 
