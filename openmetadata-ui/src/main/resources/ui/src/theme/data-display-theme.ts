@@ -242,9 +242,9 @@ export const dataDisplayTheme: Components<Theme> = {
       {
         props: { variant: 'blueGray' as any },
         style: {
-          backgroundColor: colors.blueGray[50],
-          border: `1px solid ${colors.blueGray[200]}`,
-          color: colors.gray[650],
+          backgroundColor: colors.blueGray[75],
+          border: `1px solid ${colors.blueGray[150]}`,
+          color: colors.gray[750],
           fontWeight: 400,
           fontSize: '12px',
         },
