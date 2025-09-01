@@ -240,7 +240,7 @@ const IncidentManager = ({
         ...filters,
         [cursorType]: paging?.[cursorType],
         offset: paging?.[cursorType]
-          ? parseInt(paging[cursorType], 10)
+          ? parseInt(paging?.[cursorType] ?? '', 10)
           : undefined,
       });
     }
