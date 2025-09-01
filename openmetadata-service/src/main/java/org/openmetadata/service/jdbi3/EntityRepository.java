@@ -89,6 +89,9 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
@@ -178,6 +181,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -195,6 +199,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -212,7 +217,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -1476,20 +1480,66 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
+    // The event dispatch includes search index updates
+    // We track this as search operation time since search indexing is the main operation here
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    long startTime = System.currentTimeMillis();
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    long searchIndexTime = System.currentTimeMillis() - startTime;
+    RequestLatencyContext.endSearchOperation(searchSample);
 
-    // Update RDF
+    // Time RDF updates separately
+    startTime = System.currentTimeMillis();
     RdfUpdater.updateEntity(updated);
+    long rdfTime = System.currentTimeMillis() - startTime;
+
+    LOG.info(
+        "PostUpdate timing - entity: {}, type: {}, searchIndex: {}ms, rdf: {}ms, total: {}ms",
+        updated.getId(),
+        entityType,
+        searchIndexTime,
+        rdfTime,
+        searchIndexTime + rdfTime);
+
+    // Record post-update metrics with clear naming
+    Tags tags = Tags.of("entity_type", entityType, "operation", "patch");
+    Metrics.timer("entity.patch.search_index", tags)
+        .record(searchIndexTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.rdf_update", tags)
+        .record(rdfTime, java.util.concurrent.TimeUnit.MILLISECONDS);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
+    // The event dispatch includes search index updates
+    // We track this as search operation time since search indexing is the main operation here
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    long startTime = System.currentTimeMillis();
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+    long searchIndexTime = System.currentTimeMillis() - startTime;
+    RequestLatencyContext.endSearchOperation(searchSample);
 
-    // Update RDF
+    // Time RDF updates separately
+    startTime = System.currentTimeMillis();
     RdfUpdater.updateEntity(updated);
+    long rdfTime = System.currentTimeMillis() - startTime;
+
+    LOG.info(
+        "PostUpdate timing - entity: {}, type: {}, searchIndex: {}ms, rdf: {}ms, total: {}ms",
+        updated.getId(),
+        entityType,
+        searchIndexTime,
+        rdfTime,
+        searchIndexTime + rdfTime);
+
+    // Record post-update metrics with clear naming
+    Tags tags = Tags.of("entity_type", entityType, "operation", "patch");
+    Metrics.timer("entity.patch.search_index", tags)
+        .record(searchIndexTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.rdf_update", tags)
+        .record(rdfTime, java.util.concurrent.TimeUnit.MILLISECONDS);
   }
 
   @Transaction
@@ -1637,14 +1687,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
+    // Start timing JSON patch application
+    long startTime = System.currentTimeMillis();
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
+    long patchApplyTime = System.currentTimeMillis() - startTime;
 
+    // Time entity preparation and rule evaluation
+    startTime = System.currentTimeMillis();
     prepareInternal(updated, true);
     RuleEngine.getInstance().evaluateUpdate(original, updated);
+    long prepareTime = System.currentTimeMillis() - startTime;
 
     // Validate and populate owners
+    startTime = System.currentTimeMillis();
     List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
     updated.setOwners(validatedOwners);
 
@@ -1652,8 +1709,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
     updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
+    long validationTime = System.currentTimeMillis() - startTime;
 
     // Update the attributes and relationships of an entity
+    startTime = System.currentTimeMillis();
     EntityUpdater entityUpdater;
     if (useOptimisticLocking) {
       // Use the 5-parameter version for optimistic locking
@@ -1665,9 +1724,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
       entityUpdater.update();
     }
+    long updateTime = System.currentTimeMillis() - startTime;
+
+    // Log detailed timing breakdown
+    LOG.info(
+        "PATCH operation timing - entity: {}, type: {}, patchApply: {}ms, prepare: {}ms, validation: {}ms, update: {}ms, total: {}ms",
+        original.getId(),
+        entityType,
+        patchApplyTime,
+        prepareTime,
+        validationTime,
+        updateTime,
+        patchApplyTime + prepareTime + validationTime + updateTime);
+
+    // Record metrics to Prometheus
+    // Note: The "update" phase includes multiple sub-operations that are tracked separately:
+    // - consolidate: merging change history
+    // - update_internal: field updates
+    // - database: actual DB write
+    // - search_index: ElasticSearch/OpenSearch indexing
+    // - rdf_update: RDF graph updates
+    Tags tags = Tags.of("entity_type", entityType, "operation", "patch");
+    Metrics.timer("entity.patch.apply", tags)
+        .record(patchApplyTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.prepare", tags)
+        .record(prepareTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.validation", tags)
+        .record(validationTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Metrics.timer("entity.patch.update_total", tags)
+        .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
     if (entityUpdater.fieldsChanged()) {
-      // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
@@ -3891,16 +3977,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     public final void update() {
+      long startTime = System.currentTimeMillis();
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       incrementalChange();
       if (consolidateChanges) {
         revert();
       }
+      long consolidateTime = System.currentTimeMillis() - startTime;
+
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
+
+      startTime = System.currentTimeMillis();
       updateInternal();
+      long updateInternalTime = System.currentTimeMillis() - startTime;
+
+      // Time database write
+      Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
+      startTime = System.currentTimeMillis();
       storeUpdate();
+      long databaseTime = System.currentTimeMillis() - startTime;
+      RequestLatencyContext.endDatabaseOperation(dbSample);
+
+      // Time post-update operations
+      // Note: postUpdate internally tracks search operations via RequestLatencyContext
+      startTime = System.currentTimeMillis();
       postUpdate(original, updated);
+      long postUpdateTime = System.currentTimeMillis() - startTime;
+
+      LOG.info(
+          "EntityUpdater timing - entity: {}, consolidate: {}ms, updateInternal: {}ms, database: {}ms, postUpdate: {}ms (search+rdf), total: {}ms",
+          updated.getId(),
+          consolidateTime,
+          updateInternalTime,
+          databaseTime,
+          postUpdateTime,
+          consolidateTime + updateInternalTime + databaseTime + postUpdateTime);
+
+      // Record granular metrics with clear separation
+      String entityType = updated.getClass().getSimpleName().toLowerCase();
+      Tags tags = Tags.of("entity_type", entityType, "operation", "patch");
+      Metrics.timer("entity.patch.consolidate", tags)
+          .record(consolidateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      Metrics.timer("entity.patch.update_internal", tags)
+          .record(updateInternalTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      Metrics.timer("entity.patch.database", tags)
+          .record(databaseTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      // Note: search_index and rdf_update are recorded inside postUpdate method
     }
 
     /**
@@ -3908,16 +4031,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     public final void updateWithOptimisticLocking() {
+      long startTime = System.currentTimeMillis();
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       incrementalChange();
       if (consolidateChanges) {
         revert();
       }
+      long consolidateTime = System.currentTimeMillis() - startTime;
+
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
+
+      startTime = System.currentTimeMillis();
       updateInternal();
+      long updateInternalTime = System.currentTimeMillis() - startTime;
+
+      // Time database write with optimistic locking
+      Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
+      startTime = System.currentTimeMillis();
       storeUpdateWithOptimisticLocking();
+      long databaseTime = System.currentTimeMillis() - startTime;
+      RequestLatencyContext.endDatabaseOperation(dbSample);
+
+      // Time post-update operations
+      // Note: postUpdate internally tracks search operations via RequestLatencyContext
+      startTime = System.currentTimeMillis();
       postUpdate(original, updated);
+      long postUpdateTime = System.currentTimeMillis() - startTime;
+
+      LOG.info(
+          "EntityUpdater (optimistic) timing - entity: {}, consolidate: {}ms, updateInternal: {}ms, database: {}ms, postUpdate: {}ms (search+rdf), total: {}ms",
+          updated.getId(),
+          consolidateTime,
+          updateInternalTime,
+          databaseTime,
+          postUpdateTime,
+          consolidateTime + updateInternalTime + databaseTime + postUpdateTime);
+
+      // Record granular metrics with clear separation
+      String entityType = updated.getClass().getSimpleName().toLowerCase();
+      Tags tags = Tags.of("entity_type", entityType, "operation", "patch");
+      Metrics.timer("entity.patch.consolidate", tags)
+          .record(consolidateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      Metrics.timer("entity.patch.update_internal", tags)
+          .record(updateInternalTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      Metrics.timer("entity.patch.database", tags)
+          .record(databaseTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+      // Note: search_index and rdf_update are recorded inside postUpdate method
     }
 
     @Transaction
@@ -5132,7 +5292,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityType, original.getChangeDescription().getPreviousVersion());
       String json =
           daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
-      return JsonUtils.readValue(json, entityClass);
+      T previousVersion = JsonUtils.readValue(json, entityClass);
+
+      // IMPORTANT: Do NOT call setFieldsInternal here!
+      // The JSON already contains the correct historical state of all fields including experts.
+      // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
+      // The version history JSON is a complete snapshot of the entity at that point in time.
+
+      return previousVersion;
     }
   }
 

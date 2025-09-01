@@ -99,7 +99,7 @@
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
-    <flyway.version>9.22.3</flyway.version>
+    <flyway.version>11.11.2</flyway.version>
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
@@ -108,6 +108,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <hikaricp.version>7.0.2</hikaricp.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
@@ -156,7 +157,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
 
@@ -378,6 +379,11 @@
         <version>${flyway.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-database-postgresql</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>${postgres.connector.version}</version>
@@ -509,6 +515,11 @@
         <groupId>org.apache.tomcat</groupId>
         <artifactId>tomcat-jdbc</artifactId>
         <version>${tomcat-jdbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.zaxxer</groupId>
+        <artifactId>HikariCP</artifactId>
+        <version>${hikaricp.version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>

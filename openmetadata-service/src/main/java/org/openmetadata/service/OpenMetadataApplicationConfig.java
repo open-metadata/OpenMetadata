@@ -15,7 +15,6 @@ package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
-import io.dropwizard.db.DataSourceFactory;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +39,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
@@ -56,7 +56,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("database")
   @NotNull
   @Valid
-  private DataSourceFactory dataSourceFactory;
+  private HikariCPDataSourceFactory dataSourceFactory;
 
   @JsonProperty("swagger")
   private SwaggerBundleConfiguration swaggerBundleConfig;

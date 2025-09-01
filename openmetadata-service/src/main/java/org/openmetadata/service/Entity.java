@@ -176,7 +176,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
 
-  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_COLLECTION = "apiCollection";
   public static final String API_ENDPOINT = "apiEndpoint";
 
   public static final String API = "api";
@@ -297,7 +297,7 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(MLMODEL, MLMODEL_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(TOPIC, MESSAGING_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API, API_SERVICE);
-    ENTITY_SERVICE_TYPE_MAP.put(API_COLLCECTION, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_COLLECTION, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
@@ -314,7 +314,7 @@ public final class Entity {
             MLMODEL_SERVICE,
             PIPELINE_SERVICE,
             API_SERVICE,
-            API_COLLCECTION,
+            API_COLLECTION,
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,

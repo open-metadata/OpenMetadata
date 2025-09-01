@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,6 +110,7 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
@@ -150,6 +152,7 @@ import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.action.update.UpdateResponse;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.ResponseException;
@@ -1686,7 +1689,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     if (updateRequest != null) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
+
+      // Time the actual HTTP request to OpenSearch
+      long startHttp = System.currentTimeMillis();
+      UpdateResponse response = client.update(updateRequest, RequestOptions.DEFAULT);
+      long httpTime = System.currentTimeMillis() - startHttp;
+
+      LOG.debug(
+          "OpenSearch HTTP update - Doc ID: {}, HTTP time: {}ms, Result: {}",
+          updateRequest.id(),
+          httpTime,
+          response.getResult());
     }
   }
 
@@ -1885,6 +1898,19 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
       updateOpenSearch(updateRequest);
+    }
+  }
+
+  public void updateEntityAsync(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.scriptedUpsert(true);
+      updateRequest.script(script);
+      updateOpenSearchAsync(updateRequest);
     }
   }
 
@@ -2105,6 +2131,36 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  public void updateOpenSearchAsync(UpdateRequest updateRequest) {
+    if (updateRequest != null && isClientAvailable) {
+      // Use WAIT_UNTIL for async updates - waits for next refresh but doesn't force immediate
+      // refresh
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+      LOG.debug("Sending async request to OpenSearch: {}", updateRequest);
+
+      // The REST client has built-in retry with exponential backoff (default 3 retries, 30s
+      // timeout)
+      client.updateAsync(
+          updateRequest,
+          RequestOptions.DEFAULT,
+          new ActionListener<UpdateResponse>() {
+            @Override
+            public void onResponse(UpdateResponse updateResponse) {
+              LOG.debug(
+                  "Async update successful for doc: {}, result: {}",
+                  updateResponse.getId(),
+                  updateResponse.getResult());
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              // Log the error - the built-in retry already attempted 3 times before failing
+              LOG.error("Async update failed for doc: {} after retries", updateRequest.id(), e);
+            }
+          });
     }
   }
 
@@ -2524,38 +2580,64 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   public RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
-        if (StringUtils.isNotEmpty(esConfig.getUsername())
-            && StringUtils.isNotEmpty(esConfig.getPassword())) {
-          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-          credentialsProvider.setCredentials(
-              AuthScope.ANY,
-              new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-          restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder -> {
+        // Use helper method to build HttpHost array
+        HttpHost[] httpHosts = SearchUtils.buildHttpHosts(esConfig);
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+
+        // Configure connection pooling
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              // Set connection pool sizes
+              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+              }
+              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+              }
+
+              // Configure authentication if provided
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                if (sslContext != null) {
-                  httpAsyncClientBuilder.setSSLContext(sslContext);
-                }
-                // Enable TCP keep alive strategy
-                if (esConfig.getKeepAliveTimeoutSecs() != null
-                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                  httpAsyncClientBuilder.setKeepAliveStrategy(
-                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-                }
-                return httpAsyncClientBuilder;
-              });
-        }
+              }
+
+              // Configure SSL if needed
+              SSLContext sslContext = null;
+              try {
+                sslContext = createElasticSearchSSLContext(esConfig);
+              } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+              }
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
+
+              return httpAsyncClientBuilder;
+            });
+
+        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+
+        // Enable compression and chunking for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
+
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);

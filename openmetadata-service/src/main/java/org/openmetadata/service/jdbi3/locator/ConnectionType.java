@@ -36,6 +36,8 @@ public enum ConnectionType {
     for (ConnectionType t : ConnectionType.values()) {
       builder.put(t.label, t);
     }
+    // Add mapping for Amazon JDBC driver to POSTGRES
+    builder.put("software.amazon.jdbc.Driver", POSTGRES);
     labelMap = builder.build();
   }
 

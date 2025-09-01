@@ -192,6 +192,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -245,7 +246,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
@@ -3578,7 +3578,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and update the entity with extension field intA to a new value
     JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
     jsonNode.set("intA", intAValue);
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     change = getChangeDescription(entity, MINOR_UPDATE);
     fieldUpdated(
         change,
@@ -3600,7 +3600,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));

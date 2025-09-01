@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
@@ -1546,7 +1547,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-    DatasourceConfig.initialize(connType.label);
+    try {
+      DatasourceConfig.initialize(connType.label);
+    } catch (Exception e) {
+      DatasourceConfig.initialize(POSTGRES.label);
+    }
   }
 
   private void promptUserForDelete() {
@@ -1570,13 +1575,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void validateAndRunSystemDataMigrations(boolean force) {
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-    DatasourceConfig.initialize(connType.label);
+    try {
+      DatasourceConfig.initialize(connType.label);
+    } catch (Exception e) {
+      DatasourceConfig.initialize(POSTGRES.label);
+    }
     MigrationWorkflow workflow =
         new MigrationWorkflow(
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(true);
   }
 
   private void initOrganization() {

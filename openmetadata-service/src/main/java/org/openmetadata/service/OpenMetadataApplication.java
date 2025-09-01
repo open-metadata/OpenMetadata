@@ -111,6 +111,7 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -735,6 +736,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
+
+    // Register Jetty metrics for monitoring
+    JettyMetricsIntegration.registerJettyMetrics(environment);
 
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
