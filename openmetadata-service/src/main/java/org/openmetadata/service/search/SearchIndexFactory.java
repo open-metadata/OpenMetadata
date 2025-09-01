@@ -117,7 +117,7 @@ public class SearchIndexFactory {
       case Entity.TEST_SUITE -> new TestSuiteIndex((TestSuite) entity);
       case Entity.CHART -> new ChartIndex((Chart) entity);
       case Entity.DASHBOARD_DATA_MODEL -> new DashboardDataModelIndex((DashboardDataModel) entity);
-      case Entity.API_COLLCECTION -> new APICollectionIndex((APICollection) entity);
+      case Entity.API_COLLECTION -> new APICollectionIndex((APICollection) entity);
       case Entity.API_ENDPOINT -> new APIEndpointIndex((APIEndpoint) entity);
       case Entity.DASHBOARD_SERVICE -> new DashboardServiceIndex((DashboardService) entity);
       case Entity.DATABASE_SERVICE -> new DatabaseServiceIndex((DatabaseService) entity);

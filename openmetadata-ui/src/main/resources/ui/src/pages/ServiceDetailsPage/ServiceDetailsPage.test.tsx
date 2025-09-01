@@ -459,7 +459,7 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../utils/LocalStorageUtils', () => ({
+jest.mock('../../utils/SwTokenStorageUtils', () => ({
   removeAutoPilotStatus: jest.fn(),
 }));
 

@@ -128,20 +128,15 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
 
     await page.waitForSelector('#name_help');
-    const nameHelp = await page.$eval('#name_help', (el) => el.textContent);
 
-    expect(nameHelp).toContain('Name is required');
+    await expect(page.locator('#name_help')).toHaveText('Name is required');
 
     // invalid name validation should work
     await page
       .locator('[data-testid="service-name"]')
       .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-    const nameHelpError = await page.$eval(
-      '#name_help',
-      (el) => el.textContent
-    );
 
-    expect(nameHelpError).toContain(NAME_VALIDATION_ERROR);
+    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 
     await page.fill('[data-testid="service-name"]', serviceName);
 
