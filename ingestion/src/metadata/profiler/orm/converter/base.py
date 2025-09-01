@@ -141,6 +141,11 @@ def ometa_to_sqa_orm(
         for idx, col in enumerate(table.columns)
     }
 
+    # Set table args for BigQuery
+    table_args = {}
+    if table.serviceType == databaseService.DatabaseServiceType.BigQuery:
+        table_args[f"{table.serviceType.value.lower()}_database"] = orm_database_name
+
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
         orm_name,  # Output class name
@@ -148,7 +153,7 @@ def ometa_to_sqa_orm(
         {
             "__tablename__": str(table.name.root),
             "__table_args__": {
-                f"{table.serviceType.value.lower()}_database": orm_database_name,
+                **table_args,
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
                 "quote": check_snowflake_case_sensitive(
