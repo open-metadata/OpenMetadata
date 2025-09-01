@@ -68,7 +68,6 @@ test.describe('Explore Sort Order Filter', () => {
       await page.waitForLoadState('networkidle');
 
       await page.getByRole('button', { name: 'Data Assets' }).click();
-      await page.waitForResponse('api/v1/search/aggregate?*');
       await page.waitForSelector(
         'data-testid="drop-down-menu" data-testid="loader"',
         {
