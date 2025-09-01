@@ -248,7 +248,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.put("readWriteSplitting.connectionPoolSize", "10");
     props.put("readWriteSplitting.maxIdleTime", "300000");
     props.put("readWriteSplittingConnectionStrategy", "leastConnections");
-    props.put("readWriteSplitting.splitSqlByReadWritePattern", "true");
 
     // Default failover configuration
     props.put("failover.enableClusterAwareFailover", "true");
