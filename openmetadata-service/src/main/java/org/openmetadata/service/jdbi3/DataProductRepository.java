@@ -224,19 +224,33 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     DataProduct dataProduct = find(entityId, ALL);
     EntityReference dataProductRef = dataProduct.getEntityReference();
 
-    // Fetch all asset entities in bulk for validation
-    List<EntityInterface> assetEntities = new ArrayList<>();
-    if (isAdd && !assets.isEmpty()) {
-      assetEntities = Entity.getEntities(assets, "domains,dataProducts", ALL);
+    // Group assets by type for efficient fetching
+    Map<String, List<EntityReference>> assetsByType = new HashMap<>();
+    for (EntityReference asset : assets) {
+      assetsByType.computeIfAbsent(asset.getType(), k -> new ArrayList<>()).add(asset);
     }
 
-    for (int i = 0; i < assets.size(); i++) {
-      EntityReference ref = assets.get(i);
+    // Fetch all asset entities grouped by type for validation
+    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    if (isAdd && !assets.isEmpty()) {
+      for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
+        List<EntityInterface> entitiesOfType =
+            Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
+        for (int i = 0; i < entitiesOfType.size(); i++) {
+          assetEntitiesMap.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        }
+      }
+    }
+
+    for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       try {
         if (isAdd) {
-          EntityInterface assetEntity = assetEntities.get(i);
+          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          if (assetEntity == null) {
+            throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
+          }
           validateAssetDataProductAssignment(assetEntity, dataProductRef);
           addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
         } else {

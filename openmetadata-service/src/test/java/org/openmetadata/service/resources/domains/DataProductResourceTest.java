@@ -196,68 +196,80 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Test
   void test_bulkAssetsOperationWithMixedAssetTypes(TestInfo test) throws IOException {
-    // Get the repository instance
-    DataProductRepository dataProductRepository =
-        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+    // Disable domain validation rule for this test since we're testing mixed asset types, not
+    // domain validation
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
 
-    // Create a data product
-    CreateDataProduct create = createRequest(getEntityName(test));
-    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    try {
+      // Get the repository instance
+      DataProductRepository dataProductRepository =
+          (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
 
-    // Create different asset types
-    TopicResourceTest topicTest = new TopicResourceTest();
-    Topic topic =
-        topicTest.createEntity(topicTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+      // Create a data product
+      CreateDataProduct create = createRequest(getEntityName(test));
+      DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Create a dashboard
-    DashboardResourceTest dashboardTest = new DashboardResourceTest();
-    Dashboard dashboard =
-        dashboardTest.createEntity(
-            dashboardTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+      // Create different asset types
+      TopicResourceTest topicTest = new TopicResourceTest();
+      Topic topic =
+          topicTest.createEntity(
+              topicTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
 
-    // Create BulkAssets request with mixed asset types (Table, Dashboard, Topic)
-    BulkAssets bulkAssets =
-        new BulkAssets()
-            .withAssets(
-                List.of(
-                    TEST_TABLE1.getEntityReference(),
-                    dashboard.getEntityReference(),
-                    topic.getEntityReference()));
+      // Create a dashboard
+      DashboardResourceTest dashboardTest = new DashboardResourceTest();
+      Dashboard dashboard =
+          dashboardTest.createEntity(
+              dashboardTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
 
-    // Test bulk add operation
-    BulkOperationResult result =
-        dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets);
-    assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(3, result.getNumberOfRowsProcessed());
-    assertEquals(3, result.getNumberOfRowsPassed());
+      // Create BulkAssets request with mixed asset types (Table, Dashboard, Topic)
+      BulkAssets bulkAssets =
+          new BulkAssets()
+              .withAssets(
+                  List.of(
+                      TEST_TABLE1.getEntityReference(),
+                      dashboard.getEntityReference(),
+                      topic.getEntityReference()));
 
-    // Verify all assets are added to the data product
-    product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertEquals(3, product.getAssets().size());
+      // Test bulk add operation
+      BulkOperationResult result =
+          dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets);
+      assertEquals(ApiStatus.SUCCESS, result.getStatus());
+      assertEquals(3, result.getNumberOfRowsProcessed());
+      assertEquals(3, result.getNumberOfRowsPassed());
 
-    // Verify each asset type is present
-    List<String> assetTypes =
-        product.getAssets().stream()
-            .map(EntityReference::getType)
-            .sorted()
-            .collect(Collectors.toList());
-    assertEquals(List.of("dashboard", "table", "topic"), assetTypes);
+      // Verify all assets are added to the data product
+      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+      assertEquals(3, product.getAssets().size());
 
-    // Test bulk remove operation
-    BulkAssets removeAssets =
-        new BulkAssets()
-            .withAssets(List.of(dashboard.getEntityReference(), topic.getEntityReference()));
+      // Verify each asset type is present
+      List<String> assetTypes =
+          product.getAssets().stream()
+              .map(EntityReference::getType)
+              .sorted()
+              .collect(Collectors.toList());
+      assertEquals(List.of("dashboard", "table", "topic"), assetTypes);
 
-    result = dataProductRepository.bulkRemoveAssets(product.getFullyQualifiedName(), removeAssets);
-    assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(2, result.getNumberOfRowsProcessed());
-    assertEquals(2, result.getNumberOfRowsPassed());
+      // Test bulk remove operation
+      BulkAssets removeAssets =
+          new BulkAssets()
+              .withAssets(List.of(dashboard.getEntityReference(), topic.getEntityReference()));
 
-    // Verify only table remains
-    product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertEquals(1, product.getAssets().size());
-    assertEquals("table", product.getAssets().get(0).getType());
-    assertEquals(TEST_TABLE1.getId(), product.getAssets().get(0).getId());
+      result =
+          dataProductRepository.bulkRemoveAssets(product.getFullyQualifiedName(), removeAssets);
+      assertEquals(ApiStatus.SUCCESS, result.getStatus());
+      assertEquals(2, result.getNumberOfRowsProcessed());
+      assertEquals(2, result.getNumberOfRowsPassed());
+
+      // Verify only table remains
+      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+      assertEquals(1, product.getAssets().size());
+      assertEquals("table", product.getAssets().get(0).getType());
+      assertEquals(TEST_TABLE1.getId(), product.getAssets().get(0).getId());
+    } finally {
+      // Re-enable the rule for other tests
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
   }
 
   @Test
