@@ -235,9 +235,9 @@ database:
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
     
     # Aurora PostgreSQL specific optimizations
-    loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-true}  # Set to true for Aurora reader endpoints
+    loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
     hostRecheckSeconds: ${DB_PG_HOST_RECHECK_SECONDS:-10}  # How often to check host status
-    targetServerType: ${DB_PG_TARGET_SERVER_TYPE:-any}  # primary, secondary, any, preferSecondary
+    targetServerType: ${DB_PG_TARGET_SERVER_TYPE:-primary}  # primary, secondary, any, preferSecondary
     
     # MySQL specific - these are ignored by PostgreSQL driver
     rewriteBatchedStatements: ${DB_MYSQL_REWRITE_BATCHED_STATEMENTS:-true}  # Critical for MySQL batch
