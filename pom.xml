@@ -645,6 +645,11 @@
       <!-- Flyway dependencies - only for SQL parsing, not migration management -->
       <dependency>
         <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+        <version>${flyway.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
         <artifactId>flyway-maven-plugin</artifactId>
         <version>${flyway.version}</version>
         <exclusions>
