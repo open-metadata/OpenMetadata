@@ -238,17 +238,46 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   private void configureAWSJDBCDriver(HikariConfig config) {
     Properties props = config.getDataSourceProperties();
 
-    // AWS JDBC Driver specific properties for Aurora cluster discovery
+    // Set default AWS JDBC Driver properties
     props.put("wrapperPlugins", "readWriteSplitting,failover,efm2");
+    props.put("wrapperLoggerLevel", "INFO");
+    props.put("wrapperDialect", "aurora-pg");
 
-    // Override properties from configuration if present
+    // Default read/write splitting configuration
+    props.put("readWriteSplitting.readerAny", "true");
+    props.put("readWriteSplitting.connectionPoolSize", "10");
+    props.put("readWriteSplitting.maxIdleTime", "300000");
+    props.put("readWriteSplittingConnectionStrategy", "leastConnections");
+
+    // Default failover configuration
+    props.put("failover.enableClusterAwareFailover", "true");
+    props.put("failover.clusterTopologyRefreshRateMs", "30000");
+    props.put("failover.readerFailoverTimeoutMs", "30000");
+
+    // Default enhanced failure monitoring
+    props.put("efm2.enable", "true");
+    props.put("efm2.monitoringIntervalMs", "5000");
+
+    // Override with AWS-specific properties from configuration
     Map<String, String> properties = getProperties();
     if (properties != null) {
+      // Only copy AWS JDBC driver specific properties
       for (Map.Entry<String, String> entry : properties.entrySet()) {
         String key = entry.getKey();
-        props.put(key, entry.getValue());
+        if (key.startsWith("wrapper")
+            || key.startsWith("readWriteSplitting")
+            || key.startsWith("failover.")
+            || key.startsWith("efm2.")
+            || key.equals("clusterId")
+            || key.equals("clusterRegion")) {
+          props.put(key, entry.getValue());
+        }
       }
     }
+
+    // Remove conflicting PostgreSQL properties that prevent read replica usage
+    props.remove("targetServerType");
+    props.remove("loadBalanceHosts");
   }
 
   private void configureMySQL(HikariConfig config) {
