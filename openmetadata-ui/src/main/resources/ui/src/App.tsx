@@ -35,8 +35,10 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import { ThemeProvider } from '@mui/material/styles';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import muiTheme from './theme/mui-theme';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
@@ -92,27 +94,29 @@ const App: FC = () => {
             <HelmetProvider>
               <ErrorBoundary>
                 <AntDConfigProvider>
-                  <AuthProvider childComponentType={AppRouter}>
-                    <TourProvider>
-                      <WebAnalyticsProvider>
-                        <PermissionProvider>
-                          <WebSocketProvider>
-                            <ApplicationsProvider>
-                              <AsyncDeleteProvider>
-                                <EntityExportModalProvider>
-                                  <AirflowStatusProvider>
-                                    <DndProvider backend={HTML5Backend}>
-                                      <AppRouter />
-                                    </DndProvider>
-                                  </AirflowStatusProvider>
-                                </EntityExportModalProvider>
-                              </AsyncDeleteProvider>
-                            </ApplicationsProvider>
-                          </WebSocketProvider>
-                        </PermissionProvider>
-                      </WebAnalyticsProvider>
-                    </TourProvider>
-                  </AuthProvider>
+                  <ThemeProvider theme={muiTheme}>
+                    <AuthProvider childComponentType={AppRouter}>
+                      <TourProvider>
+                        <WebAnalyticsProvider>
+                          <PermissionProvider>
+                            <WebSocketProvider>
+                              <ApplicationsProvider>
+                                <AsyncDeleteProvider>
+                                  <EntityExportModalProvider>
+                                    <AirflowStatusProvider>
+                                      <DndProvider backend={HTML5Backend}>
+                                        <AppRouter />
+                                      </DndProvider>
+                                    </AirflowStatusProvider>
+                                  </EntityExportModalProvider>
+                                </AsyncDeleteProvider>
+                              </ApplicationsProvider>
+                            </WebSocketProvider>
+                          </PermissionProvider>
+                        </WebAnalyticsProvider>
+                      </TourProvider>
+                    </AuthProvider>
+                  </ThemeProvider>
                 </AntDConfigProvider>
               </ErrorBoundary>
             </HelmetProvider>
