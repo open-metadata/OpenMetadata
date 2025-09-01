@@ -24,7 +24,7 @@ SYSTEM_QUERY = textwrap.dedent(
         '{database}' AS database,
         '{schema}' AS schema,
         '{table}' AS table
-    FROM (DESCRIBE HISTORY {database}.{schema}.{table})
+    FROM (DESCRIBE HISTORY `{database}`.`{schema}`.`{table}`)
     WHERE operation IN ({operations}) AND timestamp > DATEADD(day, -1, CURRENT_TIMESTAMP())
     """
 )
