@@ -15,7 +15,7 @@ import json
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Dict, Iterable, List, Union
+from typing import Iterator, Union
 
 from sqlalchemy.engine import Engine
 
@@ -70,33 +70,28 @@ class StoredProcedureLineageMixin(ABC):
     metadata: OpenMetadata
 
     @abstractmethod
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
 
-    def procedure_queries_dict(self, query: str) -> Dict[str, List[QueryByProcedure]]:
+    def yield_stored_procedure_queries(self) -> Iterator[QueryByProcedure]:
         """
-        Cache the queries ran for the stored procedures in the last `queryLogDuration` days.
-
-        We will run this for each different and db name.
-
-        The dictionary key will be the case-insensitive procedure name.
+        Yield query and stored procedure object for lineage processing.
         """
+        query = self.get_stored_procedure_sql_statement()
         results = self.engine.execute(query).all()
-        queries_dict = defaultdict(list)
 
         for row in results:
             try:
                 query_by_procedure = QueryByProcedure.model_validate(dict(row))
-                procedure_name = (
+                query_by_procedure.procedure_name = (
                     query_by_procedure.procedure_name
                     or get_procedure_name_from_call(
                         query_text=query_by_procedure.procedure_text,
                     )
                 )
-                queries_dict[procedure_name].append(query_by_procedure)
+                yield query_by_procedure
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -106,20 +101,7 @@ class StoredProcedureLineageMixin(ABC):
                     )
                 )
 
-        queries_count_per_procedure = {
-            procedure_name: len(queries)
-            for procedure_name, queries in queries_dict.items()
-        }
-        logger.info(
-            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
-        )
-        logger.info(
-            f"Count of queries per stored procedure: {pprint_format_object(queries_count_per_procedure)}"
-        )
-
-        return queries_dict
-
-    def procedure_lineage_producer(self) -> Iterable[ProcedureAndQuery]:
+    def procedure_lineage_producer(self) -> Iterator[ProcedureAndQuery]:
         """
         Generate lineage for a list of stored procedures
         """
@@ -149,9 +131,12 @@ class StoredProcedureLineageMixin(ABC):
             )
         query_filter = json.dumps(query)
         logger.info("Processing Lineage for Stored Procedures")
-        # First, get all the query history
-        queries_dict = self.get_stored_procedure_queries_dict()
-        # Then for each procedure, iterate over all its queries
+
+        procedures_dict = {}
+        queries = self.yield_stored_procedure_queries()
+        queries_count_per_procedure = defaultdict(int)
+
+        # Get the filtered list of stored procedure to process
         for procedure in (
             self.metadata.paginate_es(
                 entity=StoredProcedure, query_filter=query_filter, size=10
@@ -179,16 +164,29 @@ class StoredProcedureLineageMixin(ABC):
                     )
                     continue
                 logger.debug(f"Processing Lineage for [{procedure.name}]")
-                for query_by_procedure in (
-                    queries_dict.get(procedure.name.root.lower()) or []
-                ):
-                    yield ProcedureAndQuery(
-                        procedure=procedure, query_by_procedure=query_by_procedure
-                    )
+                procedures_dict[procedure.name.root.lower()] = procedure
+
+        # Yield the ProcedureAndQuery for filtered stored procedure
+        for query_by_procedure in queries:
+            procedure_name = query_by_procedure.procedure_name.lower()
+            queries_count_per_procedure[procedure_name] += 1
+
+            if procedure_name in procedures_dict:
+                yield ProcedureAndQuery(
+                    procedure=procedures_dict[procedure_name],
+                    query_by_procedure=query_by_procedure,
+                )
+
+        logger.info(
+            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
+        )
+        logger.info(
+            f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}"
+        )
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+    ) -> Iterator[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Get all the queries and procedures list and yield them"""
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_producer
@@ -206,4 +204,9 @@ class StoredProcedureLineageMixin(ABC):
             self.procedure_graph_map,
             self.source_config.enableTempTableLineage,
         )
-        yield from self.generate_lineage_with_processes(producer_fn, processor_fn, args)
+        yield from self.generate_lineage_with_processes(
+            producer_fn,
+            processor_fn,
+            args,
+            max_threads=self.source_config.threads,
+        )

@@ -51,7 +51,6 @@ from metadata.ingestion.source.database.lineage_processors import (
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import can_spawn_child_process
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -59,10 +58,9 @@ logger = ingestion_logger()
 
 CHUNK_SIZE = 200
 
-THREAD_TIMEOUT = 10 * 60
-PROCESS_TIMEOUT = 10 * 60
-# Maximum number of processes to use for parallel processing
-MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
+QUERY_PROCESSING_TIMEOUT = 300
+PROCESS_TIMEOUT = CHUNK_SIZE * QUERY_PROCESSING_TIMEOUT
+
 MAX_ACTIVE_TIMED_OUT_THREADS = 10
 
 
@@ -87,6 +85,7 @@ class LineageSource(QueryParserSource, ABC):
         args: Tuple[Any, ...],
         chunk_size: int = CHUNK_SIZE,
         processor_timeout: int = PROCESS_TIMEOUT,
+        max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
     ):
         """
         Process data in separate processes with timeout control.
@@ -105,14 +104,26 @@ class LineageSource(QueryParserSource, ABC):
         # + It causes log level to be not applied correctly. For reference, if parent
         # process is running with log level debug the child processes will have
         # unset log level.
+        # from metadata.utils.helpers import can_spawn_child_process
+        #
         # multiprocessing_supported = can_spawn_child_process()
         multiprocessing_supported = False
 
-        if not multiprocessing_supported:
+        if multiprocessing_supported:
+            max_processes = min(
+                multiprocessing.cpu_count(), 8
+            )  # Limit to 8 or available CPUs whichever minimum
+            logger.info(
+                f"Starting lineage processing with `{max_processes}` maximum processes"
+            )
+        else:
             logger.debug(
-                "Current process cannot spawn child processes. "
-                "Lineage processing will be performed in the same process with "
-                "multithreading."
+                "Current process cannot spawn child processes. Lineage processing will"
+                " be performed in the same process with multithreading."
+            )
+            max_processes = max_threads
+            logger.info(
+                f"Starting lineage processing with `{max_processes}` maximum threads"
             )
 
         def chunk_generator():
@@ -151,8 +162,6 @@ class LineageSource(QueryParserSource, ABC):
         total_started_processes = 0
         active_timed_out_threads = []
 
-        logger.info(f"Starting lineage processing with MAX_PROCESSES={MAX_PROCESSES}")
-
         def start_next_process():
             """Start the next pending process if available."""
             nonlocal total_started_processes
@@ -186,7 +195,7 @@ class LineageSource(QueryParserSource, ABC):
             process.start()
             logger.debug(
                 f"Started lineage process {process.name} for chunk {total_started_processes} "
-                f"(active: {len(active_processes) + 1}/{MAX_PROCESSES}, chunk_size: {len(chunk)})"
+                f"(active: {len(active_processes) + 1}/{max_processes}, chunk_size: {len(chunk)})"
             )
             active_processes.append(process)
 
@@ -265,7 +274,7 @@ class LineageSource(QueryParserSource, ABC):
             active_processes = still_active
 
             # Start initial/next processes to fill available slots
-            while len(active_processes) < MAX_PROCESSES:
+            while len(active_processes) < max_processes:
                 if start_next_process():
                     continue
                 chunks_exhausted = True
@@ -387,6 +396,7 @@ class LineageSource(QueryParserSource, ABC):
             producer_fn,
             processor_fn,
             args,
+            max_threads=self.source_config.threads,
         )
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -431,7 +441,12 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,
             self.source_config.overrideViewLineage,
         )
-        yield from self.generate_lineage_with_processes(producer_fn, processor_fn, args)
+        yield from self.generate_lineage_with_processes(
+            producer_fn,
+            processor_fn,
+            args,
+            max_threads=self.source_config.threads,
+        )
 
     def yield_procedure_lineage(
         self,

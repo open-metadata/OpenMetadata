@@ -75,8 +75,8 @@ class MockStoredProcedureSource(StoredProcedureLineageMixin):
         self.engine = Mock()
         self.dialect = Mock()
 
-    def get_stored_procedure_queries_dict(self):
-        return {}
+    def get_stored_procedure_sql_statement(self):
+        return ""
 
 
 class StoredProcedureLineageTest(TestCase):

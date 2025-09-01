@@ -605,9 +605,9 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 self.status = MagicMock()
                 self.dialect = MagicMock()
 
-            def get_stored_procedure_queries_dict(self):
+            def get_stored_procedure_sql_statement(self):
                 """Mock implementation of abstract method"""
-                return {}
+                return ""
 
         mixin = MockStoredProcedureMixin(self.mock_metadata)
 
