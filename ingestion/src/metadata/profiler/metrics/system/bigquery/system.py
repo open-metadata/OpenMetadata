@@ -33,7 +33,10 @@ class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
     ):
         self.session = session
         self.table = runner.table_name
-        self.project_id = runner.session.get_bind().url.host
+        self.project_id = (
+            runner.raw_dataset.__table_args__.get("bigquery_database")
+            or runner.session.get_bind().url.host
+        )
         self.dataset_id = runner.schema_name
         self.usage_location = usage_location
 

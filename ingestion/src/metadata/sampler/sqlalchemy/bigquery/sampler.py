@@ -161,6 +161,17 @@ class BigQuerySampler(SQASampler):
                 f"{self.get_sampler_table_name()}_sample"
             )
 
+        # Ensure schema translation on counting the base table
+        schema_translate_map = None
+        try:
+            raw_table = self.raw_dataset.__table__
+            dataset_name = getattr(raw_table, "schema", None)
+            project_name = getattr(self.entity.database, "name", None)
+            if project_name and dataset_name and "." not in dataset_name:
+                schema_translate_map = {dataset_name: f"{project_name}.{dataset_name}"}
+        except Exception:
+            pass
+
         # Absolute sample size or randomized sample
         with self.session_factory() as client:
             if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
@@ -169,22 +180,13 @@ class BigQuerySampler(SQASampler):
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
+                if schema_translate_map:
+                    session_query = session_query.execution_options(
+                        schema_translate_map=schema_translate_map
+                    )
                 return session_query.where(
                     rnd.c.random <= self.sample_config.profileSample
                 ).cte(f"{self.get_sampler_table_name()}_sample")
-
-            # Ensure schema translation on counting the base table
-            schema_translate_map = None
-            try:
-                raw_table = self.raw_dataset.__table__
-                dataset_name = getattr(raw_table, "schema", None)
-                project_name = getattr(self.entity.database, "name", None)
-                if project_name and dataset_name and "." not in dataset_name:
-                    schema_translate_map = {
-                        dataset_name: f"{project_name}.{dataset_name}"
-                    }
-            except Exception:
-                pass
 
             table_query = client.query(self.raw_dataset)
             if schema_translate_map:
