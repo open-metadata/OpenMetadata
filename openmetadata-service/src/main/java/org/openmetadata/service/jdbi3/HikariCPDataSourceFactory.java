@@ -269,13 +269,16 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
             || key.startsWith("failover.")
             || key.startsWith("efm2.")
             || key.equals("clusterId")
-            || key.equals("clusterRegion")
-            || key.equals("loadBalanceHosts")
-            || key.equals("targetServerType")){
+            || key.equals("clusterRegion")) {
           props.put(key, entry.getValue());
         }
       }
     }
+    
+    // CRITICAL: Remove conflicting PostgreSQL properties that prevent AWS driver read replica usage
+    // These properties interfere with AWS JDBC driver's read/write splitting
+    props.remove("targetServerType");
+    props.remove("loadBalanceHosts");
   }
 
   private void configureMySQL(HikariConfig config) {
