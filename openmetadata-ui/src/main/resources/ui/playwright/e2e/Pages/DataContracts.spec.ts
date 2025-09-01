@@ -21,6 +21,8 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -51,6 +53,8 @@ import { settingClick } from '../../utils/sidebar';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
+  DatabaseClass,
+  DatabaseSchemaClass,
   TableClass,
   TopicClass,
   DashboardClass,
