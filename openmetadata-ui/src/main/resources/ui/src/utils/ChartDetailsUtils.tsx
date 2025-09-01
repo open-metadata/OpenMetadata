@@ -20,7 +20,6 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
@@ -102,18 +101,18 @@ export const getChartDetailPageTabs = ({
         </LineageProvider>
       ),
     },
-    {
-      label: (
-        <TabsLabel
-          isBeta
-          id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
-          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
-        />
-      ),
-      key: EntityTabs.CONTRACT,
-      children: <ContractTab />,
-    },
+    // {
+    //   label: (
+    //     <TabsLabel
+    //       isBeta
+    //       id={EntityTabs.CONTRACT}
+    //       isActive={activeTab === EntityTabs.CONTRACT}
+    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+    //     />
+    //   ),
+    //   key: EntityTabs.CONTRACT,
+    //   children: <ContractTab />,
+    // },
     {
       label: (
         <TabsLabel

@@ -64,9 +64,8 @@ const entitiesWithDataContracts = [
   ContainerClass,
   SearchIndexClass,
   StoredProcedureClass,
-  //   ApiEndpointClass,   ApiEndpoint page is broken after refresh and Chart is not supported yet.
+  //   ApiEndpointClass,   ApiEndpoint and ApiCollection page is broken after refresh because of Vite Changes.
   //   ApiCollectionClass
-  //   ChartClass,
 ] as const;
 
 // Helper function to check if entity supports specific features
