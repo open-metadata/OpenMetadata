@@ -288,6 +288,22 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     [selectedTestDefinition]
   );
 
+  const handleActiveField = useCallback(
+    (id: string) => {
+      // Only update if id matches pattern root/{any string}
+      if (/^root\/.+/.test(id)) {
+        setActiveField((pre) => {
+          if (pre !== id) {
+            return id;
+          }
+
+          return pre;
+        });
+      }
+    },
+    [setActiveField]
+  );
+
   // Parameter form rendering
   const generateParamsField = useMemo(() => {
     if (!selectedTestDefinition?.parameterDefinition) {
@@ -295,12 +311,19 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     }
 
     return (
-      <ParameterForm
-        definition={selectedTestDefinition}
-        table={selectedTableData}
-      />
+      <div
+        onClick={() =>
+          handleActiveField(
+            selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+          )
+        }>
+        <ParameterForm
+          definition={selectedTestDefinition}
+          table={selectedTableData}
+        />
+      </div>
     );
-  }, [selectedTestDefinition, selectedTableData]);
+  }, [selectedTestDefinition, selectedTableData, selectedTestType]);
 
   // Dynamic test name generation
   const generateDynamicTestName = useCallback(() => {
@@ -519,6 +542,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         (definition) => definition.fullyQualifiedName === value
       );
       setSelectedTestDefinition(testDefinition);
+      setActiveField(() => `root/${value}`);
     },
     [testDefinitions]
   );
@@ -847,17 +871,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     [createTestCaseObj, testSuite, selectedTable, table, onFormSubmit, onCancel]
   );
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
-    if (event.target.id) {
-      console.log('focuskey', event.target.id);
-      setActiveField(event.target.id);
-    }
-  }, []);
-
-  const handleActiveField = useCallback((id: string) => {
-    console.log('activekey', id);
-    setActiveField(() => id);
-  }, []);
+  const handleFieldFocus = useCallback(
+    (event: FocusEvent<HTMLFormElement>) => {
+      if (event.target.id) {
+        handleActiveField(event.target.id);
+      }
+    },
+    [handleActiveField]
+  );
 
   // =============================================
   // EFFECT HOOKS
@@ -1172,7 +1193,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 data-testid="test-type"
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
-                id="root/testType"
+                id={
+                  selectedTestType
+                    ? `root/${selectedTestType}`
+                    : 'root/testType'
+                }
                 options={testTypeOptions}
                 placeholder={t('label.select-test-type')}
                 popupClassName="no-wrap-option"

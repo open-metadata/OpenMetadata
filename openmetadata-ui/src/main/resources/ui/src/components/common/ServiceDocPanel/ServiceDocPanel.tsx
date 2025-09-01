@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { first, last } from 'lodash';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -138,13 +138,13 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     if (fieldName) {
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
-        // // Remove all previous highlights first
-        // const previousHighlighted = document.querySelectorAll(
-        //   '[data-highlighted="true"]'
-        // );
-        // previousHighlighted.forEach((el) => {
-        //   el.removeAttribute('data-highlighted');
-        // });
+        // Remove all previous highlights first
+        const previousHighlighted = document.querySelectorAll(
+          '[data-highlighted="true"]'
+        );
+        previousHighlighted.forEach((el) => {
+          el.removeAttribute('data-highlighted');
+        });
 
         const element = document.querySelector(`[data-id="${fieldName}"]`);
         if (element) {
@@ -157,13 +157,16 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         }
       });
     }
-  }, [
-    activeField,
-    getActiveFieldName,
-    serviceType,
-    isMarkdownReady,
-    markdownContent,
-  ]);
+  }, [activeField, serviceType, isMarkdownReady]);
+
+  const docsPanel = useMemo(() => {
+    return (
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={markdownContent}
+      />
+    );
+  }, [markdownContent]);
 
   if (isLoading) {
     return <Loader />;
@@ -171,12 +174,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   return (
     <Row data-testid="service-requirements">
-      <Col span={24}>
-        <RichTextEditorPreviewer
-          enableSeeMoreVariant={false}
-          markdown={markdownContent}
-        />
-      </Col>
+      <Col span={24}>{docsPanel}</Col>
     </Row>
   );
 };
