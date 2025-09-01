@@ -173,10 +173,12 @@ public interface EntityDAO<T extends EntityInterface> {
   void updateFqnInternal(
       @Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
+  @ReadOnly
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @ReadOnly
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(
@@ -184,6 +186,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindList("ids") List<String> ids,
       @Define("cond") String cond);
 
+  @ReadOnly
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
       @Define("table") String table,
@@ -199,6 +202,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindList("names") List<String> names,
       @Define("cond") String cond);
 
+  @ReadOnly
   @SqlQuery("SELECT count(<nameHashColumn>) FROM <table> <cond>")
   int listCount(
       @Define("table") String table,

@@ -240,13 +240,12 @@ database:
     prepStmtCacheSize: ${DB_MYSQL_PREP_STMT_CACHE_SIZE:-500}
     
     # AWS JDBC Driver specific properties for Aurora - these are ignored by other drivers
-    wrapperPlugins: ${DB_AWS_WRAPPER_PLUGINS:-readWriteSplitting,failover,efm2}
+    wrapperPlugins: ${DB_AWS_WRAPPER_PLUGINS:-readWriteSplitting,failover2,efm2}
     wrapperLoggerLevel: ${DB_AWS_WRAPPER_LOGGER_LEVEL:-INFO}
     wrapperDialect: ${DB_AWS_WRAPPER_DIALECT:aurora-pg}
     
-    # Aurora cluster identification
-    clusterId: ${DB_AWS_CLUSTER_ID:-}
-    clusterRegion: ${DB_AWS_CLUSTER_REGION:-}
+    # Reader selection strategy for read/write splitting
+    readerHostSelectorStrategy: ${DB_AWS_READER_HOST_SELECTOR_STRATEGY:-leastConnections}
     
     # Read/Write splitting configuration
     readWriteSplitting.readerAny: ${DB_AWS_RWS_READER_ANY:-true}
