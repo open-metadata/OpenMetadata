@@ -165,7 +165,8 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     String driverClassName = getDriverClass();
     if (driverClassName != null) {
-      if (driverClassName.contains("postgresql") || driverClassName.equals("software.amazon.jdbc.Driver")) {
+      if (driverClassName.contains("postgresql")
+          || driverClassName.equals("software.amazon.jdbc.Driver")) {
         configurePostgreSQL(config);
         if (driverClassName.equals("software.amazon.jdbc.Driver")) {
           configureAWSJDBCDriver(config);
@@ -236,61 +237,16 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
   private void configureAWSJDBCDriver(HikariConfig config) {
     Properties props = config.getDataSourceProperties();
-    
+
     // AWS JDBC Driver specific properties for Aurora cluster discovery
     props.put("wrapperPlugins", "readWriteSplitting,failover,efm2");
-    props.put("wrapperLoggerLevel", "INFO");
-    
-    // Aurora cluster discovery - extract cluster info from URL
-    String jdbcUrl = config.getJdbcUrl();
-    if (jdbcUrl != null && jdbcUrl.contains(".cluster-")) {
-      // Extract cluster ID from the host
-      String host = jdbcUrl.split("//")[1].split("/")[0].split(":")[0];
-      String[] hostParts = host.split("\\.");
-      if (hostParts.length > 0) {
-        String clusterId = hostParts[0];
-        props.put("clusterId", clusterId);
-        
-        // Extract region from hostname
-        if (host.contains(".rds.amazonaws.com")) {
-          String region = host.split("\\.rds\\.")[0];
-          region = region.substring(region.lastIndexOf(".") + 1);
-          if (region.contains("-")) {
-            props.put("clusterRegion", region);
-          }
-        }
-      }
-    }
-    
-    // Read/Write splitting configuration
-    props.put("readWriteSplitting.readerAny", "true");
-    props.put("readWriteSplitting.connectionPoolSize", "10");
-    props.put("readWriteSplitting.maxIdleTime", "300000");
-    
-    // Failover configuration
-    props.put("failover.enableClusterAwareFailover", "true");
-    props.put("failover.clusterTopologyRefreshRateMs", "30000");
-    props.put("failover.readerFailoverTimeoutMs", "30000");
-    
-    // Enhanced Failure Monitoring
-    props.put("efm2.enable", "true");
-    props.put("efm2.monitoringIntervalMs", "5000");
-    
-    // Remove conflicting properties that prevent read replica usage
-    props.remove("targetServerType");
-    props.remove("loadBalanceHosts");
-    
+
     // Override properties from configuration if present
     Map<String, String> properties = getProperties();
     if (properties != null) {
       for (Map.Entry<String, String> entry : properties.entrySet()) {
         String key = entry.getKey();
-        if (key.startsWith("readWriteSplitting.") || 
-            key.startsWith("failover.") || 
-            key.startsWith("efm2.") ||
-            key.startsWith("wrapper")) {
-          props.put(key, entry.getValue());
-        }
+        props.put(key, entry.getValue());
       }
     }
   }
