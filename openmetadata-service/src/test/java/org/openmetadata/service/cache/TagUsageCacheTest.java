@@ -20,9 +20,13 @@ import java.lang.reflect.Method;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -39,6 +43,8 @@ import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.resources.tags.ClassificationResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 
 /**
  * Test class for tag usage caching functionality.
@@ -48,6 +54,10 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest {
 
+  private static final String TEST_CLASSIFICATION_NAME = "TestData";
+  private static final String TEST_TAG_NAME = "Personal";
+  private static final String TEST_TAG_FQN = TEST_CLASSIFICATION_NAME + "." + TEST_TAG_NAME;
+
   private CollectionDAO.TagUsageDAO tagUsageDAO;
 
   // Test entities
@@ -56,9 +66,6 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
   private DatabaseSchema testSchema;
   private DatabaseService testDatabaseService;
 
-  // Test tag data
-  private static final String TEST_TAG_FQN = "PersonalData.PII";
-  private static final String TEST_TAG_FQN_HASH = "test-tag-hash";
   private String testEntityFQNHash;
 
   @BeforeEach
@@ -79,6 +86,9 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
 
     // Set up test entity hash
     testEntityFQNHash = testTable.getFullyQualifiedName();
+
+    // Set up required tags for testing
+    setupRequiredTags();
   }
 
   private void createTestEntities() throws Exception {
@@ -151,6 +161,34 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     };
   }
 
+  private void setupRequiredTags() throws Exception {
+    // Create a simple classification and tag for testing
+    ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
+    TagResourceTest tagResourceTest = new TagResourceTest();
+
+    // Create a test classification
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(TEST_CLASSIFICATION_NAME)
+            .withDisplayName("Test Data Classification")
+            .withDescription("Test classification for cache testing");
+
+    Classification testClassification =
+        classificationResourceTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    // Create a test tag under the classification
+    CreateTag createTag =
+        new CreateTag()
+            .withName(TEST_TAG_NAME)
+            .withDisplayName("Personal Data")
+            .withDescription("Personal data tag for testing")
+            .withClassification(testClassification.getName());
+
+    Tag testTag = tagResourceTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    LOG.info("Created test tag: {}", testTag.getFullyQualifiedName());
+  }
+
   @Test
   @Order(1)
   @DisplayName("Test cache is available for tag usage operations")
@@ -175,7 +213,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     tagUsageDAO.applyTag(
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
-        TEST_TAG_FQN_HASH,
+        TEST_TAG_NAME,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -200,7 +238,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     tagUsageDAO.applyTag(
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
-        TEST_TAG_FQN_HASH,
+        TEST_TAG_NAME,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -238,7 +276,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     tagUsageDAO.applyTag(
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
-        TEST_TAG_FQN_HASH,
+        TEST_TAG_NAME,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -304,7 +342,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     tagUsageDAO.applyTag(
         TagSource.CLASSIFICATION.ordinal(),
         TEST_TAG_FQN,
-        TEST_TAG_FQN_HASH,
+        TEST_TAG_NAME,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
         State.CONFIRMED.ordinal());
@@ -318,7 +356,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     assertNotNull(beforeDeletion, "Tags should exist before deletion");
 
     // Delete the tag
-    tagUsageDAO.deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), TEST_TAG_FQN_HASH);
+    tagUsageDAO.deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), TEST_TAG_NAME);
 
     // Verify tag usage counter was decremented
     long afterDeletionUsage = RelationshipCache.getTagUsage(TEST_TAG_FQN);
@@ -370,14 +408,13 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
     }
 
     int operationCount = 50;
-    String baseTagFQN = "Performance.Tag";
 
     long startTime = System.currentTimeMillis();
 
     // Perform mixed tag operations
     for (int i = 0; i < operationCount; i++) {
-      String tagFQN = baseTagFQN + i;
-      String tagHash = "hash-" + i;
+      String tagFQN = TEST_TAG_FQN;
+      String tagHash = TEST_TAG_NAME + "-" + i;
 
       // Apply tag
       tagUsageDAO.applyTag(
