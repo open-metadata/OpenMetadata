@@ -120,13 +120,14 @@ public class MigrationProcessImpl implements MigrationProcess {
             // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
             previouslyRanSql = null;
           }
-          
+
           if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
             handle.execute(sql);
             try {
               migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
             } catch (Exception logException) {
-              // If logging fails (table doesn't exist yet), continue - the SQL was executed successfully
+              // If logging fails (table doesn't exist yet), continue - the SQL was executed
+              // successfully
             }
           }
           queryStatusMap.put(

@@ -2,14 +2,11 @@ package org.openmetadata.service.migration.utils;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.jetbrains.annotations.Nullable;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
 import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
@@ -18,6 +15,7 @@ import org.flywaydb.core.internal.parser.ParsingContext;
 import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
 import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
 import org.flywaydb.database.mysql.MySQLParser;
+import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -64,9 +62,11 @@ public class FlywayMigrationFile extends MigrationFile {
         if (connectionType == ConnectionType.MYSQL) {
           parser = new MySQLParser(configuration, parsingContext);
         }
-        
+
         try (SqlStatementIterator sqlIterator =
-            parser.parse(new FileSystemResource(null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
+            parser.parse(
+                new FileSystemResource(
+                    null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
           while (sqlIterator.hasNext()) {
             String sqlStatement = sqlIterator.next().getSql();
             if (!checkIfQueryPreviouslyRan(sqlStatement)) {

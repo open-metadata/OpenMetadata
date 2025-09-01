@@ -2,18 +2,17 @@ package org.openmetadata.service.migration.utils;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
+import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
 import org.flywaydb.core.internal.parser.Parser;
 import org.flywaydb.core.internal.parser.ParsingContext;
 import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
 import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
 import org.flywaydb.database.mysql.MySQLParser;
-import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -71,7 +70,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
     if (connectionType == ConnectionType.MYSQL) {
       parser = new MySQLParser(configuration, parsingContext);
     }
-    
+
     if (new File(getSchemaChangesFile()).isFile()) {
       try (SqlStatementIterator schemaChangesIterator =
           parser.parse(
@@ -103,7 +102,6 @@ public class MigrationFile implements Comparable<MigrationFile> {
       }
     }
   }
-
 
   public String getMigrationProcessClassName() {
     String clazzName =
