@@ -17,29 +17,37 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
+
   public DataProductResourceTest() {
     super(
         Entity.DATA_PRODUCT,
@@ -185,6 +193,72 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertThatThrownBy(() -> entityRepository.validateDataProducts(List.of(entityReference)))
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
+  }
+
+  @Test
+  void test_bulkAssetsOperationWithMixedAssetTypes(TestInfo test) throws IOException {
+    // Get the repository instance
+    DataProductRepository dataProductRepository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+
+    // Create a data product
+    CreateDataProduct create = createRequest(getEntityName(test));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create different asset types
+    TopicResourceTest topicTest = new TopicResourceTest();
+    Topic topic =
+        topicTest.createEntity(topicTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+
+    // Create a dashboard
+    DashboardResourceTest dashboardTest = new DashboardResourceTest();
+    Dashboard dashboard =
+        dashboardTest.createEntity(
+            dashboardTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+
+    // Create BulkAssets request with mixed asset types (Table, Dashboard, Topic)
+    BulkAssets bulkAssets =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    TEST_TABLE1.getEntityReference(),
+                    dashboard.getEntityReference(),
+                    topic.getEntityReference()));
+
+    // Test bulk add operation
+    BulkOperationResult result =
+        dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(3, result.getNumberOfRowsProcessed());
+    assertEquals(3, result.getNumberOfRowsPassed());
+
+    // Verify all assets are added to the data product
+    product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertEquals(3, product.getAssets().size());
+
+    // Verify each asset type is present
+    List<String> assetTypes =
+        product.getAssets().stream()
+            .map(EntityReference::getType)
+            .sorted()
+            .collect(Collectors.toList());
+    assertEquals(List.of("dashboard", "table", "topic"), assetTypes);
+
+    // Test bulk remove operation
+    BulkAssets removeAssets =
+        new BulkAssets()
+            .withAssets(List.of(dashboard.getEntityReference(), topic.getEntityReference()));
+
+    result = dataProductRepository.bulkRemoveAssets(product.getFullyQualifiedName(), removeAssets);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsPassed());
+
+    // Verify only table remains
+    product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertEquals(1, product.getAssets().size());
+    assertEquals("table", product.getAssets().get(0).getType());
+    assertEquals(TEST_TABLE1.getId(), product.getAssets().get(0).getId());
   }
 
   @Test

@@ -214,10 +214,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
+    ArrayList<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
+    EntityUtil.populateEntityReferences(assets);
 
-    EntityUtil.populateEntityReferences(request.getAssets());
-
-    for (EntityReference ref : request.getAssets()) {
+    for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       removeCrossDomainDataProducts(ref, relationship);
@@ -240,8 +240,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       ChangeDescription change =
-          addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+          addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
       ChangeEvent changeEvent =
           getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
