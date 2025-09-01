@@ -835,19 +835,22 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    'Custom Properties'
+    'Custom Properties',
+    true
   );
 
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    entityType
+    entityType,
+    true
   );
 
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    propertyName
+    propertyName,
+    true
   );
 
   await page.getByTestId('cancel-btn').click();
