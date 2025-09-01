@@ -253,6 +253,7 @@ database:
     readWriteSplitting.connectionPoolSize: ${DB_AWS_RWS_CONNECTION_POOL_SIZE:-10}
     readWriteSplitting.maxIdleTime: ${DB_AWS_RWS_MAX_IDLE_TIME:-300000}
     readWriteSplittingConnectionStrategy: ${DB_AWS_RWS_CONNECTION_STRATEGY:-leastConnections}
+    readWriteSplitting.splitSqlByReadWritePattern: ${DB_AWS_RWS_SPLIT_SQL:-true}
     
     # Failover configuration
     failover.enableClusterAwareFailover: ${DB_AWS_FAILOVER_CLUSTER_AWARE:-true}
