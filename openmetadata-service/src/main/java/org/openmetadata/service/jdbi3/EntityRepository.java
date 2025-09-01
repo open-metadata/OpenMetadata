@@ -286,7 +286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
-  @Getter protected final boolean supportsStatus;
+  @Getter protected final boolean supportsEntityStatus;
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -409,8 +409,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
-    this.supportsStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
-    if (supportsStatus) {
+    this.supportsEntityStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
+    if (supportsEntityStatus) {
       this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
       this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
     }
@@ -578,7 +578,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
    */
   protected void setDefaultStatus(T entity, boolean update) {
-    if (!supportsStatus) {
+    if (!supportsEntityStatus) {
       return;
     }
     // Skip if status is already set
@@ -3927,7 +3927,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateEntityStatus() {
-      if (supportsStatus) {
+      if (supportsEntityStatus) {
         recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
       }
     }

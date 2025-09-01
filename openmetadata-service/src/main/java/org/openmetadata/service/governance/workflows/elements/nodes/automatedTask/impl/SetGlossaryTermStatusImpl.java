@@ -63,10 +63,11 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {
-    if (!Objects.equals(status, glossaryTerm.getEntityStatus().value())) {
+    EntityStatus newStatus = EntityStatus.fromValue(status);
+    if (!Objects.equals(newStatus, glossaryTerm.getEntityStatus())) {
       String originalJson = JsonUtils.pojoToJson(glossaryTerm);
 
-      glossaryTerm.setEntityStatus(EntityStatus.fromValue(status));
+      glossaryTerm.setEntityStatus(newStatus);
       String updatedJson = JsonUtils.pojoToJson(glossaryTerm);
 
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
