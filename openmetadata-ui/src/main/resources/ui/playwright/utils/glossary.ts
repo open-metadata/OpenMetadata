@@ -77,6 +77,9 @@ export const selectActiveGlossary = async (
       await menuItem.click();
     }
   }
+
+  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -87,6 +90,12 @@ export const selectActiveGlossaryTerm = async (
   glossaryTermName: string
 ) => {
   await page.getByTestId(glossaryTermName).click();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]')

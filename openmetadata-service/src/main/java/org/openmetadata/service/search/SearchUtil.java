@@ -45,7 +45,7 @@ public class SearchUtil {
           "search_entity_search_index",
           Entity.SEARCH_INDEX,
           "api_collection_search_index",
-          Entity.API_COLLCECTION,
+          Entity.API_COLLECTION,
           "api_endpoint_search_index",
           Entity.API_ENDPOINT,
           "directory_search_index",
