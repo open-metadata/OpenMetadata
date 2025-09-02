@@ -3622,16 +3622,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
-      User originalUser =
-          original.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+      User updatingUser =
+          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : findEntityByNameOrNull(USER, original.getUpdatedBy(), ALL);
-      if (originalUser == null) {
+              : findEntityByNameOrNull(USER, updated.getUpdatedBy(), ALL);
+      if (updatingUser == null) {
         // user not found, create a new user with name
         // This is to handle the case where the user is not found in the system. maybe deleted
-        originalUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
+        updatingUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
       }
-      this.updatingUser = originalUser;
+      this.updatingUser = updatingUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
     }
