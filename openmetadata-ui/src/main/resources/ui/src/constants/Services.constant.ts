@@ -463,6 +463,7 @@ export const BETA_SERVICES = [
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
+  DatabaseServiceType.ServiceNow,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
