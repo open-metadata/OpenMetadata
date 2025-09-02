@@ -74,13 +74,14 @@ test.describe('Explore Sort Order Filter', () => {
           state: 'detached',
         }
       );
+      const dataAssetDropdownRequest = await page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+      );
       await page
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(filter.toLowerCase());
-      await page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-      );
+      await dataAssetDropdownRequest;
       await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.waitForSelector(
         `[data-testid="${filter.toLowerCase()}-checkbox"]`,
