@@ -58,7 +58,6 @@ test.describe('Curated Assets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    await page.getByTestId('sidebar-toggle').click();
     await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 
@@ -91,7 +90,8 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
 
     await selectOption(
@@ -103,7 +103,8 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--value .ant-select'),
-      'admin'
+      'admin',
+      true
     );
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
@@ -112,7 +113,8 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Display Name'
+      'Display Name',
+      true
     );
 
     await selectOption(
@@ -124,7 +126,8 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--value .ant-select'),
-      'arcs'
+      'arcs',
+      true
     );
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
