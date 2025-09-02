@@ -74,6 +74,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
@@ -83,6 +85,7 @@ import {
   SearchIndex as SearchIndexEntity,
   SearchIndexField,
 } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -95,6 +98,7 @@ import {
   TableType,
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Team } from '../generated/entity/teams/team';
 import {
@@ -1180,6 +1184,146 @@ const getMetricOverview = (metric: Metric) => {
   return overview;
 };
 
+const getDirectoryOverview = (directoryDetails: Directory) => {
+  const {
+    numberOfSubDirectories,
+    numberOfFiles,
+    serviceType,
+    owners,
+    domains,
+  } = directoryDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.directory-plural'),
+      value: numberOfSubDirectories ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-plural'),
+      value: numberOfFiles ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getFileOverview = (fileDetails: File) => {
+  const { fileExtension, fileType, fileVersion, serviceType, owners, domains } =
+    fileDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.file-extension'),
+      value: fileExtension ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-type'),
+      value: fileType ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-version'),
+      value: fileVersion ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getSpreadsheetOverview = (spreadsheetDetails: Spreadsheet) => {
+  const { fileVersion, serviceType, owners, domains } = spreadsheetDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.file-version'),
+      value: fileVersion ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getWorksheetOverview = (worksheetDetails: Worksheet) => {
+  const { columnCount, rowCount, serviceType, owners, domains } =
+    worksheetDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.column-plural'),
+      value: columnCount ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.row-plural'),
+      value: rowCount ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
 export const getEntityOverview = (
   type: string,
   entityDetail: DataAssetSummaryPanelProps['dataAsset'],
@@ -1257,6 +1401,26 @@ export const getEntityOverview = (
     case ExplorePageTabs.METRIC:
     case EntityType.METRIC: {
       return getMetricOverview(entityDetail as Metric);
+    }
+
+    case ExplorePageTabs.DIRECTORIES:
+    case EntityType.DIRECTORY: {
+      return getDirectoryOverview(entityDetail as Directory);
+    }
+
+    case ExplorePageTabs.FILES:
+    case EntityType.FILE: {
+      return getFileOverview(entityDetail as File);
+    }
+
+    case ExplorePageTabs.SPREADSHEETS:
+    case EntityType.SPREADSHEET: {
+      return getSpreadsheetOverview(entityDetail as Spreadsheet);
+    }
+
+    case ExplorePageTabs.WORKSHEETS:
+    case EntityType.WORKSHEET: {
+      return getWorksheetOverview(entityDetail as Worksheet);
     }
 
     case ExplorePageTabs.DATABASE_SERVICE:
@@ -1526,6 +1690,7 @@ export const getEntityLinkFromType = (
     case EntityType.SEARCH_INDEX:
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
+    case EntityType.DIRECTORY:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);

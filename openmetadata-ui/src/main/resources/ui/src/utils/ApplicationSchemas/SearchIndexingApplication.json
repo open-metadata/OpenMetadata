@@ -118,7 +118,8 @@
           "topic",
           "chart",
           "user",
-          "testCase"
+          "testCase",
+          "directory"
         ]
       },
       "default": ["all"],

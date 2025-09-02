@@ -23,6 +23,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Metric } from '../generated/entity/data/metric';
@@ -30,9 +32,11 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Query } from '../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { APIService } from '../generated/entity/services/apiService';
@@ -201,6 +205,16 @@ export interface APIEndpointSearchSource
 
 export interface MetricSearchSource extends SearchSourceBase, Metric {}
 
+export interface DirectorySearchSource extends SearchSourceBase, Directory {}
+
+export interface FileSearchSource extends SearchSourceBase, File {}
+
+export interface SpreadsheetSearchSource
+  extends SearchSourceBase,
+    Spreadsheet {}
+
+export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -272,6 +286,10 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
   [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
+  [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectorySearchSource;
+  [SearchIndex.FILE_SEARCH_INDEX]: FileSearchSource;
+  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetSearchSource;
+  [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetSearchSource;
 };
 
 export type SearchRequest<

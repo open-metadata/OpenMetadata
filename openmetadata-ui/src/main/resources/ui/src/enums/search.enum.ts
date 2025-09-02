@@ -50,4 +50,8 @@ export enum SearchIndex {
   API_ENDPOINT_INDEX = 'api_endpoint_search_index',
   METRIC_SEARCH_INDEX = 'metric_search_index',
   SERVICE = 'service',
+  DIRECTORY_SEARCH_INDEX = 'directory_search_index',
+  FILE_SEARCH_INDEX = 'file_search_index',
+  SPREADSHEET_SEARCH_INDEX = 'spreadsheet_search_index',
+  WORKSHEET_SEARCH_INDEX = 'worksheet_search_index',
 }

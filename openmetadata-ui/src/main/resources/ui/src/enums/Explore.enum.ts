@@ -45,4 +45,8 @@ export enum ExplorePageTabs {
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
   DRIVE_SERVICE = 'driveService',
+  DIRECTORIES = 'directories',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
+  WORKSHEETS = 'worksheets',
 }
