@@ -757,15 +757,14 @@ export const assignGlossaryTerm = async (
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add'
 ) => {
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
-  );
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
-
+  const searchGlossaryTerm = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  );
   // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
