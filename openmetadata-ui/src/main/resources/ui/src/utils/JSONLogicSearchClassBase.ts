@@ -306,16 +306,6 @@ class JSONLogicSearchClassBase {
           },
         },
       },
-      [EntityReferenceFields.TIER]: {
-        label: t('label.tier'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.autoCompleteTier,
-          useAsyncSearch: true,
-        },
-      },
       [EntityReferenceFields.EXTENSION]: {
         label: t('label.custom-property-plural'),
         type: '!struct',
@@ -411,23 +401,25 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
+    queryFilter?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,
     fieldLabel,
+    queryFilter,
   }) => {
     return (search) => {
       return searchData(
         Array.isArray(search) ? search.join(',') : search ?? '',
         1,
         PAGE_SIZE_BASE,
-        '',
+        queryFilter ?? '',
         '',
         '',
         searchIndex ?? SearchIndex.DATA_ASSET,
         false,
         false,
-        false
+        true
       ).then((response) => {
         const data = response.data.hits.hits;
 

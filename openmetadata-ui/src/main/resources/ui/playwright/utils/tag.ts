@@ -81,7 +81,7 @@ export const visitClassificationPage = async (
   await fetchTags;
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 };

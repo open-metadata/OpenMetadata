@@ -86,6 +86,7 @@ const GlossaryDetails = ({
       {
         label: (
           <TabsLabel
+            count={glossary.termCount ?? glossary.childrenCount ?? 0}
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
