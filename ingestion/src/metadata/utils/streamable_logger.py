@@ -10,11 +10,52 @@
 #  limitations under the License.
 """
 Streamable log handler for shipping logs to OpenMetadata server.
+
 This module provides a pluggable logger that can stream ingestion logs
-to the server without impacting application traffic.
+to the server's S3 storage backend without impacting application traffic.
+
+Configuration:
+-------------
+The streamable logger is automatically enabled when:
+1. The IngestionPipeline entity has `enableStreamableLogs` set to true
+2. The ingestion pipeline FQN and run ID are available
+3. The OpenMetadata server has log storage configured (S3 or compatible)
+
+Environment Variables (Optional):
+--------------------------------
+- ENABLE_LOG_COMPRESSION: Set to "true" to compress logs before sending (default: "false")
+
+Features:
+--------
+- Asynchronous log shipping with buffering
+- Automatic compression for large payloads (>10KB when enabled)
+- Circuit breaker pattern for failure handling
+- Fallback to local logging when remote logging fails
+- Session cookie persistence for ALB sticky sessions
+- Configurable batch size and flush intervals
+
+Usage:
+------
+The streamable logger is automatically configured in the BaseWorkflow class
+when a workflow starts. No manual setup is required if the environment is
+properly configured.
+
+For manual setup (testing):
+```python
+from metadata.utils.streamable_logger import setup_streamable_logging_for_workflow
+
+handler = setup_streamable_logging_for_workflow(
+    metadata=metadata_client,
+    pipeline_fqn="service.pipeline_name",
+    run_id=UUID("..."),
+    log_level=logging.INFO
+)
+```
 """
 
+import base64
 import gzip
+import json
 import logging
 import os
 import queue
@@ -28,9 +69,6 @@ from uuid import UUID
 import requests
 from requests.adapters import HTTPAdapter, Retry
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
@@ -246,21 +284,6 @@ class StreamableLogHandler(logging.Handler):
         if buffer:
             self._ship_logs(buffer)
 
-    def _get_pipeline_id_from_fqn(self, pipeline_fqn: str) -> str:
-        """Get pipeline ID from FQN by querying the API"""
-        try:
-            # Try to get pipeline by FQN
-            pipeline = self.metadata.get_by_name(
-                entity=IngestionPipeline, fqn=pipeline_fqn
-            )
-            if pipeline:
-                return str(pipeline.id.root)
-        except Exception as e:
-            logger.error(f"Failed to get pipeline ID for FQN {pipeline_fqn}: {e}")
-
-        # Fallback: use FQN as ID (might not work but better than nothing)
-        return pipeline_fqn
-
     def _ship_logs(self, logs: list):
         """Ship logs to the server with circuit breaker protection"""
         if not logs:
@@ -288,18 +311,17 @@ class StreamableLogHandler(logging.Handler):
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server with optional compression"""
         try:
-            # Build the API endpoint - use pipeline ID not FQN in URL
-            # The endpoint expects: /api/v1/services/ingestionPipelines/{pipelineId}/logs/{runId}/stream
-            # We need to get the pipeline ID from the FQN
-            pipeline_id = self._get_pipeline_id_from_fqn(self.pipeline_fqn)
-            url = f"{self.metadata.config.host_port}/api/v1/services/ingestionPipelines/{pipeline_id}/logs/{self.run_id}/stream"
+            # Build the API endpoint using FQN directly as the Java endpoint expects
+            # The endpoint expects: /api/v1/services/ingestionPipelines/logs/{fqn}/{runId}
+            url = f"{self.metadata.config.host_port}/api/v1/services/ingestionPipelines/logs/{self.pipeline_fqn}/{self.run_id}"
 
-            # The streaming endpoint expects plain text, not JSON
-            # Add metadata as header if needed
-            headers = {
-                "Content-Type": "text/plain",
-                "X-Connector-Id": f"{socket.gethostname()}-{os.getpid()}",
-                "X-Line-Count": str(log_content.count("\n")),
+            # Prepare log batch data that matches the Java LogBatch structure
+            log_batch = {
+                "logs": log_content,
+                "timestamp": int(time.time() * 1000),  # milliseconds since epoch
+                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                "compressed": False,
+                "lineCount": log_content.count("\n") + 1,
             }
 
             # Optional: compress for large payloads
@@ -308,29 +330,34 @@ class StreamableLogHandler(logging.Handler):
             )
 
             if enable_compression and len(log_content) > 10240:  # Compress if > 10KB
-                # Compress with gzip
+                # Compress with gzip and base64 encode as expected by LogBatch
                 compressed = gzip.compress(log_content.encode("utf-8"))
-                headers["Content-Encoding"] = "gzip"
-                data = compressed
-            else:
-                data = log_content.encode("utf-8")
+                log_batch["logs"] = base64.b64encode(compressed).decode("utf-8")
+                log_batch["compressed"] = True
+
+            # The endpoint expects JSON format
+            headers = {
+                "Content-Type": "application/json",
+            }
 
             # Add auth header if available
             auth_header = self.metadata._auth_header()
             if auth_header:
                 headers.update(auth_header)
 
+            data = json.dumps(log_batch)
+
             # Send logs - session maintains cookies for ALB stickiness
             response = self.session.post(url, data=data, headers=headers, timeout=10)
             response.raise_for_status()
 
             # Update metrics
-            self.metrics["logs_sent"] += log_content.count("\n")
+            self.metrics["logs_sent"] += log_batch["lineCount"]
             self.metrics["bytes_sent"] += len(data)
 
             # Log successful shipment for debugging
             logger.debug(
-                f"Successfully shipped {log_content.count(chr(10))} log lines to server"
+                f"Successfully shipped {log_batch['lineCount']} log lines to server"
             )
 
         except requests.exceptions.RequestException as e:
@@ -422,29 +449,28 @@ def setup_streamable_logging_for_workflow(
     pipeline_fqn: Optional[str] = None,
     run_id: Optional[UUID] = None,
     log_level: int = logging.INFO,
+    enable_streaming: bool = False,
 ) -> Optional[StreamableLogHandler]:
     """
     Setup streamable logging for a workflow execution.
     This is automatically called when a workflow starts if:
-    1. The server has log storage configured
-    2. The pipeline FQN and run ID are available
-    3. ENABLE_STREAMABLE_LOGS environment variable is set to 'true' (optional)
+    1. The IngestionPipeline has enableStreamableLogs set to true
+    2. The server has log storage configured
+    3. The pipeline FQN and run ID are available
 
     Args:
         metadata: OpenMetadata client instance
         pipeline_fqn: Fully qualified name of the pipeline
         run_id: Unique run identifier
         log_level: Logging level
+        enable_streaming: Whether to enable streaming (from IngestionPipeline config)
 
     Returns:
         StreamableLogHandler instance if configured, None otherwise
     """
     global _streamable_handler
 
-    # Check if streamable logging should be enabled
-    enable_streaming = os.getenv("ENABLE_STREAMABLE_LOGS", "false").lower() == "true"
-
-    # Also check if we have the required parameters
+    # Check if we have the required parameters
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
             f"Streamable logging not configured: enable={enable_streaming}, "

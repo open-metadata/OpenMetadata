@@ -115,14 +115,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         )
 
         # Setup streamable logging if configured
-        # This will automatically check environment variables and server config
+        # Check if the pipeline has streamable logs enabled
         if self.config.ingestionPipelineFQN and self.config.pipelineRunId:
-            setup_streamable_logging_for_workflow(
-                metadata=self.metadata,
-                pipeline_fqn=self.config.ingestionPipelineFQN,
-                run_id=self.config.pipelineRunId,
-                log_level=self.workflow_config.loggerLevel.value,
-            )
+            # Check if the ingestion pipeline has streamable logs enabled
+            if self.ingestion_pipeline and self.ingestion_pipeline.enableStreamableLogs:
+                setup_streamable_logging_for_workflow(
+                    metadata=self.metadata,
+                    pipeline_fqn=self.config.ingestionPipelineFQN,
+                    run_id=self.config.pipelineRunId,
+                    log_level=self.workflow_config.loggerLevel.value,
+                    enable_streaming=True,
+                )
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 

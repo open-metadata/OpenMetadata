@@ -13,6 +13,7 @@ Unit tests for the streamable logger module.
 """
 
 import gzip
+import json
 import logging
 import os
 import time
@@ -119,6 +120,10 @@ class TestStreamableLogHandler(unittest.TestCase):
         self.mock_metadata.config = Mock()
         self.mock_metadata.config.host_port = "http://localhost:8585"
         self.mock_metadata.config.auth_token = "test-token"
+        # Mock the _auth_header method
+        self.mock_metadata._auth_header = Mock(
+            return_value={"Authorization": "Bearer test-token"}
+        )
 
         self.pipeline_fqn = "test.pipeline"
         self.run_id = uuid4()
@@ -193,8 +198,8 @@ class TestStreamableLogHandler(unittest.TestCase):
             enable_streaming=False,  # We'll test _send_logs_to_server directly
         )
 
-        # Large log content (> 1KB)
-        large_log = "x" * 2000
+        # Large log content (> 10KB to trigger compression)
+        large_log = "x" * 11000
 
         with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
             handler._send_logs_to_server(large_log)
@@ -202,7 +207,8 @@ class TestStreamableLogHandler(unittest.TestCase):
         # Check that compressed payload was sent
         mock_session.post.assert_called_once()
         call_args = mock_session.post.call_args
-        payload = call_args[1]["json"]
+        # Parse the JSON data that was sent
+        payload = json.loads(call_args[1]["data"])
 
         self.assertTrue(payload["compressed"])
         self.assertIn("logs", payload)
@@ -241,7 +247,8 @@ class TestStreamableLogHandler(unittest.TestCase):
         # Check that uncompressed payload was sent
         mock_session.post.assert_called_once()
         call_args = mock_session.post.call_args
-        payload = call_args[1]["json"]
+        # Parse the JSON data that was sent
+        payload = json.loads(call_args[1]["data"])
 
         self.assertFalse(payload["compressed"])
         self.assertEqual(payload["logs"], small_log)
@@ -380,7 +387,6 @@ class TestStreamableLogHandler(unittest.TestCase):
 class TestStreamableLoggingSetup(unittest.TestCase):
     """Test the setup and cleanup functions"""
 
-    @patch.dict(os.environ, {"ENABLE_STREAMABLE_LOGS": "true"})
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
     def test_setup_with_valid_config(self, mock_handler_class):
         """Test setup with valid configuration"""
@@ -394,8 +400,12 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         pipeline_fqn = "test.pipeline"
         run_id = uuid4()
 
+        # Test with enable_streaming=True (from IngestionPipeline config)
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn=pipeline_fqn, run_id=run_id
+            metadata=mock_metadata,
+            pipeline_fqn=pipeline_fqn,
+            run_id=run_id,
+            enable_streaming=True,  # This would come from IngestionPipeline.enableStreamableLogs
         )
 
         self.assertIsNotNone(result)
@@ -409,13 +419,16 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         # Cleanup
         cleanup_streamable_logging()
 
-    @patch.dict(os.environ, {"ENABLE_STREAMABLE_LOGS": "false"})
-    def test_setup_disabled_by_env_var(self):
-        """Test that setup returns None when disabled by env var"""
+    def test_setup_disabled_by_config(self):
+        """Test that setup returns None when disabled by config"""
         mock_metadata = Mock(spec=OpenMetadata)
 
+        # Test with enable_streaming=False (from IngestionPipeline config)
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn="test.pipeline", run_id=uuid4()
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=False,  # This would come from IngestionPipeline.enableStreamableLogs
         )
 
         self.assertIsNone(result)
@@ -426,17 +439,22 @@ class TestStreamableLoggingSetup(unittest.TestCase):
 
         # Missing pipeline_fqn
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn=None, run_id=uuid4()
+            metadata=mock_metadata,
+            pipeline_fqn=None,
+            run_id=uuid4(),
+            enable_streaming=True,
         )
         self.assertIsNone(result)
 
         # Missing run_id
         result = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn="test.pipeline", run_id=None
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=None,
+            enable_streaming=True,
         )
         self.assertIsNone(result)
 
-    @patch.dict(os.environ, {"ENABLE_STREAMABLE_LOGS": "true"})
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
     def test_cleanup_removes_handler(self, mock_handler_class):
         """Test that cleanup properly removes the handler"""
@@ -449,7 +467,10 @@ class TestStreamableLoggingSetup(unittest.TestCase):
 
         # Setup
         handler = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn="test.pipeline", run_id=uuid4()
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline",
+            run_id=uuid4(),
+            enable_streaming=True,
         )
 
         # Cleanup
@@ -462,7 +483,6 @@ class TestStreamableLoggingSetup(unittest.TestCase):
             mock_logger.removeHandler.assert_called_once_with(mock_handler)
             mock_handler.close.assert_called_once()
 
-    @patch.dict(os.environ, {"ENABLE_STREAMABLE_LOGS": "true"})
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
     def test_setup_replaces_existing_handler(self, mock_handler_class):
         """Test that setup properly replaces existing handler"""
@@ -476,12 +496,18 @@ class TestStreamableLoggingSetup(unittest.TestCase):
 
         # First setup
         handler1 = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn="test.pipeline1", run_id=uuid4()
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline1",
+            run_id=uuid4(),
+            enable_streaming=True,
         )
 
         # Second setup should close first handler
         handler2 = setup_streamable_logging_for_workflow(
-            metadata=mock_metadata, pipeline_fqn="test.pipeline2", run_id=uuid4()
+            metadata=mock_metadata,
+            pipeline_fqn="test.pipeline2",
+            run_id=uuid4(),
+            enable_streaming=True,
         )
 
         mock_handler1.close.assert_called_once()
