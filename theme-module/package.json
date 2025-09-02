@@ -1,0 +1,28 @@
+{
+  "name": "@openmetadata/theme",
+  "version": "1.0.0",
+  "description": "OpenMetadata shared UI theme system",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "type": "module",
+  "files": [
+    "src/**/*"
+  ],
+  "keywords": [
+    "theme",
+    "mui",
+    "material-ui",
+    "design-system"
+  ],
+  "author": "OpenMetadata",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@material/material-color-utilities": "^0.2.7",
+    "@mui/material": "^7.3.1",
+    "@mui/system": "^7.3.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@emotion/react": "^11.0.0",
+    "@emotion/styled": "^11.0.0"
+  }
+}

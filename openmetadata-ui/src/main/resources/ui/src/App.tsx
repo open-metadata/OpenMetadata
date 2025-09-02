@@ -36,9 +36,10 @@ import {
 import { getBasePath } from './utils/HistoryUtils';
 
 import { ThemeProvider } from '@mui/material/styles';
+import { createMuiTheme } from '@openmetadata/theme';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { createMuiTheme } from './theme/createMuiTheme';
+import { DEFAULT_THEME } from './constants/Appearance.constants';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
 
@@ -48,7 +49,7 @@ const App: FC = () => {
 
   // Create dynamic MUI theme based on user customizations
   const muiTheme = useMemo(
-    () => createMuiTheme(applicationConfig?.customTheme),
+    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
     [applicationConfig?.customTheme]
   );
 

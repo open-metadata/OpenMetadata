@@ -16,6 +16,7 @@ import {
   Avatar,
   Box,
   Button,
+  Checkbox,
   Chip,
   IconButton,
   Pagination,
@@ -40,7 +41,6 @@ import {
   Settings01,
   Tag03,
 } from '@untitledui/icons';
-import { ThemedCheckbox as Checkbox } from '../themed-checkbox';
 
 export function TableExample() {
   const theme = useTheme();

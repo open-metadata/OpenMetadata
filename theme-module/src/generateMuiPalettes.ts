@@ -16,7 +16,6 @@ import {
   hexFromArgb,
   themeFromSourceColor,
 } from '@material/material-color-utilities';
-import { DEFAULT_THEME } from '../constants/Appearance.constants';
 import { normalizeHexColor } from './colorValidation';
 import type {
   ColorPalette,
@@ -101,44 +100,56 @@ export const generateMuiPalette = (baseColor: string): ColorPalette => {
 };
 
 /**
+ * Default theme colors fallback
+ */
+const DEFAULT_THEME_FALLBACK = {
+  primaryColor: '#1570ef',
+  infoColor: '#84caff',
+  successColor: '#039855',
+  warningColor: '#DC6803',
+  errorColor: '#D92D20',
+};
+
+/**
  * Generates all color palettes for MUI theme
  * Uses user customizations or falls back to static colors from theme
  */
 export const generateAllMuiPalettes = (
   customColors?: CustomColors,
-  staticColors?: ThemeColors
+  staticColors?: ThemeColors,
+  defaultTheme = DEFAULT_THEME_FALLBACK
 ): DynamicPalettes => {
   const result = {
     brand:
-      DEFAULT_THEME.primaryColor !== customColors?.primaryColor
+      defaultTheme.primaryColor !== customColors?.primaryColor
         ? generateMuiPalette(
-            customColors?.primaryColor || DEFAULT_THEME.primaryColor
+            customColors?.primaryColor || defaultTheme.primaryColor
           )
         : staticColors?.brand,
 
     info:
-      DEFAULT_THEME.infoColor !== customColors?.infoColor
-        ? generateMuiPalette(customColors?.infoColor || DEFAULT_THEME.infoColor)
+      defaultTheme.infoColor !== customColors?.infoColor
+        ? generateMuiPalette(customColors?.infoColor || defaultTheme.infoColor)
         : staticColors?.info,
 
     success:
-      DEFAULT_THEME.successColor !== customColors?.successColor
+      defaultTheme.successColor !== customColors?.successColor
         ? generateMuiPalette(
-            customColors?.successColor || DEFAULT_THEME.successColor
+            customColors?.successColor || defaultTheme.successColor
           )
         : staticColors?.success,
 
     warning:
-      DEFAULT_THEME.warningColor !== customColors?.warningColor
+      defaultTheme.warningColor !== customColors?.warningColor
         ? generateMuiPalette(
-            customColors?.warningColor || DEFAULT_THEME.warningColor
+            customColors?.warningColor || defaultTheme.warningColor
           )
         : staticColors?.warning,
 
     error:
-      DEFAULT_THEME.errorColor !== customColors?.errorColor
+      defaultTheme.errorColor !== customColors?.errorColor
         ? generateMuiPalette(
-            customColors?.errorColor || DEFAULT_THEME.errorColor
+            customColors?.errorColor || defaultTheme.errorColor
           )
         : staticColors?.error,
   };

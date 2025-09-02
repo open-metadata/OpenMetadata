@@ -20,7 +20,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { createAlertSx } from '../icon-utils';
+import { createAlertSx } from '@openmetadata/theme';
 
 export function AlertExample() {
   const alertSx = createAlertSx();

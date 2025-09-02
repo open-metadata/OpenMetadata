@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  checkboxBlankIcon,
+  checkboxCheckedIcon,
+  checkboxIndeterminateIcon,
+} from './checkbox-icons';
+
 export const formTheme = (colors: any) => ({
   MuiTextField: {
     defaultProps: {
@@ -342,6 +348,9 @@ export const formTheme = (colors: any) => ({
     defaultProps: {
       disableRipple: true,
       disableFocusRipple: true,
+      icon: checkboxBlankIcon,
+      checkedIcon: checkboxCheckedIcon,
+      indeterminateIcon: checkboxIndeterminateIcon,
     },
     styleOverrides: {
       root: {
@@ -351,14 +360,24 @@ export const formTheme = (colors: any) => ({
         cursor: 'pointer',
         transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
         borderRadius: 0,
+        color: colors.gray[300], // Border color for unchecked state
 
         '&:hover, &:focus, &:focus-visible, &:focus-within, &:active': {
           backgroundColor: 'transparent !important',
           borderRadius: 0,
         },
 
+        '&.Mui-checked': {
+          color: colors.brand[600], // Background color for checked state
+        },
+
         '&.Mui-disabled': {
           cursor: 'not-allowed',
+          color: colors.gray[300],
+          
+          '&.Mui-checked': {
+            color: colors.gray[200],
+          },
         },
 
         '&.Mui-focusVisible': {
@@ -390,6 +409,11 @@ export const formTheme = (colors: any) => ({
           outlineOffset: '2px',
           backgroundColor: 'transparent !important',
           borderRadius: '6px',
+        },
+
+        // Update icon border radius for medium size
+        '& .checkbox-icon': {
+          borderRadius: '6px !important',
         },
 
         '& .MuiTouchRipple-root': {

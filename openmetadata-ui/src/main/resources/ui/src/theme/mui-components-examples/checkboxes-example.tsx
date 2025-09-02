@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import { ThemedCheckbox as Checkbox } from '@/theme/themed-checkbox';
 import {
   Box,
   Card,
   CardContent,
+  Checkbox,
   FormControlLabel,
   FormGroup,
   Stack,

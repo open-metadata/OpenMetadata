@@ -35,12 +35,22 @@ declare module '@mui/material/styles' {
 /**
  * Creates dynamic MUI theme with user customizations or default colors
  * @param customColors User's custom color preferences
+ * @param defaultTheme Optional default theme colors (uses built-in fallback if not provided)
  * @returns MUI Theme with dynamic or default color palettes
  */
-export const createMuiTheme = (customColors?: CustomColors) => {
+export const createMuiTheme = (
+  customColors?: CustomColors,
+  defaultTheme?: {
+    primaryColor: string;
+    infoColor: string;
+    successColor: string;
+    warningColor: string;
+    errorColor: string;
+  }
+) => {
   // Generate dynamic palettes or use static defaults
   const dynamicPalettes = customColors
-    ? generateAllMuiPalettes(customColors, defaultColors)
+    ? generateAllMuiPalettes(customColors, defaultColors, defaultTheme)
     : null;
 
   // Create final theme colors for components

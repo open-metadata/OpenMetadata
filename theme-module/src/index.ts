@@ -10,5 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// Re-export ThemedCheckbox as Checkbox
-export { ThemedCheckbox as Checkbox } from './themed-checkbox';
+
+// Main entry point for the dynamic MUI theme system
+export { buttonConstants } from './buttonConstants';
+export * from './colorValidation';
+export { createMuiTheme } from './createMuiTheme';
+export {
+  generateAllMuiPalettes,
+  generateMaterialPalette,
+  generateMuiPalette,
+} from './generateMuiPalettes';
+export * from './icon-utils';
+export { shadows } from './shadows';
+export * from './types';
