@@ -25,14 +25,14 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
       switch (eventName) {
         case "start" -> {
-          LOG.info(
+          LOG.debug(
               "[WORKFLOW_INSTANCE_START] Workflow: {}, ProcessInstance: {} - Creating workflow instance record",
               workflowName,
               processInstanceId);
           addWorkflowInstance(execution, workflowInstanceRepository);
         }
         case "end" -> {
-          LOG.info(
+          LOG.debug(
               "[WORKFLOW_INSTANCE_END] Workflow: {}, ProcessInstance: {} - Updating workflow instance status",
               workflowName,
               processInstanceId);
@@ -107,7 +107,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
         workflowInstanceId,
         System.currentTimeMillis(),
         execution.getVariables());
-    LOG.info(
+    LOG.debug(
         "[WORKFLOW_INSTANCE_CREATED] Workflow: {}, InstanceId: {}, ProcessInstance: {} - Workflow instance record created successfully",
         workflowDefinitionName,
         workflowInstanceId,
@@ -144,7 +144,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
           workflowInstanceId,
           status);
     } else {
-      LOG.info(
+      LOG.debug(
           "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed successfully",
           workflowDefinitionName,
           workflowInstanceId,

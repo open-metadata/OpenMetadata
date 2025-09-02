@@ -22,81 +22,6 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
 
-/**
- * Universal entity attribute setter for OpenMetadata workflows.
- *
- * Sets top-level entity fields properly by fetching actual entities from repositories.
- *
- * <h2>Supported Field Types:</h2>
- * <ul>
- *   <li><strong>Simple fields:</strong> description, displayName - direct value setting</li>
- *   <li><strong>Tags:</strong> Fetches Tag entities and creates proper TagLabels (APPENDS)</li>
- *   <li><strong>GlossaryTerms:</strong> Fetches GlossaryTerm entities and creates TagLabels (APPENDS)</li>
- *   <li><strong>Certification:</strong> Creates AssetCertification with proper TagLabel (REPLACES)</li>
- *   <li><strong>Tier:</strong> Manages Tier.* tags in tags array (REPLACES existing tier)</li>
- *   <li><strong>Owners:</strong> Fetches User/Team entities and creates EntityReferences</li>
- *   <li><strong>Reviewers:</strong> Fetches User/Team entities and creates EntityReferences</li>
- * </ul>
- *
- * <h2>Configuration Examples:</h2>
- * <pre>{@code
- * // Simple field
- * {
- *   "config": {
- *     "fieldName": "description",
- *     "fieldValue": "Updated description"
- *   }
- * }
- *
- * // Tags - provide FQN(s), will fetch actual Tag entities
- * {
- *   "config": {
- *     "fieldName": "tags",
- *     "fieldValue": "PII.Sensitive"  // or "PII.Sensitive, Quality.High"
- *   }
- * }
- *
- * // GlossaryTerms - provide FQN(s), will fetch actual GlossaryTerm entities
- * {
- *   "config": {
- *     "fieldName": "glossaryTerms",
- *     "fieldValue": "BusinessGlossary.Customer"
- *   }
- * }
- *
- * // Certification
- * {
- *   "config": {
- *     "fieldName": "certification",
- *     "fieldValue": "Certification.Gold"
- *   }
- * }
- *
- * // Tier
- * {
- *   "config": {
- *     "fieldName": "tier",
- *     "fieldValue": "Tier.Tier1"
- *   }
- * }
- *
- * // Owners - use format "user:name" or "team:name"
- * {
- *   "config": {
- *     "fieldName": "owners",
- *     "fieldValue": "user:john.doe, team:data-team"
- *   }
- * }
- *
- * // Reviewers - use format "user:name" or "team:name"
- * {
- *   "config": {
- *     "fieldName": "reviewers",
- *     "fieldValue": "user:jane.smith, user:bob.jones"
- *   }
- * }
- * }</pre>
- */
 @Slf4j
 public class SetEntityAttributeImpl implements JavaDelegate {
   private Expression fieldNameExpr;
@@ -136,9 +61,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
 
     } catch (Exception exc) {
       LOG.error(
-          String.format(
-              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
-          exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }

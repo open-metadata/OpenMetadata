@@ -172,7 +172,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Check if Brass tag already exists
     try {
       Tag brassTag = tagTest.getEntityByName("Certification.Brass", null, "", ADMIN_AUTH_HEADERS);
-      LOG.info("Brass tag already exists: {}", brassTag.getFullyQualifiedName());
+      LOG.debug("Brass tag already exists: {}", brassTag.getFullyQualifiedName());
     } catch (HttpResponseException e) {
       if (e.getStatusCode() == 404) {
         // Create Brass tag under Certification
@@ -182,7 +182,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
                 .withDescription("Brass certification level")
                 .withClassification("Certification");
         Tag brassTag = tagTest.createEntity(createBrassTag, ADMIN_AUTH_HEADERS);
-        LOG.info("Brass tag created: {}", brassTag.getFullyQualifiedName());
+        LOG.debug("Brass tag created: {}", brassTag.getFullyQualifiedName());
       } else {
         throw e;
       }
@@ -195,7 +195,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         databaseServiceTest.createRequest(
             "test_db_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
     databaseService = databaseServiceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database service: {}", databaseService.getName());
+    LOG.debug("Created database service: {}", databaseService.getName());
 
     // Create database using simple CreateDatabase object
     CreateDatabase createDatabase =
@@ -204,7 +204,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withService(databaseService.getFullyQualifiedName())
             .withDescription("Test database for workflow");
     database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database: {}", database.getName());
+    LOG.debug("Created database: {}", database.getName());
 
     // Create database schema using simple CreateDatabaseSchema object
     CreateDatabaseSchema createSchema =
@@ -213,7 +213,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDatabase(database.getFullyQualifiedName())
             .withDescription("Test schema for workflow");
     databaseSchema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database schema: {}", databaseSchema.getName());
+    LOG.debug("Created database schema: {}", databaseSchema.getName());
 
     // Create tables with varying column descriptions
     createTablesWithVaryingDescriptions(test);
@@ -248,7 +248,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withColumns(table1Columns);
     Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
     testTables.add(table1);
-    LOG.info("Created table1 (gold): {}", table1.getName());
+    LOG.debug("Created table1 (gold): {}", table1.getName());
 
     // Table 2: 3 columns with descriptions (should get Silver - 75%)
     List<Column> table2Columns =
@@ -276,7 +276,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withColumns(table2Columns);
     Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     testTables.add(table2);
-    LOG.info("Created table2 (silver): {}", table2.getName());
+    LOG.debug("Created table2 (silver): {}", table2.getName());
 
     // Table 3: 2 columns with descriptions (should get Bronze - 50%)
     List<Column> table3Columns =
@@ -301,7 +301,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withColumns(table3Columns);
     Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
     testTables.add(table3);
-    LOG.info("Created table3 (bronze): {}", table3.getName());
+    LOG.debug("Created table3 (bronze): {}", table3.getName());
 
     // Table 4: No columns with descriptions (should get Brass - 0%)
     List<Column> table4Columns =
@@ -319,9 +319,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withColumns(table4Columns);
     Table table4 = tableTest.createEntity(createTable4, ADMIN_AUTH_HEADERS);
     testTables.add(table4);
-    LOG.info("Created table4 (brass): {}", table4.getName());
+    LOG.debug("Created table4 (brass): {}", table4.getName());
 
-    LOG.info("Created {} test tables", testTables.size());
+    LOG.debug("Created {} test tables", testTables.size());
   }
 
   private void createDataCompletenessWorkflow() throws IOException {
@@ -620,7 +620,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.info("DataCompleteness workflow created/updated successfully");
+      LOG.debug("DataCompleteness workflow created/updated successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -640,7 +640,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .post(Entity.json("{}"));
 
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      LOG.info("Workflow triggered successfully");
+      LOG.debug("Workflow triggered successfully");
     } else {
       LOG.warn("Workflow trigger response: {}", response.getStatus());
     }
@@ -652,7 +652,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       Table updatedTable = tableTest.getEntity(table.getId(), "certification", ADMIN_AUTH_HEADERS);
 
       if (updatedTable.getCertification() != null) {
-        LOG.info(
+        LOG.debug(
             "Table {} has certification: {}",
             updatedTable.getName(),
             updatedTable.getCertification().getTagLabel().getTagFQN());
@@ -696,7 +696,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDisplayName("Test Glossary")
             .withDescription("Glossary for testing stale term deprecation");
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    LOG.info("Created glossary: {}", glossary.getName());
+    LOG.debug("Created glossary: {}", glossary.getName());
 
     CreateGlossaryTerm createGlossaryTerm =
         new CreateGlossaryTerm()
@@ -706,7 +706,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm glossaryTerm =
         glossaryTermTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    LOG.info("Created glossary term: {}", glossaryTerm.getName());
+    LOG.debug("Created glossary term: {}", glossaryTerm.getName());
 
     // Create workflow with dynamic timestamp (tomorrow)
     long tomorrowMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000L);
@@ -834,7 +834,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.info("DeprecateStaleGlossaryTerms workflow created successfully");
+      LOG.debug("DeprecateStaleGlossaryTerms workflow created successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -853,7 +853,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .post(Entity.json("{}"));
 
     if (triggerResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-      LOG.info("Workflow triggered successfully");
+      LOG.debug("Workflow triggered successfully");
     } else {
       LOG.warn("Workflow trigger response: {}", triggerResponse.getStatus());
     }
@@ -867,7 +867,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               try {
                 GlossaryTerm checkTerm =
                     glossaryTermTest.getEntity(glossaryTerm.getId(), "", ADMIN_AUTH_HEADERS);
-                LOG.info("Checking glossary term status: {}", checkTerm.getStatus());
+                LOG.debug("Checking glossary term status: {}", checkTerm.getStatus());
                 return checkTerm.getStatus() != null
                     && "Deprecated".equals(checkTerm.getStatus().toString());
               } catch (Exception e) {
@@ -882,7 +882,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertNotNull(updatedTerm);
     assertNotNull(updatedTerm.getStatus());
     assertEquals("Deprecated", updatedTerm.getStatus().toString());
-    LOG.info(
+    LOG.debug(
         "Glossary term {} status successfully updated to: {}",
         updatedTerm.getName(),
         updatedTerm.getStatus());
@@ -906,7 +906,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .createRequest(test)
             .withDescription("This is a test ML model with a description for tier assignment");
     MlModel mlModel = mlModelTest.createEntity(createMlModel, ADMIN_AUTH_HEADERS);
-    LOG.info("Created ML Model: {} with description", mlModel.getName());
+    LOG.debug("Created ML Model: {} with description", mlModel.getName());
 
     // Create workflow with correct JSON Logic for checking description is not null
     String workflowJson =
@@ -1031,7 +1031,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.info("setTierTask workflow created successfully");
+      LOG.debug("setTierTask workflow created successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -1049,7 +1049,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .post(Entity.json("{}"));
 
     if (triggerResponse.getStatus() == Response.Status.OK.getStatusCode()) {
-      LOG.info("Workflow triggered successfully");
+      LOG.debug("Workflow triggered successfully");
     } else {
       LOG.warn("Workflow trigger response: {}", triggerResponse.getStatus());
     }
@@ -1063,7 +1063,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               try {
                 MlModel checkModel =
                     mlModelTest.getEntity(mlModel.getId(), "tags", ADMIN_AUTH_HEADERS);
-                LOG.info("Checking ML Model tags: {}", checkModel.getTags());
+                LOG.debug("Checking ML Model tags: {}", checkModel.getTags());
                 if (checkModel.getTags() != null) {
                   return checkModel.getTags().stream()
                       .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
@@ -1082,7 +1082,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     boolean hasTier1 =
         updatedModel.getTags().stream().anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
     assertTrue(hasTier1, "ML Model should have Tier.Tier1 tag");
-    LOG.info("ML Model {} tier successfully updated to Tier1", updatedModel.getName());
+    LOG.debug("ML Model {} tier successfully updated to Tier1", updatedModel.getName());
 
     LOG.info("test_SetTierForMLModels completed successfully");
   }
@@ -1100,7 +1100,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withServiceType(CreateApiService.ApiServiceType.Rest)
             .withConnection(org.openmetadata.service.util.TestUtils.API_SERVICE_CONNECTION);
     ApiService apiService = apiServiceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
-    LOG.info("Created API service: {}", apiService.getName());
+    LOG.debug("Created API service: {}", apiService.getName());
 
     // Create Storage Service
     CreateStorageService createStorageService =
@@ -1110,7 +1110,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withConnection(org.openmetadata.service.util.TestUtils.S3_STORAGE_CONNECTION);
     StorageService storageService =
         storageServiceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
-    LOG.info("Created Storage service: {}", storageService.getName());
+    LOG.debug("Created Storage service: {}", storageService.getName());
 
     // Create API Collection
     CreateAPICollection createApiCollection =
@@ -1120,7 +1120,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDescription("Initial API Collection description");
     APICollection apiCollection =
         apiCollectionTest.createEntity(createApiCollection, ADMIN_AUTH_HEADERS);
-    LOG.info("Created API Collection: {} with initial description", apiCollection.getName());
+    LOG.debug("Created API Collection: {} with initial description", apiCollection.getName());
 
     // Create Container
     CreateContainer createContainer =
@@ -1129,7 +1129,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withService(storageService.getFullyQualifiedName())
             .withDescription("Initial Container description");
     Container container = containerTest.createEntity(createContainer, ADMIN_AUTH_HEADERS);
-    LOG.info("Created Container: {} with initial description", container.getName());
+    LOG.debug("Created Container: {} with initial description", container.getName());
 
     // Create event-based workflow
     String workflowJson =
@@ -1220,7 +1220,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.info("updateDescriptionWorkflow created successfully");
+      LOG.debug("updateDescriptionWorkflow created successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -1246,7 +1246,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             JsonUtils.pojoToJson(apiCollection),
             apiCollection,
             ADMIN_AUTH_HEADERS);
-    LOG.info("Updated API Collection with random description");
+    LOG.debug("Updated API Collection with random description");
 
     // Update Container with a random description to trigger the workflow
     String randomContainerDescription = "Random Container description - " + UUID.randomUUID();
@@ -1254,7 +1254,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     container =
         containerTest.patchEntity(
             container.getId(), JsonUtils.pojoToJson(container), container, ADMIN_AUTH_HEADERS);
-    LOG.info("Updated Container with random description");
+    LOG.debug("Updated Container with random description");
 
     // Wait for workflow to process using Awaitility for API Collection
     await()
@@ -1265,7 +1265,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               try {
                 APICollection checkApiCollection =
                     apiCollectionTest.getEntity(apiCollectionId, "", ADMIN_AUTH_HEADERS);
-                LOG.info(
+                LOG.debug(
                     "Checking API Collection description: {}", checkApiCollection.getDescription());
                 return "Deprecated Asset".equals(checkApiCollection.getDescription());
               } catch (Exception e) {
@@ -1283,7 +1283,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               try {
                 Container checkContainer =
                     containerTest.getEntity(containerId, "", ADMIN_AUTH_HEADERS);
-                LOG.info("Checking Container description: {}", checkContainer.getDescription());
+                LOG.debug("Checking Container description: {}", checkContainer.getDescription());
                 return "Deprecated Asset".equals(checkContainer.getDescription());
               } catch (Exception e) {
                 LOG.warn("Error checking Container description: {}", e.getMessage());
@@ -1296,14 +1296,14 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         apiCollectionTest.getEntity(apiCollection.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(updatedApiCollection);
     assertEquals("Deprecated Asset", updatedApiCollection.getDescription());
-    LOG.info(
+    LOG.debug(
         "API Collection description successfully updated to: {}",
         updatedApiCollection.getDescription());
 
     Container updatedContainer = containerTest.getEntity(container.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(updatedContainer);
     assertEquals("Deprecated Asset", updatedContainer.getDescription());
-    LOG.info(
+    LOG.debug(
         "Container description successfully updated to: {}", updatedContainer.getDescription());
 
     LOG.info("test_EventBasedWorkflowForMultipleEntities completed successfully");
@@ -1323,7 +1323,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
             .withConnection(org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database service: {}", dbService.getName());
+    LOG.debug("Created database service: {}", dbService.getName());
 
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
     CreateDatabase createDb =
@@ -1331,7 +1331,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withName("test_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
             .withService(dbService.getFullyQualifiedName());
     Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database: {}", db.getName());
+    LOG.debug("Created database: {}", db.getName());
 
     // Create schema with specific displayName "posts_db" that will be used in filter
     DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
@@ -1341,7 +1341,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDatabase(db.getFullyQualifiedName())
             .withDisplayName("posts_db");
     DatabaseSchema dbSchema = schemaResourceTest.createEntity(createDbSchema, ADMIN_AUTH_HEADERS);
-    LOG.info("Created database schema with displayName: {}", dbSchema.getDisplayName());
+    LOG.debug("Created database schema with displayName: {}", dbSchema.getDisplayName());
 
     // Create Table 1 in posts_db schema (this should match the filter)
     CreateTable createTable1 =
@@ -1354,7 +1354,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
                     new Column().withName("col1").withDataType(ColumnDataType.STRING),
                     new Column().withName("col2").withDataType(ColumnDataType.INT)));
     Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
-    LOG.info("Created table1 in posts_db schema: {}", table1.getName());
+    LOG.debug("Created table1 in posts_db schema: {}", table1.getName());
 
     // Create Table 2 in a different schema (should NOT match filter)
     CreateDatabaseSchema createOtherSchema =
@@ -1375,14 +1375,14 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
                     new Column().withName("col1").withDataType(ColumnDataType.STRING),
                     new Column().withName("col2").withDataType(ColumnDataType.INT)));
     Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-    LOG.info("Created table2 in other_db schema: {}", table2.getName());
+    LOG.debug("Created table2 in other_db schema: {}", table2.getName());
 
     // Create Dashboard Service
     DashboardServiceResourceTest dashboardServiceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService = dashboardServiceTest.createRequest(test);
     DashboardService dashboardService =
         dashboardServiceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    LOG.info("Created dashboard service: {}", dashboardService.getName());
+    LOG.debug("Created dashboard service: {}", dashboardService.getName());
 
     // Create Dashboard 1 with chart_1 (should match filter)
     DashboardResourceTest dashboardTest = new DashboardResourceTest();
@@ -1400,7 +1400,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDescription("Initial description for dashboard1")
             .withCharts(List.of(chart1.getFullyQualifiedName()));
     Dashboard dashboard1 = dashboardTest.createEntity(createDashboard1, ADMIN_AUTH_HEADERS);
-    LOG.info("Created dashboard1 with chart_1: {}", dashboard1.getName());
+    LOG.debug("Created dashboard1 with chart_1: {}", dashboard1.getName());
 
     // Create Dashboard 2 without chart_1 (should NOT match filter)
     // Create a different chart with name "chart_2"
@@ -1415,7 +1415,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .withDescription("Initial description for dashboard2")
             .withCharts(List.of(chart2.getFullyQualifiedName()));
     Dashboard dashboard2 = dashboardTest.createEntity(createDashboard2, ADMIN_AUTH_HEADERS);
-    LOG.info("Created dashboard2 without chart_1: {}", dashboard2.getName());
+    LOG.debug("Created dashboard2 without chart_1: {}", dashboard2.getName());
 
     // Wait a bit for entities to be indexed
     Thread.sleep(2000);
@@ -1521,7 +1521,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.info("MultiEntityPeriodicQuery workflow created successfully");
+      LOG.debug("MultiEntityPeriodicQuery workflow created successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -1540,7 +1540,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     if (triggerResponse.getStatus() == Response.Status.OK.getStatusCode()
         || triggerResponse.getStatus() == Response.Status.ACCEPTED.getStatusCode()) {
-      LOG.info("Workflow triggered successfully");
+      LOG.debug("Workflow triggered successfully");
     } else {
       String responseBody = triggerResponse.readEntity(String.class);
       LOG.error(
@@ -1551,7 +1551,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     }
 
     // Wait for workflow execution with proper timeout
-    LOG.info("Waiting for workflow to process entities...");
+    LOG.debug("Waiting for workflow to process entities...");
 
     // Store IDs for lambda expressions
     final UUID table1Id = table1.getId();
@@ -1604,19 +1604,19 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Verify only filtered entities were updated
     Table updatedTable1 = tableTest.getEntity(table1Id, "", ADMIN_AUTH_HEADERS);
     assertEquals("Multi Periodic Entity", updatedTable1.getDescription());
-    LOG.info("Table1 updated successfully: {}", updatedTable1.getDescription());
+    LOG.debug("Table1 updated successfully: {}", updatedTable1.getDescription());
 
     Table updatedTable2 = tableTest.getEntity(table2Id, "", ADMIN_AUTH_HEADERS);
     assertEquals("Initial description for table2", updatedTable2.getDescription());
-    LOG.info("Table2 NOT updated (as expected): {}", updatedTable2.getDescription());
+    LOG.debug("Table2 NOT updated (as expected): {}", updatedTable2.getDescription());
 
     Dashboard updatedDashboard1 = dashboardTest.getEntity(dashboard1Id, "", ADMIN_AUTH_HEADERS);
     assertEquals("Multi Periodic Entity", updatedDashboard1.getDescription());
-    LOG.info("Dashboard1 updated successfully: {}", updatedDashboard1.getDescription());
+    LOG.debug("Dashboard1 updated successfully: {}", updatedDashboard1.getDescription());
 
     Dashboard updatedDashboard2 = dashboardTest.getEntity(dashboard2Id, "", ADMIN_AUTH_HEADERS);
     assertEquals("Initial description for dashboard2", updatedDashboard2.getDescription());
-    LOG.info("Dashboard2 NOT updated (as expected): {}", updatedDashboard2.getDescription());
+    LOG.debug("Dashboard2 NOT updated (as expected): {}", updatedDashboard2.getDescription());
 
     LOG.info("test_MultiEntityPeriodicQueryWithFilters completed successfully");
   }
@@ -1676,7 +1676,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       // Should return error status
       assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
       assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-      LOG.info(
+      LOG.debug(
           "Invalid workflow creation failed as expected with status: {}", response.getStatus());
 
       // Try to fetch the workflow - it should not exist
@@ -1689,15 +1689,15 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
         // Should return 404 or empty
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getResponse.getStatus());
-        LOG.info("Invalid workflow does not exist as expected - returned 404");
+        LOG.debug("Invalid workflow does not exist as expected - returned 404");
       } catch (Exception e) {
         // This is expected - workflow should not exist
-        LOG.info("Invalid workflow does not exist as expected - exception: {}", e.getMessage());
+        LOG.debug("Invalid workflow does not exist as expected - exception: {}", e.getMessage());
       }
 
     } catch (Exception e) {
       // Creation might fail during JSON parsing or validation
-      LOG.info(
+      LOG.debug(
           "Invalid workflow creation failed as expected during parsing/validation: {}",
           e.getMessage());
       assertNotNull(e);
