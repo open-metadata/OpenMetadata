@@ -225,6 +225,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  PipelineServiceType.Spark,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
