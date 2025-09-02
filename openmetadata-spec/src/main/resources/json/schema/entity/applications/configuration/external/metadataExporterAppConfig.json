@@ -87,13 +87,11 @@
       "items": {
         "type": "string",
         "enum": [
-          "ENTITY_VERSIONS_HISTORY",
           "PROFILE",
-          "TEST_CASE_RESULTS",
-          "TEST_CASE_INCIDENTS"
+          "TEST_CASE_RESULTS"
         ]
       },
-      "default": ["ENTITY_VERSIONS_HISTORY", "PROFILE", "TEST_CASE_RESULTS", "TEST_CASE_INCIDENTS"]
+      "default": ["PROFILE", "TEST_CASE_RESULTS"]
     },
     "backfill": {
       "description": "Enable backfill for the exporter to process historical data. This will only work on the very first run of the exporter.",
