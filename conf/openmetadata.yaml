@@ -568,6 +568,8 @@ cache:
     # Standalone: redis://localhost:6379
     # AWS ElastiCache: redis://my-cluster.abc123.cache.amazonaws.com:6379
     url: ${CACHE_REDIS_URL:-redis://localhost:6379}
+    authType: ${CACHE_REDIS_AUTH_TYPE:-NONE}
+    database: ${CACHE_REDIS_DATABASE:-0}  # Redis database index (0-15)
     
     # Authentication for standalone Redis
     username: ${CACHE_REDIS_USERNAME:-}

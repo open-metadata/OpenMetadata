@@ -6,6 +6,12 @@ public class CacheConfig {
     redis
   }
 
+  public enum AuthType {
+    PASSWORD,
+    IAM,
+    NONE
+  }
+
   public Provider provider = Provider.none;
 
   // TTL settings in seconds
@@ -18,9 +24,13 @@ public class CacheConfig {
   public static class Redis {
     // Basic connection
     public String url;
+    public AuthType authType;
+
     public String username;
     public String passwordRef;
     public boolean useSSL;
+
+    public int database;
 
     // Key namespace
     public String keyspace = "om:prod";
