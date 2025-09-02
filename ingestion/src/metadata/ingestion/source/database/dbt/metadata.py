@@ -543,7 +543,7 @@ class DbtSource(DbtServiceSource):
 
                     if (
                         dbt_objects.dbt_sources
-                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                        and resource_type == DbtCommonEnum.SOURCE.value
                     ):
                         self.add_dbt_sources(
                             key,
@@ -707,20 +707,6 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
-
-        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
-            parent_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=get_corrected_name(dbt_node.database),
-                schema_name=get_corrected_name(dbt_node.schema_),
-                table_name=dbt_node.name,
-            )
-
-            # check if the parent table exists in OM before adding it to the upstream list
-            if self._get_table_entity(table_fqn=parent_fqn):
-                upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
 
