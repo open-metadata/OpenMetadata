@@ -43,6 +43,7 @@ export interface ApplicationStore
   appVersion?: string;
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
+  isAuthenticating: boolean;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona?: EntityReference;
@@ -76,6 +77,7 @@ export interface ApplicationStore
   setApplicationsName: (applications: string[]) => void;
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
+  initializeAuthState: () => void;
 }
 
 export interface DomainStore {
