@@ -472,7 +472,7 @@ def get_table_entities_from_query(
     if schema_fallback:
         table_entities = search_table_entities(
             metadata=metadata,
-            service_name=service_name,
+            service_names=service_names,
             database=database_query if database_query else database_name,
             database_schema=None,
             table=table,
