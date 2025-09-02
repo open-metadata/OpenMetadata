@@ -98,7 +98,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -479,8 +478,7 @@ public class LineageRepository {
     return Pair.of(pipelineRef.getType(), pipelineMap);
   }
 
-  private String validateLineageDetails(
-      EntityReference from, EntityReference to, LineageDetails details) {
+  String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
     if (details == null) {
       return null;
     }
@@ -489,19 +487,31 @@ public class LineageRepository {
     Set<String> toColumns = getChildrenNames(to);
 
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
+      List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
       for (ColumnLineage columnLineage : columnsLineage) {
-        for (String fromColumn : columnLineage.getFromColumns()) {
-          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
-            throw new IllegalArgumentException(
-                CatalogExceptionMessage.invalidFieldName("column", fromColumn));
-          }
-        }
         if (!toColumns.contains(
             columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidFieldName("column", columnLineage.getToColumn()));
+          LOG.debug("Invalid toColumn: " + columnLineage.getToColumn());
+          continue;
+        }
+        List<String> filteredFromColumns = new ArrayList<>();
+        boolean updateFromColumns = false;
+        for (String fromColumn : columnLineage.getFromColumns()) {
+          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
+            LOG.debug("Invalid fromColumn: " + fromColumn);
+            updateFromColumns = true;
+            continue;
+          }
+          filteredFromColumns.add(fromColumn);
+        }
+        if (updateFromColumns) {
+          columnLineage.setFromColumns(filteredFromColumns);
+        }
+        if (!filteredFromColumns.isEmpty()) {
+          filteredColumnLineage.add(columnLineage);
         }
       }
+      details.setColumnsLineage(filteredColumnLineage);
     }
     return JsonUtils.pojoToJson(details);
   }
