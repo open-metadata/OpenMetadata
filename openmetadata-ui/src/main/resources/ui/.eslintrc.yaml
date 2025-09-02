@@ -190,9 +190,22 @@ rules:
 
   i18next/no-literal-string: error
 
+  # Restrict defaultColors import to createMuiTheme only
+  no-restricted-imports:
+    - error
+    - patterns:
+        - group: ['**/defaultColors', '**/theme/defaultColors']
+          message: 'defaultColors is internal to theme system. Use theme.palette.allShades or dynamic colors instead.'
+
   # i18next rules
 
 overrides:
+  # Allow defaultColors import only in createMuiTheme.ts
+  - files:
+      - '**/createMuiTheme.ts'
+    rules:
+      no-restricted-imports: off
+
   # eslint-plugin-jsonc requires its own parser
   - files:
       - '*.json'

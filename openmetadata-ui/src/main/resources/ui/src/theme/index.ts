@@ -13,9 +13,12 @@
 
 // Main entry point for the dynamic MUI theme system
 export { buttonConstants } from './buttonConstants';
+export * from './colorValidation';
 export { createMuiTheme } from './createMuiTheme';
 export {
   generateAllMuiPalettes,
+  generateMaterialPalette,
   generateMuiPalette,
 } from './generateMuiPalettes';
 export { shadows } from './shadows';
+export * from './types';

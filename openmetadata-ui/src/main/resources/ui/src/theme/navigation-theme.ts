@@ -64,7 +64,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         },
 
         '&:focus-visible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[500]} !important`,
           outlineOffset: '2px',
         },
 

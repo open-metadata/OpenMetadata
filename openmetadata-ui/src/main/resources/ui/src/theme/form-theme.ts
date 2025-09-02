@@ -326,7 +326,10 @@ export const formTheme = (colors: any) => ({
     },
   },
   MuiCheckbox: {
-    defaultProps: {},
+    defaultProps: {
+      disableRipple: true,
+      disableFocusRipple: true,
+    },
     styleOverrides: {
       root: {
         padding: 0,
@@ -334,8 +337,11 @@ export const formTheme = (colors: any) => ({
         height: '16px',
         cursor: 'pointer',
         transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          backgroundColor: 'transparent',
+        borderRadius: 0,
+
+        '&:hover, &:focus, &:focus-visible, &:focus-within, &:active': {
+          backgroundColor: 'transparent !important',
+          borderRadius: 0,
         },
 
         '&.Mui-disabled': {
@@ -343,8 +349,14 @@ export const formTheme = (colors: any) => ({
         },
 
         '&.Mui-focusVisible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
+          backgroundColor: 'transparent !important',
+          borderRadius: '4px',
+        },
+
+        '& .MuiTouchRipple-root': {
+          display: 'none !important',
         },
       },
       sizeSmall: {
@@ -354,6 +366,22 @@ export const formTheme = (colors: any) => ({
       sizeMedium: {
         width: '20px',
         height: '20px',
+
+        '&:hover, &:focus, &:focus-visible, &:focus-within, &:active': {
+          backgroundColor: 'transparent !important',
+          borderRadius: 0,
+        },
+
+        '&.Mui-focusVisible': {
+          outline: `2px solid ${colors.brand[600]}`,
+          outlineOffset: '2px',
+          backgroundColor: 'transparent !important',
+          borderRadius: '6px',
+        },
+
+        '& .MuiTouchRipple-root': {
+          display: 'none !important',
+        },
       },
     },
   },
@@ -409,7 +437,7 @@ export const formTheme = (colors: any) => ({
         },
 
         '&.Mui-focusVisible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
         },
 
@@ -494,6 +522,12 @@ export const formTheme = (colors: any) => ({
         height: 20,
         padding: 0,
 
+        '&:has(.MuiSwitch-switchBase.Mui-focusVisible)': {
+          outline: `2px solid ${colors.brand[500]}`,
+          outlineOffset: '2px',
+          borderRadius: '12px',
+        },
+
         '& .MuiSwitch-switchBase': {
           padding: 2,
           margin: 0,
@@ -515,8 +549,7 @@ export const formTheme = (colors: any) => ({
             },
           },
           '&.Mui-focusVisible': {
-            outline: `2px solid ${colors.brand[500]}`,
-            outlineOffset: '2px',
+            outline: 'none',
           },
         },
         '& .MuiSwitch-thumb': {

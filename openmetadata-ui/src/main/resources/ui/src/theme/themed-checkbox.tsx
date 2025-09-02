@@ -30,11 +30,9 @@ const CheckboxBlankIcon = ({
       style={{
         width: 16,
         height: 16,
-        backgroundColor: disabled
-          ? theme.palette.grey[50]
-          : theme.palette.background.paper,
+        backgroundColor: disabled ? theme.palette.grey[50] : '#ffffff',
         borderRadius: 4,
-        boxShadow: `0 0 0 1px ${theme.palette.grey[300]} inset`,
+        border: `1px solid ${theme.palette.grey[300]}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -59,7 +57,7 @@ const CheckboxCheckedIcon = ({
         height: 16,
         backgroundColor: disabled
           ? theme.palette.grey[50]
-          : theme.palette.primary.main,
+          : theme.palette.allShades.brand[600],
         borderRadius: 4,
         boxShadow: disabled
           ? `0 0 0 1px ${theme.palette.grey[300]} inset`
@@ -106,7 +104,7 @@ const CheckboxIndeterminateIcon = ({
         height: 16,
         backgroundColor: disabled
           ? theme.palette.grey[50]
-          : theme.palette.primary.main,
+          : theme.palette.allShades.brand[600],
         borderRadius: 4,
         boxShadow: disabled
           ? `0 0 0 1px ${theme.palette.grey[300]} inset`
@@ -152,11 +150,9 @@ const CheckboxBlankIconMedium = ({
       style={{
         width: 20,
         height: 20,
-        backgroundColor: disabled
-          ? theme.palette.grey[50]
-          : theme.palette.background.paper,
+        backgroundColor: disabled ? theme.palette.grey[50] : '#ffffff',
         borderRadius: 6,
-        boxShadow: `0 0 0 1px ${theme.palette.grey[300]} inset`,
+        border: `1px solid ${theme.palette.grey[300]}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -181,7 +177,7 @@ const CheckboxCheckedIconMedium = ({
         height: 20,
         backgroundColor: disabled
           ? theme.palette.grey[50]
-          : theme.palette.primary.main,
+          : theme.palette.allShades.brand[600],
         borderRadius: 6,
         boxShadow: disabled
           ? `0 0 0 1px ${theme.palette.grey[300]} inset`
@@ -228,7 +224,7 @@ const CheckboxIndeterminateIconMedium = ({
         height: 20,
         backgroundColor: disabled
           ? theme.palette.grey[50]
-          : theme.palette.primary.main,
+          : theme.palette.allShades.brand[600],
         borderRadius: 6,
         boxShadow: disabled
           ? `0 0 0 1px ${theme.palette.grey[300]} inset`
