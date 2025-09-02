@@ -203,6 +203,9 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                     new IllegalStateException(
                         "No glossary validation rule found for tables. Review the entityRulesSettings.json file."));
 
+    // Enable the rule for testing
+    glossaryRule.withEnabled(true);
+
     // No glossary terms, should pass
     RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false);
 
