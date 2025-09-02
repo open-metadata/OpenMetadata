@@ -135,7 +135,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   await test.step('Create', async () => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
-    await page.click('#testCaseFormV1_testTypeId');
+    await page.click('[id="root\\/testType"]');
     await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
     await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
     await page.fill(
@@ -285,7 +285,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
     );
-    await page.click('#testCaseFormV1_selectedColumn');
+    await page.click('[id="root\\/column"]');
     await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
     await testDefinitionResponse;
 
@@ -293,7 +293,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '[data-testid="test-case-name"]',
       NEW_COLUMN_TEST_CASE.name
     );
-    await page.click('#testCaseFormV1_testTypeId');
+    await page.click('[id="root\\/testType"]');
     await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#testCaseFormV1_params_minLength',
