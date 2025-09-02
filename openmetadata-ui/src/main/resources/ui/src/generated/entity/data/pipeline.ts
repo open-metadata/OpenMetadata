@@ -701,6 +701,7 @@ export enum PipelineServiceType {
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",
