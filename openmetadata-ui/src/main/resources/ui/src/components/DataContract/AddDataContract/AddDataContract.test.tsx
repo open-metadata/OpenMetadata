@@ -50,39 +50,6 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
-// jest.mock('react-i18next', () => ({
-//   useTranslation: () => ({
-//     t: (key: string) => {
-//       if (key === 'message.data-contract-saved-successfully') {
-//         return 'Data contract saved successfully';
-//       }
-//       if (key === 'label.add-contract-detail-plural') {
-//         return 'Add Contract Details';
-//       }
-//       if (key === 'label.contract-detail-plural') {
-//         return 'Contract Details';
-//       }
-//       if (key === 'label.schema') {
-//         return 'Schema';
-//       }
-//       if (key === 'label.semantic-plural') {
-//         return 'Semantics';
-//       }
-//       if (key === 'label.quality') {
-//         return 'Quality';
-//       }
-//       if (key === 'label.cancel') {
-//         return 'Cancel';
-//       }
-//       if (key === 'label.save') {
-//         return 'Save';
-//       }
-
-//       return key;
-//     },
-//   }),
-// }));
-
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
