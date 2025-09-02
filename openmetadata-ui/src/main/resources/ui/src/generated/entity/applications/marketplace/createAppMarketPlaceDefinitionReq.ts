@@ -24,10 +24,6 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     allowConfiguration?: boolean;
     /**
-     * Application Configuration object.
-     */
-    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
-    /**
      * Application Logo Url.
      */
     appLogoUrl?: string;
@@ -40,10 +36,18 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     appType: AppType;
     /**
+     * This schema defines the scope of the application.
+     */
+    boundType?: AppBoundType;
+    /**
      * Full Qualified ClassName for the the application. Use can use
      * 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.
      */
     className: string;
+    /**
+     * Configuration for the application based on its bound type.
+     */
+    configuration?: AppBoundConfiguration;
     /**
      * Description of the Application.
      */
@@ -131,6 +135,65 @@ export interface CreateAppMarketPlaceDefinitionReq {
 export enum AgentType {
     CollateAI = "CollateAI",
     Metadata = "Metadata",
+}
+
+/**
+ * This schema defines the type of application.
+ */
+export enum AppType {
+    External = "external",
+    Internal = "internal",
+}
+
+/**
+ * This schema defines the scope of the application.
+ */
+export enum AppBoundType {
+    Global = "Global",
+    Service = "Service",
+}
+
+/**
+ * Configuration for the application based on its bound type.
+ */
+export interface AppBoundConfiguration {
+    /**
+     * Configuration for Global Application.
+     */
+    globalAppConfig?: GlobalAppConfig;
+    /**
+     * Configuration for Service Application.
+     */
+    serviceAppConfig?: ServiceAppConfig[];
+}
+
+/**
+ * Configuration for Global Application.
+ *
+ * Global Configuration for platform-wide applications
+ */
+export interface GlobalAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?: AppSchedule;
 }
 
 /**
@@ -492,6 +555,9 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  */
 export interface EntityReference {
     /**
@@ -589,6 +655,9 @@ export enum MetadataAttribute {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  */
 export interface TagLabel {
     /**
@@ -1002,11 +1071,98 @@ export enum Type {
 }
 
 /**
- * This schema defines the type of application.
+ * Application Private configuration loaded at runtime.
+ *
+ * Private Configuration for the CollateAI External Application.
  */
-export enum AppType {
-    External = "external",
-    Internal = "internal",
+export interface PrivateConfig {
+    /**
+     * Collate Server public URL. WAII will use this information to interact with the server.
+     * E.g., https://sandbox.getcollate.io
+     */
+    collateURL?: string;
+    /**
+     * Limits for the CollateAI Application.
+     */
+    limits?: AppLimitsConfig;
+    /**
+     * WAII API Token
+     */
+    token?: string;
+    /**
+     * WAII API host URL
+     */
+    waiiInstance?: string;
+    [property: string]: any;
+}
+
+/**
+ * Limits for the CollateAI Application.
+ *
+ * Private Configuration for the App Limits.
+ */
+export interface AppLimitsConfig {
+    /**
+     * The records of the limits.
+     */
+    actions: { [key: string]: number };
+    /**
+     * The start of this limit cycle.
+     */
+    billingCycleStart: Date;
+}
+
+/**
+ * In case the app supports scheduling, list of different app schedules
+ *
+ * This schema defines the type of AppSchedule.
+ */
+export interface AppSchedule {
+    /**
+     * Cron Expression in case of Custom scheduled Trigger
+     */
+    cronExpression?:  string;
+    scheduleTimeline: ScheduleTimeline;
+}
+
+/**
+ * This schema defines the Application ScheduleTimeline Options
+ */
+export enum ScheduleTimeline {
+    Custom = "Custom",
+    Daily = "Daily",
+    Hourly = "Hourly",
+    Monthly = "Monthly",
+    None = "None",
+    Weekly = "Weekly",
+}
+
+/**
+ * Service Configuration for service-bound applications
+ */
+export interface ServiceAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?:  AppSchedule;
+    serviceRef: EntityReference;
 }
 
 /**

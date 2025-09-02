@@ -52,7 +52,7 @@ export interface AppRunRecord {
      * This schema defines the type of application Run.
      */
     runType?:      string;
-    scheduleInfo?: any[] | boolean | AppScheduleClass | number | number | null | string;
+    scheduleInfo?: AppSchedule;
     /**
      * Services configured in the application run. This information is generated based on the
      * given configuration.
@@ -117,7 +117,10 @@ export interface EntityError {
     message?: string;
 }
 
-export interface AppScheduleClass {
+/**
+ * This schema defines the type of AppSchedule.
+ */
+export interface AppSchedule {
     /**
      * Cron Expression in case of Custom scheduled Trigger
      */

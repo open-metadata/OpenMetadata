@@ -19,7 +19,7 @@
     },
     "schedule": {
       "description": "In case the app supports scheduling, list of different app schedules",
-      "$ref": "./app.json/#/definitions/appSchedule"
+      "$ref": "./appSchedule.json"
     },
     "eventSubscriptions": {
       "description": "Event Subscriptions for the Application.",

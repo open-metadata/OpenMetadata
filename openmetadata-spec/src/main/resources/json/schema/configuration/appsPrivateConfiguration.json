@@ -26,7 +26,7 @@
           "default": false
         },
         "schedule": {
-          "$ref": "../entity/applications/app.json#/definitions/appSchedule"
+          "$ref": "../entity/applications/appSchedule.json"
         },
         "parameters": {
           "javaType": "org.openmetadata.schema.api.configuration.apps.Parameters",

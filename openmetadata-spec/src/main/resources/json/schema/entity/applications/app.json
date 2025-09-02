@@ -43,37 +43,6 @@
         }
       ]
     },
-    "scheduleTimeline": {
-      "javaType": "org.openmetadata.schema.entity.app.ScheduleTimeline",
-      "description": "This schema defines the Application ScheduleTimeline Options",
-      "type": "string",
-      "enum": [
-        "Hourly",
-        "Daily",
-        "Weekly",
-        "Monthly",
-        "Custom",
-        "None"
-      ],
-      "default": "Weekly"
-    },
-    "appSchedule": {
-      "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
-      "description": "This schema defines the type of application.",
-      "properties": {
-        "scheduleTimeline": {
-          "$ref": "#/definitions/scheduleTimeline"
-        },
-        "cronExpression": {
-          "description": "Cron Expression in case of Custom scheduled Trigger",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scheduleTimeline"
-      ],
-      "additionalProperties": false
-    },
     "appType": {
       "javaType": "org.openmetadata.schema.entity.app.AppType",
       "description": "This schema defines the type of application.",
