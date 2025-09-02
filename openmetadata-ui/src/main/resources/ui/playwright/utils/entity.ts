@@ -94,7 +94,10 @@ export const visitEntityPage = async (data: {
   await waitForSearchResponse;
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
-
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await page.getByTestId('searchBox').clear();
 };
 
@@ -351,38 +354,19 @@ export const addMultiOwner = async (data: {
       name: ownerName,
       exact: true,
     });
+    await ownerItem.waitFor({ state: 'visible' });
 
     // Wait for the item to exist and be visible before clicking
-    try {
-      await ownerItem.waitFor({ state: 'visible' });
 
-      if (type === 'Teams') {
-        if (isSelectableInsideForm) {
-          await ownerItem.click();
-        } else {
-          const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-          await ownerItem.click();
-          await patchRequest;
-        }
-      } else {
+    if (type === 'Teams') {
+      if (isSelectableInsideForm) {
         await ownerItem.click();
+      } else {
+        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+        await ownerItem.click();
+        await patchRequest;
       }
-    } catch (error) {
-      // Re-search if owner not found initially
-      await page
-        .locator('[data-testid="owner-select-users-search-bar"]')
-        .clear();
-      await page.fill(
-        '[data-testid="owner-select-users-search-bar"]',
-        ownerName
-      );
-      await searchOwner;
-      await page.waitForSelector(
-        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-        { state: 'detached' }
-      );
-
-      await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
+    } else {
       await ownerItem.click();
     }
   }
@@ -583,13 +567,7 @@ export const assignTag = async (
 
   await page.locator('#tagsForm_tags').fill(tag);
 
-  try {
-    await searchTags;
-  } catch (error) {
-    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
-    await page.locator('#tagsForm_tags').fill(tag);
-    await searchTags;
-  }
+  await searchTags;
 
   await page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
@@ -779,6 +757,9 @@ export const assignGlossaryTerm = async (
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add'
 ) => {
+  const searchGlossaryTerm = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  );
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
     .getByTestId('glossary-container')
@@ -790,28 +771,7 @@ export const assignGlossaryTerm = async (
 
   // Fill the input first
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-
-  // Then wait for the search response with error handling
-  try {
-    await page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        glossaryTerm.displayName
-      )}*`,
-      { timeout: 10000 } // Add explicit timeout
-    );
-  } catch (error) {
-    // Retry once if the search fails
-    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
-    await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-
-    const retrySearch = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        glossaryTerm.displayName
-      )}*`,
-      { timeout: 10000 }
-    );
-    await retrySearch;
-  }
+  await searchGlossaryTerm;
 
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
