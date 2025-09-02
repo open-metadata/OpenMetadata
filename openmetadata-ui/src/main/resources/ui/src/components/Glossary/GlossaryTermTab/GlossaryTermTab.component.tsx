@@ -1347,10 +1347,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     );
   }
 
-  const filteredGlossaryTerms = glossaryTerms.filter((term) =>
-    selectedStatus.includes(term.entityStatus as string)
-  );
-
   return (
     <Row className={className} gutter={[0, 16]}>
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
