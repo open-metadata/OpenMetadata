@@ -129,7 +129,9 @@ export const selectDataAssetFilter = async (
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(filterValue.toLowerCase());
-  await page.waitForResponse('api/v1/search/aggregate?*');
+  await page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
   await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
   await page.getByTestId('update-btn').click();
 };

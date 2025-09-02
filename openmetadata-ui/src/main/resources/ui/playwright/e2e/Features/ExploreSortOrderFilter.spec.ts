@@ -78,7 +78,9 @@ test.describe('Explore Sort Order Filter', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(filter.toLowerCase());
-      await page.waitForResponse('api/v1/search/aggregate?*');
+      await page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+      );
       await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.waitForSelector(
         `[data-testid="${filter.toLowerCase()}-checkbox"]`,
