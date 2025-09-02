@@ -1298,7 +1298,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     // Only filter by status on client side, search is handled server-side
     return glossaryTerms.filter((term) => {
-      const matchesStatus = selectedStatus.includes(term.status as string);
+      const matchesStatus = selectedStatus.includes(
+        term.entityStatus as string
+      );
 
       return matchesStatus;
     });
