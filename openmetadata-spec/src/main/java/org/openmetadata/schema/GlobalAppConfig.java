@@ -5,11 +5,11 @@ import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.type.EntityReference;
 
 public interface GlobalAppConfig {
-  Object getAppConfiguration();
+  Object getConfig();
 
-  Object getPrivateConfiguration();
+  Object getPrivateConfig();
 
-  AppSchedule getAppSchedule();
+  AppSchedule getSchedule();
 
   List<EntityReference> getEventSubscriptions();
 }

@@ -145,8 +145,8 @@
       "description": "This schema defines the scope of the application.",
       "type": "string",
       "enum": [
-        "global",
-        "service"
+        "Global",
+        "Service"
       ],
       "javaEnums": [
         {
@@ -321,11 +321,12 @@
       "type": "boolean",
       "default": false
     },
-    "appBoundType": {
+    "boundType": {
       "description": "This schema defines the scope of the application.",
-      "$ref": "#/definitions/appBoundType"
+      "$ref": "#/definitions/appBoundType",
+      "default": "global"
     },
-    "appBoundConfiguration": {
+    "configuration": {
       "description": "Configuration for the application based on its bound type.",
       "$ref": "#/definitions/appBoundConfiguration"
     }

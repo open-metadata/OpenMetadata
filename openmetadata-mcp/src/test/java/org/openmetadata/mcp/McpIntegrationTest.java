@@ -37,8 +37,11 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
+import org.openmetadata.schema.entity.app.AppBoundType;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -342,8 +345,15 @@ public class McpIntegrationTest extends OpenMetadataApplicationTest {
       CreateApp createApp =
           new CreateApp()
               .withName("McpApplication")
-              .withAppConfiguration(appConfig)
-              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+              .withBoundType(AppBoundType.Global)
+              .withConfiguration(
+                  new AppBoundConfiguration()
+                      .withGlobalAppConfig(
+                          new GlobalAppConfiguration()
+                              .withConfig(appConfig)
+                              .withSchedule(
+                                  new AppSchedule()
+                                      .withScheduleTimeline(ScheduleTimeline.HOURLY))));
 
       WebTarget installTarget = getResource("apps");
       Response createResponse =

@@ -19,6 +19,7 @@ import org.openmetadata.service.apps.managers.UninstallManager;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.SchedulerException;
 
@@ -63,19 +64,26 @@ public class ApplicationHandler {
   public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
-    try {
-      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
-      app.setPreview(appPrivateConfig.getPreview());
+    if (AppBoundConfigurationUtil.isGlobalApp(app)) {
+      try {
+        AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
+        app.setPreview(appPrivateConfig.getPreview());
 
-      if (appPrivateConfig.getParameters() != null
-          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
-        // Private configuration is now handled through AppBoundConfigurationUtil
-        // app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+        if (appPrivateConfig.getParameters() != null
+            && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
+          // Private configuration is now handled through AppBoundConfigurationUtil
+          app.getConfiguration()
+              .getGlobalAppConfig()
+              .setPrivateConfig(appPrivateConfig.getParameters().getAdditionalProperties());
+        }
+      } catch (IOException e) {
+        LOG.debug("Config file for app {} not found: ", app.getName(), e);
+      } catch (ConfigurationException e) {
+        LOG.error("Error reading config file for app {}", app.getName(), e);
       }
-    } catch (IOException e) {
-      LOG.debug("Config file for app {} not found: ", app.getName(), e);
-    } catch (ConfigurationException e) {
-      LOG.error("Error reading config file for app {}", app.getName(), e);
+    } else {
+      LOG.debug(
+          "App {} is not a global app, skipping loading private configuration", app.getName());
     }
   }
 

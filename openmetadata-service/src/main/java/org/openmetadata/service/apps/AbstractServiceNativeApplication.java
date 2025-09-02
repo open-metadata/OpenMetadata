@@ -42,7 +42,7 @@ public abstract class AbstractServiceNativeApplication extends AbstractNativeApp
     }
 
     for (ServiceAppConfiguration serviceConfig : serviceConfigs) {
-      if (serviceConfig.getAppSchedule() == null) {
+      if (serviceConfig.getSchedule() == null) {
         LOG.debug(
             "Service configuration for {} in app {} has no schedule.",
             serviceConfig.getServiceRef().getId(),

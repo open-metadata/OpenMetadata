@@ -23,7 +23,7 @@ public class JobAppConfigUpdater {
   }
 
   public Map<String, Object> getServiceAppConfiguration(ServiceAppConfiguration serviceConfig) {
-    return JsonUtils.getMap(serviceConfig.getAppConfiguration());
+    return JsonUtils.getMap(serviceConfig.getConfig());
   }
 
   public void updateAppConfig(App app, Map<String, Object> appConfiguration, String updatedBy) {

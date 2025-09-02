@@ -2,8 +2,7 @@ package org.openmetadata.service.apps.managers;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
@@ -26,7 +25,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
-import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -48,37 +46,33 @@ public class InstallManager {
   }
 
   public void installEventSubscriptions(App app, String installedBy) {
-    Map<String, EntityReference> eventSubscriptionsReferences =
-        AppBoundConfigurationUtil.getEventSubscriptions(app).stream()
-            .collect(Collectors.toMap(EntityReference::getName, e -> e));
+    List<EntityReference> eventSubscriptionsReferences =
+        AppBoundConfigurationUtil.getEventSubscriptions(app);
 
-    eventSubscriptionsReferences.values().stream()
-        .map(
-            request ->
-                Optional.ofNullable(eventSubscriptionsReferences.get(request.getName()))
-                    .flatMap(
-                        sub ->
-                            Optional.ofNullable(
-                                eventSubscriptionRepository.findByNameOrNull(
-                                    sub.getName(), Include.ALL)))
-                    .orElseGet(
-                        () -> {
-                          EventSubscription createdEventSub =
-                              eventSubscriptionRepository.create(
-                                  null,
-                                  new EventSubscriptionMapper()
-                                      .createToEntity(request, installedBy));
-                          appRepository.addEventSubscription(app, createdEventSub);
-                          return createdEventSub;
-                        }))
-        .forEach(
-            eventSub -> {
-              try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, true);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+    // Link existing event subscriptions to the app
+    for (EntityReference eventSubRef : eventSubscriptionsReferences) {
+      EventSubscription existingEventSub =
+          eventSubscriptionRepository.findByNameOrNull(eventSubRef.getName(), Include.ALL);
+
+      if (existingEventSub != null) {
+        // Link the existing event subscription to the app
+        appRepository.addEventSubscription(app, existingEventSub);
+
+        try {
+          EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(existingEventSub, true);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to add subscription publisher for event subscription: {}",
+              existingEventSub.getName(),
+              e);
+        }
+      } else {
+        LOG.warn(
+            "Event subscription '{}' referenced by app '{}' not found",
+            eventSubRef.getName(),
+            app.getName());
+      }
+    }
   }
 
   public IngestionPipeline createAndBindIngestionPipeline(App app, Map<String, Object> config) {
@@ -130,12 +124,17 @@ public class InstallManager {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
-    MetadataServiceRepository serviceEntityRepository =
-        (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
-    EntityReference service =
-        serviceEntityRepository
-            .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
-            .getEntityReference();
+    // Use the actual service reference from serviceConfig instead of hardcoded METADATA service
+    EntityReference serviceReference = serviceConfig.getServiceRef();
+    if (serviceReference == null) {
+      // Fallback to OpenMetadata service if no service reference is provided
+      MetadataServiceRepository serviceEntityRepository =
+          (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
+      serviceReference =
+          serviceEntityRepository
+              .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
+              .getEntityReference();
+    }
 
     String serviceId = serviceConfig.getServiceRef().getId().toString();
     String pipelineName = String.format("%s_%s", app.getName(), serviceId);
@@ -158,11 +157,11 @@ public class InstallManager {
                         new ApplicationPipeline()
                             .withSourcePythonClass(app.getSourcePythonClass())
                             .withAppConfig(config)
-                            .withAppPrivateConfig(serviceConfig.getPrivateConfiguration())))
+                            .withAppPrivateConfig(serviceConfig.getPrivateConfig())))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(serviceConfig.getAppSchedule().getCronExpression()))
-            .withService(service);
+                    .withScheduleInterval(serviceConfig.getSchedule().getCronExpression()))
+            .withService(serviceReference);
 
     IngestionPipeline ingestionPipeline =
         getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
@@ -233,6 +232,28 @@ public class InstallManager {
             Entity.APPLICATION,
             Entity.INGESTION_PIPELINE,
             Relationship.HAS.ordinal());
+
+    // Also set the pipeline reference in the appropriate app configuration
+    EntityReference pipelineRef = pipeline.getEntityReference();
+
+    if (AppBoundConfigurationUtil.isGlobalApp(app)) {
+      AppBoundConfigurationUtil.setPipeline(app, pipelineRef);
+    } else if (AppBoundConfigurationUtil.isServiceBoundApp(app)) {
+      // Extract service ID from pipeline name for service-bound apps
+      String pipelineName = pipeline.getName();
+      if (pipelineName.contains("_")) {
+        String[] parts = pipelineName.split("_");
+        if (parts.length >= 2) {
+          try {
+            String serviceId = parts[parts.length - 1];
+            UUID serviceUuid = UUID.fromString(serviceId);
+            AppBoundConfigurationUtil.setPipeline(app, serviceUuid, pipelineRef);
+          } catch (IllegalArgumentException e) {
+            LOG.warn("Could not extract service ID from pipeline name: {}", pipelineName, e);
+          }
+        }
+      }
+    }
   }
 
   private IngestionPipeline getIngestionPipeline(

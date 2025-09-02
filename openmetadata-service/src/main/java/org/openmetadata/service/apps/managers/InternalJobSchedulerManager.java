@@ -94,9 +94,8 @@ public class InternalJobSchedulerManager {
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
     App currentApp = appRepository.getDao().findEntityById(application.getId());
     updatedApp.setOpenMetadataServerConnection(null);
-    updatedApp.setPrivateConfiguration(null);
+    // Private configuration is now handled through AppBoundConfiguration
     updatedApp.setScheduleType(currentApp.getScheduleType());
-    updatedApp.setAppSchedule(currentApp.getAppSchedule());
     updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
     updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =

@@ -12,25 +12,23 @@ import org.openmetadata.schema.entity.app.AppBoundType;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.entity.app.ServiceAppConfiguration;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.apps.AppException;
 
 @Slf4j
 public class AppBoundConfigurationUtil {
 
   public static boolean isGlobalApp(App app) {
-    return app.getAppBoundType() == AppBoundType.Global;
+    return app.getBoundType() == AppBoundType.Global;
   }
 
   public static boolean isServiceBoundApp(App app) {
-    return app.getAppBoundType() == AppBoundType.Service;
+    return app.getBoundType() == AppBoundType.Service;
   }
 
   public static Object getAppConfiguration(App app) {
     if (isGlobalApp(app)) {
-      return getGlobalConfiguration(app)
-          .map(GlobalAppConfiguration::getAppConfiguration)
-          .orElse(null);
+      return getGlobalConfiguration(app).map(GlobalAppConfiguration::getConfig).orElse(null);
     } else if (isServiceBoundApp(app)) {
       LOG.warn(
           "getAppConfiguration called on service-bound app {}. Consider using getServiceAppConfiguration with serviceId",
@@ -43,7 +41,7 @@ public class AppBoundConfigurationUtil {
   public static Object getAppConfiguration(App app, UUID serviceId) {
     if (isServiceBoundApp(app)) {
       return getServiceConfiguration(app, serviceId)
-          .map(ServiceAppConfiguration::getAppConfiguration)
+          .map(ServiceAppConfiguration::getConfig)
           .orElse(null);
     }
     return getAppConfiguration(app);
@@ -51,9 +49,7 @@ public class AppBoundConfigurationUtil {
 
   public static Object getPrivateConfiguration(App app) {
     if (isGlobalApp(app)) {
-      return getGlobalConfiguration(app)
-          .map(GlobalAppConfiguration::getPrivateConfiguration)
-          .orElse(null);
+      return getGlobalConfiguration(app).map(GlobalAppConfiguration::getPrivateConfig).orElse(null);
     }
     return null;
   }
@@ -61,7 +57,7 @@ public class AppBoundConfigurationUtil {
   public static Object getPrivateConfiguration(App app, UUID serviceId) {
     if (isServiceBoundApp(app)) {
       return getServiceConfiguration(app, serviceId)
-          .map(ServiceAppConfiguration::getPrivateConfiguration)
+          .map(ServiceAppConfiguration::getPrivateConfig)
           .orElse(null);
     }
     return getPrivateConfiguration(app);
@@ -69,7 +65,7 @@ public class AppBoundConfigurationUtil {
 
   public static AppSchedule getAppSchedule(App app) {
     if (isGlobalApp(app)) {
-      return getGlobalConfiguration(app).map(GlobalAppConfiguration::getAppSchedule).orElse(null);
+      return getGlobalConfiguration(app).map(GlobalAppConfiguration::getSchedule).orElse(null);
     } else if (isServiceBoundApp(app)) {
       LOG.warn(
           "getAppSchedule called on service-bound app {}. Consider using getAppSchedule with serviceId",
@@ -82,7 +78,7 @@ public class AppBoundConfigurationUtil {
   public static AppSchedule getAppSchedule(App app, UUID serviceId) {
     if (isServiceBoundApp(app)) {
       return getServiceConfiguration(app, serviceId)
-          .map(ServiceAppConfiguration::getAppSchedule)
+          .map(ServiceAppConfiguration::getSchedule)
           .orElse(null);
     }
     return getAppSchedule(app);
@@ -101,7 +97,7 @@ public class AppBoundConfigurationUtil {
 
   public static List<EntityReference> getEventSubscriptionsForServiceApp(App app) {
     if (isServiceBoundApp(app)) {
-      return Optional.ofNullable(app.getAppBoundConfiguration())
+      return Optional.ofNullable(app.getConfiguration())
           .map(AppBoundConfiguration::getServiceAppConfig)
           .orElse(List.of())
           .stream()
@@ -136,27 +132,28 @@ public class AppBoundConfigurationUtil {
     return getPipeline(app);
   }
 
-  public static OpenMetadataConnection getOpenMetadataServerConnection(App app) {
-    if (isGlobalApp(app)) {
-      return getGlobalConfiguration(app)
-          .map(GlobalAppConfiguration::getOpenMetadataServerConnection)
-          .orElse(null);
-    }
-    return null;
-  }
-
-  public static OpenMetadataConnection getOpenMetadataServerConnection(App app, UUID serviceId) {
-    if (isServiceBoundApp(app)) {
-      return getServiceConfiguration(app, serviceId)
-          .map(ServiceAppConfiguration::getOpenMetadataServerConnection)
-          .orElse(null);
-    }
-    return getOpenMetadataServerConnection(app);
-  }
-
+  //  public static OpenMetadataConnection getOpenMetadataServerConnection(App app) {
+  //    if (isGlobalApp(app)) {
+  //      return getGlobalConfiguration(app)
+  //          .map(GlobalAppConfiguration::getOpenMetadataServerConnection)
+  //          .orElse(null);
+  //    }
+  //    return null;
+  //  }
+  //
+  //  public static OpenMetadataConnection getOpenMetadataServerConnection(App app, UUID serviceId)
+  // {
+  //    if (isServiceBoundApp(app)) {
+  //      return getServiceConfiguration(app, serviceId)
+  //          .map(ServiceAppConfiguration::getOpenMetadataServerConnection)
+  //          .orElse(null);
+  //    }
+  //    return getOpenMetadataServerConnection(app);
+  //  }
+  //
   public static void setAppConfiguration(App app, Object appConfiguration) {
     if (isGlobalApp(app)) {
-      getOrCreateGlobalConfiguration(app).setAppConfiguration(appConfiguration);
+      getOrCreateGlobalConfiguration(app).setConfig(appConfiguration);
     } else if (isServiceBoundApp(app)) {
       LOG.warn(
           "setAppConfiguration called on service-bound app {}. Consider using setAppConfiguration with serviceId",
@@ -166,37 +163,35 @@ public class AppBoundConfigurationUtil {
 
   public static void unsetPrivateConfiguration(App app) {
     if (isGlobalApp(app)) {
-      app.getAppBoundConfiguration().getGlobalAppConfig().setPrivateConfiguration(null);
+      app.getConfiguration().getGlobalAppConfig().setPrivateConfig(null);
     } else if (isServiceBoundApp(app)) {
-      app.getAppBoundConfiguration()
-          .getServiceAppConfig()
-          .forEach(c -> c.setPrivateConfiguration(null));
+      app.getConfiguration().getServiceAppConfig().forEach(c -> c.setPrivateConfig(null));
     }
   }
 
   public static void setAppConfiguration(App app, UUID serviceId, Object appConfiguration) {
     if (isServiceBoundApp(app)) {
-      getOrCreateServiceConfiguration(app, serviceId).setAppConfiguration(appConfiguration);
+      getOrCreateServiceConfiguration(app, serviceId).setPrivateConfig(appConfiguration);
     } else {
       setAppConfiguration(app, appConfiguration);
     }
   }
 
-  public static void setAppSchedule(App app, AppSchedule appSchedule) {
+  public static void setSchedule(App app, AppSchedule appSchedule) {
     if (isGlobalApp(app)) {
-      getOrCreateGlobalConfiguration(app).setAppSchedule(appSchedule);
+      getOrCreateGlobalConfiguration(app).setSchedule(appSchedule);
     } else if (isServiceBoundApp(app)) {
       LOG.warn(
-          "setAppSchedule called on service-bound app {}. Consider using setAppSchedule with serviceId",
+          "setSchedule called on service-bound app {}. Consider using setSchedule with serviceId",
           app.getName());
     }
   }
 
-  public static void setAppSchedule(App app, UUID serviceId, AppSchedule appSchedule) {
+  public static void setSchedule(App app, UUID serviceId, AppSchedule appSchedule) {
     if (isServiceBoundApp(app)) {
-      getOrCreateServiceConfiguration(app, serviceId).setAppSchedule(appSchedule);
+      getOrCreateServiceConfiguration(app, serviceId).setSchedule(appSchedule);
     } else {
-      setAppSchedule(app, appSchedule);
+      setSchedule(app, appSchedule);
     }
   }
 
@@ -238,7 +233,7 @@ public class AppBoundConfigurationUtil {
       return Optional.empty();
     }
 
-    return Optional.ofNullable(app.getAppBoundConfiguration())
+    return Optional.ofNullable(app.getConfiguration())
         .map(AppBoundConfiguration::getServiceAppConfig)
         .orElse(List.of())
         .stream()
@@ -255,7 +250,7 @@ public class AppBoundConfigurationUtil {
       return Optional.empty();
     }
 
-    return Optional.ofNullable(app.getAppBoundConfiguration())
+    return Optional.ofNullable(app.getConfiguration())
         .map(AppBoundConfiguration::getServiceAppConfig)
         .orElse(List.of())
         .stream()
@@ -269,10 +264,10 @@ public class AppBoundConfigurationUtil {
 
   public static List<ServiceAppConfiguration> getAllServiceConfigurations(App app) {
     if (!isServiceBoundApp(app)) {
-      return List.of();
+      throw new AppException("Cannot get service configurations for global app " + app.getName());
     }
 
-    return Optional.ofNullable(app.getAppBoundConfiguration())
+    return Optional.ofNullable(app.getConfiguration())
         .map(AppBoundConfiguration::getServiceAppConfig)
         .orElse(List.of());
   }
@@ -295,7 +290,7 @@ public class AppBoundConfigurationUtil {
     }
 
     List<ServiceAppConfiguration> serviceConfigs =
-        Optional.ofNullable(app.getAppBoundConfiguration())
+        Optional.ofNullable(app.getConfiguration())
             .map(AppBoundConfiguration::getServiceAppConfig)
             .orElse(List.of());
 
@@ -306,7 +301,7 @@ public class AppBoundConfigurationUtil {
   }
 
   private static Optional<GlobalAppConfiguration> getGlobalConfiguration(App app) {
-    return Optional.ofNullable(app.getAppBoundConfiguration())
+    return Optional.ofNullable(app.getConfiguration())
         .map(AppBoundConfiguration::getGlobalAppConfig);
   }
 
@@ -341,28 +336,28 @@ public class AppBoundConfigurationUtil {
   }
 
   private static AppBoundConfiguration getOrCreateAppBoundConfiguration(App app) {
-    if (app.getAppBoundConfiguration() == null) {
-      app.setAppBoundConfiguration(new AppBoundConfiguration());
+    if (app.getConfiguration() == null) {
+      app.setConfiguration(new AppBoundConfiguration());
     }
-    return app.getAppBoundConfiguration();
+    return app.getConfiguration();
   }
 
   public static void migrateFromLegacyConfiguration(App app) {
-    if (app.getAppBoundType() == null) {
-      app.setAppBoundType(AppBoundType.Global);
+    if (app.getBoundType() == null) {
+      app.setBoundType(AppBoundType.Global);
     }
 
-    if (app.getAppBoundConfiguration() == null && isGlobalApp(app)) {
+    if (app.getConfiguration() == null && isGlobalApp(app)) {
       GlobalAppConfiguration globalConfig = new GlobalAppConfiguration();
 
       if (hasLegacyAppConfiguration(app)) {
-        globalConfig.setAppConfiguration(getLegacyAppConfiguration(app));
+        globalConfig.setConfig(getLegacyAppConfiguration(app));
       }
       if (hasLegacyPrivateConfiguration(app)) {
-        globalConfig.setPrivateConfiguration(getLegacyPrivateConfiguration(app));
+        globalConfig.setPrivateConfig(getLegacyPrivateConfiguration(app));
       }
       if (hasLegacyAppSchedule(app)) {
-        globalConfig.setAppSchedule(getLegacyAppSchedule(app));
+        globalConfig.setSchedule(getLegacyAppSchedule(app));
       }
       if (hasLegacyEventSubscriptions(app)) {
         globalConfig.setEventSubscriptions(getLegacyEventSubscriptions(app));
@@ -370,7 +365,7 @@ public class AppBoundConfigurationUtil {
 
       AppBoundConfiguration boundConfig =
           new AppBoundConfiguration().withGlobalAppConfig(globalConfig);
-      app.setAppBoundConfiguration(boundConfig);
+      app.setConfiguration(boundConfig);
     }
   }
 

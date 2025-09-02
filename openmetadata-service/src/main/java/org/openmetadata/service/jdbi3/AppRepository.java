@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.ServiceAppConfiguration;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -36,7 +37,7 @@ import org.openmetadata.service.util.EntityUtil;
 public class AppRepository extends EntityRepository<App> {
   public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
-  public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
+  public static final String UPDATE_FIELDS = "configuration";
 
   public AppRepository() {
     super(
@@ -52,14 +53,53 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void setFields(App entity, EntityUtil.Fields fields) {
-    entity.setPipelines(
-        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    setIngestionPipeline(entity);
     entity.withBot(getBotUser(entity));
   }
 
   @Override
-  protected List<EntityReference> getIngestionPipelines(App service) {
-    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+  public List<EntityReference> getIngestionPipelines(App app) {
+    return findTo(app.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+  }
+
+  protected void setIngestionPipeline(App app) {
+    // Find all ingestion pipelines associated with this app via relationships
+    List<EntityReference> pipelineRefs = getIngestionPipelines(app);
+
+    // For global apps, set the first pipeline in globalAppConfig
+    if (AppBoundConfigurationUtil.isGlobalApp(app) && !pipelineRefs.isEmpty()) {
+      AppBoundConfigurationUtil.setPipeline(app, pipelineRefs.get(0));
+    }
+    // For service-bound apps, match pipelines to their respective service configurations
+    else if (AppBoundConfigurationUtil.isServiceBoundApp(app)) {
+      matchPipelinesToServiceConfigs(app, pipelineRefs);
+    }
+  }
+
+  private void matchPipelinesToServiceConfigs(App app, List<EntityReference> pipelineRefs) {
+    List<ServiceAppConfiguration> serviceConfigs =
+        AppBoundConfigurationUtil.getAllServiceConfigurations(app);
+
+    for (EntityReference pipelineRef : pipelineRefs) {
+      // Extract service ID from pipeline name (format: appName_serviceId)
+      String pipelineName = pipelineRef.getName();
+      if (pipelineName.contains("_")) {
+        String[] parts = pipelineName.split("_");
+        if (parts.length >= 2) {
+          String serviceId = parts[parts.length - 1]; // Get the last part as serviceId
+
+          // Find matching service configuration and set the pipeline
+          for (ServiceAppConfiguration config : serviceConfigs) {
+            if (config.getServiceRef() != null
+                && config.getServiceRef().getId().toString().equals(serviceId)) {
+              AppBoundConfigurationUtil.setPipeline(
+                  app, config.getServiceRef().getId(), pipelineRef);
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -473,11 +513,9 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("appBoundType", original.getAppBoundType(), updated.getAppBoundType());
+      recordChange("appBoundType", original.getBoundType(), updated.getBoundType());
       recordChange(
-          "appBoundConfiguration",
-          original.getAppBoundConfiguration(),
-          updated.getAppBoundConfiguration());
+          "appBoundConfiguration", original.getConfiguration(), updated.getConfiguration());
       recordChange("bot", original.getBot(), updated.getBot());
     }
   }

@@ -56,9 +56,10 @@ public class OmAppJobListener implements JobListener {
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
+      // Get configuration based on app bound type (global vs service)
+      Object appConfiguration = getAppConfigurationForJob(jobApp, jobExecutionContext);
       ApplicationConfig appConfig =
-          JsonUtils.convertValue(
-              AppBoundConfigurationUtil.getAppConfiguration(jobApp), ApplicationConfig.class);
+          JsonUtils.convertValue(appConfiguration, ApplicationConfig.class);
       ApplicationConfig overrideConfig =
           JsonUtils.convertValue(
               jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
@@ -78,7 +79,7 @@ public class OmAppJobListener implements JobListener {
               .withTimestamp(jobStartTime)
               .withRunType(runType)
               .withStatus(AppRunRecord.Status.RUNNING)
-              .withScheduleInfo(jobApp.getAppSchedule())
+              .withScheduleInfo(AppBoundConfigurationUtil.getAppSchedule(jobApp))
               .withConfig(JsonUtils.getMap(appConfig));
 
       boolean update = false;
@@ -181,6 +182,25 @@ public class OmAppJobListener implements JobListener {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     return JsonUtils.readOrConvertValue(
         dataMap.get(SCHEDULED_APP_RUN_EXTENSION), AppRunRecord.class);
+  }
+
+  private Object getAppConfigurationForJob(App app, JobExecutionContext context) {
+    // Check if this is a service-bound job by looking for serviceId in job data
+    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+    String serviceId = (String) dataMap.get("serviceId");
+
+    if (serviceId != null) {
+      // This is a service-bound application job
+      LOG.debug(
+          "Getting service-bound configuration for app {} and service {}",
+          app.getName(),
+          serviceId);
+      return AppBoundConfigurationUtil.getAppConfiguration(app, UUID.fromString(serviceId));
+    } else {
+      // This is a global application job
+      LOG.debug("Getting global configuration for app {}", app.getName());
+      return AppBoundConfigurationUtil.getAppConfiguration(app);
+    }
   }
 
   public void pushApplicationStatusUpdates(

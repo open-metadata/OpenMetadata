@@ -213,9 +213,8 @@ public class SearchIndexApp extends AbstractGlobalNativeApplication {
 
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
-      Map<String, Object> jsonAppConfig =
-          JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
-      getApp().setAppConfiguration(jsonAppConfig);
+      Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, new TypeReference<>() {});
+      getApp().getConfiguration().getGlobalAppConfig().setConfig(jsonAppConfig);
     }
   }
 

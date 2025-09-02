@@ -73,9 +73,11 @@ public class DataInsightsReportApp extends AbstractGlobalNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
-    app.setAppConfiguration(
-        JsonUtils.getMapFromJson(
-            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
+    app.getConfiguration()
+        .getGlobalAppConfig()
+        .setConfig(
+            JsonUtils.getMapFromJson(
+                (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();

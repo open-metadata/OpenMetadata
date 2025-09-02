@@ -16,6 +16,10 @@
           "type": "string",
           "description": "Application Name"
         },
+        "serviceRef": {
+          "type": "string",
+          "description": "Application Name"
+        },
         "preview": {
           "type": "boolean",
           "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",

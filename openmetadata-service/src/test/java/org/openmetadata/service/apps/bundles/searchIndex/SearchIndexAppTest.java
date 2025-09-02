@@ -37,8 +37,11 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
+import org.openmetadata.schema.entity.app.AppBoundType;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EntityError;
@@ -133,7 +136,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     searchIndexApp.init(testApp);
 
@@ -149,7 +157,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
     searchIndexApp.init(testApp);
     injectMockSink();
 
@@ -183,7 +196,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
     searchIndexApp.init(testApp);
     injectMockSink();
 
@@ -246,7 +264,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
     searchIndexApp.init(testApp);
     injectMockSink();
 
@@ -294,7 +317,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     EventPublisherJob jobData = searchIndexApp.getJobData();
     jobData.setStatus(EventPublisherJob.Status.RUNNING);
@@ -317,7 +345,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     var method =
         SearchIndexApp.class.getDeclaredMethod(
@@ -335,7 +368,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     // Initialize stats and set searchIndexStats field
     Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
@@ -378,7 +416,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     EventPublisherJob jobData = searchIndexApp.getJobData();
 
@@ -419,7 +462,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     // Initialize stats and set searchIndexStats field
     Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
@@ -491,7 +539,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(recreateIndexJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
     searchIndexApp.init(testApp);
     injectMockSink();
 
@@ -541,7 +594,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(autoTuneJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     lenient()
         .when(searchRepository.getSearchType())
@@ -568,7 +626,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     var calculateMethod =
         SearchIndexApp.class.getDeclaredMethod("calculateMemoryAwareQueueSize", int.class);
@@ -617,7 +680,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(smallQueueJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     searchIndexApp.init(testApp);
 
@@ -681,7 +749,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
 
     Field batchSizeField = SearchIndexApp.class.getDeclaredField("batchSize");
     batchSizeField.setAccessible(true);
@@ -718,7 +791,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(autoTuneJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     searchIndexApp.init(testApp);
 
@@ -755,7 +833,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(autoTuneJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     searchIndexApp.init(testApp);
 
@@ -801,7 +884,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(autoTuneJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     searchIndexApp.init(testApp);
 
@@ -817,7 +905,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     searchIndexApp.init(
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class)));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class)))));
     injectMockSink();
 
     // Initialize stats
@@ -866,7 +959,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     lenient()
         .when(searchRepository.getSearchType())
@@ -888,7 +986,12 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(testJobData, Object.class))));
 
     lenient()
         .when(searchRepository.getSearchType())

@@ -154,11 +154,11 @@
       "type": "boolean",
       "default": false
     },
-    "appBoundType": {
+    "boundType": {
       "description": "This schema defines the scope of the application.",
       "$ref": "../app.json#/definitions/appBoundType"
     },
-    "appBoundConfiguration": {
+    "configuration": {
       "description": "Configuration for the application based on its bound type.",
       "$ref": "../app.json#/definitions/appBoundConfiguration"
     }

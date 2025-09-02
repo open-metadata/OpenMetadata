@@ -80,7 +80,12 @@ public class RunAppImpl {
           runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
-      updatedApp.setAppConfiguration(config);
+      // TODO: Refactor once we have a better way to handle App Configurations
+      if (AppBoundConfigurationUtil.isGlobalApp(app)) {
+        AppBoundConfigurationUtil.setAppConfiguration(updatedApp, config);
+      } else {
+        AppBoundConfigurationUtil.setAppConfiguration(updatedApp, service.getId(), config);
+      }
       wasSuccessful =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
       deployIngestionPipeline(pipelineServiceClient, app);
@@ -243,7 +248,7 @@ public class RunAppImpl {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
-    EntityReference pipelineRef = app.getPipelines().get(0);
+    EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
 
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 

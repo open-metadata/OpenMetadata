@@ -12,15 +12,15 @@
     "serviceRef": {
       "$ref": "../../type/entityReference.json"
     },
-    "appConfiguration": {
+    "config": {
       "description": "Application Configuration object.",
       "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
     },
-    "privateConfiguration": {
+    "privateConfig": {
       "description": "Application Private configuration loaded at runtime.",
       "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
     },
-    "appSchedule": {
+    "schedule": {
       "description": "In case the app supports scheduling, list of different app schedules",
       "$ref": "./app.json#/definitions/appSchedule"
     },
@@ -31,9 +31,6 @@
     "pipeline": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json"
-    },
-    "openMetadataServerConnection": {
-      "$ref": "../services/connections/metadata/openMetadataConnection.json"
     }
   },
   "required": ["serviceRef"],

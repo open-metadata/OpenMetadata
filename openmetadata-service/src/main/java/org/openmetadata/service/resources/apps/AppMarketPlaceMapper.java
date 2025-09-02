@@ -43,8 +43,8 @@ public class AppMarketPlaceMapper
             .withAllowConfiguration(create.getAllowConfiguration())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
-            .withAppBoundType(create.getAppBoundType())
-            .withAppBoundConfiguration(create.getAppBoundConfiguration());
+            .withBoundType(create.getBoundType())
+            .withConfiguration(create.getConfiguration());
 
     // Validate App
     validateApplication(app);

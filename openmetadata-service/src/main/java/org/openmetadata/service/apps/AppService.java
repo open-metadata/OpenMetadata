@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
@@ -115,7 +114,7 @@ public class AppService {
     try {
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(
-              APPLICATION, String.format(".*json/data/%s/.*\\.json$", "apps"), CreateApp.class);
+              APPLICATION, String.format(".*json/data/%s/.*\\.json$", APPLICATION), CreateApp.class);
       loadDefaultApplications(createAppsReq);
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
@@ -153,7 +152,7 @@ public class AppService {
   private App getAppForInit(String appName) {
     try {
       return appRepository.getByName(
-          null, appName, appRepository.getFields("bot,pipelines"), ALL, false);
+          null, appName, appRepository.getFields("bot"), ALL, false);
     } catch (EntityNotFoundException ex) {
       return null;
     }
@@ -182,8 +181,9 @@ public class AppService {
     }
     AppScheduler.getInstance().deleteScheduledApplication(app);
 
-    App patchedApp =
+    RestUtil.PatchResponse<App> patchResponse =
         appRepository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    App patchedApp = patchResponse.entity();
 
     if (SCHEDULED_TYPES.contains(patchedApp.getScheduleType())) {
       applicationHandler.installApplication(
@@ -209,7 +209,10 @@ public class AppService {
     }
 
     unsetAppRuntimeProperties(app);
-    App updatedApp = appRepository.createOrUpdate(uriInfo, app);
+    App updatedApp =
+        appRepository
+            .createOrUpdate(uriInfo, app, securityContext.getUserPrincipal().getName())
+            .getEntity();
     return Response.ok(updatedApp).build();
   }
 
@@ -228,8 +231,9 @@ public class AppService {
         app, collectionDAO, searchRepository, securityContext.getUserPrincipal().getName());
 
     deleteAppInternal(securityContext, app);
-    return appRepository.deleteByName(
-        uriInfo, securityContext.getUserPrincipal().getName(), name, true, hardDelete);
+    return appRepository
+        .deleteByName(securityContext.getUserPrincipal().getName(), name, true, hardDelete)
+        .toResponse();
   }
 
   public Response deleteAppById(
@@ -245,8 +249,9 @@ public class AppService {
         app, collectionDAO, searchRepository, securityContext.getUserPrincipal().getName());
 
     deleteAppInternal(securityContext, app);
-    return appRepository.delete(
-        uriInfo, securityContext.getUserPrincipal().getName(), id, true, hardDelete);
+    return appRepository
+        .delete(securityContext.getUserPrincipal().getName(), id, true, hardDelete)
+        .toResponse();
   }
 
   public Response deleteAppAsync(
@@ -289,9 +294,9 @@ public class AppService {
 
   public Response restoreApp(
       UriInfo uriInfo, SecurityContext securityContext, RestoreEntity restore) {
-    Response response =
-        appRepository.restoreEntity(
-            uriInfo, securityContext.getUserPrincipal().getName(), restore.getId());
+    RestUtil.PutResponse<App> putResponse =
+        appRepository.restoreEntity(securityContext.getUserPrincipal().getName(), restore.getId());
+    Response response = Response.ok(putResponse.getEntity()).build();
 
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
@@ -337,7 +342,7 @@ public class AppService {
       SecurityContext securityContext,
       String name,
       Map<String, Object> configPayload) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot", FIELD_OWNERS));
     App app = appRepository.getByName(uriInfo, name, fields);
 
     if (app.getAppType().equals(AppType.Internal)) {
@@ -345,7 +350,7 @@ public class AppService {
           app, collectionDAO, searchRepository, configPayload);
       return Response.status(Response.Status.OK).build();
     } else {
-      if (!app.getPipelines().isEmpty()) {
+      if (AppBoundConfigurationUtil.getPipeline(app) != null) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -359,7 +364,7 @@ public class AppService {
   }
 
   public Response stopApp(UriInfo uriInfo, SecurityContext securityContext, String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot", FIELD_OWNERS));
     App app = appRepository.getByName(uriInfo, name, fields);
 
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
@@ -369,7 +374,7 @@ public class AppService {
             .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
-        if (!app.getPipelines().isEmpty()) {
+        if (AppBoundConfigurationUtil.getPipeline(app) != null) {
           IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
           PipelineServiceClientResponse response =
               pipelineServiceClient.killIngestion(ingestionPipeline);
@@ -382,7 +387,7 @@ public class AppService {
   }
 
   public Response deployApp(UriInfo uriInfo, SecurityContext securityContext, String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot", FIELD_OWNERS));
     App app = appRepository.getByName(uriInfo, name, fields);
 
     if (app.getAppType().equals(AppType.Internal)) {
@@ -390,7 +395,7 @@ public class AppService {
           app, collectionDAO, searchRepository, securityContext.getUserPrincipal().getName());
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
-      if (!app.getPipelines().isEmpty()) {
+      if (AppBoundConfigurationUtil.getPipeline(app) != null) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -421,7 +426,7 @@ public class AppService {
         appRepository.get(
             uriInfo, appId, appRepository.getFields("appBoundType,appBoundConfiguration"));
 
-    if (app.getAppBoundType() != AppBoundType.Service) {
+    if (app.getBoundType() != AppBoundType.Service) {
       throw new BadRequestException(
           "Cannot add service configuration to non-service-bound application");
     }
@@ -443,7 +448,7 @@ public class AppService {
     }
 
     String updatedBy = securityContext.getUserPrincipal().getName();
-    appRepository.update(uriInfo, app.getId(), app, updatedBy);
+    appRepository.createOrUpdate(uriInfo, app, updatedBy);
 
     if (app.getAppType() == AppType.Internal && SCHEDULED_TYPES.contains(app.getScheduleType())) {
       try {
@@ -464,7 +469,7 @@ public class AppService {
         appRepository.get(
             uriInfo, appId, appRepository.getFields("appBoundType,appBoundConfiguration"));
 
-    if (app.getAppBoundType() != AppBoundType.Service) {
+    if (app.getBoundType() != AppBoundType.Service) {
       throw new BadRequestException(
           "Cannot remove service configuration from non-service-bound application");
     }
@@ -476,7 +481,7 @@ public class AppService {
     }
 
     String updatedBy = securityContext.getUserPrincipal().getName();
-    appRepository.update(uriInfo, app.getId(), app, updatedBy);
+    appRepository.createOrUpdate(uriInfo, app, updatedBy);
 
     if (app.getAppType() == AppType.Internal) {
       try {
@@ -500,14 +505,14 @@ public class AppService {
       int offset,
       Long startTs,
       Long endTs) {
-    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id,pipelines"));
+    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id"));
 
     if (app.getAppType().equals(AppType.Internal)) {
       return appRepository.listAppRuns(app, limitParam, offset);
     }
 
-    if (!app.getPipelines().isEmpty()) {
-      EntityReference pipelineRef = app.getPipelines().get(0);
+    EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
+    if (pipelineRef != null) {
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
@@ -560,8 +565,8 @@ public class AppService {
           .entity(appRepository.getLatestAppRuns(app))
           .build();
     } else {
-      if (!app.getPipelines().isEmpty()) {
-        EntityReference pipelineRef = app.getPipelines().get(0);
+      EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
+      if (pipelineRef != null) {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
@@ -585,8 +590,8 @@ public class AppService {
           .entity(appRepository.getLatestAppRuns(app))
           .build();
     } else {
-      if (!app.getPipelines().isEmpty()) {
-        EntityReference pipelineRef = app.getPipelines().get(0);
+      EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
+      if (pipelineRef != null) {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
@@ -663,7 +668,7 @@ public class AppService {
 
   private IngestionPipeline getIngestionPipeline(
       UriInfo uriInfo, SecurityContext securityContext, App app) {
-    EntityReference pipelineRef = app.getPipelines().get(0);
+    EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
 
     IngestionPipeline ingestionPipeline =
         ingestionPipelineRepository.get(
@@ -686,7 +691,7 @@ public class AppService {
         throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
       }
     } else {
-      if (!nullOrEmpty(installedApp.getPipelines())) {
+      if (AppBoundConfigurationUtil.getPipeline(installedApp) != null) {
         IngestionPipeline ingestionPipeline =
             getIngestionPipeline(null, securityContext, installedApp);
         try {
@@ -704,6 +709,7 @@ public class AppService {
 
   private org.openmetadata.service.security.policyevaluator.ResourceContext getResourceContextById(
       UUID id) {
-    return new org.openmetadata.service.security.policyevaluator.ResourceContext(APPLICATION, id);
+    return new org.openmetadata.service.security.policyevaluator.ResourceContext(
+        APPLICATION, id, null);
   }
 }
