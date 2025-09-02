@@ -28,8 +28,7 @@ import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { OPEN_METADATA } from '../../../../constants/Services.constant';
-import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../../generated/entity/data/table';
@@ -90,7 +89,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     useState<TestDefinition>();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
-  const [table, setTable] = useState<Table>();
+  const [table, setTable] = useState<Table & { entityType: EntityType }>();
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [activeField, setActiveField] = useState<string>('');
 
@@ -341,9 +340,15 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     }
     try {
       const response = await getTableDetailsByFQN(tableFqn, {
-        fields: 'columns',
+        fields: [
+          TabSpecificField.TAGS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.COLUMNS,
+        ],
       });
-      setTable(response);
+      setTable({ ...response, entityType: EntityType.TABLE });
     } catch (error) {
       // Handle error silently
     }
@@ -357,9 +362,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         testCase.testDefinition.id || ''
       );
 
-      if (testCase.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
-        await fetchTableDetails(tableFqn);
-      }
+      await fetchTableDetails(tableFqn);
 
       const formValue = pick(testCase, [
         'name',
@@ -392,14 +395,6 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   useEffect(() => {
     if (testCase && open) {
       fetchTestDefinitionById();
-
-      const isContainsColumnName = testCase.parameterValues?.find(
-        (value) => value.name === 'columnName' || value.name === 'column'
-      );
-
-      if (isContainsColumnName) {
-        fetchTableDetails(tableFqn);
-      }
     }
   }, [testCase, open]);
 
@@ -527,12 +522,16 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                   ]}>
                   <Input
                     disabled
+                    id="root/name"
                     placeholder={t('message.enter-test-case-name')}
                   />
                 </Form.Item>
 
                 <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input placeholder={t('message.enter-test-case-name')} />
+                  <Input
+                    id="root/displayName"
+                    placeholder={t('message.enter-test-case-name')}
+                  />
                 </Form.Item>
 
                 {generateFormFields(formFields)}
@@ -551,7 +550,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   return (
     <Drawer
       destroyOnClose
-      className="custom-drawer-style"
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
       maskClosable={false}

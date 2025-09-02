@@ -54,6 +54,19 @@ If left empty, a name will be automatically generated based on the test type and
 $$
 
 $$section
+### Display Name $(id="displayName")
+
+Provide a user-friendly display name for your test case that will be shown in the UI. Unlike the technical name, the display name:
+- Can contain spaces and special characters
+- Should be descriptive and meaningful to business users
+- Can include punctuation and formatting for readability
+- Maximum length of 256 characters
+- Does not need to be unique (though recommended for clarity)
+
+The display name helps team members quickly understand the purpose and scope of the test case in dashboards, reports, and notifications. If left empty, the technical name will be used as the display name.
+$$
+
+$$section
 ### Description $(id="description")
 
 Add a detailed description of what this test case validates and why it's important. The description helps team members understand:
