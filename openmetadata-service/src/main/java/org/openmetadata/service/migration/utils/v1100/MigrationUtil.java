@@ -1,0 +1,143 @@
+package org.openmetadata.service.migration.utils.v1100;
+
+import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+
+@Slf4j
+public class MigrationUtil {
+
+  private final ConnectionType connectionType;
+
+  public MigrationUtil(ConnectionType connectionType) {
+    this.connectionType = connectionType;
+  }
+
+  /**
+   * Migrate data from old Flyway schema history table to server_change_log if it exists.
+   * This consolidates migration tracking into a single table.
+   */
+  public void migrateFlywayHistory(Handle handle) {
+    try {
+      LOG.info("Starting v1100 migration of Flyway history to server_change_log");
+
+      // Check if DATABASE_CHANGE_LOG table exists
+      boolean tableExists = checkTableExists(handle, "DATABASE_CHANGE_LOG");
+
+      if (!tableExists) {
+        LOG.info("Flyway DATABASE_CHANGE_LOG table does not exist, skipping migration");
+        return;
+      }
+
+      // Check if Flyway records have already been migrated
+      if (hasFlywayDataAlreadyMigrated(handle)) {
+        LOG.info(
+            "Flyway records have already been migrated to server_change_log, skipping migration");
+        return;
+      }
+
+      // Insert missing v000 baseline record if not present
+      insertV000RecordIfMissing(handle);
+
+      // Migrate Flyway migration records to server_change_log
+      int migratedCount = migrateFlywayHistoryRecords(handle);
+
+      if (migratedCount > 0) {
+        LOG.info(
+            "Successfully migrated {} Flyway migration records to server_change_log",
+            migratedCount);
+      } else {
+        LOG.info("No new Flyway migration records to migrate");
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error during Flyway history migration", e);
+    }
+  }
+
+  private boolean checkTableExists(Handle handle, String tableName) {
+    String query =
+        switch (connectionType) {
+          case MYSQL -> "SELECT COUNT(*) FROM information_schema.tables "
+              + "WHERE table_schema = DATABASE() AND table_name = ?";
+          case POSTGRES -> "SELECT COUNT(*) FROM information_schema.tables "
+              + "WHERE table_schema = current_schema() AND table_name = ?";
+        };
+
+    Integer count = handle.createQuery(query).bind(0, tableName).mapTo(Integer.class).one();
+
+    return count > 0;
+  }
+
+  private boolean hasFlywayDataAlreadyMigrated(Handle handle) {
+    String countQuery =
+        switch (connectionType) {
+          case MYSQL -> """
+          SELECT COUNT(*) FROM server_change_log scl
+          INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
+          WHERE scl.migration_type = 'FLYWAY'
+          """;
+          case POSTGRES -> """
+          SELECT COUNT(*) FROM server_change_log scl
+          INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
+          WHERE scl.migration_type = 'FLYWAY'
+          """;
+        };
+
+    Integer count = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+    return count > 0;
+  }
+
+  private void insertV000RecordIfMissing(Handle handle) {
+    String insertQuery =
+        switch (connectionType) {
+          case MYSQL -> """
+          INSERT IGNORE INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          VALUES ('0.0.0', 'v000__create_db_connection_info.sql', '0', NOW(), NULL, 'FLYWAY')
+          """;
+          case POSTGRES -> """
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          VALUES ('0.0.0', 'v000__create_db_connection_info.sql', '0', current_timestamp, NULL, 'FLYWAY')
+          ON CONFLICT (version) DO NOTHING
+          """;
+        };
+
+    int inserted = handle.createUpdate(insertQuery).execute();
+    if (inserted > 0) {
+      LOG.info("Inserted missing v0.0.0 baseline record");
+    }
+  }
+
+  private int migrateFlywayHistoryRecords(Handle handle) {
+    String insertQuery =
+        switch (connectionType) {
+          case MYSQL -> """
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
+                 script as migrationfilename,
+                 CAST(checksum as CHAR(256)) as checksum,
+                 installed_on,
+                 NULL as metrics,
+                 'FLYWAY' as migration_type
+          FROM DATABASE_CHANGE_LOG
+          WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM server_change_log)
+          AND success = true
+          """;
+          case POSTGRES -> """
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          SELECT '0.0.' || CAST(version AS INTEGER) as version,
+                 script as migrationfilename,
+                 checksum::VARCHAR(256) as checksum,
+                 installed_on,
+                 NULL as metrics,
+                 'FLYWAY' as migration_type
+          FROM "DATABASE_CHANGE_LOG"
+          WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM server_change_log)
+          AND success = true
+          """;
+        };
+
+    return handle.createUpdate(insertQuery).execute();
+  }
+}

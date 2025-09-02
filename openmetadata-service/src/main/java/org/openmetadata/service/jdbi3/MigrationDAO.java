@@ -61,7 +61,7 @@ public interface MigrationDAO {
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO server_change_log (version, migrationFileName, checksum, metrics, installed_on)"
+          "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, checksum, metrics, installed_on)"
               + "VALUES (:version, :migrationFileName, :checksum, (:metrics :: jsonb), current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
               + "migrationFileName = EXCLUDED.migrationFileName, "
@@ -122,6 +122,10 @@ public interface MigrationDAO {
 
   @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG")
   List<String> getMigrationVersions();
+
+  @SqlQuery(
+      "SELECT version FROM SERVER_CHANGE_LOG WHERE migration_type = :migrationType ORDER BY version")
+  List<String> getMigrationVersionsByType(@Bind("migrationType") String migrationType);
 
   @Getter
   @Setter
