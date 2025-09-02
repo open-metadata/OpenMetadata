@@ -4669,6 +4669,10 @@ export interface TestConnectionResult {
      */
     success?: boolean;
     /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
      * Detailed error log in case of failure
      */
     errorLog?: string;
