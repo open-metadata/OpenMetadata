@@ -218,7 +218,8 @@ class RedshiftSource(
 
             return [
                 TableNameAndType(
-                    name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
+                    name=name,
+                    type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular),
                 )
                 for name, relkind in result
             ]
