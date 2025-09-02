@@ -1411,13 +1411,60 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Helper method to write entity to cache from static context
+   */
+  @SuppressWarnings("unchecked")
+  void writeThroughCacheForEntity(EntityInterface entity, boolean update) {
+    try {
+      writeThroughCache((T) entity, update);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to write entity to cache from static context: {} {}",
+          entityType,
+          entity.getId(),
+          e);
+    }
+  }
+
+  /**
+   * Validates entity has required fields for caching
+   */
+  private static boolean isValidEntityForCache(EntityInterface entity) {
+    return entity != null && entity.getId() != null && entity.getFullyQualifiedName() != null;
+  }
+
+  /**
    * Write-through cache implementation - stores entity in cache after DB operations
    */
   protected void writeThroughCache(T entity, boolean update) {
     try {
+      // Validate entity before caching
+      if (!isValidEntityForCache(entity)) {
+        LOG.error(
+            "CACHE: Cannot cache invalid entity - Type: {}, ID: {}, FQN: {}",
+            entityType,
+            entity != null ? entity.getId() : "null",
+            entity != null ? entity.getFullyQualifiedName() : "null");
+        return;
+      }
+
+      // Skip caching for user entities to avoid authentication issues
+      if ("user".equals(entityType)) {
+        LOG.debug("CACHE: Skipping cache write for user entity: {}", entity.getId());
+        return;
+      }
+
+      LOG.debug(
+          "CACHE: Writing entity to cache - Type: {}, ID: {}, FQN: {}, Update: {}",
+          entityType,
+          entity.getId(),
+          entity.getFullyQualifiedName(),
+          update);
+
       // Update Guava LoadingCache for local caching
       CACHE_WITH_ID.put(new ImmutablePair<>(entityType, entity.getId()), entity);
       CACHE_WITH_NAME.put(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()), entity);
+      LOG.debug("CACHE: Updated Guava LoadingCache for {}", entity.getId());
 
       // Update Redis cache for distributed caching
       var cachedEntityDao = CacheBundle.getCachedEntityDao();
@@ -1425,9 +1472,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Store entity in cache after DB write
         String entityJson = JsonUtils.pojoToJson(entity);
         cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+        LOG.debug("CACHE: Stored entity in Redis by ID - {}", entity.getId());
 
         // Also store by name for fast lookups
         cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+        LOG.debug("CACHE: Stored entity in Redis by name - {}", entity.getFullyQualifiedName());
 
         // Store relationships if present
         var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
@@ -3321,7 +3370,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getDomains(T entity) {
-    return supportsDomains ? getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN) : null;
+    if (!supportsDomains) {
+      return null;
+    }
+    if (entity.getId() == null) {
+      LOG.error(
+          "Entity has null ID when getting domains! Entity type: {}, Entity: {}",
+          entityType,
+          entity);
+      return null;
+    }
+    return getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -5477,7 +5536,69 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityByName(fqn, ALL);
+
+      // Skip cache for user entities to avoid authentication issues
+      if ("user".equals(entityType)) {
+        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", fqn);
+        EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
+        return entity;
+      }
+
+      // Try to load from external cache first (read-through) for non-user entities
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
+        if (cachedJson.isPresent()) {
+          LOG.debug("CACHE HIT: Loading entity by name from Redis cache: {} {}", entityType, fqn);
+          try {
+            // Get the entity class from the repository and deserialize with proper type
+            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+            EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
+            // Ensure the entity has its ID set (critical for getDomains() and other operations)
+            if (entity.getId() == null) {
+              LOG.error(
+                  "CACHE ERROR: Deserialized entity from name lookup has null ID! Type: {}, Name: {}",
+                  entityType,
+                  fqn);
+            }
+            return entity;
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to deserialize cached entity, falling back to database: {} {}",
+                entityType,
+                fqn,
+                e);
+          }
+        }
+        LOG.debug("CACHE MISS: Entity not in Redis cache by name: {} {}", entityType, fqn);
+      }
+
+      // If not in cache, load from database
+      LOG.debug("Loading entity by name from database: {} {}", entityType, fqn);
+      EntityInterface entity = repository.getDao().findEntityByName(fqn, ALL);
+
+      // Validate entity loaded from database
+      if (!isValidEntityForCache(entity)) {
+        if (entity == null) {
+          LOG.error("Entity not found in database by name: {} {}", entityType, fqn);
+          throw new EntityNotFoundException(
+              String.format("Entity not found: %s %s", entityType, fqn));
+        }
+        // For name lookups, we can't fix missing ID since we don't know it
+        LOG.error(
+            "CRITICAL: Entity loaded from database by name is invalid! Type: {}, Name: {}, ID: {}",
+            entityType,
+            fqn,
+            entity.getId());
+        throw new IllegalStateException(
+            String.format("Invalid entity from database: %s %s", entityType, fqn));
+      }
+
+      // Write-through to external cache when loading from database
+      LOG.debug("Writing entity to cache after database load: {} {}", entityType, fqn);
+      repository.writeThroughCacheForEntity(entity, false);
+
+      return entity;
     }
   }
 
@@ -5488,7 +5609,77 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(entityType);
-      return repository.getDao().findEntityById(id, ALL);
+
+      // Skip cache for user entities to avoid authentication issues
+      if ("user".equals(entityType)) {
+        LOG.debug("Skipping cache for user entity to ensure fresh auth data: {}", id);
+        EntityInterface entity = repository.getDao().findEntityById(id, ALL);
+        return entity;
+      }
+
+      // Try to load from external cache first (read-through) for non-user entities
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao != null) {
+        String cachedJson = cachedEntityDao.getBase(id, entityType);
+        if (cachedJson != null && !cachedJson.isEmpty()) {
+          LOG.debug("CACHE HIT: Loading entity from Redis cache: {} {}", entityType, id);
+          try {
+            // Get the entity class from the repository and deserialize with proper type
+            Class<? extends EntityInterface> entityClass = repository.getEntityClass();
+            EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
+            // Ensure the entity has its ID set (critical for getDomains() and other operations)
+            if (entity.getId() == null) {
+              LOG.error(
+                  "CACHE ERROR: Deserialized entity has null ID! Type: {}, Expected ID: {}",
+                  entityType,
+                  id);
+              entity.setId(id);
+            }
+            return entity;
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to deserialize cached entity, falling back to database: {} {}",
+                entityType,
+                id,
+                e);
+          }
+        }
+        LOG.debug("CACHE MISS: Entity not in Redis cache: {} {}", entityType, id);
+      }
+
+      // If not in cache, load from database
+      LOG.debug("Loading entity from database: {} {}", entityType, id);
+      EntityInterface entity = repository.getDao().findEntityById(id, ALL);
+
+      // Validate entity loaded from database
+      if (!isValidEntityForCache(entity)) {
+        if (entity == null) {
+          LOG.error("Entity not found in database: {} {}", entityType, id);
+          throw new EntityNotFoundException(
+              String.format("Entity not found: %s %s", entityType, id));
+        }
+        // Try to fix missing ID if entity exists but ID is null
+        if (entity.getId() == null) {
+          LOG.error(
+              "CRITICAL: Entity loaded from database has null ID! Type: {}, Expected ID: {}, FQN: {}",
+              entityType,
+              id,
+              entity.getFullyQualifiedName());
+          entity.setId(id);
+        }
+        // If still invalid, throw exception
+        if (!isValidEntityForCache(entity)) {
+          LOG.error("Entity from database is invalid for caching: {} {}", entityType, id);
+          throw new IllegalStateException(
+              String.format("Invalid entity from database: %s %s", entityType, id));
+        }
+      }
+
+      // Write-through to external cache when loading from database
+      LOG.debug("Writing entity to cache after database load: {} {}", entityType, id);
+      repository.writeThroughCacheForEntity(entity, false);
+
+      return entity;
     }
   }
 

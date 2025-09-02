@@ -529,6 +529,200 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void testWriteThroughCacheForCreateOperation(TestInfo testInfo) throws Exception {
+    LOG.info("Testing write-through cache for CREATE operations");
+    ensureDatabaseHierarchy();
+
+    // Clear cache before test
+    List<String> keysToDelete = redisCommands.keys("om:test:*");
+    if (!keysToDelete.isEmpty()) {
+      redisCommands.del(keysToDelete.toArray(new String[0]));
+    }
+
+    // Create a new table
+    String tableName = "write_through_test_" + System.currentTimeMillis();
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("value").withDataType(ColumnDataType.VARCHAR).withDataLength(50));
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(tableName)
+            .withDisplayName("Write Through Test Table")
+            .withDescription("Testing write-through caching on create")
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withTableType(TableType.Regular)
+            .withColumns(columns);
+
+    Response createResponse =
+        SecurityUtil.addHeaders(getResource("tables"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(createTable));
+
+    assertEquals(201, createResponse.getStatus());
+    Table createdTable = createResponse.readEntity(Table.class);
+    assertNotNull(createdTable.getId());
+    LOG.info(
+        "Created table: {} with ID: {}",
+        createdTable.getFullyQualifiedName(),
+        createdTable.getId());
+
+    // Verify table was written to cache immediately after creation
+    // Cache uses hash structure with "base" field for entity data
+    String cacheKey = "om:test:e:table:" + createdTable.getId();
+    String cachedData = redisCommands.hget(cacheKey, "base");
+    assertNotNull(cachedData, "Table should be cached immediately after creation (write-through)");
+
+    // Verify cached data contains the created table
+    Table cachedTable = JsonUtils.readValue(cachedData, Table.class);
+    assertEquals(createdTable.getId(), cachedTable.getId());
+    assertEquals(createdTable.getName(), cachedTable.getName());
+    assertEquals("Testing write-through caching on create", cachedTable.getDescription());
+
+    // Verify entity is also cached by name (stores full entity JSON)
+    String nameCacheKey = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String entityByName = redisCommands.get(nameCacheKey);
+    assertNotNull(entityByName, "Entity should be cached by name for fast lookups");
+
+    // Verify the cached entity by name contains the same data
+    Table cachedByName = JsonUtils.readValue(entityByName, Table.class);
+    assertEquals(createdTable.getId(), cachedByName.getId());
+    assertEquals(createdTable.getName(), cachedByName.getName());
+
+    LOG.info("Successfully verified write-through cache for CREATE operation");
+  }
+
+  @Test
+  void testWriteThroughCacheForUpdateOperation(TestInfo testInfo) throws Exception {
+    LOG.info("Testing write-through cache for UPDATE operations");
+    ensureDatabaseHierarchy();
+
+    // Create a table first
+    String tableName = "update_cache_test_" + System.currentTimeMillis();
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("data").withDataType(ColumnDataType.VARCHAR).withDataLength(100));
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(tableName)
+            .withDisplayName("Update Cache Test Table")
+            .withDescription("Original description")
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withTableType(TableType.Regular)
+            .withColumns(columns);
+
+    Response createResponse =
+        SecurityUtil.addHeaders(getResource("tables"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(createTable));
+
+    assertEquals(201, createResponse.getStatus());
+    Table createdTable = createResponse.readEntity(Table.class);
+
+    // Verify initial cache state
+    // Cache uses hash structure with "base" field for entity data
+    String cacheKey = "om:test:e:table:" + createdTable.getId();
+    String initialCachedData = redisCommands.hget(cacheKey, "base");
+    assertNotNull(initialCachedData);
+    Table initialCachedTable = JsonUtils.readValue(initialCachedData, Table.class);
+    assertEquals("Original description", initialCachedTable.getDescription());
+
+    // Update the table description using a simple JSON patch
+    String updatedDescription = "Updated description to test write-through cache";
+    String patchJson =
+        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"" + updatedDescription + "\"}]";
+
+    Response updateResponse =
+        SecurityUtil.addHeaders(getResource("tables/" + createdTable.getId()), ADMIN_AUTH_HEADERS)
+            .method("PATCH", Entity.entity(patchJson, MediaType.APPLICATION_JSON_PATCH_JSON));
+
+    assertEquals(200, updateResponse.getStatus());
+    Table updatedTable = updateResponse.readEntity(Table.class);
+    assertEquals(updatedDescription, updatedTable.getDescription());
+
+    // Verify cache was updated with new data (write-through)
+    String updatedCachedData = redisCommands.hget(cacheKey, "base");
+    assertNotNull(updatedCachedData);
+    Table updatedCachedTable = JsonUtils.readValue(updatedCachedData, Table.class);
+    assertEquals(
+        updatedDescription,
+        updatedCachedTable.getDescription(),
+        "Cache should be updated immediately with new description (write-through)");
+
+    // Verify other fields are still intact in cache
+    assertEquals(createdTable.getId(), updatedCachedTable.getId());
+    assertEquals(createdTable.getName(), updatedCachedTable.getName());
+    assertNotNull(updatedCachedTable.getColumns());
+    assertEquals(2, updatedCachedTable.getColumns().size());
+
+    LOG.info("Successfully verified write-through cache for UPDATE operation");
+  }
+
+  @Test
+  void testCacheInvalidationOnDelete(TestInfo testInfo) throws Exception {
+    LOG.info("Testing cache invalidation on DELETE operations");
+    ensureDatabaseHierarchy();
+
+    // Create a table
+    String tableName = "delete_cache_test_" + System.currentTimeMillis();
+    List<Column> columns =
+        Arrays.asList(new Column().withName("id").withDataType(ColumnDataType.BIGINT));
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(tableName)
+            .withDisplayName("Delete Cache Test Table")
+            .withDescription("Testing cache invalidation on delete")
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withTableType(TableType.Regular)
+            .withColumns(columns);
+
+    Response createResponse =
+        SecurityUtil.addHeaders(getResource("tables"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(createTable));
+
+    assertEquals(201, createResponse.getStatus());
+    Table createdTable = createResponse.readEntity(Table.class);
+
+    // Verify table is in cache
+    // Cache uses hash structure with "base" field for entity data
+    String cacheKey = "om:test:e:table:" + createdTable.getId();
+    String cachedData = redisCommands.hget(cacheKey, "base");
+    assertNotNull(cachedData, "Table should be cached after creation");
+
+    // Verify entity is cached by name
+    String nameCacheKey = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String entityByName = redisCommands.get(nameCacheKey);
+    assertNotNull(entityByName, "Entity should be cached by name");
+
+    // Delete the table
+    Response deleteResponse =
+        SecurityUtil.addHeaders(
+                getResource("tables/" + createdTable.getId() + "?hardDelete=true"),
+                ADMIN_AUTH_HEADERS)
+            .delete();
+
+    assertEquals(200, deleteResponse.getStatus());
+    LOG.info("Deleted table: {}", createdTable.getFullyQualifiedName());
+
+    // Verify cache was invalidated
+    // Check if the hash key still exists
+    String cachedDataAfterDelete = redisCommands.hget(cacheKey, "base");
+    assertTrue(
+        cachedDataAfterDelete == null || cachedDataAfterDelete.isEmpty(),
+        "Cache should be invalidated after delete");
+
+    // Verify entity by name was also removed
+    String entityByNameAfterDelete = redisCommands.get(nameCacheKey);
+    assertTrue(
+        entityByNameAfterDelete == null || entityByNameAfterDelete.isEmpty(),
+        "Entity by name should be removed from cache after delete");
+
+    LOG.info("Successfully verified cache invalidation on DELETE operation");
+  }
+
+  @Test
   void testCacheBehaviorWithDifferentAuthorization(TestInfo testInfo) throws Exception {
     LOG.info("Testing cache behavior with different authorization scenarios");
 

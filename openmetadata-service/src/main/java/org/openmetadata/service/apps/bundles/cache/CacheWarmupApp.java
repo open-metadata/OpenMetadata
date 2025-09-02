@@ -32,7 +32,9 @@ import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.cache.CacheBundle;
@@ -46,7 +48,6 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.JobExecutionContext;
@@ -170,6 +171,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       performCacheWarmup();
       updateFinalJobStatus();
       handleJobCompletion();
+      // Send final status update to persist the completed state
+      sendUpdates(jobExecutionContext, true);
     } finally {
       releaseWarmupLock();
     }
@@ -331,10 +334,15 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private void warmupEntity(String entityType, EntityInterface entity) throws Exception {
+    // Skip caching user entities
+    if ("user".equals(entityType)) {
+      return;
+    }
+
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
 
-    // Fetch full entity with all relationships
-    EntityInterface fullEntity = repository.get(null, entity.getId(), repository.getFields("*"));
+    // Use find method instead of get to avoid UriInfo requirement
+    EntityInterface fullEntity = repository.find(entity.getId(), Include.ALL);
 
     // Cache the entity - this triggers write-through caching
     String entityJson = JsonUtils.pojoToJson(fullEntity);
@@ -579,10 +587,38 @@ public class CacheWarmupApp extends AbstractNativeApplication {
               new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
         }
         if (jobData.getStats() != null) {
-          appRecord.setSuccessContext(
-              new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+          SuccessContext successContext =
+              new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+
+          // Add detailed progress metrics
+          if (jobData.getStats().getJobStats() != null) {
+            StepStats jobStats = jobData.getStats().getJobStats();
+            long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
+            long processed =
+                jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
+            long failed = jobStats.getFailedRecords() != null ? jobStats.getFailedRecords() : 0;
+
+            if (total > 0) {
+              double progressPercentage = (processed + failed) * 100.0 / total;
+              successContext.withAdditionalProperty("progressPercentage", progressPercentage);
+            }
+
+            if (currentThroughput > 0) {
+              successContext.withAdditionalProperty(
+                  "throughput", String.format("%.1f entities/sec", currentThroughput));
+            }
+
+            successContext.withAdditionalProperty("entitiesProcessed", processed + failed);
+            successContext.withAdditionalProperty("totalEntities", total);
+          }
+
+          appRecord.setSuccessContext(successContext);
         }
 
+        // Use the parent class method to properly update and persist the record
+        pushAppStatusUpdates(jobExecutionContext, appRecord, true);
+
+        // Also broadcast via WebSocket for real-time updates
         if (WebSocketManager.getInstance() != null) {
           String messageJson = JsonUtils.pojoToJson(appRecord);
           WebSocketManager.getInstance()
