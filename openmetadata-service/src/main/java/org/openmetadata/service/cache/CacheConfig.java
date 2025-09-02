@@ -20,6 +20,7 @@ public class CacheConfig {
     public String url;
     public String username;
     public String passwordRef;
+    public boolean useSSL;
 
     // Key namespace
     public String keyspace = "om:prod";

@@ -572,6 +572,7 @@ cache:
     # Authentication for standalone Redis
     username: ${CACHE_REDIS_USERNAME:-}
     passwordRef: ${CACHE_REDIS_PASSWORD:-}  # Reference to password in secrets manager
+    useSSL: ${CACHE_REDIS_USE_SSL:-false}
     
     # Key namespace prefix (useful for multi-tenant deployments)
     keyspace: ${CACHE_REDIS_KEYSPACE:-"om:prod"}
