@@ -156,16 +156,20 @@ class BigQueryQueryRunner:
         try:
             datasets = list(self.client.list_datasets(max_results=1))
             permissions["can_list_datasets"] = True
-            print("✓ Can list datasets")
+            print(f"✓ Can list datasets - \n{len(datasets)}")
         except Exception as e:
             print(f"✗ Cannot list datasets: {e}")
 
         # Test running a simple query
         try:
             query = "SELECT 1 as test"
+            query = "SELECT * FROM `modified-leaf-330420.hk_test.sample_table` LIMIT 1000"
+            query = "SELECT * FROM `modified-leaf-330420.test_omd.test_arr` LIMIT 10"
             result = self.client.query(query).result()
             permissions["can_run_query"] = True
-            print("✓ Can run queries")
+            print(f"✓ Can run queries - \n{result}")
+            for r in result:
+                print(r)
         except Exception as e:
             print(f"✗ Cannot run queries: {e}")
 

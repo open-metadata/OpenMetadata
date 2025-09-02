@@ -1,0 +1,19 @@
+# Requirements for Snowflake OAuth with SQLAlchemy
+
+# Core dependencies
+snowflake-connector-python[secure-local-storage]>=3.0.0
+snowflake-sqlalchemy>=1.5.0
+sqlalchemy>=2.0.0
+pandas>=2.0.0
+
+# For external OAuth token management
+requests>=2.31.0
+cryptography>=41.0.0  # For key-pair authentication
+
+# Optional: For OAuth flow implementation
+requests-oauthlib>=1.3.1  # For full OAuth2 flow
+PyJWT>=2.8.0  # For JWT token handling
+
+# Development dependencies (optional)
+python-dotenv>=1.0.0  # For loading .env files
+keyring>=24.0.0  # For secure credential storage

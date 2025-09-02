@@ -88,6 +88,7 @@ if [ -z "$AUTH_LIST" ]; then
         --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/bigquery
 else
     echo "Currently authenticated accounts:"
+    echo "Currently authenticated accounts:"
     echo "$AUTH_LIST"
     echo ""
     read -p "Do you want to re-authenticate? (y/n): " -n 1 -r

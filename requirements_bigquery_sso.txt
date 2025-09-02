@@ -1,0 +1,13 @@
+# BigQuery SSO Query Runner Requirements
+
+# Core dependencies for BigQuery with Google SSO
+google-cloud-bigquery>=3.11.0
+google-auth>=2.22.0
+
+# Data processing
+pandas>=2.0.0
+pyarrow>=12.0.0
+db-dtypes>=1.1.0  # Required for BigQuery-specific data types
+
+# Configuration
+python-dotenv>=1.0.0  # For .env file support
