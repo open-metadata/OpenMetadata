@@ -37,6 +37,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
     StoredProcedureLineageMixin,
 )
+from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import get_view_lineage
 
 
@@ -406,13 +407,12 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
     def test_get_view_lineage_single_service(self):
         """Test get_view_lineage with single service (backward compatibility)"""
-        # Create a mock TableView
-        mock_view = MagicMock()
-        mock_view.table_name = "test_view"
-        mock_view.schema_name = "schema1"
-        mock_view.db_name = "db1"
-        mock_view.view_definition = (
-            "CREATE VIEW test_view AS SELECT * FROM source_table"
+        # Create a real TableView
+        view = TableView(
+            table_name="test_view",
+            schema_name="schema1",
+            db_name="db1",
+            view_definition="CREATE VIEW test_view AS SELECT * FROM source_table",
         )
 
         # Mock the metadata methods
@@ -442,7 +442,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
                     result = list(
                         get_view_lineage(
-                            view=mock_view,
+                            view=view,
                             metadata=self.mock_metadata,
                             service_names="service1",
                             connection_type="snowflake",
@@ -454,13 +454,12 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
     def test_get_view_lineage_multiple_services(self):
         """Test get_view_lineage with multiple services (cross-database view lineage)"""
-        # Create a mock TableView
-        mock_view = MagicMock()
-        mock_view.table_name = "test_view"
-        mock_view.schema_name = "schema1"
-        mock_view.db_name = "db1"
-        mock_view.view_definition = (
-            "CREATE VIEW test_view AS SELECT * FROM source_table"
+        # Create a real TableView
+        view = TableView(
+            table_name="test_view",
+            schema_name="schema1",
+            db_name="db1",
+            view_definition="CREATE VIEW test_view AS SELECT * FROM source_table",
         )
 
         # Mock the metadata methods
@@ -492,7 +491,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
                     result = list(
                         get_view_lineage(
-                            view=mock_view,
+                            view=view,
                             metadata=self.mock_metadata,
                             service_names=["service1", "service2"],
                             connection_type="snowflake",

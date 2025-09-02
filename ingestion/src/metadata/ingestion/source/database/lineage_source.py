@@ -356,11 +356,10 @@ class LineageSource(QueryParserSource, ABC):
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
 
-    def query_lineage_producer(self) -> Iterator[TableQuery]:
+    def get_table_query(self) -> Iterator[TableQuery]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data.
-
         This is a simplified version of the UsageSource query parsing.
         """
         if self.config.sourceConfig.config.queryLogFilePath:
@@ -370,6 +369,12 @@ class LineageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             yield from self.yield_table_query()
+
+    def query_lineage_producer(self) -> Iterator[TableQuery]:
+        """
+        Retrieve queries to be fetched for lineage processing
+        """
+        return self.get_table_query()
 
     def yield_query_lineage(
         self,

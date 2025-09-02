@@ -48,6 +48,7 @@ def get_host_from_host_port(uri: str) -> str:
     return uri.split(":")[0]
 
 
+#  pylint: disable=too-many-locals
 @calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
