@@ -14,39 +14,39 @@
  * ThoughtSpot Connection Config
  */
 export interface ThoughtSpotConnection {
-  /**
-   * ThoughtSpot API version to use
-   */
-  apiVersion?: APIVersion;
-  /**
-   * ThoughtSpot authentication configuration
-   */
-  authentication: Authentication;
-  /**
-   * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
-   */
-  hostPort: string;
-  /**
-   * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
-   * only.
-   */
-  orgId?: string;
-  /**
-   * Supports Metadata Extraction.
-   */
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: ThoughtSpotType;
+    /**
+     * ThoughtSpot API version to use
+     */
+    apiVersion?: APIVersion;
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication: Authentication;
+    /**
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     */
+    hostPort: string;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
+    /**
+     * Supports Metadata Extraction.
+     */
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: ThoughtSpotType;
 }
 
 /**
  * ThoughtSpot API version to use
  */
 export enum APIVersion {
-  V1 = 'v1',
-  V2 = 'v2',
+    V1 = "v1",
+    V2 = "v2",
 }
 
 /**
@@ -57,18 +57,18 @@ export enum APIVersion {
  * API Access Token Auth Credentials
  */
 export interface Authentication {
-  /**
-   * Password to access the service.
-   */
-  password?: string;
-  /**
-   * Username to access the service.
-   */
-  username?: string;
-  /**
-   * Access Token for the API
-   */
-  accessToken?: string;
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 /**
@@ -77,5 +77,5 @@ export interface Authentication {
  * ThoughtSpot service type
  */
 export enum ThoughtSpotType {
-  ThoughtSpot = 'ThoughtSpot',
+    ThoughtSpot = "ThoughtSpot",
 }

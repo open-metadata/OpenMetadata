@@ -16,194 +16,194 @@
  * series of steps Extract, Transform and Load the data.
  */
 export interface Pipeline {
-  certification?: AssetCertification;
-  /**
-   * Change that lead to this version of the entity.
-   */
-  changeDescription?: ChangeDescription;
-  /**
-   * Concurrency of the Pipeline.
-   */
-  concurrency?: number;
-  /**
-   * List of data products this entity is part of.
-   */
-  dataProducts?: EntityReference[];
-  /**
-   * When `true` indicates the entity has been soft deleted.
-   */
-  deleted?: boolean;
-  /**
-   * Description of this Pipeline.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this Pipeline. It could be title or label from the source
-   * services.
-   */
-  displayName?: string;
-  /**
-   * Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the
-   * Pipeline service it belongs to.
-   */
-  domains?: EntityReference[];
-  /**
-   * Entity extension data with custom attributes added to the entity.
-   */
-  extension?: any;
-  /**
-   * Followers of this Pipeline.
-   */
-  followers?: EntityReference[];
-  /**
-   * A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to the resource corresponding to this entity.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies a pipeline instance.
-   */
-  id: string;
-  /**
-   * Change that lead to this version of the entity.
-   */
-  incrementalChangeDescription?: ChangeDescription;
-  /**
-   * Life Cycle properties of the entity
-   */
-  lifeCycle?: LifeCycle;
-  /**
-   * Name that identifies this pipeline instance uniquely.
-   */
-  name: string;
-  /**
-   * Owners of this pipeline.
-   */
-  owners?: EntityReference[];
-  /**
-   * Pipeline Code Location.
-   */
-  pipelineLocation?: string;
-  /**
-   * Latest Pipeline Status.
-   */
-  pipelineStatus?: PipelineStatus;
-  /**
-   * Scheduler Interval for the pipeline in cron format.
-   */
-  scheduleInterval?: string;
-  /**
-   * Link to service where this pipeline is hosted in.
-   */
-  service: EntityReference;
-  /**
-   * Service type where this pipeline is hosted in.
-   */
-  serviceType?: PipelineServiceType;
-  /**
-   * Source hash of the entity
-   */
-  sourceHash?: string;
-  /**
-   * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
-   */
-  sourceUrl?: string;
-  /**
-   * Start date of the workflow.
-   */
-  startDate?: Date;
-  /**
-   * State of the Pipeline.
-   */
-  state?: PipelineState;
-  /**
-   * Tags for this Pipeline.
-   */
-  tags?: TagLabel[];
-  /**
-   * All the tasks that are part of pipeline.
-   */
-  tasks?: Task[];
-  /**
-   * Last update time corresponding to the new version of the entity in Unix epoch time
-   * milliseconds.
-   */
-  updatedAt?: number;
-  /**
-   * User who made the update.
-   */
-  updatedBy?: string;
-  /**
-   * Latest usage information for this pipeline.
-   */
-  usageSummary?: UsageDetails;
-  /**
-   * Metadata version of the entity.
-   */
-  version?: number;
-  /**
-   * Votes on the entity.
-   */
-  votes?: Votes;
+    certification?: AssetCertification;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    changeDescription?: ChangeDescription;
+    /**
+     * Concurrency of the Pipeline.
+     */
+    concurrency?: number;
+    /**
+     * List of data products this entity is part of.
+     */
+    dataProducts?: EntityReference[];
+    /**
+     * When `true` indicates the entity has been soft deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Description of this Pipeline.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Pipeline. It could be title or label from the source
+     * services.
+     */
+    displayName?: string;
+    /**
+     * Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the
+     * Pipeline service it belongs to.
+     */
+    domains?: EntityReference[];
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
+     * Followers of this Pipeline.
+     */
+    followers?: EntityReference[];
+    /**
+     * A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the resource corresponding to this entity.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies a pipeline instance.
+     */
+    id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Life Cycle properties of the entity
+     */
+    lifeCycle?: LifeCycle;
+    /**
+     * Name that identifies this pipeline instance uniquely.
+     */
+    name: string;
+    /**
+     * Owners of this pipeline.
+     */
+    owners?: EntityReference[];
+    /**
+     * Pipeline Code Location.
+     */
+    pipelineLocation?: string;
+    /**
+     * Latest Pipeline Status.
+     */
+    pipelineStatus?: PipelineStatus;
+    /**
+     * Scheduler Interval for the pipeline in cron format.
+     */
+    scheduleInterval?: string;
+    /**
+     * Link to service where this pipeline is hosted in.
+     */
+    service: EntityReference;
+    /**
+     * Service type where this pipeline is hosted in.
+     */
+    serviceType?: PipelineServiceType;
+    /**
+     * Source hash of the entity
+     */
+    sourceHash?: string;
+    /**
+     * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
+     */
+    sourceUrl?: string;
+    /**
+     * Start date of the workflow.
+     */
+    startDate?: Date;
+    /**
+     * State of the Pipeline.
+     */
+    state?: PipelineState;
+    /**
+     * Tags for this Pipeline.
+     */
+    tags?: TagLabel[];
+    /**
+     * All the tasks that are part of pipeline.
+     */
+    tasks?: Task[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+    /**
+     * Latest usage information for this pipeline.
+     */
+    usageSummary?: UsageDetails;
+    /**
+     * Metadata version of the entity.
+     */
+    version?: number;
+    /**
+     * Votes on the entity.
+     */
+    votes?: Votes;
 }
 
 /**
  * Defines the Asset Certification schema.
  */
 export interface AssetCertification {
-  /**
-   * The date when the certification was applied.
-   */
-  appliedDate: number;
-  /**
-   * The date when the certification expires.
-   */
-  expiryDate: number;
-  tagLabel: TagLabel;
+    /**
+     * The date when the certification was applied.
+     */
+    appliedDate: number;
+    /**
+     * The date when the certification expires.
+     */
+    expiryDate: number;
+    tagLabel:   TagLabel;
 }
 
 /**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
-  /**
-   * Description for the tag label.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this tag.
-   */
-  displayName?: string;
-  /**
-   * Link to the tag resource.
-   */
-  href?: string;
-  /**
-   * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-   * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-   * relationship (see Classification.json for more details). 'Propagated` indicates a tag
-   * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
-   * used to determine the tag label.
-   */
-  labelType: LabelType;
-  /**
-   * Name of the tag or glossary term.
-   */
-  name?: string;
-  /**
-   * Label is from Tags or Glossary.
-   */
-  source: TagSource;
-  /**
-   * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-   * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-   */
-  state: State;
-  style?: Style;
-  tagFQN: string;
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
 }
 
 /**
@@ -214,19 +214,19 @@ export interface TagLabel {
  * used to determine the tag label.
  */
 export enum LabelType {
-  Automated = 'Automated',
-  Derived = 'Derived',
-  Generated = 'Generated',
-  Manual = 'Manual',
-  Propagated = 'Propagated',
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
 }
 
 /**
  * Label is from Tags or Glossary.
  */
 export enum TagSource {
-  Classification = 'Classification',
-  Glossary = 'Glossary',
+    Classification = "Classification",
+    Glossary = "Glossary",
 }
 
 /**
@@ -234,8 +234,8 @@ export enum TagSource {
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
 export enum State {
-  Confirmed = 'Confirmed',
-  Suggested = 'Suggested',
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
 }
 
 /**
@@ -243,14 +243,14 @@ export enum State {
  * that entity in UI.
  */
 export interface Style {
-  /**
-   * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-   */
-  color?: string;
-  /**
-   * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-   */
-  iconURL?: string;
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
 }
 
 /**
@@ -259,33 +259,33 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
-  changeSummary?: { [key: string]: ChangeSummary };
-  /**
-   * Names of fields added during the version changes.
-   */
-  fieldsAdded?: FieldChange[];
-  /**
-   * Fields deleted during the version changes with old value before deleted.
-   */
-  fieldsDeleted?: FieldChange[];
-  /**
-   * Fields modified during the version changes with old and new values.
-   */
-  fieldsUpdated?: FieldChange[];
-  /**
-   * When a change did not result in change, this could be same as the current version.
-   */
-  previousVersion?: number;
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
 }
 
 export interface ChangeSummary {
-  changedAt?: number;
-  /**
-   * Name of the user or bot who made this change
-   */
-  changedBy?: string;
-  changeSource?: ChangeSource;
-  [property: string]: any;
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
 }
 
 /**
@@ -293,29 +293,29 @@ export interface ChangeSummary {
  * manual vs programmatic)
  */
 export enum ChangeSource {
-  Automated = 'Automated',
-  Derived = 'Derived',
-  Ingested = 'Ingested',
-  Manual = 'Manual',
-  Propagated = 'Propagated',
-  Suggested = 'Suggested',
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
-  /**
-   * Name of the entity field that changed.
-   */
-  name?: string;
-  /**
-   * New value of the field. Note that this is a JSON string and use the corresponding field
-   * type to deserialize it.
-   */
-  newValue?: any;
-  /**
-   * Previous value of the field. Note that this is a JSON string and use the corresponding
-   * field type to deserialize it.
-   */
-  oldValue?: any;
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
 }
 
 /**
@@ -338,46 +338,46 @@ export interface FieldChange {
  * Link to service where this pipeline is hosted in.
  */
 export interface EntityReference {
-  /**
-   * If true the entity referred to has been soft-deleted.
-   */
-  deleted?: boolean;
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Fully qualified name of the entity instance. For entities such as tables, databases
-   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-   * such as `user` and `team` this will be same as the `name` field.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * If true the relationship indicated by this entity reference is inherited from the parent
-   * entity.
-   */
-  inherited?: boolean;
-  /**
-   * Name of the entity instance.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }
 
 /**
@@ -386,18 +386,18 @@ export interface EntityReference {
  * This schema defines Life Cycle Properties.
  */
 export interface LifeCycle {
-  /**
-   * Access Details about accessed aspect of the data asset
-   */
-  accessed?: AccessDetails;
-  /**
-   * Access Details about created aspect of the data asset
-   */
-  created?: AccessDetails;
-  /**
-   * Access Details about updated aspect of the data asset
-   */
-  updated?: AccessDetails;
+    /**
+     * Access Details about accessed aspect of the data asset
+     */
+    accessed?: AccessDetails;
+    /**
+     * Access Details about created aspect of the data asset
+     */
+    created?: AccessDetails;
+    /**
+     * Access Details about updated aspect of the data asset
+     */
+    updated?: AccessDetails;
 }
 
 /**
@@ -410,18 +410,18 @@ export interface LifeCycle {
  * Access Details about updated aspect of the data asset
  */
 export interface AccessDetails {
-  /**
-   * User, Pipeline, Query that created,updated or accessed the data asset
-   */
-  accessedBy?: EntityReference;
-  /**
-   * Any process that accessed the data asset that is not captured in OpenMetadata.
-   */
-  accessedByAProcess?: string;
-  /**
-   * Timestamp of data asset accessed for creation, update, read.
-   */
-  timestamp: number;
+    /**
+     * User, Pipeline, Query that created,updated or accessed the data asset
+     */
+    accessedBy?: EntityReference;
+    /**
+     * Any process that accessed the data asset that is not captured in OpenMetadata.
+     */
+    accessedByAProcess?: string;
+    /**
+     * Timestamp of data asset accessed for creation, update, read.
+     */
+    timestamp: number;
 }
 
 /**
@@ -430,65 +430,65 @@ export interface AccessDetails {
  * Series of pipeline executions, its status and task status.
  */
 export interface PipelineStatus {
-  /**
-   * Execution end time
-   */
-  endTime?: number;
-  /**
-   * Error details if execution failed
-   */
-  error?: ExecutionError;
-  /**
-   * User or service that triggered the execution
-   */
-  executedBy?: EntityReference;
-  /**
-   * External execution ID from the orchestrator (e.g., Airflow run_id)
-   */
-  executionId?: string;
-  /**
-   * Status at a specific execution date.
-   */
-  executionStatus: StatusType;
-  /**
-   * Input datasets consumed by this execution
-   */
-  inputs?: DatasetUsage[];
-  /**
-   * Execution metrics
-   */
-  metrics?: ExecutionMetrics;
-  /**
-   * Output datasets generated by this execution
-   */
-  outputs?: DatasetGeneration[];
-  /**
-   * Execution parameters/configuration
-   */
-  parameters?: { [key: string]: any };
-  /**
-   * Series of task executions and its status.
-   */
-  taskStatus?: TaskStatus[];
-  /**
-   * Timestamp where the job was executed.
-   */
-  timestamp: number;
-  /**
-   * Pipeline version that was executed
-   */
-  version?: string;
+    /**
+     * Execution end time
+     */
+    endTime?: number;
+    /**
+     * Error details if execution failed
+     */
+    error?: ExecutionError;
+    /**
+     * User or service that triggered the execution
+     */
+    executedBy?: EntityReference;
+    /**
+     * External execution ID from the orchestrator (e.g., Airflow run_id)
+     */
+    executionId?: string;
+    /**
+     * Status at a specific execution date.
+     */
+    executionStatus: StatusType;
+    /**
+     * Input datasets consumed by this execution
+     */
+    inputs?: DatasetUsage[];
+    /**
+     * Execution metrics
+     */
+    metrics?: ExecutionMetrics;
+    /**
+     * Output datasets generated by this execution
+     */
+    outputs?: DatasetGeneration[];
+    /**
+     * Execution parameters/configuration
+     */
+    parameters?: { [key: string]: any };
+    /**
+     * Series of task executions and its status.
+     */
+    taskStatus?: TaskStatus[];
+    /**
+     * Timestamp where the job was executed.
+     */
+    timestamp: number;
+    /**
+     * Pipeline version that was executed
+     */
+    version?: string;
 }
 
 /**
  * Error details if execution failed
  */
 export interface ExecutionError {
-  errorMessage?: string;
-  errorType?: string;
-  failedTask?: string;
-  stackTrace?: string;
-  [property: string]: any;
+    errorMessage?: string;
+    errorType?:    string;
+    failedTask?:   string;
+    stackTrace?:   string;
+    [property: string]: any;
 }
 
 /**
@@ -497,169 +497,169 @@ export interface ExecutionError {
  * Enum defining the possible Status.
  */
 export enum StatusType {
-  Failed = 'Failed',
-  Pending = 'Pending',
-  Skipped = 'Skipped',
-  Successful = 'Successful',
+    Failed = "Failed",
+    Pending = "Pending",
+    Skipped = "Skipped",
+    Successful = "Successful",
 }
 
 export interface DatasetUsage {
-  /**
-   * Specific columns used
-   */
-  columns?: string[];
-  /**
-   * Fully qualified name of the dataset
-   */
-  datasetFQN: string;
-  /**
-   * Filter applied when reading
-   */
-  filter?: string;
-  /**
-   * Number of rows read
-   */
-  rowCount?: number;
-  /**
-   * Data size in bytes
-   */
-  sizeBytes?: number;
-  /**
-   * Dataset version/snapshot used
-   */
-  version?: string;
-  [property: string]: any;
+    /**
+     * Specific columns used
+     */
+    columns?: string[];
+    /**
+     * Fully qualified name of the dataset
+     */
+    datasetFQN: string;
+    /**
+     * Filter applied when reading
+     */
+    filter?: string;
+    /**
+     * Number of rows read
+     */
+    rowCount?: number;
+    /**
+     * Data size in bytes
+     */
+    sizeBytes?: number;
+    /**
+     * Dataset version/snapshot used
+     */
+    version?: string;
+    [property: string]: any;
 }
 
 /**
  * Execution metrics
  */
 export interface ExecutionMetrics {
-  /**
-   * Execution cost if applicable
-   */
-  cost?: number;
-  /**
-   * CPU time in seconds
-   */
-  cpuTime?: number;
-  /**
-   * Peak memory usage in bytes
-   */
-  memoryUsed?: number;
-  totalBytesProcessed?: number;
-  totalRowsProcessed?: number;
-  [property: string]: any;
+    /**
+     * Execution cost if applicable
+     */
+    cost?: number;
+    /**
+     * CPU time in seconds
+     */
+    cpuTime?: number;
+    /**
+     * Peak memory usage in bytes
+     */
+    memoryUsed?:          number;
+    totalBytesProcessed?: number;
+    totalRowsProcessed?:  number;
+    [property: string]: any;
 }
 
 export interface DatasetGeneration {
-  /**
-   * Columns written/updated
-   */
-  columns?: string[];
-  /**
-   * Fully qualified name of the dataset
-   */
-  datasetFQN: string;
-  /**
-   * Write mode
-   */
-  mode?: Mode;
-  /**
-   * Partitions written
-   */
-  partitions?: string[];
-  /**
-   * Number of rows written
-   */
-  rowCount?: number;
-  /**
-   * Data size in bytes
-   */
-  sizeBytes?: number;
-  /**
-   * Dataset version created
-   */
-  version?: string;
-  [property: string]: any;
+    /**
+     * Columns written/updated
+     */
+    columns?: string[];
+    /**
+     * Fully qualified name of the dataset
+     */
+    datasetFQN: string;
+    /**
+     * Write mode
+     */
+    mode?: Mode;
+    /**
+     * Partitions written
+     */
+    partitions?: string[];
+    /**
+     * Number of rows written
+     */
+    rowCount?: number;
+    /**
+     * Data size in bytes
+     */
+    sizeBytes?: number;
+    /**
+     * Dataset version created
+     */
+    version?: string;
+    [property: string]: any;
 }
 
 /**
  * Write mode
  */
 export enum Mode {
-  Append = 'append',
-  Merge = 'merge',
-  Overwrite = 'overwrite',
-  Upsert = 'upsert',
+    Append = "append",
+    Merge = "merge",
+    Overwrite = "overwrite",
+    Upsert = "upsert",
 }
 
 /**
  * This schema defines a time series of the status of a Pipeline or Task.
  */
 export interface TaskStatus {
-  /**
-   * Task end time
-   */
-  endTime?: number;
-  /**
-   * Status at a specific execution date.
-   */
-  executionStatus: StatusType;
-  /**
-   * Task-specific inputs
-   */
-  inputs?: DatasetUsage[];
-  /**
-   * Task end time
-   */
-  logLink?: string;
-  metrics?: TaskMetrics;
-  /**
-   * Name of the Task.
-   */
-  name: string;
-  /**
-   * Task-specific outputs
-   */
-  outputs?: DatasetGeneration[];
-  /**
-   * Task start time
-   */
-  startTime?: number;
-  /**
-   * Task ID from orchestrator
-   */
-  taskId?: string;
-  /**
-   * SQL or code executed
-   */
-  transformationLogic?: string;
-  /**
-   * Type of transformation
-   */
-  transformationType?: TransformationType;
+    /**
+     * Task end time
+     */
+    endTime?: number;
+    /**
+     * Status at a specific execution date.
+     */
+    executionStatus: StatusType;
+    /**
+     * Task-specific inputs
+     */
+    inputs?: DatasetUsage[];
+    /**
+     * Task end time
+     */
+    logLink?: string;
+    metrics?: TaskMetrics;
+    /**
+     * Name of the Task.
+     */
+    name: string;
+    /**
+     * Task-specific outputs
+     */
+    outputs?: DatasetGeneration[];
+    /**
+     * Task start time
+     */
+    startTime?: number;
+    /**
+     * Task ID from orchestrator
+     */
+    taskId?: string;
+    /**
+     * SQL or code executed
+     */
+    transformationLogic?: string;
+    /**
+     * Type of transformation
+     */
+    transformationType?: TransformationType;
 }
 
 export interface TaskMetrics {
-  executionTimeMs?: number;
-  rowsFiltered?: number;
-  rowsRead?: number;
-  rowsWritten?: number;
-  [property: string]: any;
+    executionTimeMs?: number;
+    rowsFiltered?:    number;
+    rowsRead?:        number;
+    rowsWritten?:     number;
+    [property: string]: any;
 }
 
 /**
  * Type of transformation
  */
 export enum TransformationType {
-  Aggregate = 'aggregate',
-  Custom = 'custom',
-  Extract = 'extract',
-  Filter = 'filter',
-  Join = 'join',
-  Load = 'load',
-  Pivot = 'pivot',
+    Aggregate = "aggregate",
+    Custom = "custom",
+    Extract = "extract",
+    Filter = "filter",
+    Join = "join",
+    Load = "load",
+    Pivot = "pivot",
 }
 
 /**
@@ -668,27 +668,27 @@ export enum TransformationType {
  * Type of pipeline service - Airflow or Prefect.
  */
 export enum PipelineServiceType {
-  Airbyte = 'Airbyte',
-  Airflow = 'Airflow',
-  CustomPipeline = 'CustomPipeline',
-  DBTCloud = 'DBTCloud',
-  Dagster = 'Dagster',
-  DataFactory = 'DataFactory',
-  DatabricksPipeline = 'DatabricksPipeline',
-  DomoPipeline = 'DomoPipeline',
-  Fivetran = 'Fivetran',
-  Flink = 'Flink',
-  GluePipeline = 'GluePipeline',
-  KafkaConnect = 'KafkaConnect',
-  Matillion = 'Matillion',
-  Nifi = 'Nifi',
-  OpenLineage = 'OpenLineage',
-  Snowplow = 'Snowplow',
-  Spark = 'Spark',
-  Spline = 'Spline',
-  Ssis = 'SSIS',
-  Stitch = 'Stitch',
-  Wherescape = 'Wherescape',
+    Airbyte = "Airbyte",
+    Airflow = "Airflow",
+    CustomPipeline = "CustomPipeline",
+    DBTCloud = "DBTCloud",
+    Dagster = "Dagster",
+    DataFactory = "DataFactory",
+    DatabricksPipeline = "DatabricksPipeline",
+    DomoPipeline = "DomoPipeline",
+    Fivetran = "Fivetran",
+    Flink = "Flink",
+    GluePipeline = "GluePipeline",
+    KafkaConnect = "KafkaConnect",
+    Matillion = "Matillion",
+    Nifi = "Nifi",
+    OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
+    Spark = "Spark",
+    Spline = "Spline",
+    Ssis = "SSIS",
+    Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**
@@ -697,61 +697,61 @@ export enum PipelineServiceType {
  * Enum defining the possible Pipeline State.
  */
 export enum PipelineState {
-  Active = 'Active',
-  Inactive = 'Inactive',
+    Active = "Active",
+    Inactive = "Inactive",
 }
 
 export interface Task {
-  /**
-   * Description of this Task.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this Task. It could be title or label from the pipeline
-   * services.
-   */
-  displayName?: string;
-  /**
-   * All the tasks that are downstream of this task.
-   */
-  downstreamTasks?: string[];
-  /**
-   * end date for the task.
-   */
-  endDate?: string;
-  /**
-   * A unique name that identifies a pipeline in the format
-   * 'ServiceName.PipelineName.TaskName'.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Name that identifies this task instance uniquely.
-   */
-  name: string;
-  /**
-   * Owners of this task.
-   */
-  owners?: EntityReference[];
-  /**
-   * Task URL to visit/manage. This URL points to respective pipeline service UI.
-   */
-  sourceUrl?: string;
-  /**
-   * start date for the task.
-   */
-  startDate?: string;
-  /**
-   * Tags for this task.
-   */
-  tags?: TagLabel[];
-  /**
-   * SQL used in the task. Can be used to determine the lineage.
-   */
-  taskSQL?: string;
-  /**
-   * Type of the Task. Usually refers to the class it implements.
-   */
-  taskType?: string;
+    /**
+     * Description of this Task.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Task. It could be title or label from the pipeline
+     * services.
+     */
+    displayName?: string;
+    /**
+     * All the tasks that are downstream of this task.
+     */
+    downstreamTasks?: string[];
+    /**
+     * end date for the task.
+     */
+    endDate?: string;
+    /**
+     * A unique name that identifies a pipeline in the format
+     * 'ServiceName.PipelineName.TaskName'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name that identifies this task instance uniquely.
+     */
+    name: string;
+    /**
+     * Owners of this task.
+     */
+    owners?: EntityReference[];
+    /**
+     * Task URL to visit/manage. This URL points to respective pipeline service UI.
+     */
+    sourceUrl?: string;
+    /**
+     * start date for the task.
+     */
+    startDate?: string;
+    /**
+     * Tags for this task.
+     */
+    tags?: TagLabel[];
+    /**
+     * SQL used in the task. Can be used to determine the lineage.
+     */
+    taskSQL?: string;
+    /**
+     * Type of the Task. Usually refers to the class it implements.
+     */
+    taskType?: string;
 }
 
 /**
@@ -761,22 +761,22 @@ export interface Task {
  * usage is computed along with the percentile rank based on the usage for a given day.
  */
 export interface UsageDetails {
-  /**
-   * Daily usage stats of a data asset on the start date.
-   */
-  dailyStats: UsageStats;
-  /**
-   * Date in UTC.
-   */
-  date: Date;
-  /**
-   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-   */
-  monthlyStats?: UsageStats;
-  /**
-   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-   */
-  weeklyStats?: UsageStats;
+    /**
+     * Daily usage stats of a data asset on the start date.
+     */
+    dailyStats: UsageStats;
+    /**
+     * Date in UTC.
+     */
+    date: Date;
+    /**
+     * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+     */
+    monthlyStats?: UsageStats;
+    /**
+     * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+     */
+    weeklyStats?: UsageStats;
 }
 
 /**
@@ -789,14 +789,14 @@ export interface UsageDetails {
  * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
  */
 export interface UsageStats {
-  /**
-   * Usage count of a data asset on the start date.
-   */
-  count: number;
-  /**
-   * Optional daily percentile rank data asset use when relevant.
-   */
-  percentileRank?: number;
+    /**
+     * Usage count of a data asset on the start date.
+     */
+    count: number;
+    /**
+     * Optional daily percentile rank data asset use when relevant.
+     */
+    percentileRank?: number;
 }
 
 /**
@@ -805,20 +805,20 @@ export interface UsageStats {
  * This schema defines the Votes for a Data Asset.
  */
 export interface Votes {
-  /**
-   * List of all the Users who downVoted
-   */
-  downVoters?: EntityReference[];
-  /**
-   * Total down-votes the entity has
-   */
-  downVotes?: number;
-  /**
-   * List of all the Users who upVoted
-   */
-  upVoters?: EntityReference[];
-  /**
-   * Total up-votes the entity has
-   */
-  upVotes?: number;
+    /**
+     * List of all the Users who downVoted
+     */
+    downVoters?: EntityReference[];
+    /**
+     * Total down-votes the entity has
+     */
+    downVotes?: number;
+    /**
+     * List of all the Users who upVoted
+     */
+    upVoters?: EntityReference[];
+    /**
+     * Total up-votes the entity has
+     */
+    upVotes?: number;
 }

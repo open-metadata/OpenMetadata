@@ -14,20 +14,20 @@
  * SLA validation details for data contract.
  */
 export interface SlaValidation {
-  /**
-   * Actual latency in milliseconds.
-   */
-  actualLatency?: number;
-  /**
-   * Whether availability requirement was met.
-   */
-  availabilityMet?: boolean;
-  /**
-   * Whether latency requirement was met.
-   */
-  latencyMet?: boolean;
-  /**
-   * Whether refresh frequency requirement was met.
-   */
-  refreshFrequencyMet?: boolean;
+    /**
+     * Actual latency in milliseconds.
+     */
+    actualLatency?: number;
+    /**
+     * Whether availability requirement was met.
+     */
+    availabilityMet?: boolean;
+    /**
+     * Whether latency requirement was met.
+     */
+    latencyMet?: boolean;
+    /**
+     * Whether refresh frequency requirement was met.
+     */
+    refreshFrequencyMet?: boolean;
 }

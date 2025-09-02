@@ -14,19 +14,19 @@
  * Definition of a tool available in the Model Context Protocol
  */
 export interface MCPToolDefinition {
-  /**
-   * Description of what the tool does
-   */
-  description: string;
-  /**
-   * Name of the tool
-   */
-  name: string;
-  /**
-   * Definition of tool parameters
-   */
-  parameters: ToolParameters;
-  [property: string]: any;
+    /**
+     * Description of what the tool does
+     */
+    description: string;
+    /**
+     * Name of the tool
+     */
+    name: string;
+    /**
+     * Definition of tool parameters
+     */
+    parameters: ToolParameters;
+    [property: string]: any;
 }
 
 /**
@@ -35,52 +35,52 @@ export interface MCPToolDefinition {
  * Tool parameter definitions
  */
 export interface ToolParameters {
-  /**
-   * Parameter properties
-   */
-  properties: { [key: string]: ToolParameter };
-  /**
-   * List of required parameters
-   */
-  required?: string[];
-  /**
-   * Type of parameter schema
-   */
-  type?: string;
-  [property: string]: any;
+    /**
+     * Parameter properties
+     */
+    properties: { [key: string]: ToolParameter };
+    /**
+     * List of required parameters
+     */
+    required?: string[];
+    /**
+     * Type of parameter schema
+     */
+    type?: string;
+    [property: string]: any;
 }
 
 /**
  * Individual tool parameter definition
  */
 export interface ToolParameter {
-  /**
-   * Default value for this parameter
-   */
-  default?: any;
-  /**
-   * Description of the parameter
-   */
-  description: string;
-  /**
-   * Possible enum values for this parameter
-   */
-  enum?: any[];
-  /**
-   * Type of parameter
-   */
-  type: Type;
-  [property: string]: any;
+    /**
+     * Default value for this parameter
+     */
+    default?: any;
+    /**
+     * Description of the parameter
+     */
+    description: string;
+    /**
+     * Possible enum values for this parameter
+     */
+    enum?: any[];
+    /**
+     * Type of parameter
+     */
+    type: Type;
+    [property: string]: any;
 }
 
 /**
  * Type of parameter
  */
 export enum Type {
-  Array = 'array',
-  Boolean = 'boolean',
-  Integer = 'integer',
-  Number = 'number',
-  Object = 'object',
-  String = 'string',
+    Array = "array",
+    Boolean = "boolean",
+    Integer = "integer",
+    Number = "number",
+    Object = "object",
+    String = "string",
 }

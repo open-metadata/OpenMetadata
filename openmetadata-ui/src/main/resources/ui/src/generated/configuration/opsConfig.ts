@@ -14,12 +14,12 @@
  * This schema defines the Operations Configuration.
  */
 export interface OpsConfig {
-  /**
-   * Whether operations configuration is enabled or not.
-   */
-  enable: boolean;
-  /**
-   * Operations Configuration File.
-   */
-  operationsConfigFile?: string;
+    /**
+     * Whether operations configuration is enabled or not.
+     */
+    enable: boolean;
+    /**
+     * Operations Configuration File.
+     */
+    operationsConfigFile?: string;
 }

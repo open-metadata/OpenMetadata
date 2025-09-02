@@ -14,30 +14,30 @@
  * REST Connection Config
  */
 export interface RESTConnection {
-  /**
-   * Regex to only fetch api collections with names matching the pattern.
-   */
-  apiCollectionFilterPattern?: FilterPattern;
-  /**
-   * Documentation URL for the schema.
-   */
-  docURL?: string;
-  /**
-   * Open API Schema URL.
-   */
-  openAPISchemaURL: string;
-  /**
-   * Supports Metadata Extraction.
-   */
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Generated Token to connect to OpenAPI Schema.
-   */
-  token?: string;
-  /**
-   * REST API Type
-   */
-  type?: RESTType;
+    /**
+     * Regex to only fetch api collections with names matching the pattern.
+     */
+    apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
+    /**
+     * Open API Schema URL.
+     */
+    openAPISchemaURL: string;
+    /**
+     * Supports Metadata Extraction.
+     */
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Generated Token to connect to OpenAPI Schema.
+     */
+    token?: string;
+    /**
+     * REST API Type
+     */
+    type?: RESTType;
 }
 
 /**
@@ -46,14 +46,14 @@ export interface RESTConnection {
  * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
-  /**
-   * List of strings/regex patterns to match and exclude only database entities that match.
-   */
-  excludes?: string[];
-  /**
-   * List of strings/regex patterns to match and include only database entities that match.
-   */
-  includes?: string[];
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -62,5 +62,5 @@ export interface FilterPattern {
  * REST API type
  */
 export enum RESTType {
-  REST = 'Rest',
+    REST = "Rest",
 }

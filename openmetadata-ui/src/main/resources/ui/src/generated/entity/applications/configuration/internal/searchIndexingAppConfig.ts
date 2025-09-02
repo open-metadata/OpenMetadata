@@ -14,63 +14,63 @@
  * Search Indexing App.
  */
 export interface SearchIndexingAppConfig {
-  /**
-   * Enable automatic performance tuning based on cluster capabilities and database entity
-   * count
-   */
-  autoTune?: boolean;
-  /**
-   * Maximum number of events sent in a batch (Default 100).
-   */
-  batchSize?: number;
-  /**
-   * Number of threads to use for reindexing
-   */
-  consumerThreads?: number;
-  /**
-   * List of Entities to Reindex
-   */
-  entities?: string[];
-  /**
-   * Initial backoff time in milliseconds
-   */
-  initialBackoff?: number;
-  /**
-   * Maximum backoff time in milliseconds
-   */
-  maxBackoff?: number;
-  /**
-   * Maximum number of concurrent requests to the search index
-   */
-  maxConcurrentRequests?: number;
-  /**
-   * Maximum number of retries for a failed request
-   */
-  maxRetries?: number;
-  /**
-   * Maximum number of events sent in a batch (Default 100).
-   */
-  payLoadSize?: number;
-  /**
-   * Number of threads to use for reindexing
-   */
-  producerThreads?: number;
-  /**
-   * Queue Size to user internally for reindexing.
-   */
-  queueSize?: number;
-  /**
-   * This schema publisher run modes.
-   */
-  recreateIndex?: boolean;
-  /**
-   * Recreate Indexes with updated Language
-   */
-  searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-  /**
-   * Application Type
-   */
-  type?: SearchIndexingType;
+    /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
+     * Maximum number of events sent in a batch (Default 100).
+     */
+    batchSize?: number;
+    /**
+     * Number of threads to use for reindexing
+     */
+    consumerThreads?: number;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Initial backoff time in milliseconds
+     */
+    initialBackoff?: number;
+    /**
+     * Maximum backoff time in milliseconds
+     */
+    maxBackoff?: number;
+    /**
+     * Maximum number of concurrent requests to the search index
+     */
+    maxConcurrentRequests?: number;
+    /**
+     * Maximum number of retries for a failed request
+     */
+    maxRetries?: number;
+    /**
+     * Maximum number of events sent in a batch (Default 100).
+     */
+    payLoadSize?: number;
+    /**
+     * Number of threads to use for reindexing
+     */
+    producerThreads?: number;
+    /**
+     * Queue Size to user internally for reindexing.
+     */
+    queueSize?: number;
+    /**
+     * This schema publisher run modes.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Recreate Indexes with updated Language
+     */
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Application Type
+     */
+    type?: SearchIndexingType;
 }
 
 /**
@@ -79,10 +79,10 @@ export interface SearchIndexingAppConfig {
  * This schema defines the language options available for search index mappings.
  */
 export enum SearchIndexMappingLanguage {
-  En = 'EN',
-  Jp = 'JP',
-  Ru = 'RU',
-  Zh = 'ZH',
+    En = "EN",
+    Jp = "JP",
+    Ru = "RU",
+    Zh = "ZH",
 }
 
 /**
@@ -91,5 +91,5 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum SearchIndexingType {
-  SearchIndexing = 'SearchIndexing',
+    SearchIndexing = "SearchIndexing",
 }

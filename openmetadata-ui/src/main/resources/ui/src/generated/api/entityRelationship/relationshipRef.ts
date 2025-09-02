@@ -14,20 +14,20 @@
  * Relationship Reference to an Entity.
  */
 export interface RelationshipRef {
-  /**
-   * FullyQualifiedName Hash of the entity.
-   */
-  fqnHash?: string;
-  /**
-   * FullyQualifiedName of the entity.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Unique identifier of this entity instance.
-   */
-  id?: string;
-  /**
-   * Type of the entity.
-   */
-  type?: string;
+    /**
+     * FullyQualifiedName Hash of the entity.
+     */
+    fqnHash?: string;
+    /**
+     * FullyQualifiedName of the entity.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier of this entity instance.
+     */
+    id?: string;
+    /**
+     * Type of the entity.
+     */
+    type?: string;
 }

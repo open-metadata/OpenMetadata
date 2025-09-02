@@ -14,24 +14,24 @@
  * SSAS Metadata Database Connection Config
  */
 export interface SsasConnection {
-  /**
-   * HTTP Link for SSAS ACCESS
-   */
-  httpConnection: string;
-  /**
-   * Password
-   */
-  password: string;
-  supportsLineageExtraction?: boolean;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: SSASType;
-  /**
-   * Username
-   */
-  username: string;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection: string;
+    /**
+     * Password
+     */
+    password:                    string;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: SSASType;
+    /**
+     * Username
+     */
+    username: string;
 }
 
 /**
@@ -40,5 +40,5 @@ export interface SsasConnection {
  * Service type.
  */
 export enum SSASType {
-  Ssas = 'SSAS',
+    Ssas = "SSAS",
 }

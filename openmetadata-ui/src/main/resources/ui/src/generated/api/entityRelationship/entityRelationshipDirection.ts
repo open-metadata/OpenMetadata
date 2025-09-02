@@ -14,6 +14,6 @@
  * Entity Relationship Direction Schema.
  */
 export enum EntityRelationshipDirection {
-  Downstream = 'Downstream',
-  Upstream = 'Upstream',
+    Downstream = "Downstream",
+    Upstream = "Upstream",
 }

@@ -14,41 +14,41 @@
  * Epic FHIR Connection Config
  */
 export interface EpicConnection {
-  /**
-   * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
-   * as the database name.
-   */
-  databaseName?: string;
-  /**
-   * Base URL of the Epic FHIR server
-   */
-  fhirServerUrl?: string;
-  /**
-   * FHIR specification version (R4, STU3, DSTU2)
-   */
-  fhirVersion?: FHIRVersion;
-  /**
-   * Regex to include/exclude FHIR resource categories
-   */
-  schemaFilterPattern?: FilterPattern;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Regex to include/exclude FHIR resource types
-   */
-  tableFilterPattern?: FilterPattern;
-  /**
-   * Service Type
-   */
-  type?: EpicType;
+    /**
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
+     * as the database name.
+     */
+    databaseName?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
+     * Regex to include/exclude FHIR resource categories
+     */
+    schemaFilterPattern?:        FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to include/exclude FHIR resource types
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: EpicType;
 }
 
 /**
  * FHIR specification version (R4, STU3, DSTU2)
  */
 export enum FHIRVersion {
-  Dstu2 = 'DSTU2',
-  R4 = 'R4',
-  Stu3 = 'STU3',
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -59,14 +59,14 @@ export enum FHIRVersion {
  * Regex to include/exclude FHIR resource types
  */
 export interface FilterPattern {
-  /**
-   * List of strings/regex patterns to match and exclude only database entities that match.
-   */
-  excludes?: string[];
-  /**
-   * List of strings/regex patterns to match and include only database entities that match.
-   */
-  includes?: string[];
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -75,5 +75,5 @@ export interface FilterPattern {
  * Service type.
  */
 export enum EpicType {
-  Epic = 'Epic',
+    Epic = "Epic",
 }

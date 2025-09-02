@@ -11,45 +11,45 @@
  *  limitations under the License.
  */
 export interface EntityRulesSettings {
-  /**
-   * Semantics rules defined in the data contract.
-   */
-  entitySemantics: SemanticsRule[];
+    /**
+     * Semantics rules defined in the data contract.
+     */
+    entitySemantics: SemanticsRule[];
 }
 
 /**
  * Semantics rule defined in the data contract.
  */
 export interface SemanticsRule {
-  /**
-   * Description of the semantics rule.
-   */
-  description: string;
-  /**
-   * Indicates if the semantics rule is enabled.
-   */
-  enabled: boolean;
-  /**
-   * Type of the entity to which this semantics rule applies.
-   */
-  entityType?: string;
-  /**
-   * List of entities to ignore for this semantics rule.
-   */
-  ignoredEntities?: string[];
-  /**
-   * JSON Tree to represents rule in UI.
-   */
-  jsonTree?: string;
-  /**
-   * Name of the semantics rule.
-   */
-  name: string;
-  provider?: ProviderType;
-  /**
-   * Definition of the semantics rule.
-   */
-  rule: string;
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name:      string;
+    provider?: ProviderType;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
 }
 
 /**
@@ -59,7 +59,7 @@ export interface SemanticsRule {
  * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
-  Automation = 'automation',
-  System = 'system',
-  User = 'user',
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }

@@ -14,52 +14,52 @@
  * SPARQL query request
  */
 export interface SparqlQuery {
-  /**
-   * Default graph URI for the query
-   */
-  defaultGraphUri?: string;
-  /**
-   * Response format for the query results
-   */
-  format?: Format;
-  /**
-   * Inference/reasoning level to apply
-   */
-  inference?: Inference;
-  /**
-   * Named graph URIs for the query
-   */
-  namedGraphUri?: string[];
-  /**
-   * The SPARQL query string
-   */
-  query: string;
-  /**
-   * Query timeout in milliseconds
-   */
-  timeout?: number;
+    /**
+     * Default graph URI for the query
+     */
+    defaultGraphUri?: string;
+    /**
+     * Response format for the query results
+     */
+    format?: Format;
+    /**
+     * Inference/reasoning level to apply
+     */
+    inference?: Inference;
+    /**
+     * Named graph URIs for the query
+     */
+    namedGraphUri?: string[];
+    /**
+     * The SPARQL query string
+     */
+    query: string;
+    /**
+     * Query timeout in milliseconds
+     */
+    timeout?: number;
 }
 
 /**
  * Response format for the query results
  */
 export enum Format {
-  CSV = 'csv',
-  JSON = 'json',
-  Jsonld = 'jsonld',
-  Ntriples = 'ntriples',
-  Rdfxml = 'rdfxml',
-  Tsv = 'tsv',
-  Turtle = 'turtle',
-  XML = 'xml',
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
 }
 
 /**
  * Inference/reasoning level to apply
  */
 export enum Inference {
-  Custom = 'custom',
-  None = 'none',
-  Owl = 'owl',
-  Rdfs = 'rdfs',
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
 }

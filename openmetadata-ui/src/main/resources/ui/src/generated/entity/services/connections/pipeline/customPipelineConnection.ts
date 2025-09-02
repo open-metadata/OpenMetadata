@@ -15,21 +15,21 @@
  * OpenMetadata yet.
  */
 export interface CustomPipelineConnection {
-  connectionOptions?: { [key: string]: string };
-  /**
-   * Regex exclude pipelines.
-   */
-  pipelineFilterPattern?: FilterPattern;
-  /**
-   * Source Python Class Name to instantiated by the ingestion workflow
-   */
-  sourcePythonClass?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Custom pipeline service type
-   */
-  type: ServiceType;
-  [property: string]: any;
+    connectionOptions?: { [key: string]: string };
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Source Python Class Name to instantiated by the ingestion workflow
+     */
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Custom pipeline service type
+     */
+    type: ServiceType;
+    [property: string]: any;
 }
 
 /**
@@ -38,19 +38,19 @@ export interface CustomPipelineConnection {
  * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
-  /**
-   * List of strings/regex patterns to match and exclude only database entities that match.
-   */
-  excludes?: string[];
-  /**
-   * List of strings/regex patterns to match and include only database entities that match.
-   */
-  includes?: string[];
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
  * Custom pipeline service type
  */
 export enum ServiceType {
-  CustomPipeline = 'CustomPipeline',
+    CustomPipeline = "CustomPipeline",
 }

@@ -14,10 +14,10 @@
  * Remove domains from the selected assets.
  */
 export interface RemoveDomainAction {
-  /**
-   * Application Type
-   */
-  type: RemoveDomainActionType;
+    /**
+     * Application Type
+     */
+    type: RemoveDomainActionType;
 }
 
 /**
@@ -26,5 +26,5 @@ export interface RemoveDomainAction {
  * Remove Domain Action Type
  */
 export enum RemoveDomainActionType {
-  RemoveDomainAction = 'RemoveDomainAction',
+    RemoveDomainAction = "RemoveDomainAction",
 }

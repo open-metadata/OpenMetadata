@@ -15,14 +15,14 @@
  * providers as the ones configured on the OpenMetadata server.
  */
 export enum SecretsManagerProvider {
-  Aws = 'aws',
-  AwsSsm = 'aws-ssm',
-  AzureKv = 'azure-kv',
-  DB = 'db',
-  Gcp = 'gcp',
-  InMemory = 'in-memory',
-  Kubernetes = 'kubernetes',
-  ManagedAws = 'managed-aws',
-  ManagedAwsSsm = 'managed-aws-ssm',
-  ManagedAzureKv = 'managed-azure-kv',
+    Aws = "aws",
+    AwsSsm = "aws-ssm",
+    AzureKv = "azure-kv",
+    DB = "db",
+    Gcp = "gcp",
+    InMemory = "in-memory",
+    Kubernetes = "kubernetes",
+    ManagedAws = "managed-aws",
+    ManagedAwsSsm = "managed-aws-ssm",
+    ManagedAzureKv = "managed-azure-kv",
 }

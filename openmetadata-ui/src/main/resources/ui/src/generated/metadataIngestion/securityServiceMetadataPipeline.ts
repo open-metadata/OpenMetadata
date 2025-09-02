@@ -14,10 +14,10 @@
  * SecurityService Metadata Pipeline Configuration.
  */
 export interface SecurityServiceMetadataPipeline {
-  /**
-   * Pipeline type
-   */
-  type?: SecurityMetadataConfigType;
+    /**
+     * Pipeline type
+     */
+    type?: SecurityMetadataConfigType;
 }
 
 /**
@@ -26,5 +26,5 @@ export interface SecurityServiceMetadataPipeline {
  * Security Source Config Metadata Pipeline type
  */
 export enum SecurityMetadataConfigType {
-  SecurityMetadata = 'SecurityMetadata',
+    SecurityMetadata = "SecurityMetadata",
 }

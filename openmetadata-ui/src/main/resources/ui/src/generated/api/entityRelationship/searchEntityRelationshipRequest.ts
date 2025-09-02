@@ -15,49 +15,49 @@
  * Search.
  */
 export interface SearchEntityRelationshipRequest {
-  direction: EntityRelationshipDirection;
-  /**
-   * Entity Relationship Direction Value.
-   */
-  directionValue?: string[];
-  /**
-   * The downstream depth of the entity relationship
-   */
-  downstreamDepth?: number;
-  /**
-   * Entity Fqn to search entity relationships
-   */
-  fqn: string;
-  /**
-   * Include deleted entities
-   */
-  includeDeleted?: boolean;
-  /**
-   * Include source fields
-   */
-  includeSourceFields?: string[];
-  /**
-   * Layer to start the search from.
-   */
-  layerFrom?: number;
-  /**
-   * Size of the search result.
-   */
-  layerSize?: number;
-  /**
-   * Query Filter
-   */
-  queryFilter?: string;
-  /**
-   * The upstream depth of the entity relationship
-   */
-  upstreamDepth?: number;
+    direction: EntityRelationshipDirection;
+    /**
+     * Entity Relationship Direction Value.
+     */
+    directionValue?: string[];
+    /**
+     * The downstream depth of the entity relationship
+     */
+    downstreamDepth?: number;
+    /**
+     * Entity Fqn to search entity relationships
+     */
+    fqn: string;
+    /**
+     * Include deleted entities
+     */
+    includeDeleted?: boolean;
+    /**
+     * Include source fields
+     */
+    includeSourceFields?: string[];
+    /**
+     * Layer to start the search from.
+     */
+    layerFrom?: number;
+    /**
+     * Size of the search result.
+     */
+    layerSize?: number;
+    /**
+     * Query Filter
+     */
+    queryFilter?: string;
+    /**
+     * The upstream depth of the entity relationship
+     */
+    upstreamDepth?: number;
 }
 
 /**
  * Entity Relationship Direction Schema.
  */
 export enum EntityRelationshipDirection {
-  Downstream = 'Downstream',
-  Upstream = 'Upstream',
+    Downstream = "Downstream",
+    Upstream = "Upstream",
 }

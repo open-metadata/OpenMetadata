@@ -14,37 +14,37 @@
  * SharePoint Connection Config
  */
 export interface SharePointConnection {
-  /**
-   * Application (client) ID from Azure Active Directory
-   */
-  clientId: string;
-  /**
-   * Application (client) secret from Azure Active Directory
-   */
-  clientSecret: string;
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: string };
-  /**
-   * SharePoint drive ID. If not provided, default document library will be used
-   */
-  driveId?: string;
-  /**
-   * SharePoint site name
-   */
-  siteName?: string;
-  /**
-   * SharePoint site URL
-   */
-  siteUrl: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Directory (tenant) ID from Azure Active Directory
-   */
-  tenantId: string;
-  /**
-   * Service Type
-   */
-  type?: SharePointType;
+    /**
+     * Application (client) ID from Azure Active Directory
+     */
+    clientId: string;
+    /**
+     * Application (client) secret from Azure Active Directory
+     */
+    clientSecret:         string;
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * SharePoint site name
+     */
+    siteName?: string;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl:                     string;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Directory (tenant) ID from Azure Active Directory
+     */
+    tenantId: string;
+    /**
+     * Service Type
+     */
+    type?: SharePointType;
 }
 
 /**
@@ -53,5 +53,5 @@ export interface SharePointConnection {
  * SharePoint service type
  */
 export enum SharePointType {
-  SharePoint = 'SharePoint',
+    SharePoint = "SharePoint",
 }

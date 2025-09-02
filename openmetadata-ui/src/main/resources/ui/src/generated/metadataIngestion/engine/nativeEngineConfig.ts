@@ -14,15 +14,15 @@
  * Configuration for the native metadata ingestion engine
  */
 export interface NativeEngineConfig {
-  /**
-   * The type of the engine configuration
-   */
-  type: Type;
+    /**
+     * The type of the engine configuration
+     */
+    type: Type;
 }
 
 /**
  * The type of the engine configuration
  */
 export enum Type {
-  Native = 'Native',
+    Native = "Native",
 }

@@ -15,10 +15,10 @@
  * strings.
  */
 export interface TableConfig {
-  /**
-   * List of column names defined at the entity type level.
-   */
-  columns: string[];
-  maxColumns?: number;
-  minColumns?: number;
+    /**
+     * List of column names defined at the entity type level.
+     */
+    columns:     string[];
+    maxColumns?: number;
+    minColumns?: number;
 }

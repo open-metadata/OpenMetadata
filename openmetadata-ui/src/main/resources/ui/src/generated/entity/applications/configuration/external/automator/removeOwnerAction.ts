@@ -14,10 +14,10 @@
  * Remove Owner Action Type
  */
 export interface RemoveOwnerAction {
-  /**
-   * Application Type
-   */
-  type: RemoveOwnerActionType;
+    /**
+     * Application Type
+     */
+    type: RemoveOwnerActionType;
 }
 
 /**
@@ -26,5 +26,5 @@ export interface RemoveOwnerAction {
  * Remove Owner Action Type
  */
 export enum RemoveOwnerActionType {
-  RemoveOwnerAction = 'RemoveOwnerAction',
+    RemoveOwnerAction = "RemoveOwnerAction",
 }

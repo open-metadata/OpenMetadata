@@ -15,51 +15,51 @@
  * catalog.json, manifest.json and run_results.json.
  */
 export interface DbtGCSConfig {
-  /**
-   * dbt Configuration type
-   */
-  dbtConfigType: DbtConfigType;
-  /**
-   * Details of the bucket where the dbt files are stored
-   */
-  dbtPrefixConfig?: DBTPrefixConfig;
-  dbtSecurityConfig: GCPCredentials;
+    /**
+     * dbt Configuration type
+     */
+    dbtConfigType: DbtConfigType;
+    /**
+     * Details of the bucket where the dbt files are stored
+     */
+    dbtPrefixConfig?:  DBTPrefixConfig;
+    dbtSecurityConfig: GCPCredentials;
 }
 
 /**
  * dbt Configuration type
  */
 export enum DbtConfigType {
-  Gcs = 'gcs',
+    Gcs = "gcs",
 }
 
 /**
  * Details of the bucket where the dbt files are stored
  */
 export interface DBTPrefixConfig {
-  /**
-   * Name of the bucket where the dbt files are stored
-   */
-  dbtBucketName?: string;
-  /**
-   * Path of the folder where the dbt files are stored
-   */
-  dbtObjectPrefix?: string;
+    /**
+     * Name of the bucket where the dbt files are stored
+     */
+    dbtBucketName?: string;
+    /**
+     * Path of the folder where the dbt files are stored
+     */
+    dbtObjectPrefix?: string;
 }
 
 /**
  * GCP credentials configs.
  */
 export interface GCPCredentials {
-  /**
-   * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
-   * Credentials Path
-   */
-  gcpConfig: GCPCredentialsConfiguration;
-  /**
-   * we enable the authenticated service account to impersonate another service account
-   */
-  gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**
@@ -73,78 +73,78 @@ export interface GCPCredentials {
  * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
-  /**
-   * Google Cloud auth provider certificate.
-   */
-  authProviderX509CertUrl?: string;
-  /**
-   * Google Cloud auth uri.
-   */
-  authUri?: string;
-  /**
-   * Google Cloud email.
-   */
-  clientEmail?: string;
-  /**
-   * Google Cloud Client ID.
-   */
-  clientId?: string;
-  /**
-   * Google Cloud client certificate uri.
-   */
-  clientX509CertUrl?: string;
-  /**
-   * Google Cloud private key.
-   */
-  privateKey?: string;
-  /**
-   * Google Cloud private key id.
-   */
-  privateKeyId?: string;
-  /**
-   * Project ID
-   *
-   * GCP Project ID to parse metadata from
-   */
-  projectId?: string[] | string;
-  /**
-   * Google Cloud token uri.
-   */
-  tokenUri?: string;
-  /**
-   * Google Cloud Platform account type.
-   *
-   * Google Cloud Platform ADC ( Application Default Credentials )
-   */
-  type?: string;
-  /**
-   * Path of the file containing the GCP credentials info
-   */
-  path?: string;
-  /**
-   * Google Security Token Service audience which contains the resource name for the workload
-   * identity pool and the provider identifier in that pool.
-   */
-  audience?: string;
-  /**
-   * This object defines the mechanism used to retrieve the external credential from the local
-   * environment so that it can be exchanged for a GCP access token via the STS endpoint
-   */
-  credentialSource?: { [key: string]: string };
-  /**
-   * Google Cloud Platform account type.
-   */
-  externalType?: string;
-  /**
-   * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
-   * spec.
-   */
-  subjectTokenType?: string;
-  /**
-   * Google Security Token Service token exchange endpoint.
-   */
-  tokenURL?: string;
-  [property: string]: any;
+    /**
+     * Google Cloud auth provider certificate.
+     */
+    authProviderX509CertUrl?: string;
+    /**
+     * Google Cloud auth uri.
+     */
+    authUri?: string;
+    /**
+     * Google Cloud email.
+     */
+    clientEmail?: string;
+    /**
+     * Google Cloud Client ID.
+     */
+    clientId?: string;
+    /**
+     * Google Cloud client certificate uri.
+     */
+    clientX509CertUrl?: string;
+    /**
+     * Google Cloud private key.
+     */
+    privateKey?: string;
+    /**
+     * Google Cloud private key id.
+     */
+    privateKeyId?: string;
+    /**
+     * Project ID
+     *
+     * GCP Project ID to parse metadata from
+     */
+    projectId?: string[] | string;
+    /**
+     * Google Cloud token uri.
+     */
+    tokenUri?: string;
+    /**
+     * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
+     */
+    type?: string;
+    /**
+     * Path of the file containing the GCP credentials info
+     */
+    path?: string;
+    /**
+     * Google Security Token Service audience which contains the resource name for the workload
+     * identity pool and the provider identifier in that pool.
+     */
+    audience?: string;
+    /**
+     * This object defines the mechanism used to retrieve the external credential from the local
+     * environment so that it can be exchanged for a GCP access token via the STS endpoint
+     */
+    credentialSource?: { [key: string]: string };
+    /**
+     * Google Cloud Platform account type.
+     */
+    externalType?: string;
+    /**
+     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
+     * spec.
+     */
+    subjectTokenType?: string;
+    /**
+     * Google Security Token Service token exchange endpoint.
+     */
+    tokenURL?: string;
+    [property: string]: any;
 }
 
 /**
@@ -153,13 +153,13 @@ export interface GCPCredentialsConfiguration {
  * Pass the values to impersonate a service account of Google Cloud
  */
 export interface GCPImpersonateServiceAccountValues {
-  /**
-   * The impersonated service account email
-   */
-  impersonateServiceAccount?: string;
-  /**
-   * Number of seconds the delegated credential should be valid
-   */
-  lifetime?: number;
-  [property: string]: any;
+    /**
+     * The impersonated service account email
+     */
+    impersonateServiceAccount?: string;
+    /**
+     * Number of seconds the delegated credential should be valid
+     */
+    lifetime?: number;
+    [property: string]: any;
 }

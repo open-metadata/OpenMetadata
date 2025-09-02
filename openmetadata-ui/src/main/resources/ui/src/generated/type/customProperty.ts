@@ -14,26 +14,26 @@
  * This schema defines the custom property to an entity to extend it.
  */
 export interface CustomProperty {
-  customPropertyConfig?: CustomPropertyConfig;
-  description: string;
-  /**
-   * Display Name for the custom property.Must be unique for an entity.
-   */
-  displayName?: string;
-  /**
-   * Name of the entity property. Note a property name must be unique for an entity. Property
-   * name must follow camelCase naming adopted by openMetadata - must start with lower case
-   * with no space, underscore, or dots.
-   */
-  name: string;
-  propertyType: EntityReference;
+    customPropertyConfig?: CustomPropertyConfig;
+    description:           string;
+    /**
+     * Display Name for the custom property.Must be unique for an entity.
+     */
+    displayName?: string;
+    /**
+     * Name of the entity property. Note a property name must be unique for an entity. Property
+     * name must follow camelCase naming adopted by openMetadata - must start with lower case
+     * with no space, underscore, or dots.
+     */
+    name:         string;
+    propertyType: EntityReference;
 }
 
 /**
  * Config to define constraints around CustomProperty
  */
 export interface CustomPropertyConfig {
-  config?: string[] | Config | string;
+    config?: string[] | Config | string;
 }
 
 /**
@@ -43,14 +43,14 @@ export interface CustomPropertyConfig {
  * strings.
  */
 export interface Config {
-  multiSelect?: boolean;
-  values?: string[];
-  /**
-   * List of column names defined at the entity type level.
-   */
-  columns?: string[];
-  maxColumns?: number;
-  minColumns?: number;
+    multiSelect?: boolean;
+    values?:      string[];
+    /**
+     * List of column names defined at the entity type level.
+     */
+    columns?:    string[];
+    maxColumns?: number;
+    minColumns?: number;
 }
 
 /**
@@ -63,44 +63,44 @@ export interface Config {
  * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
-  /**
-   * If true the entity referred to has been soft-deleted.
-   */
-  deleted?: boolean;
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Fully qualified name of the entity instance. For entities such as tables, databases
-   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-   * such as `user` and `team` this will be same as the `name` field.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * If true the relationship indicated by this entity reference is inherited from the parent
-   * entity.
-   */
-  inherited?: boolean;
-  /**
-   * Name of the entity instance.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }

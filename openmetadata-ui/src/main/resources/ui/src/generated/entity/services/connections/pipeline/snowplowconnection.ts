@@ -14,48 +14,48 @@
  * Snowplow Pipeline Connection Config
  */
 export interface Snowplowconnection {
-  /**
-   * API Key for Snowplow Console API
-   */
-  apiKey?: string;
-  /**
-   * Cloud provider where Snowplow is deployed
-   */
-  cloudProvider?: CloudProvider;
-  /**
-   * Path to pipeline configuration files for Community deployment
-   */
-  configPath?: string;
-  /**
-   * Snowplow Console URL for BDP deployment
-   */
-  consoleUrl?: string;
-  /**
-   * Snowplow deployment type (BDP for managed or Community for self-hosted)
-   */
-  deployment: SnowplowDeployment;
-  /**
-   * Snowplow BDP Organization ID
-   */
-  organizationId?: string;
-  /**
-   * Regex exclude pipelines.
-   */
-  pipelineFilterPattern?: FilterPattern;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type: SnowplowType;
+    /**
+     * API Key for Snowplow Console API
+     */
+    apiKey?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment: SnowplowDeployment;
+    /**
+     * Snowplow BDP Organization ID
+     */
+    organizationId?: string;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type: SnowplowType;
 }
 
 /**
  * Cloud provider where Snowplow is deployed
  */
 export enum CloudProvider {
-  Aws = 'AWS',
-  Azure = 'Azure',
-  Gcp = 'GCP',
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -64,8 +64,8 @@ export enum CloudProvider {
  * Snowplow deployment type
  */
 export enum SnowplowDeployment {
-  Bdp = 'BDP',
-  Community = 'Community',
+    Bdp = "BDP",
+    Community = "Community",
 }
 
 /**
@@ -74,14 +74,14 @@ export enum SnowplowDeployment {
  * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
-  /**
-   * List of strings/regex patterns to match and exclude only database entities that match.
-   */
-  excludes?: string[];
-  /**
-   * List of strings/regex patterns to match and include only database entities that match.
-   */
-  includes?: string[];
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -90,5 +90,5 @@ export interface FilterPattern {
  * Service type.
  */
 export enum SnowplowType {
-  Snowplow = 'Snowplow',
+    Snowplow = "Snowplow",
 }

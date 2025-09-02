@@ -14,60 +14,60 @@
  * SCIM-compliant Group object
  */
 export interface ScimGroup {
-  /**
-   * Whether the group is active
-   */
-  active?: boolean;
-  /**
-   * Human-readable name of the group
-   */
-  displayName: string;
-  /**
-   * External system identifier
-   */
-  externalId?: string;
-  /**
-   * Unique identifier for the group
-   */
-  id?: string;
-  /**
-   * Members of the group
-   */
-  members?: Member[];
-  /**
-   * Metadata about the group
-   */
-  meta?: Meta;
-  /**
-   * SCIM schemas used for this resource
-   */
-  schemas: string[];
-  [property: string]: any;
+    /**
+     * Whether the group is active
+     */
+    active?: boolean;
+    /**
+     * Human-readable name of the group
+     */
+    displayName: string;
+    /**
+     * External system identifier
+     */
+    externalId?: string;
+    /**
+     * Unique identifier for the group
+     */
+    id?: string;
+    /**
+     * Members of the group
+     */
+    members?: Member[];
+    /**
+     * Metadata about the group
+     */
+    meta?: Meta;
+    /**
+     * SCIM schemas used for this resource
+     */
+    schemas: string[];
+    [property: string]: any;
 }
 
 export interface Member {
-  /**
-   * Display name of the member
-   */
-  display?: string;
-  /**
-   * Type of member - typically 'User'
-   */
-  type?: string;
-  /**
-   * ID of the member (user)
-   */
-  value: string;
-  [property: string]: any;
+    /**
+     * Display name of the member
+     */
+    display?: string;
+    /**
+     * Type of member - typically 'User'
+     */
+    type?: string;
+    /**
+     * ID of the member (user)
+     */
+    value: string;
+    [property: string]: any;
 }
 
 /**
  * Metadata about the group
  */
 export interface Meta {
-  created?: Date;
-  lastModified?: Date;
-  location?: string;
-  resourceType?: string;
-  [property: string]: any;
+    created?:      Date;
+    lastModified?: Date;
+    location?:     string;
+    resourceType?: string;
+    [property: string]: any;
 }

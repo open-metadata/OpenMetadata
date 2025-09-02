@@ -14,14 +14,14 @@
  * Custom Drive Connection to build a source that is not supported.
  */
 export interface CustomDriveConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: string };
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: CustomDriveType;
-  [property: string]: any;
+    connectionArguments?:        { [key: string]: any };
+    connectionOptions?:          { [key: string]: string };
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: CustomDriveType;
+    [property: string]: any;
 }
 
 /**
@@ -30,5 +30,5 @@ export interface CustomDriveConnection {
  * Custom Drive service type
  */
 export enum CustomDriveType {
-  CustomDrive = 'CustomDrive',
+    CustomDrive = "CustomDrive",
 }

@@ -14,19 +14,19 @@
  * SCIM PatchOp request as per RFC 7644
  */
 export interface ScimPatchOp {
-  Operations: Operation[];
-  schemas: string[];
+    Operations: Operation[];
+    schemas:    string[];
 }
 
 export interface Operation {
-  op: Op;
-  path?: string;
-  value?: any[] | boolean | number | { [key: string]: any } | string;
-  [property: string]: any;
+    op:     Op;
+    path?:  string;
+    value?: any[] | boolean | number | { [key: string]: any } | string;
+    [property: string]: any;
 }
 
 export enum Op {
-  Add = 'add',
-  Remove = 'remove',
-  Replace = 'replace',
+    Add = "add",
+    Remove = "remove",
+    Replace = "replace",
 }

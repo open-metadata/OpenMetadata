@@ -14,24 +14,24 @@
  * A general object to hold any object.
  */
 export interface NodeInformation {
-  /**
-   * Entity object.
-   */
-  entity?: any;
-  paging?: LayerPaging;
-  [property: string]: any;
+    /**
+     * Entity object.
+     */
+    entity?: any;
+    paging?: LayerPaging;
+    [property: string]: any;
 }
 
 /**
  * Type used for cursor based pagination information in GET list responses.
  */
 export interface LayerPaging {
-  /**
-   * Count of entities downstream current layer entity.
-   */
-  entityDownstreamCount?: number;
-  /**
-   * Count of entities upstream current layer entity.
-   */
-  entityUpstreamCount?: number;
+    /**
+     * Count of entities downstream current layer entity.
+     */
+    entityDownstreamCount?: number;
+    /**
+     * Count of entities upstream current layer entity.
+     */
+    entityUpstreamCount?: number;
 }

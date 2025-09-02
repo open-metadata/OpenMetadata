@@ -16,30 +16,30 @@
  * while still inheriting the base persona configuration.
  */
 export interface PersonaPreferences {
-  /**
-   * User's personal customizations for the landing page.
-   */
-  landingPageSettings?: LandingPageSettings;
-  /**
-   * UUID of the persona these preferences belong to.
-   */
-  personaId: string;
-  /**
-   * Name of the persona for quick reference and linking.
-   */
-  personaName: string;
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
 }
 
 /**
  * User's personal customizations for the landing page.
  */
 export interface LandingPageSettings {
-  /**
-   * Custom header background color for the landing page.
-   */
-  headerColor?: string;
-  /**
-   * Reference to a custom header background image (reserved for future use).
-   */
-  headerImage?: string;
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
 }

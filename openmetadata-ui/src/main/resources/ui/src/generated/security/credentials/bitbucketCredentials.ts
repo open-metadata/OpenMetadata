@@ -14,17 +14,17 @@
  * Credentials for a BitBucket repository
  */
 export interface BitbucketCredentials {
-  /**
-   * Main production branch of the repository. E.g., `main`
-   */
-  branch: string;
-  repositoryName: string;
-  repositoryOwner: string;
-  token?: string;
-  /**
-   * Credentials Type
-   */
-  type?: BitbucketType;
+    /**
+     * Main production branch of the repository. E.g., `main`
+     */
+    branch:          string;
+    repositoryName:  string;
+    repositoryOwner: string;
+    token?:          string;
+    /**
+     * Credentials Type
+     */
+    type?: BitbucketType;
 }
 
 /**
@@ -33,5 +33,5 @@ export interface BitbucketCredentials {
  * BitBucket Credentials type
  */
 export enum BitbucketType {
-  BitBucket = 'BitBucket',
+    BitBucket = "BitBucket",
 }

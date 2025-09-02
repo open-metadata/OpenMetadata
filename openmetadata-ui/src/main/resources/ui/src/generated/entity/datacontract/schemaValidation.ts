@@ -14,20 +14,20 @@
  * Schema validation details for data contract.
  */
 export interface SchemaValidation {
-  /**
-   * Number of schema checks failed.
-   */
-  failed?: number;
-  /**
-   * List of fields that failed validation.
-   */
-  failedFields?: string[];
-  /**
-   * Number of schema checks passed.
-   */
-  passed?: number;
-  /**
-   * Total number of schema checks.
-   */
-  total?: number;
+    /**
+     * Number of schema checks failed.
+     */
+    failed?: number;
+    /**
+     * List of fields that failed validation.
+     */
+    failedFields?: string[];
+    /**
+     * Number of schema checks passed.
+     */
+    passed?: number;
+    /**
+     * Total number of schema checks.
+     */
+    total?: number;
 }

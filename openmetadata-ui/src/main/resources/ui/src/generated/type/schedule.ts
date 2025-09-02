@@ -15,12 +15,12 @@
  * repeat frequency.
  */
 export interface Schedule {
-  /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
-   */
-  repeatFrequency?: string;
-  /**
-   * Start date and time of the schedule.
-   */
-  startDate?: Date;
+    /**
+     * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+     */
+    repeatFrequency?: string;
+    /**
+     * Start date and time of the schedule.
+     */
+    startDate?: Date;
 }

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 export interface DataInsightsReportAppConfigClass {
-  sendToAdmins?: boolean;
-  sendToTeams?: boolean;
-  /**
-   * Application Type
-   */
-  type?: DataInsightsReportAppType;
+    sendToAdmins?: boolean;
+    sendToTeams?:  boolean;
+    /**
+     * Application Type
+     */
+    type?: DataInsightsReportAppType;
 }
 
 /**
@@ -25,5 +25,5 @@ export interface DataInsightsReportAppConfigClass {
  * Application type.
  */
 export enum DataInsightsReportAppType {
-  DataInsightsReport = 'DataInsightsReport',
+    DataInsightsReport = "DataInsightsReport",
 }

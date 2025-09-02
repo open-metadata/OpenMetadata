@@ -14,42 +14,34 @@
  * This schema defines the schema for Test Case Result Updates for Feed.
  */
 export interface TestCaseResult {
-  /**
-   * Summary of test case execution
-   */
-  entityTestResultSummary?: Array<
-    | any[]
-    | boolean
-    | number
-    | number
-    | null
-    | EntityTestResultSummaryObject
-    | string
-  >;
-  /**
-   * Summary of test case execution
-   */
-  parameterValues?: TestCaseParameterValue[];
-  /**
-   * Test Case Result for last 7 days.
-   */
-  testCaseResult?: TestCaseResultElement[];
+    /**
+     * Summary of test case execution
+     */
+    entityTestResultSummary?: Array<any[] | boolean | number | number | null | EntityTestResultSummaryObject | string>;
+    /**
+     * Summary of test case execution
+     */
+    parameterValues?: TestCaseParameterValue[];
+    /**
+     * Test Case Result for last 7 days.
+     */
+    testCaseResult?: TestCaseResultElement[];
 }
 
 export interface EntityTestResultSummaryObject {
-  /**
-   * Status of the test case.
-   */
-  status?: TestCaseStatus;
-  /**
-   * Name of the test case.
-   */
-  testCaseName?: string;
-  /**
-   * Timestamp of the test case execution.
-   */
-  timestamp?: number;
-  [property: string]: any;
+    /**
+     * Status of the test case.
+     */
+    status?: TestCaseStatus;
+    /**
+     * Name of the test case.
+     */
+    testCaseName?: string;
+    /**
+     * Timestamp of the test case execution.
+     */
+    timestamp?: number;
+    [property: string]: any;
 }
 
 /**
@@ -58,95 +50,95 @@ export interface EntityTestResultSummaryObject {
  * Status of Test Case run.
  */
 export enum TestCaseStatus {
-  Aborted = 'Aborted',
-  Failed = 'Failed',
-  Queued = 'Queued',
-  Success = 'Success',
+    Aborted = "Aborted",
+    Failed = "Failed",
+    Queued = "Queued",
+    Success = "Success",
 }
 
 /**
  * This schema defines the parameter values that can be passed for a Test Case.
  */
 export interface TestCaseParameterValue {
-  /**
-   * name of the parameter. Must match the parameter names in testCaseParameterDefinition
-   */
-  name?: string;
-  /**
-   * value to be passed for the Parameters. These are input from Users. We capture this in
-   * string and convert during the runtime.
-   */
-  value?: string;
-  [property: string]: any;
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
 }
 
 /**
  * Schema to capture test case result.
  */
 export interface TestCaseResultElement {
-  /**
-   * Number of rows that failed.
-   */
-  failedRows?: number;
-  /**
-   * Percentage of rows that failed.
-   */
-  failedRowsPercentage?: number;
-  /**
-   * Unique identifier of this failure instance
-   */
-  id?: string;
-  /**
-   * Incident State ID associated with this result. This association happens when the result
-   * is created, and will stay there even when the incident is resolved.
-   */
-  incidentId?: string;
-  /**
-   * Upper bound limit for the test case result as defined in the test definition.
-   */
-  maxBound?: number;
-  /**
-   * Lower bound limit for the test case result as defined in the test definition.
-   */
-  minBound?: number;
-  /**
-   * Number of rows that passed.
-   */
-  passedRows?: number;
-  /**
-   * Percentage of rows that passed.
-   */
-  passedRowsPercentage?: number;
-  /**
-   * Details of test case results.
-   */
-  result?: string;
-  /**
-   * sample data to capture rows/columns that didn't match the expressed testcase.
-   */
-  sampleData?: string;
-  /**
-   * Test case that this result is for.
-   */
-  testCase?: EntityReference;
-  /**
-   * Fully qualified name of the test case.
-   */
-  testCaseFQN?: string;
-  /**
-   * Status of Test Case run.
-   */
-  testCaseStatus?: TestCaseStatus;
-  /**
-   * Test definition that this result is for.
-   */
-  testDefinition?: EntityReference;
-  testResultValue?: TestResultValue[];
-  /**
-   * Data one which test case result is taken.
-   */
-  timestamp: number;
-  [property: string]: any;
+    /**
+     * Number of rows that failed.
+     */
+    failedRows?: number;
+    /**
+     * Percentage of rows that failed.
+     */
+    failedRowsPercentage?: number;
+    /**
+     * Unique identifier of this failure instance
+     */
+    id?: string;
+    /**
+     * Incident State ID associated with this result. This association happens when the result
+     * is created, and will stay there even when the incident is resolved.
+     */
+    incidentId?: string;
+    /**
+     * Upper bound limit for the test case result as defined in the test definition.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound limit for the test case result as defined in the test definition.
+     */
+    minBound?: number;
+    /**
+     * Number of rows that passed.
+     */
+    passedRows?: number;
+    /**
+     * Percentage of rows that passed.
+     */
+    passedRowsPercentage?: number;
+    /**
+     * Details of test case results.
+     */
+    result?: string;
+    /**
+     * sample data to capture rows/columns that didn't match the expressed testcase.
+     */
+    sampleData?: string;
+    /**
+     * Test case that this result is for.
+     */
+    testCase?: EntityReference;
+    /**
+     * Fully qualified name of the test case.
+     */
+    testCaseFQN?: string;
+    /**
+     * Status of Test Case run.
+     */
+    testCaseStatus?: TestCaseStatus;
+    /**
+     * Test definition that this result is for.
+     */
+    testDefinition?:  EntityReference;
+    testResultValue?: TestResultValue[];
+    /**
+     * Data one which test case result is taken.
+     */
+    timestamp: number;
+    [property: string]: any;
 }
 
 /**
@@ -160,63 +152,63 @@ export interface TestCaseResultElement {
  * Test definition that this result is for.
  */
 export interface EntityReference {
-  /**
-   * If true the entity referred to has been soft-deleted.
-   */
-  deleted?: boolean;
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Fully qualified name of the entity instance. For entities such as tables, databases
-   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-   * such as `user` and `team` this will be same as the `name` field.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * If true the relationship indicated by this entity reference is inherited from the parent
-   * entity.
-   */
-  inherited?: boolean;
-  /**
-   * Name of the entity instance.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }
 
 /**
  * Schema to capture test case result values.
  */
 export interface TestResultValue {
-  /**
-   * name of the value
-   */
-  name?: string;
-  /**
-   * predicted value
-   */
-  predictedValue?: string;
-  /**
-   * test result value
-   */
-  value?: string;
-  [property: string]: any;
+    /**
+     * name of the value
+     */
+    name?: string;
+    /**
+     * predicted value
+     */
+    predictedValue?: string;
+    /**
+     * test result value
+     */
+    value?: string;
+    [property: string]: any;
 }

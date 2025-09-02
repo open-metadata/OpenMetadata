@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 export interface ChangeSummaryMap {
-  changedAt?: number;
-  /**
-   * Name of the user or bot who made this change
-   */
-  changedBy?: string;
-  changeSource?: ChangeSource;
-  [property: string]: any;
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
 }
 
 /**
@@ -25,10 +25,10 @@ export interface ChangeSummaryMap {
  * manual vs programmatic)
  */
 export enum ChangeSource {
-  Automated = 'Automated',
-  Derived = 'Derived',
-  Ingested = 'Ingested',
-  Manual = 'Manual',
-  Propagated = 'Propagated',
-  Suggested = 'Suggested',
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }

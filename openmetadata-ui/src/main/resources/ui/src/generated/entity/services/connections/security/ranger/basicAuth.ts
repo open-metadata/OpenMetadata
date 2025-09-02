@@ -14,12 +14,12 @@
  * Configuration for connecting to Ranger Basic Auth.
  */
 export interface BasicAuth {
-  /**
-   * Ranger password to authenticate to the API.
-   */
-  password: string;
-  /**
-   * Ranger user to authenticate to the API.
-   */
-  username: string;
+    /**
+     * Ranger password to authenticate to the API.
+     */
+    password: string;
+    /**
+     * Ranger user to authenticate to the API.
+     */
+    username: string;
 }
