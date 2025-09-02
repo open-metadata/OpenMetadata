@@ -75,12 +75,12 @@ public class MigrationUtil {
           case MYSQL -> """
           SELECT COUNT(*) FROM server_change_log scl
           INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
-          WHERE scl.migration_type = 'FLYWAY'
+          WHERE scl.migrationfilename LIKE '%flyway%'
           """;
           case POSTGRES -> """
           SELECT COUNT(*) FROM server_change_log scl
           INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
-          WHERE scl.migration_type = 'FLYWAY'
+          WHERE scl.migrationfilename LIKE '%flyway%'
           """;
         };
 
@@ -93,12 +93,12 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT IGNORE INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
-          VALUES ('0.0.0', 'v000__create_db_connection_info.sql', '0', NOW(), NULL, 'FLYWAY')
+          INSERT IGNORE INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/mysql/v000__create_db_connection_info.sql', '0', NOW(), NULL)
           """;
           case POSTGRES -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
-          VALUES ('0.0.0', 'v000__create_db_connection_info.sql', '0', current_timestamp, NULL, 'FLYWAY')
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/postgres/v000__create_db_connection_info.sql', '0', current_timestamp, NULL)
           ON CONFLICT (version) DO NOTHING
           """;
         };
@@ -113,25 +113,29 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
           SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
-                 script as migrationfilename,
+                 CASE
+                   WHEN script LIKE 'v%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/mysql/', script)
+                   ELSE CONCAT('bootstrap/sql/migrations/flyway/mysql/v', version, '__', REPLACE(LOWER(description), ' ', '_'), '.sql')
+                 END as migrationfilename,
                  CAST(checksum as CHAR(256)) as checksum,
                  installed_on,
-                 NULL as metrics,
-                 'FLYWAY' as migration_type
+                 NULL as metrics
           FROM DATABASE_CHANGE_LOG
           WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM server_change_log)
           AND success = true
           """;
           case POSTGRES -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics, migration_type)
+          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
           SELECT '0.0.' || CAST(version AS INTEGER) as version,
-                 script as migrationfilename,
+                 CASE
+                   WHEN script LIKE 'v%__.sql' THEN 'bootstrap/sql/migrations/flyway/postgres/' || script
+                   ELSE 'bootstrap/sql/migrations/flyway/postgres/v' || version || '__' || REPLACE(LOWER(description), ' ', '_') || '.sql'
+                 END as migrationfilename,
                  checksum::VARCHAR(256) as checksum,
                  installed_on,
-                 NULL as metrics,
-                 'FLYWAY' as migration_type
+                 NULL as metrics
           FROM "DATABASE_CHANGE_LOG"
           WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM server_change_log)
           AND success = true

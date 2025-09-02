@@ -124,8 +124,8 @@ public interface MigrationDAO {
   List<String> getMigrationVersions();
 
   @SqlQuery(
-      "SELECT version FROM SERVER_CHANGE_LOG WHERE migration_type = :migrationType ORDER BY version")
-  List<String> getMigrationVersionsByType(@Bind("migrationType") String migrationType);
+      "SELECT version FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%flyway%' ORDER BY version")
+  List<String> getFlywayMigrationVersions();
 
   @Getter
   @Setter

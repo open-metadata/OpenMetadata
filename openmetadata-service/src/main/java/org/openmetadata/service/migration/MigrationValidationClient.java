@@ -80,8 +80,8 @@ public class MigrationValidationClient {
 
   private List<String> getExpectedFlywayVersions() {
     try {
-      // Query server_change_log for versions where migration_type = 'FLYWAY'
-      return migrationDAO.getMigrationVersionsByType(MigrationType.FLYWAY.name());
+      // Query server_change_log for versions where migrationFileName contains 'flyway'
+      return migrationDAO.getFlywayMigrationVersions();
     } catch (Exception e) {
       // If there's an error (e.g., table doesn't exist yet), return empty list
       LOG.debug("Could not fetch Flyway versions from server_change_log: {}", e.getMessage());

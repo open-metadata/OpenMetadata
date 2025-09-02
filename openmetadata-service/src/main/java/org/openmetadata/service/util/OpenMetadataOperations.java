@@ -140,7 +140,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
+            + "'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
@@ -495,8 +495,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       LOG.info("Deleting all the OpenMetadata tables.");
       dropAllTables();
-      LOG.info("Creating the OpenMetadata Schema.");
-      createSchemaFromSQLFile();
       LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
@@ -1504,41 +1502,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
                     LOG.warn("Failed to drop table: " + tableName, e);
                   }
                 });
-      }
-    }
-  }
-
-  public void createSchemaFromSQLFile() throws Exception {
-    try (Handle handle = jdbi.open()) {
-      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-      String schemaFile =
-          connType == ConnectionType.MYSQL
-              ? "bootstrap/sql/schema/mysql.sql"
-              : "bootstrap/sql/schema/postgres.sql";
-
-      try (java.io.InputStream inputStream =
-          getClass().getClassLoader().getResourceAsStream(schemaFile)) {
-        if (inputStream == null) {
-          throw new IllegalArgumentException("Schema file not found: " + schemaFile);
-        }
-        String sqlContent =
-            new String(inputStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-
-        // Split by semicolon and execute each statement
-        String[] statements = sqlContent.split(";");
-        for (String statement : statements) {
-          String trimmed = statement.trim();
-          if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
-            try {
-              handle.execute(trimmed);
-            } catch (Exception e) {
-              LOG.debug(
-                  "Skipping statement (likely comment or MySQL specific): "
-                      + trimmed.substring(0, Math.min(50, trimmed.length())),
-                  e);
-            }
-          }
-        }
       }
     }
   }

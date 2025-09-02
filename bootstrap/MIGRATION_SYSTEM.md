@@ -123,13 +123,6 @@ The parsers split SQL files into individual statements via `SqlStatementIterator
 5. **Execution Order**: Flyway → Native → Extensions ensures proper dependency resolution
 6. **Migration Tracking**: v000 Flyway migration creates the tracking infrastructure before any other migrations
 
-## Future Roadmap
-
-- **Phase 1** (Current): Hybrid system with Flyway support
-- **Phase 2**: Deprecate Flyway migrations
-- **Phase 3**: Remove Flyway dependencies entirely
-- **Phase 4**: Pure native migration system
-
 ## Troubleshooting
 
 ### Common Issues

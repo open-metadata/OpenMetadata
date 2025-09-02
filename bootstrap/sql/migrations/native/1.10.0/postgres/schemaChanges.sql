@@ -20,8 +20,3 @@ WHERE configtype = 'entityRulesSettings'
     WHERE rule->>'name' = 'Data Product Domain Validation'
   );
 
--- Add migration_type column to SERVER_CHANGE_LOG table
-ALTER TABLE "SERVER_CHANGE_LOG" ADD COLUMN migration_type VARCHAR(20) DEFAULT 'NATIVE';
-
--- Update existing records to be marked as NATIVE
-UPDATE "SERVER_CHANGE_LOG" SET migration_type = 'NATIVE' WHERE migration_type IS NULL;

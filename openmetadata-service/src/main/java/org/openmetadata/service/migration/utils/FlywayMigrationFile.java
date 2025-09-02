@@ -94,7 +94,7 @@ public class FlywayMigrationFile extends MigrationFile {
 
   @Override
   public String getMigrationsFilePath() {
-    return sqlFile.getParent();
+    return sqlFile.getAbsolutePath();
   }
 
   public static boolean isFlywayMigrationFile(File file) {
