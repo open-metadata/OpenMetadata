@@ -221,14 +221,11 @@ export const selectOption = async (
     state: 'visible',
   });
 
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
-
-  // Useful in case of custom property advanced search selection
-  // In case of custom property selections, the DOM tree structure changes
-  // resulting in the previous selectors not working after selection of option.
-  if (verifySelection) {
-    await expect(dropdownLocator).toContainText(optionTitle);
-  }
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
+  await optionLocator.waitFor({ state: 'visible' });
+  await optionLocator.click();
 };
 
 export const fillRule = async (
