@@ -198,8 +198,7 @@ export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string,
-  isSearchable = false,
-  verifySelection = true
+  isSearchable = false
 ) => {
   if (isSearchable) {
     // Force click on the selector to ensure it opens even if there's an existing selection

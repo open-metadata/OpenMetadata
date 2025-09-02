@@ -245,8 +245,7 @@ test.describe('Data Contracts', () => {
         page,
         ruleLocator3.locator('.group--field .ant-select'),
         DATA_CONTRACT_SEMANTICS2.rules[0].field,
-        true,
-        false
+        true
       );
       await selectOption(
         page,
