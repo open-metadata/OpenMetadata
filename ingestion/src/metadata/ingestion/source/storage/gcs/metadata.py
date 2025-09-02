@@ -218,7 +218,6 @@ class GcsSource(StorageServiceSource):
         return None
 
     def is_valid_unstructured_file(self, accepted_extensions: List, key: str) -> bool:
-        # Split the string into a list of values
         if WILD_CARD in accepted_extensions:
             return True
 
