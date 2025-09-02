@@ -14,25 +14,25 @@
  * Semantics validation details for data contract.
  */
 export interface SemanticsValidation {
-    /**
-     * Number of semantics rules failed.
-     */
-    failed?: number;
-    /**
-     * List of rules that failed validation.
-     */
-    failedRules?: FailedRule[];
-    /**
-     * Number of semantics rules passed.
-     */
-    passed?: number;
-    /**
-     * Total number of semantics rules.
-     */
-    total?: number;
+  /**
+   * Number of semantics rules failed.
+   */
+  failed?: number;
+  /**
+   * List of rules that failed validation.
+   */
+  failedRules?: FailedRule[];
+  /**
+   * Number of semantics rules passed.
+   */
+  passed?: number;
+  /**
+   * Total number of semantics rules.
+   */
+  total?: number;
 }
 
 export interface FailedRule {
-    reason?:   string;
-    ruleName?: string;
+  reason?: string;
+  ruleName?: string;
 }

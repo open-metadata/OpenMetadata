@@ -14,64 +14,64 @@
  * Cockroach Database Connection Config
  */
 export interface CockroachConnection {
-    /**
-     * Choose Auth Config Type.
-     */
-    authType?:            AuthConfigurationType;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
-     */
-    database: string;
-    /**
-     * Regex to only include/exclude databases that matches the pattern.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
-     * Database Schema of the data source. This is optional parameter, if you would like to
-     * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the schemas.
-     */
-    databaseSchema?: string;
-    /**
-     * Host and port of the Cockrooach service.
-     */
-    hostPort: string;
-    /**
-     * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
-     * this.
-     */
-    ingestAllDatabases?: boolean;
-    /**
-     * Regex to only include/exclude schemas that matches the pattern.
-     */
-    schemaFilterPattern?: FilterPattern;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?: CockroachScheme;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Regex to only include/exclude tables that matches the pattern.
-     */
-    tableFilterPattern?: FilterPattern;
-    /**
-     * Service Type
-     */
-    type?: CockroachType;
-    /**
-     * Username to connect to Cockroach. This user should have privileges to read all the
-     * metadata in Cockroach.
-     */
-    username: string;
+  /**
+   * Choose Auth Config Type.
+   */
+  authType?: AuthConfigurationType;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+   * as the database name.
+   */
+  database: string;
+  /**
+   * Regex to only include/exclude databases that matches the pattern.
+   */
+  databaseFilterPattern?: FilterPattern;
+  /**
+   * Database Schema of the data source. This is optional parameter, if you would like to
+   * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the schemas.
+   */
+  databaseSchema?: string;
+  /**
+   * Host and port of the Cockrooach service.
+   */
+  hostPort: string;
+  /**
+   * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
+   * this.
+   */
+  ingestAllDatabases?: boolean;
+  /**
+   * Regex to only include/exclude schemas that matches the pattern.
+   */
+  schemaFilterPattern?: FilterPattern;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: CockroachScheme;
+  /**
+   * SSL Configuration details.
+   */
+  sslConfig?: Config;
+  sslMode?: SSLMode;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Regex to only include/exclude tables that matches the pattern.
+   */
+  tableFilterPattern?: FilterPattern;
+  /**
+   * Service Type
+   */
+  type?: CockroachType;
+  /**
+   * Username to connect to Cockroach. This user should have privileges to read all the
+   * metadata in Cockroach.
+   */
+  username: string;
 }
 
 /**
@@ -80,10 +80,10 @@ export interface CockroachConnection {
  * Common Database Connection Config
  */
 export interface AuthConfigurationType {
-    /**
-     * Password to connect to source.
-     */
-    password?: string;
+  /**
+   * Password to connect to source.
+   */
+  password?: string;
 }
 
 /**
@@ -96,21 +96,21 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum CockroachScheme {
-    CockroachdbPsycopg2 = "cockroachdb+psycopg2",
+  CockroachdbPsycopg2 = 'cockroachdb+psycopg2',
 }
 
 /**
@@ -121,30 +121,30 @@ export enum CockroachScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
+  /**
+   * The CA certificate used for SSL validation.
+   */
+  caCertificate?: string;
+  /**
+   * The SSL certificate used for client authentication.
+   */
+  sslCertificate?: string;
+  /**
+   * The private key associated with the SSL certificate.
+   */
+  sslKey?: string;
 }
 
 /**
  * SSL Mode to connect to database.
  */
 export enum SSLMode {
-    Allow = "allow",
-    Disable = "disable",
-    Prefer = "prefer",
-    Require = "require",
-    VerifyCA = "verify-ca",
-    VerifyFull = "verify-full",
+  Allow = 'allow',
+  Disable = 'disable',
+  Prefer = 'prefer',
+  Require = 'require',
+  VerifyCA = 'verify-ca',
+  VerifyFull = 'verify-full',
 }
 
 /**
@@ -153,5 +153,5 @@ export enum SSLMode {
  * Service type.
  */
 export enum CockroachType {
-    Cockroach = "Cockroach",
+  Cockroach = 'Cockroach',
 }

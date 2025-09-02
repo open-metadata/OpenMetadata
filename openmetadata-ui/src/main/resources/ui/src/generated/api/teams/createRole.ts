@@ -14,21 +14,21 @@
  * Request for creating a Role entity
  */
 export interface CreateRole {
-    /**
-     * Optional description of the role
-     */
-    description?: string;
-    /**
-     * Optional name used for display purposes. Example 'Data Consumer'
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Role belongs to.
-     */
-    domains?: string[];
-    name:     string;
-    /**
-     * Policies that is attached to this role. At least one policy is required.
-     */
-    policies: string[];
+  /**
+   * Optional description of the role
+   */
+  description?: string;
+  /**
+   * Optional name used for display purposes. Example 'Data Consumer'
+   */
+  displayName?: string;
+  /**
+   * Fully qualified names of the domains the Role belongs to.
+   */
+  domains?: string[];
+  name: string;
+  /**
+   * Policies that is attached to this role. At least one policy is required.
+   */
+  policies: string[];
 }

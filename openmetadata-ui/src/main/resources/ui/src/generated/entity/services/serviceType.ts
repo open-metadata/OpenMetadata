@@ -14,15 +14,15 @@
  * This schema defines the service types entities which requires a connection.
  */
 export enum ServiceType {
-    API = "Api",
-    Dashboard = "Dashboard",
-    Database = "Database",
-    Drive = "Drive",
-    Messaging = "Messaging",
-    Metadata = "Metadata",
-    MlModel = "MlModel",
-    Pipeline = "Pipeline",
-    Search = "Search",
-    Security = "Security",
-    Storage = "Storage",
+  API = 'Api',
+  Dashboard = 'Dashboard',
+  Database = 'Database',
+  Drive = 'Drive',
+  Messaging = 'Messaging',
+  Metadata = 'Metadata',
+  MlModel = 'MlModel',
+  Pipeline = 'Pipeline',
+  Search = 'Search',
+  Security = 'Security',
+  Storage = 'Storage',
 }

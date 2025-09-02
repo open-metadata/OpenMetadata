@@ -14,55 +14,55 @@
  * This schema defines the JWT Configuration.
  */
 export interface AIPlatformConfiguration {
-    /**
-     * Indicates whether the AI Platform is enabled
-     */
-    enabled?: boolean;
-    /**
-     * gRPC configuration for the AI Platform server
-     */
-    grpc: GrpcConfiguration;
-    /**
-     * Host for the AI Platform server
-     */
-    host: string;
-    /**
-     * Port for the AI Platform server
-     */
-    port: number;
-    /**
-     * Path to the TLS certificate for the AI Platform server
-     */
-    tlsCertPath?: string;
-    /**
-     * Path to the TLS key for the AI Platform server
-     */
-    tlsKeyPath?: string;
-    /**
-     * Path to the trusted CA certificate for the AI Platform server
-     */
-    trustedCertsPath?: string;
+  /**
+   * Indicates whether the AI Platform is enabled
+   */
+  enabled?: boolean;
+  /**
+   * gRPC configuration for the AI Platform server
+   */
+  grpc: GrpcConfiguration;
+  /**
+   * Host for the AI Platform server
+   */
+  host: string;
+  /**
+   * Port for the AI Platform server
+   */
+  port: number;
+  /**
+   * Path to the TLS certificate for the AI Platform server
+   */
+  tlsCertPath?: string;
+  /**
+   * Path to the TLS key for the AI Platform server
+   */
+  tlsKeyPath?: string;
+  /**
+   * Path to the trusted CA certificate for the AI Platform server
+   */
+  trustedCertsPath?: string;
 }
 
 /**
  * gRPC configuration for the AI Platform server
  */
 export interface GrpcConfiguration {
-    /**
-     * Keep alive time for the gRPC server
-     */
-    keepAliveTime?: number;
-    /**
-     * Keep alive timeout for the gRPC server
-     */
-    keepAliveTimeout?: number;
-    /**
-     * Port for the gRPC server
-     */
-    maxInboundMessageSize?: number;
-    /**
-     * Host for the gRPC server
-     */
-    port: number;
-    [property: string]: any;
+  /**
+   * Keep alive time for the gRPC server
+   */
+  keepAliveTime?: number;
+  /**
+   * Keep alive timeout for the gRPC server
+   */
+  keepAliveTimeout?: number;
+  /**
+   * Port for the gRPC server
+   */
+  maxInboundMessageSize?: number;
+  /**
+   * Host for the gRPC server
+   */
+  port: number;
+  [property: string]: any;
 }

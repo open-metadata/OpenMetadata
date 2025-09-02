@@ -14,38 +14,38 @@
  * Grafana Connection Config
  */
 export interface GrafanaConnection {
-    /**
-     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
-     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
-     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
-     * Admin role for full metadata extraction.
-     */
-    apiKey: string;
-    /**
-     * Regex exclude or include charts that matches the pattern.
-     */
-    chartFilterPattern?: FilterPattern;
-    /**
-     * Regex to exclude or include dashboards that matches the pattern.
-     */
-    dashboardFilterPattern?: FilterPattern;
-    /**
-     * URL to the Grafana instance.
-     */
-    hostPort: string;
-    /**
-     * Page size for pagination in API requests. Default is 100.
-     */
-    pageSize?:                   number;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: GrafanaType;
-    /**
-     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
-     */
-    verifySSL?: boolean;
+  /**
+   * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+   * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+   * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+   * Admin role for full metadata extraction.
+   */
+  apiKey: string;
+  /**
+   * Regex exclude or include charts that matches the pattern.
+   */
+  chartFilterPattern?: FilterPattern;
+  /**
+   * Regex to exclude or include dashboards that matches the pattern.
+   */
+  dashboardFilterPattern?: FilterPattern;
+  /**
+   * URL to the Grafana instance.
+   */
+  hostPort: string;
+  /**
+   * Page size for pagination in API requests. Default is 100.
+   */
+  pageSize?: number;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: GrafanaType;
+  /**
+   * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+   */
+  verifySSL?: boolean;
 }
 
 /**
@@ -56,14 +56,14 @@ export interface GrafanaConnection {
  * Regex to exclude or include dashboards that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
@@ -72,5 +72,5 @@ export interface FilterPattern {
  * Grafana service type
  */
 export enum GrafanaType {
-    Grafana = "Grafana",
+  Grafana = 'Grafana',
 }

@@ -15,19 +15,19 @@
  * used for UX customization in OpenMetadata.
  */
 export interface KnowledgePanel {
-    /**
-     * Configuration for the Knowledge Panel.
-     */
-    configuration?: { [key: string]: any };
-    /**
-     * Entity Type.
-     */
-    entityType: EntityType;
+  /**
+   * Configuration for the Knowledge Panel.
+   */
+  configuration?: { [key: string]: any };
+  /**
+   * Entity Type.
+   */
+  entityType: EntityType;
 }
 
 /**
  * Entity Type.
  */
 export enum EntityType {
-    KnowledgePanel = "KnowledgePanel",
+  KnowledgePanel = 'KnowledgePanel',
 }

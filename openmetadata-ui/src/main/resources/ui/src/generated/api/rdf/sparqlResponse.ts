@@ -14,56 +14,56 @@
  * SPARQL query response
  */
 export interface SparqlResponse {
-    /**
-     * Boolean result for ASK queries
-     */
-    boolean?: boolean;
-    /**
-     * Header information about the query results
-     */
-    head?: Head;
-    /**
-     * Query results
-     */
-    results?: Results;
+  /**
+   * Boolean result for ASK queries
+   */
+  boolean?: boolean;
+  /**
+   * Header information about the query results
+   */
+  head?: Head;
+  /**
+   * Query results
+   */
+  results?: Results;
 }
 
 /**
  * Header information about the query results
  */
 export interface Head {
-    /**
-     * Links to additional resources
-     */
-    link?: string[];
-    /**
-     * List of variable names in the results
-     */
-    vars?: string[];
-    [property: string]: any;
+  /**
+   * Links to additional resources
+   */
+  link?: string[];
+  /**
+   * List of variable names in the results
+   */
+  vars?: string[];
+  [property: string]: any;
 }
 
 /**
  * Query results
  */
 export interface Results {
-    /**
-     * Result bindings
-     */
-    bindings?: { [key: string]: Binding }[];
-    [property: string]: any;
+  /**
+   * Result bindings
+   */
+  bindings?: { [key: string]: Binding }[];
+  [property: string]: any;
 }
 
 export interface Binding {
-    datatype?:   string;
-    type:        Type;
-    value:       string;
-    "xml:lang"?: string;
-    [property: string]: any;
+  datatype?: string;
+  type: Type;
+  value: string;
+  'xml:lang'?: string;
+  [property: string]: any;
 }
 
 export enum Type {
-    Bnode = "bnode",
-    Literal = "literal",
-    URI = "uri",
+  Bnode = 'bnode',
+  Literal = 'literal',
+  URI = 'uri',
 }
