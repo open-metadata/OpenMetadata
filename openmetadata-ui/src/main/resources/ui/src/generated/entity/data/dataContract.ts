@@ -47,6 +47,10 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
@@ -765,6 +769,10 @@ export interface SemanticsRule {
      * List of entities to ignore for this semantics rule.
      */
     ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
     /**
      * Name of the semantics rule.
      */

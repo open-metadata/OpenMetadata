@@ -512,13 +512,8 @@ class SnowflakeSource(
                         )
                     )
                 except Exception as inner_exc:
-                    yield Either(
-                        left=StackTraceError(
-                            name="Tags and Classifications",
-                            error=f"Failed to fetch tags due to [{inner_exc}]",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
             for res in result:
                 row = list(res)
