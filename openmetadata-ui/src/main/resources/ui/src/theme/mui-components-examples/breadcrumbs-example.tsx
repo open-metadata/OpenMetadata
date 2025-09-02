@@ -19,10 +19,13 @@ import {
   Link,
   Stack,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { ChevronRight, Home02 } from '@untitledui/icons';
 
 export function BreadcrumbsExample() {
+  const theme = useTheme();
+
   return (
     <Card>
       <CardContent>
@@ -42,14 +45,14 @@ export function BreadcrumbsExample() {
                   <Home02
                     className="h-5 w-5"
                     strokeWidth="1px"
-                    style={{ marginRight: '4px', color: '#535862' }}
+                    style={{ color: theme.palette.allShades.gray[600] }}
                   />
                 </Link>
                 <Link href="/settings">Settings</Link>
                 <Link href="/settings/profile">Profile</Link>
                 <Typography
                   sx={{
-                    color: '#175CD3',
+                    color: theme.palette.allShades.brand[700],
                     fontSize: '14px',
                     lineHeight: '20px',
                   }}>
@@ -71,7 +74,7 @@ export function BreadcrumbsExample() {
                   <Home02
                     className="h-5 w-5"
                     strokeWidth="1px"
-                    style={{ marginRight: '4px', color: '#535862' }}
+                    style={{ color: theme.palette.allShades.gray[600] }}
                   />
                 </Link>
                 <Link href="/projects">Projects</Link>
@@ -82,7 +85,7 @@ export function BreadcrumbsExample() {
                 </Link>
                 <Typography
                   sx={{
-                    color: '#175CD3',
+                    color: theme.palette.allShades.brand[700],
                     fontSize: '14px',
                     lineHeight: '20px',
                   }}>

@@ -30,7 +30,9 @@ const CheckboxBlankIcon = ({
       style={{
         width: 16,
         height: 16,
-        backgroundColor: disabled ? theme.palette.grey[50] : '#ffffff',
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.common.white,
         borderRadius: 4,
         border: `1px solid ${theme.palette.grey[300]}`,
         display: 'flex',
@@ -150,7 +152,9 @@ const CheckboxBlankIconMedium = ({
       style={{
         width: 20,
         height: 20,
-        backgroundColor: disabled ? theme.palette.grey[50] : '#ffffff',
+        backgroundColor: disabled
+          ? theme.palette.grey[50]
+          : theme.palette.common.white,
         borderRadius: 6,
         border: `1px solid ${theme.palette.grey[300]}`,
         display: 'flex',

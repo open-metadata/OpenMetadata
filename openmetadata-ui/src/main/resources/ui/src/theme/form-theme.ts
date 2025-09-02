@@ -71,7 +71,7 @@ export const formTheme = (colors: any) => ({
           borderRadius: '8px',
           backgroundColor: colors.white,
 
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px rgb(213, 215, 218) inset`,
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
           transition: 'box-shadow 100ms linear',
           border: 'none',
           margin: 0,
@@ -91,7 +91,7 @@ export const formTheme = (colors: any) => ({
           },
           '&.Mui-disabled': {
             backgroundColor: colors.gray[50],
-            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px rgb(213, 215, 218) inset`,
+            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
             cursor: 'not-allowed',
             '& .MuiOutlinedInput-notchedOutline': {
               border: 'none',
@@ -110,7 +110,7 @@ export const formTheme = (colors: any) => ({
             fontSize: '20px',
             width: '20px',
             height: '20px',
-            color: 'rgb(164, 167, 174)',
+            color: '${colors.gray[400]}',
           },
           '&.MuiInputAdornment-positionStart': {
             marginLeft: 0,
@@ -178,7 +178,7 @@ export const formTheme = (colors: any) => ({
         width: '100%',
         backgroundColor: 'transparent',
         fontSize: '1rem',
-        color: 'rgb(24, 29, 39)',
+        color: '${colors.gray[900]}',
         lineHeight: '1.5rem',
         outline: 'none',
         border: 'none',
@@ -261,7 +261,7 @@ export const formTheme = (colors: any) => ({
         width: '100%',
         borderRadius: '8px',
         backgroundColor: colors.white,
-        boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px rgb(213, 215, 218) inset`,
+        boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
         transition: 'box-shadow 100ms linear',
         border: 'none',
 
@@ -273,9 +273,14 @@ export const formTheme = (colors: any) => ({
           boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
         },
 
+        '&:focus-visible': {
+          outline: `2px solid ${colors.brand[600]}`,
+          outlineOffset: '2px',
+        },
+
         '&.Mui-disabled': {
           backgroundColor: colors.gray[50],
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px rgb(213, 215, 218) inset`,
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
           cursor: 'not-allowed',
         },
 
@@ -283,6 +288,10 @@ export const formTheme = (colors: any) => ({
           boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.error[300]} inset`,
           '&.Mui-focused': {
             boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.error[600]} inset`,
+          },
+          '&:focus-visible': {
+            outline: `2px solid ${colors.error[600]}`,
+            outlineOffset: '2px',
           },
         },
       },
@@ -298,7 +307,7 @@ export const formTheme = (colors: any) => ({
         paddingRight: '40px',
         fontSize: '1rem',
         lineHeight: '1.5rem',
-        color: 'rgb(24, 29, 39)',
+        color: '${colors.gray[900]}',
         backgroundColor: 'transparent',
         border: 'none',
         outline: 'none',
@@ -319,7 +328,7 @@ export const formTheme = (colors: any) => ({
       },
 
       icon: {
-        color: 'rgb(164, 167, 174)',
+        color: '${colors.gray[400]}',
         fontSize: '20px',
         right: '14px',
 
@@ -405,7 +414,7 @@ export const formTheme = (colors: any) => ({
         borderRadius: '50%',
         backgroundColor: colors.white,
 
-        boxShadow: `0px 0px 0px 1px rgb(213, 215, 218) inset`,
+        boxShadow: `0px 0px 0px 1px ${colors.gray[300]} inset`,
         border: 'none',
         transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
 
@@ -527,7 +536,7 @@ export const formTheme = (colors: any) => ({
         padding: 0,
 
         '&:has(.MuiSwitch-switchBase.Mui-focusVisible)': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
           borderRadius: '12px',
         },

@@ -64,7 +64,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         },
 
         '&:focus-visible': {
-          outline: `2px solid ${colors.brand[500]} !important`,
+          outline: `2px solid ${colors.brand[600]} !important`,
           outlineOffset: '2px',
         },
 
@@ -129,7 +129,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         },
 
         '&:focus-visible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
           borderRadius: '2px',
         },
@@ -188,16 +188,17 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         '&:focus-visible': {
           zIndex: 10,
           backgroundColor: colors.gray[50],
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
+          borderRadius: '8px',
         },
 
         '&.Mui-selected': {
-          backgroundColor: colors.blueGray[25],
+          backgroundColor: colors.brand[50],
           color: colors.gray[700],
-          borderRadius: '6px',
+          borderRadius: '8px',
           '&:hover': {
-            backgroundColor: colors.blueGray[25],
+            backgroundColor: colors.brand[50],
             color: colors.gray[700],
           },
         },

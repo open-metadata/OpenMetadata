@@ -49,7 +49,7 @@ export const buttonTheme = (
         transition: 'all 100ms linear',
         position: 'relative',
         '&:focus-visible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
         },
         '&.Mui-disabled': {
@@ -118,6 +118,11 @@ export const buttonTheme = (
           color: colors.gray[800],
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
         },
+        '&:focus-visible': {
+          outline: `2px solid ${colors.brand[600]}`,
+          outlineOffset: '2px',
+          boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
+        },
         '&.Mui-disabled': {
           backgroundColor: colors.gray[100],
           color: colors.gray[500],
@@ -136,6 +141,10 @@ export const buttonTheme = (
           backgroundColor: colors.error[600],
           color: colors.white,
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC('transparent'),
+        },
+        '&:focus-visible': {
+          outline: `2px solid ${colors.error[600]}`,
+          outlineOffset: '2px',
         },
         '&.Mui-disabled': {
           backgroundColor: colors.gray[100],
@@ -161,6 +170,11 @@ export const buttonTheme = (
           color: colors.gray[800],
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
         },
+        '&:focus-visible': {
+          outline: `2px solid ${colors.brand[600]}`,
+          outlineOffset: '2px',
+          boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
+        },
         '&.Mui-disabled': {
           backgroundColor: colors.gray[100],
           borderColor: 'transparent',
@@ -180,6 +194,10 @@ export const buttonTheme = (
           borderColor: 'transparent',
           color: colors.error[700],
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.error[300]),
+        },
+        '&:focus-visible': {
+          outline: `2px solid ${colors.error[600]}`,
+          outlineOffset: '2px',
         },
         '&.Mui-disabled': {
           backgroundColor: colors.white,
@@ -220,6 +238,10 @@ export const buttonTheme = (
           backgroundColor: colors.error[50],
           color: colors.error[700],
         },
+        '&:focus-visible': {
+          outline: `2px solid ${colors.error[600]}`,
+          outlineOffset: '2px',
+        },
         '&.Mui-disabled': {
           backgroundColor: 'transparent',
           color: colors.gray[500],
@@ -240,7 +262,7 @@ export const buttonTheme = (
         height: 'max-content',
         border: 'none',
         '&:focus-visible': {
-          outline: `2px solid ${colors.brand[500]}`,
+          outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
         },
 
@@ -315,7 +337,7 @@ export const buttonTheme = (
 
           '&:focus-visible': {
             zIndex: 10,
-            outline: `2px solid ${colors.brand[500]}`,
+            outline: `2px solid ${colors.brand[600]}`,
             outlineOffset: '2px',
           },
 
