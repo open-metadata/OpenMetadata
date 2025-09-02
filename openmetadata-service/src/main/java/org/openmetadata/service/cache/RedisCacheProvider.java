@@ -62,12 +62,19 @@ public class RedisCacheProvider implements CacheProvider {
           RedisURI.Builder.redis(url).withTimeout(Duration.ofMillis(config.redis.connectTimeoutMs));
     }
 
-    if (config.redis.username != null) {
-      builder.withAuthentication(config.redis.username, getPassword());
-    } else if (config.redis.passwordRef != null) {
-      builder.withPassword(getPassword().toCharArray());
+    if (config.redis.authType == CacheConfig.AuthType.PASSWORD) {
+      if (config.redis.username != null) {
+        builder.withAuthentication(config.redis.username, getPassword());
+      } else if (config.redis.passwordRef != null) {
+        builder.withPassword(getPassword().toCharArray());
+      }
     }
 
+    if (config.redis.useSSL) {
+      builder.withSsl(true);
+    }
+
+    builder.withDatabase(config.redis.database);
     return builder.build();
   }
 
