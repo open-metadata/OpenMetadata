@@ -218,6 +218,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  PipelineServiceType.Spark,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -448,6 +449,7 @@ export const BETA_SERVICES = [
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
+  DatabaseServiceType.ServiceNow,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

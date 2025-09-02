@@ -35,8 +35,12 @@ const AppRouter = () => {
 
   // web analytics instance
   const analytics = useAnalytics();
-  const { currentUser, isAuthenticated, isApplicationLoading } =
-    useApplicationStore();
+  const {
+    currentUser,
+    isAuthenticated,
+    isApplicationLoading,
+    isAuthenticating,
+  } = useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -77,11 +81,12 @@ const AppRouter = () => {
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
-   * If the application is loading, show the loader.
+   * isAuthenticating is true when determining auth state and false when complete.
+   * If the application is loading or authenticating, show the loader.
    * If the user is authenticated, show the AppContainer.
    * If the user is not authenticated, show the UnAuthenticatedAppRouter.
    */
-  if (isApplicationLoading) {
+  if (isApplicationLoading || isAuthenticating) {
     return <Loader fullScreen />;
   }
 

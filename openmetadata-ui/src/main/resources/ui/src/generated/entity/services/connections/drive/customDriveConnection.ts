@@ -21,6 +21,7 @@ export interface CustomDriveConnection {
      * Service Type
      */
     type?: CustomDriveType;
+    [property: string]: any;
 }
 
 /**
