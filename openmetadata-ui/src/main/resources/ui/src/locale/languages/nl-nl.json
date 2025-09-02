@@ -554,6 +554,7 @@
     "endpoint-url": "Eindpunt-URL",
     "endpoint-url-for-aws": "Eindpunt-URL voor AWS",
     "enter": "Invoeren",
+    "enter-custom-unit-of-measurement": "Voer aangepaste maateenheid in en druk op Enter",
     "enter-entity": "{{entity}} invoeren",
     "enter-entity-name": "{{entity}}-naam invoeren",
     "enter-entity-value": "{{entity}}-waarde invoeren",

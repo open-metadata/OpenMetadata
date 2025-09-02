@@ -554,6 +554,7 @@
     "endpoint-url": "URL du Point de terminaison",
     "endpoint-url-for-aws": "URL du Point de terminaison pour AWS",
     "enter": "Entrer",
+    "enter-custom-unit-of-measurement": "Entrez l'unité de mesure personnalisée et appuyez sur Entrée",
     "enter-entity": "Entrer {{entity}}",
     "enter-entity-name": "Entrer un nom pour {{entity}}",
     "enter-entity-value": "Entrer une valeur pour {{entity}}",

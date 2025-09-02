@@ -554,6 +554,7 @@
     "endpoint-url": "URL נקודת סיום",
     "endpoint-url-for-aws": "כתובת URL עבור AWS",
     "enter": "הזן",
+    "enter-custom-unit-of-measurement": "הזן יחידת מדידה מותאמת אישית ולחץ Enter",
     "enter-entity": "הזן {{entity}}",
     "enter-entity-name": "הזן שם {{entity}}",
     "enter-entity-value": "הזן ערך {{entity}}",

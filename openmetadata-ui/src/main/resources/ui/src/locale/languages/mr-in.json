@@ -554,6 +554,7 @@
     "endpoint-url": "एंडपॉईंट URL",
     "endpoint-url-for-aws": "AWS साठी एंडपॉईंट URL",
     "enter": "प्रविष्ट करा",
+    "enter-custom-unit-of-measurement": "स्वतःचे मापन विक्यात अदाकरा आणि Enter दाबा",
     "enter-entity": "{{entity}} प्रविष्ट करा",
     "enter-entity-name": "{{entity}} नाव प्रविष्ट करा",
     "enter-entity-value": "{{entity}} मूल्य प्रविष्ट करा",

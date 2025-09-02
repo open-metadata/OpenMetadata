@@ -554,6 +554,7 @@
     "endpoint-url": "URL del terminal",
     "endpoint-url-for-aws": "URL del terminal para AWS",
     "enter": "Entrar",
+    "enter-custom-unit-of-measurement": "Ingrese la unidad de medida personalizada y presione Enter",
     "enter-entity": "Ingrese {{entity}}",
     "enter-entity-name": "Ingrese el nombre de {{entity}}",
     "enter-entity-value": "Enter {{entity}} Value",
