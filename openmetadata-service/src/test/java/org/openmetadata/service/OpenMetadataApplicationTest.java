@@ -282,7 +282,7 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);

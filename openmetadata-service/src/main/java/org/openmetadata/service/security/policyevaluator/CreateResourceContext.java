@@ -63,9 +63,10 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     List<TagLabel> tags = new ArrayList<>();
     for (EntityInterface parent : parentEntities) {
       if (parent.getTags() != null) {
-        tags.addAll(Entity.getEntityTags(getResource(), parent));
+        tags.addAll(Entity.getEntityTags(parent.getEntityReference().getType(), parent));
       }
     }
+    tags.addAll(Entity.getEntityTags(getResource(), entity));
     return getUniqueTags(tags);
   }
 
@@ -105,13 +106,10 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     try {
       // First, check direct parent, which are always singular
       EntityInterface directParent = entityRepository.getParentEntity(entity, fields.toString());
-      if (directParent == null) {
-        parentEntities = null;
-        return;
-      }
-      parentEntities = List.of(directParent);
-      // If direct parent is not found, check for root-level parent
-      if (nullOrEmpty(parentEntities)) {
+      if (directParent != null) {
+        parentEntities = List.of(directParent);
+      } else {
+        // If direct parent is not found, check for root-level parent
         parentEntities = resolveRootParentEntities(entity, fields);
       }
     } catch (EntityNotFoundException e) {

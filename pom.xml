@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.9.0-SNAPSHOT</version>
+  <version>1.10.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -156,7 +156,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
 
