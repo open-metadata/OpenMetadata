@@ -78,7 +78,6 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   addIngestionPipeline,
@@ -124,14 +123,6 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
-
-const TABLE_SEARCH_FIELDS: (keyof TableSearchSource)[] = [
-  'name',
-  'fullyQualifiedName',
-  'displayName',
-  'columns',
-  'testSuite',
-];
 
 // =============================================
 // MAIN COMPONENT

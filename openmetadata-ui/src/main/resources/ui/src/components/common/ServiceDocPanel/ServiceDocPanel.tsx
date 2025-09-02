@@ -166,7 +166,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     return (
       <>
         <div className="entity-summary-in-docs" data-id="selected-entity">
-          {serviceName === 'TestCaseForm' && selectedEntity && (
+          {selectedEntity && (
             <EntitySummaryPanel
               entityDetails={{
                 details: selectedEntity,

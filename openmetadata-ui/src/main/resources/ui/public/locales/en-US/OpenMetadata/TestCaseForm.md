@@ -522,7 +522,6 @@ $$section
 **Row-Level Support**: No
 $$
 
----
 
 ## Table-Level Test Definitions
 
@@ -742,7 +741,7 @@ $$section
 **Dynamic Assertion**: Supported
 $$
 
----
+
 
 ## Collate-Specific Extensions
 
@@ -777,7 +776,7 @@ $$section
 **Provider**: System (Collate)
 $$
 
----
+
 
 ## Advanced Features
 
@@ -807,7 +806,7 @@ Some test parameters include validation rules to ensure:
 - **Data Type Compatibility**: Ensure parameters match expected data types
 - **Business Logic**: Enforce domain-specific validation rules
 
----
+
 
 ## Best Practices
 
