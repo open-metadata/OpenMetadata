@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -283,6 +284,133 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, terms);
+  }
+
+  @GET
+  @Path("/search")
+  @Operation(
+      operationId = "searchGlossaryTerms",
+      summary = "Search glossary terms with pagination",
+      description =
+          "Search glossary terms by name, display name, or description with server-side pagination. "
+              + "This endpoint provides efficient search functionality for glossaries with large numbers of terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching glossary terms",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermList.class)))
+      })
+  public ResultList<GlossaryTerm> searchGlossaryTerms(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query for term names, display names, or descriptions")
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Filter by glossary ID") @QueryParam("glossary") UUID glossaryId,
+      @Parameter(description = "Filter by glossary FQN") @QueryParam("glossaryFqn")
+          String glossaryFqn,
+      @Parameter(description = "Filter by parent term ID") @QueryParam("parent") UUID parentId,
+      @Parameter(description = "Filter by parent term FQN") @QueryParam("parentFqn")
+          String parentFqn,
+      @Parameter(description = "Limit the number of terms returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Fields requested in the returned terms",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+
+    Fields fields = getFields(fieldsParam);
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    ResultList<GlossaryTerm> result;
+    if (glossaryId != null) {
+      result =
+          repository.searchGlossaryTermsById(
+              glossaryId, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (glossaryFqn != null) {
+      result =
+          repository.searchGlossaryTermsByFQN(
+              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (parentId != null) {
+      result =
+          repository.searchGlossaryTermsByParentId(
+              parentId, query, limitParam, offsetParam, fieldsParam, include);
+    } else if (parentFqn != null) {
+      result =
+          repository.searchGlossaryTermsByParentFQN(
+              parentFqn, query, limitParam, offsetParam, fieldsParam, include);
+    } else {
+      // Search across all glossary terms without parent filter
+      ListFilter filter = new ListFilter(include);
+      ResultList<GlossaryTerm> allTerms =
+          repository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE, null);
+      List<GlossaryTerm> matchingTerms;
+      if (query == null || query.trim().isEmpty()) {
+        matchingTerms = allTerms.getData();
+      } else {
+        String searchTerm = query.toLowerCase().trim();
+        matchingTerms =
+            allTerms.getData().stream()
+                .filter(
+                    term -> {
+                      if (term.getName() != null
+                          && term.getName().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      if (term.getDisplayName() != null
+                          && term.getDisplayName().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      if (term.getDescription() != null
+                          && term.getDescription().toLowerCase().contains(searchTerm)) {
+                        return true;
+                      }
+                      return false;
+                    })
+                .collect(Collectors.toList());
+      }
+      int total = matchingTerms.size();
+      int startIndex = Math.min(offsetParam, total);
+      int endIndex = Math.min(offsetParam + limitParam, total);
+      List<GlossaryTerm> paginatedResults =
+          startIndex < total ? matchingTerms.subList(startIndex, endIndex) : List.of();
+      String before =
+          offsetParam > 0 ? String.valueOf(Math.max(0, offsetParam - limitParam)) : null;
+      String after = endIndex < total ? String.valueOf(endIndex) : null;
+      result = new ResultList<>(paginatedResults, before, after, total);
+    }
+
+    return addHref(uriInfo, result);
   }
 
   @GET

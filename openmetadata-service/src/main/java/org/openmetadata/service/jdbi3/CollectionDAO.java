@@ -3192,6 +3192,21 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    // Search glossary terms by both name and displayName using LIKE queries
+    // The displayName column is a generated column added in migration 1.9.3
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
+            + "AND fqnHash LIKE :parentHash "
+            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
+            + "ORDER BY name "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> searchGlossaryTerms(
+        @Bind("parentHash") String parentHash,
+        @Bind("searchTerm") String searchTerm,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
