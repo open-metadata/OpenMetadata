@@ -716,12 +716,14 @@ public class TableRepository extends EntityRepository<Table> {
                     fqn, TABLE_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
             EntityProfile.class);
     tableProfiles =
-        entityProfiles.stream()
-            .map(
-                ep ->
-                    (TableProfile)
-                        EntityProfileRepository.deserializeProfileData(ep).getProfileData())
-            .toList();
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (TableProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
@@ -746,12 +748,14 @@ public class TableRepository extends EntityRepository<Table> {
                     EntityTimeSeriesDAO.OrderBy.DESC),
             EntityProfile.class);
     columnProfiles =
-        entityProfiles.stream()
-            .map(
-                ep ->
-                    (ColumnProfile)
-                        EntityProfileRepository.deserializeProfileData(ep).getProfileData())
-            .toList();
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (ColumnProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     ResultList<ColumnProfile> columnProfileResultList =
         new ResultList<>(
             columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
@@ -780,12 +784,14 @@ public class TableRepository extends EntityRepository<Table> {
             EntityProfile.class);
 
     systemProfiles =
-        entityProfiles.stream()
-            .map(
-                ep ->
-                    (SystemProfile)
-                        EntityProfileRepository.deserializeProfileData(ep).getProfileData())
-            .toList();
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (SystemProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
@@ -825,10 +831,15 @@ public class TableRepository extends EntityRepository<Table> {
                 .profilerDataTimeSeriesDao()
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             EntityProfile.class);
-    TableProfile tableProfile =
-        (TableProfile)
-            EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
-    table.setProfile(tableProfile);
+
+    if (entityProfile == null) {
+      table.setProfile(null);
+    } else {
+      TableProfile tableProfile =
+          (TableProfile)
+              EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
+      table.setProfile(tableProfile);
+    }
 
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
