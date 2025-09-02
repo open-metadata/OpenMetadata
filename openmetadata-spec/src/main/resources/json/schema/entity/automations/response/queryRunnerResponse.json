@@ -30,6 +30,10 @@
             "description": "Detailed error log in case of failure",
             "type": "string"
         },
+        "duration": {
+            "description": "Duration of the query execution in seconds",
+            "type": "number"
+        },
         "results": {
             "description": "Results of the query execution",
             "$ref": "../../data/table.json#/definitions/tableData"
