@@ -74,7 +74,7 @@ test.describe('Explore Sort Order Filter', () => {
           state: 'detached',
         }
       );
-      const dataAssetDropdownRequest = await page.waitForResponse(
+      const dataAssetDropdownRequest = page.waitForResponse(
         '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
       );
       await page
