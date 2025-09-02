@@ -57,6 +57,9 @@ from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaSearchResult,
     GrafanaTarget,
 )
+from metadata.ingestion.tests.unit.topology.dashboard.fixtures.grafana_fixtures import (
+    DASHBOARD_WITH_INTEGER_FORMAT_RESPONSE,
+)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -559,3 +562,100 @@ class GrafanaUnitTest(TestCase):
         )
         owner_ref = self.grafana.get_owner_ref(dashboard_response)
         self.assertIsNone(owner_ref)
+
+    def test_format_field_validation(self):
+        """Test that GrafanaTarget handles both string and integer format values"""
+        # Test string format (existing functionality)
+        target_string = GrafanaTarget(
+            refId="A",
+            datasource={"type": "postgres", "uid": "test-uid"},
+            rawSql="SELECT * FROM table",
+            format="time_series"
+        )
+        self.assertEqual(target_string.format, "time_series")
+        
+        # Test integer format (new fix for the issue)
+        target_int_0 = GrafanaTarget(
+            refId="A", 
+            datasource={"type": "mysql", "uid": "test-uid"},
+            rawSql="SELECT * FROM table",
+            format=0
+        )
+        self.assertEqual(target_int_0.format, "table")
+        
+        target_int_1 = GrafanaTarget(
+            refId="A",
+            datasource={"type": "mysql", "uid": "test-uid"}, 
+            rawSql="SELECT * FROM table",
+            format=1
+        )
+        self.assertEqual(target_int_1.format, "time_series")
+        
+        # Test None format
+        target_none = GrafanaTarget(
+            refId="A",
+            datasource={"type": "prometheus", "uid": "test-uid"},
+            expr="up",
+            format=None
+        )
+        self.assertIsNone(target_none.format)
+        
+        # Test unknown integer format (should default to "table")
+        target_unknown = GrafanaTarget(
+            refId="A",
+            datasource={"type": "mysql", "uid": "test-uid"},
+            rawSql="SELECT * FROM table", 
+            format=99
+        )
+        self.assertEqual(target_unknown.format, "table")
+
+    def test_dashboard_with_integer_format_field(self):
+        """Test that dashboard with integer format field can be processed successfully"""
+        # Use the test fixture that reproduces the original issue
+        dashboard_with_int_format = GrafanaDashboardResponse(**DASHBOARD_WITH_INTEGER_FORMAT_RESPONSE)
+        
+        # Verify the dashboard can be created successfully
+        self.assertIsNotNone(dashboard_with_int_format)
+        self.assertEqual(dashboard_with_int_format.dashboard.uid, "integer-format-dashboard")
+        
+        # Verify all format fields were converted correctly
+        panels = dashboard_with_int_format.dashboard.panels
+        
+        # Panel 1: format 0 -> "table"
+        self.assertEqual(panels[0].targets[0].format, "table")
+        
+        # Panel 2: format 1 -> "time_series" 
+        self.assertEqual(panels[1].targets[0].format, "time_series")
+        
+        # Panel 3: format 2 -> "logs"
+        self.assertEqual(panels[2].targets[0].format, "logs")
+        
+        # Panel 4: mixed formats - string should remain, integer should convert
+        self.assertEqual(panels[3].targets[0].format, "table")  # String "table" remains
+        self.assertEqual(panels[3].targets[1].format, "table")  # Integer 0 converts to "table"
+
+    def test_dashboard_ingestion_with_integer_format(self):
+        """Test that a dashboard with integer format can be ingested successfully"""
+        # Mock the client to return our test dashboard
+        self.grafana.client.get_dashboard.return_value = GrafanaDashboardResponse(**DASHBOARD_WITH_INTEGER_FORMAT_RESPONSE)
+        
+        # Test dashboard retrieval
+        test_dashboard = {"uid": "integer-format-dashboard"}
+        dashboard_details = self.grafana.get_dashboard_details(test_dashboard)
+        
+        # Should not be None (this was the original issue)
+        self.assertIsNotNone(dashboard_details)
+        self.assertEqual(dashboard_details.dashboard.uid, "integer-format-dashboard")
+        
+        # Test dashboard entity creation
+        dashboard_results = list(self.grafana.yield_dashboard(dashboard_details))
+        self.assertEqual(len(dashboard_results), 1)
+        
+        dashboard_entity = dashboard_results[0].right
+        self.assertEqual(dashboard_entity.name, EntityName("integer-format-dashboard"))
+        
+        # Test chart extraction  
+        chart_results = list(self.grafana.yield_dashboard_chart(dashboard_details))
+        # Should have 4 charts (one for each panel)
+        chart_entities = [result.right for result in chart_results if result.right]
+        self.assertEqual(len(chart_entities), 4)
