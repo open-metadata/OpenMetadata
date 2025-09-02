@@ -37,6 +37,7 @@ export interface CustomDatabaseConnection {
      * Custom database service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

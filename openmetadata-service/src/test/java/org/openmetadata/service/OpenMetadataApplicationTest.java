@@ -282,7 +282,7 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
@@ -507,12 +507,9 @@ public abstract class OpenMetadataApplicationTest {
   private static void setupRdfIfEnabled() {
     String enableRdf = System.getProperty("enableRdf");
     String rdfContainerImage = System.getProperty("rdfContainerImage");
-    enableRdf = "true";
     if ("true".equals(enableRdf)) {
       LOG.info("RDF is enabled for tests. Starting Fuseki container...");
-
       if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
-        // Using the same image as in docker-compose
         rdfContainerImage = "stain/jena-fuseki:latest";
       }
 

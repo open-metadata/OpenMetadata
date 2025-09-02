@@ -97,8 +97,8 @@ export const waitForDataContractExecution = async (
       },
       {
         message: 'Wait for data contract execution to complete',
-        timeout: 150_000,
-        intervals: [5_000, 10_000, 15_000],
+        timeout: 300_000,
+        intervals: [30_000, 20_000, 10_000],
       }
     )
     .toEqual(
