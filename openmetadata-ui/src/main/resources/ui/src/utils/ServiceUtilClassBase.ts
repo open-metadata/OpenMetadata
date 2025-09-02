@@ -125,6 +125,7 @@ import {
   SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
 import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -172,6 +173,8 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
+    DriveServiceType.GoogleDrive,
+    PipelineServiceType.Snowplow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
