@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +105,53 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void clearFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? glossary.getTermCount() : null);
     glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Glossary> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Call parent method to handle common fields like owners, tags, etc.
+    super.setFieldsInBulk(fields, entities);
+
+    // Bulk fetch term counts if needed
+    if (fields.contains("termCount")) {
+      Map<String, Integer> termCountMap = batchGetTermCounts(entities);
+      for (Glossary glossary : entities) {
+        glossary.setTermCount(termCountMap.getOrDefault(glossary.getName(), 0));
+      }
+    }
+
+    // Bulk fetch usage counts if needed
+    if (fields.contains("usageCount")) {
+      Map<String, Integer> usageCountMap = batchGetUsageCounts(entities);
+      for (Glossary glossary : entities) {
+        glossary.withUsageCount(usageCountMap.getOrDefault(glossary.getName(), 0));
+      }
+    }
+  }
+
+  private Map<String, Integer> batchGetTermCounts(List<Glossary> glossaries) {
+    Map<String, Integer> termCountMap = new HashMap<>();
+    for (Glossary glossary : glossaries) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED)
+              .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
+      int count = daoCollection.glossaryTermDAO().listCount(filter);
+      termCountMap.put(glossary.getName(), count);
+    }
+    return termCountMap;
+  }
+
+  private Map<String, Integer> batchGetUsageCounts(List<Glossary> glossaries) {
+    Map<String, Integer> usageCountMap = new HashMap<>();
+    for (Glossary glossary : glossaries) {
+      int count =
+          daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+      usageCountMap.put(glossary.getName(), count);
+    }
+    return usageCountMap;
   }
 
   @Override
