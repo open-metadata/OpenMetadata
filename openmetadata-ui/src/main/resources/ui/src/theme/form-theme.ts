@@ -17,6 +17,10 @@ export const formTheme = (colors: any) => ({
       InputLabelProps: {
         shrink: true,
       },
+      autoComplete: 'off',
+      InputProps: {
+        autoComplete: 'off',
+      },
     },
     styleOverrides: {
       root: {

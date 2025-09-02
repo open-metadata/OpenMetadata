@@ -13,6 +13,7 @@
 
 /**
  * Color palette with UntitledUI-style shades (25-950)
+ * All colors are hex strings (e.g., "#1570EF")
  */
 export interface ColorPalette {
   25: string;
