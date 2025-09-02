@@ -1233,13 +1233,16 @@ export interface ConfigObject {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
-     */
-    authMechanism?: AuthMechanismEnum;
-    /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Use slow logs to extract lineage.
      */
