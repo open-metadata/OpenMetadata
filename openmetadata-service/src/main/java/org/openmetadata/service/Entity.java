@@ -495,6 +495,9 @@ public final class Entity {
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
+    if (ref == null) {
+      return null;
+    }
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);

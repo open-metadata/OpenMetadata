@@ -734,6 +734,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity =
           JsonUtils.deepCopy(
               (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id)), entityClass);
+
+      // Validate the entity retrieved from cache
+      if (entity != null && entity.getId() == null) {
+        LOG.error(
+            "CRITICAL: Entity from cache has null ID! Type: {}, Expected ID: {}", entityType, id);
+        // Invalidate the corrupted cache entry and reload from database
+        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+        // Try one more time without cache
+        entity = dao.findEntityById(id, include);
+        if (entity == null) {
+          throw new EntityNotFoundException(entityNotFound(entityType, id));
+        }
+      }
+
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
           || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
@@ -5554,20 +5568,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
             // Get the entity class from the repository and deserialize with proper type
             Class<? extends EntityInterface> entityClass = repository.getEntityClass();
             EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
-            // Ensure the entity has its ID set (critical for getDomains() and other operations)
-            if (entity.getId() == null) {
+
+            // Validate the cached entity - if invalid, evict and fall back to database
+            if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
               LOG.error(
-                  "CACHE ERROR: Deserialized entity from name lookup has null ID! Type: {}, Name: {}",
+                  "CACHE ERROR: Cached entity from name lookup is invalid! Evicting bad cache entry. Type: {}, Name: {}",
                   entityType,
                   fqn);
+              // Evict the corrupted cache entry
+              cachedEntityDao.deleteByName(entityType, fqn);
+              // Fall back to database load below
+            } else {
+              // Valid cached entity, return it
+              return entity;
             }
-            return entity;
           } catch (Exception e) {
             LOG.warn(
-                "Failed to deserialize cached entity, falling back to database: {} {}",
+                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
                 entityType,
                 fqn,
                 e);
+            // Evict the corrupted cache entry
+            try {
+              cachedEntityDao.deleteByName(entityType, fqn);
+            } catch (Exception evictError) {
+              LOG.debug(
+                  "Failed to evict bad cache entry by name: {} {}", entityType, fqn, evictError);
+            }
           }
         }
         LOG.debug("CACHE MISS: Entity not in Redis cache by name: {} {}", entityType, fqn);
@@ -5627,21 +5654,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
             // Get the entity class from the repository and deserialize with proper type
             Class<? extends EntityInterface> entityClass = repository.getEntityClass();
             EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
-            // Ensure the entity has its ID set (critical for getDomains() and other operations)
+
+            // Validate the cached entity - if invalid, evict and fall back to database
             if (entity.getId() == null) {
               LOG.error(
-                  "CACHE ERROR: Deserialized entity has null ID! Type: {}, Expected ID: {}",
+                  "CACHE ERROR: Cached entity has null ID! Evicting bad cache entry. Type: {}, Expected ID: {}",
                   entityType,
                   id);
-              entity.setId(id);
+              // Evict the corrupted cache entry
+              cachedEntityDao.deleteBase(entityType, id);
+              // Fall back to database load below
+            } else {
+              // Valid cached entity, return it
+              return entity;
             }
-            return entity;
           } catch (Exception e) {
             LOG.warn(
-                "Failed to deserialize cached entity, falling back to database: {} {}",
+                "Failed to deserialize cached entity, evicting and falling back to database: {} {}",
                 entityType,
                 id,
                 e);
+            // Evict the corrupted cache entry
+            try {
+              cachedEntityDao.deleteBase(entityType, id);
+            } catch (Exception evictError) {
+              LOG.debug("Failed to evict bad cache entry: {} {}", entityType, id, evictError);
+            }
           }
         }
         LOG.debug("CACHE MISS: Entity not in Redis cache: {} {}", entityType, id);

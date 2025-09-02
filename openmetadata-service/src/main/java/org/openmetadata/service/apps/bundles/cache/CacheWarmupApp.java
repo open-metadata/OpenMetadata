@@ -314,10 +314,13 @@ public class CacheWarmupApp extends AbstractNativeApplication {
 
     for (EntityInterface entity : entities.getData()) {
       try {
-        warmupEntity(entityType, entity);
-        successCount++;
+        boolean success = warmupEntity(entityType, entity);
+        if (success) {
+          successCount++;
+        }
+        // Note: Not counting skipped entities (deleted, invalid) as failures
       } catch (Exception e) {
-        LOG.debug("Failed to warm up entity {} {}: {}", entityType, entity.getId(), e.getMessage());
+        LOG.debug("Error warming up entity {} {}: {}", entityType, entity.getId(), e.getMessage());
         failedCount++;
       }
     }
@@ -333,10 +336,16 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     sendUpdates(jobExecutionContext);
   }
 
-  private void warmupEntity(String entityType, EntityInterface entity) throws Exception {
+  private boolean warmupEntity(String entityType, EntityInterface entity) throws Exception {
     // Skip caching user entities
     if ("user".equals(entityType)) {
-      return;
+      return false; // Not cached, but not an error
+    }
+
+    // Validate entity has required fields before caching
+    if (entity.getId() == null) {
+      LOG.warn("Skipping entity with null ID - Type: {}, Name: {}", entityType, entity.getName());
+      return false; // Skip this entity and continue with others
     }
 
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
@@ -344,21 +353,33 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     // Use find method instead of get to avoid UriInfo requirement
     EntityInterface fullEntity = repository.find(entity.getId(), Include.ALL);
 
+    // Validate the full entity before caching
+    if (fullEntity == null || fullEntity.getId() == null) {
+      LOG.warn(
+          "Failed to load full entity - Type: {}, ID: {}, Name: {}. Skipping.",
+          entityType,
+          entity.getId(),
+          entity.getName());
+      return false; // Skip this entity and continue with others
+    }
+
     // Cache the entity - this triggers write-through caching
     String entityJson = JsonUtils.pojoToJson(fullEntity);
-    cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-    cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+    cachedEntityDao.putBase(entityType, fullEntity.getId(), entityJson);
+    cachedEntityDao.putByName(entityType, fullEntity.getFullyQualifiedName(), entityJson);
 
     // Cache entity reference
     String refJson = JsonUtils.pojoToJson(fullEntity.getEntityReference());
-    cachedEntityDao.putReference(entityType, entity.getId(), refJson);
-    cachedEntityDao.putReferenceByName(entityType, entity.getFullyQualifiedName(), refJson);
+    cachedEntityDao.putReference(entityType, fullEntity.getId(), refJson);
+    cachedEntityDao.putReferenceByName(entityType, fullEntity.getFullyQualifiedName(), refJson);
 
     // Cache tags if available (stored in entity hash)
     if (fullEntity.getTags() != null && !fullEntity.getTags().isEmpty()) {
       String tagsJson = JsonUtils.pojoToJson(fullEntity.getTags());
       cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
     }
+
+    return true; // Successfully cached the entity
   }
 
   private void signalConsumersToStop(int numConsumers) {
@@ -416,8 +437,12 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         return;
       }
 
+      // Request essential fields to ensure entities are properly deserialized with IDs
       Source<?> source =
-          new PaginatedEntitiesSource(entityType, batchSize.get(), List.of("id", "name"));
+          new PaginatedEntitiesSource(
+              entityType,
+              batchSize.get(),
+              List.of("id", "name", "fullyQualifiedName", "version", "updatedAt", "updatedBy"));
       // Properly encode the offset as a cursor like SearchIndexApp does
       Object resultList =
           source.readWithCursor(RestUtil.encodeCursor(String.valueOf(currentOffset)));

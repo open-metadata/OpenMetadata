@@ -187,6 +187,21 @@ public class CachedEntityDao {
     LOG.debug("Invalidated reference cache for entity: {} -> {}", entityType, entityId);
   }
 
+  // Delete methods for evicting corrupted cache entries
+  public void deleteBase(String entityType, UUID entityId) {
+    String cacheKey = keys.entity(entityType, entityId);
+    cache.del(cacheKey);
+    LOG.debug("Deleted corrupted cache entry for entity: {} -> {}", entityType, entityId);
+  }
+
+  public void deleteByName(String entityType, String fqn) {
+    String entityCacheKey = keys.entityByName(entityType, fqn);
+    String refCacheKey = keys.refByName(entityType, fqn);
+    cache.del(entityCacheKey);
+    cache.del(refCacheKey);
+    LOG.debug("Deleted corrupted cache entries for entity by name: {} -> {}", entityType, fqn);
+  }
+
   public void invalidateReferenceByName(String entityType, String fqn) {
     String cacheKey = keys.refByName(entityType, fqn);
     cache.del(cacheKey);
