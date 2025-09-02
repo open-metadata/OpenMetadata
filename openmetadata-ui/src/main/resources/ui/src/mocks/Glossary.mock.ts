@@ -1413,7 +1413,7 @@ export const MOCK_CSV_GLOSSARY_DATA = {
   ],
   parseData: [
     {
-      entityStatus: '',
+      status: '',
       details: 'Entity updated',
       parent: '',
       'name*': 'WDcXWwSiEO',
@@ -1428,7 +1428,7 @@ export const MOCK_CSV_GLOSSARY_DATA = {
       owner: '',
     },
     {
-      entityStatus: '',
+      status: '',
       details: 'Entity updated',
       parent: 'Business Glossary.WDcXWwSiEO',
       'name*': 'WAZvgoykFi',
