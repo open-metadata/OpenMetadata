@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   playwright-ci-postgresql:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
@@ -54,9 +54,9 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
+          large-packages: true
+          swap-storage: false
+          docker-images: true
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -89,6 +89,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Cache Node Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            openmetadata-ui/src/main/resources/ui/node_modules
+            ~/.cache/yarn
+          key: ${{ runner.os }}-node-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -103,12 +121,23 @@ jobs:
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
+        run: |
+          # Use yarn cache if available
+          if [ ! -d "node_modules" ]; then
+            yarn --ignore-scripts --frozen-lockfile --prefer-offline
+          fi
+          
       - name: Install Playwright Browsers
-        run: npx playwright@1.51.1 install --with-deps
+        run: |
+          if [ ! -d "~/.cache/ms-playwright" ]; then
+            npx playwright@1.51.1 install --with-deps
+          else
+            npx playwright@1.51.1 install-deps
+          fi
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
+          # Run tests - using original worker count (4) and letting config handle reporters
           if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
             npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           else
