@@ -2614,7 +2614,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     String origJson = JsonUtils.pojoToJson(approvedTerm);
     approvedTerm.setDescription(updatedDescription);
     GlossaryTerm updatedTerm =
-        patchEntityUsingFqn(approvedTerm.getFullyQualifiedName(), origJson, approvedTerm, authHeaders(USER2.getName()));
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
 
     // Wait for new task to be created for the update
     waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
@@ -2685,7 +2689,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     String origJson = JsonUtils.pojoToJson(approvedTerm);
     approvedTerm.setDescription(updateDescription);
     GlossaryTerm updatedTerm =
-        patchEntityUsingFqn(approvedTerm.getFullyQualifiedName(), origJson, approvedTerm, authHeaders(USER2.getName()));
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
 
     // Wait for detailed task to be created
     waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
