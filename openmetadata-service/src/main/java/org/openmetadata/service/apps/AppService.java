@@ -114,7 +114,9 @@ public class AppService {
     try {
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(
-              APPLICATION, String.format(".*json/data/%s/.*\\.json$", APPLICATION), CreateApp.class);
+              APPLICATION,
+              String.format(".*json/data/%s/.*\\.json$", APPLICATION),
+              CreateApp.class);
       loadDefaultApplications(createAppsReq);
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
@@ -151,8 +153,7 @@ public class AppService {
 
   private App getAppForInit(String appName) {
     try {
-      return appRepository.getByName(
-          null, appName, appRepository.getFields("bot"), ALL, false);
+      return appRepository.getByName(null, appName, appRepository.getFields("bot"), ALL, false);
     } catch (EntityNotFoundException ex) {
       return null;
     }
@@ -174,7 +175,7 @@ public class AppService {
   public Response patchApp(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch)
       throws SchedulerException {
-    App app = appRepository.get(null, id, appRepository.getFields("bot,pipelines"));
+    App app = appRepository.get(null, id, appRepository.getFields("bot"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
@@ -218,9 +219,7 @@ public class AppService {
 
   public Response deleteApp(
       UriInfo uriInfo, SecurityContext securityContext, String name, boolean hardDelete) {
-    App app =
-        appRepository.getByName(
-            uriInfo, name, appRepository.getFields("bot,pipelines"), ALL, false);
+    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("bot"), ALL, false);
 
     if (app.getSystem()) {
       throw new IllegalArgumentException(
@@ -238,7 +237,7 @@ public class AppService {
 
   public Response deleteAppById(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
-    App app = appRepository.get(uriInfo, id, appRepository.getFields("bot,pipelines"), ALL, false);
+    App app = appRepository.get(uriInfo, id, appRepository.getFields("bot"), ALL, false);
 
     if (app.getSystem()) {
       throw new IllegalArgumentException(
@@ -261,9 +260,7 @@ public class AppService {
       boolean recursive,
       boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
-    App app =
-        appRepository.get(
-            uriInfo, id, appRepository.getFields("bot,pipelines"), Include.ALL, false);
+    App app = appRepository.get(uriInfo, id, appRepository.getFields("bot"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
     executorService.submit(
@@ -558,7 +555,7 @@ public class AppService {
 
   public Response getLastLogs(
       UriInfo uriInfo, SecurityContext securityContext, String name, String after) {
-    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id,pipelines"));
+    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id"));
 
     if (app.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
@@ -583,7 +580,7 @@ public class AppService {
 
   public Response getLatestAppRun(
       UriInfo uriInfo, SecurityContext securityContext, String name, String after) {
-    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id,pipelines"));
+    App app = appRepository.getByName(uriInfo, name, appRepository.getFields("id"));
 
     if (app.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)

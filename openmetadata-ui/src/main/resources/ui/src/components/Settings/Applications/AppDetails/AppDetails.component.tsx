@@ -102,7 +102,7 @@ const AppDetails = () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
     try {
       const data = await getApplicationByName(fqn, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINES],
+        fields: [TabSpecificField.OWNERS],
         include: Include.All,
       });
       setAppData(data);
@@ -241,7 +241,13 @@ const AppDetails = () => {
       const updatedFormData = formatFormDataForSubmit(data.formData);
       const updatedData = {
         ...appData,
-        appConfiguration: updatedFormData,
+        configuration: {
+          ...appData.configuration,
+          globalAppConfig: {
+            ...appData.configuration?.globalAppConfig,
+            config: updatedFormData,
+          },
+        },
       };
 
       const jsonPatch = compare(appData, updatedData);
@@ -338,7 +344,7 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
+      appData?.allowConfiguration && jsonSchema
         ? [
             {
               label: (

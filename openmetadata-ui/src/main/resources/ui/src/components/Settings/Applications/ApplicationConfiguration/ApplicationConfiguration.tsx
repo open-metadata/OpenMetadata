@@ -57,7 +57,11 @@ const ApplicationConfiguration = ({
     <FormBuilder
       useSelectWidget
       cancelText={t('label.back')}
-      formData={appData?.appConfiguration ?? {}}
+      formData={
+        appData?.configuration?.globalAppConfig?.config ??
+        (appData as any)?.appConfiguration ??
+        {}
+      }
       hideCancelButton={!onCancel}
       isLoading={isLoading}
       okText={t('label.save')}

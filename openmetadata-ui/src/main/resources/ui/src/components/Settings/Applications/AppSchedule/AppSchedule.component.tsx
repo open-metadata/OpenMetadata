@@ -81,8 +81,9 @@ const AppSchedule = ({
   }, [appData]);
 
   const cronString = useMemo(() => {
-    const cronExpression = (appData.appSchedule as AppScheduleClass)
-      ?.cronExpression;
+    const cronExpression = (
+      appData.configuration?.globalAppConfig?.schedule as AppScheduleClass
+    )?.cronExpression;
     if (cronExpression) {
       return cronstrue.toString(cronExpression, {
         throwExceptionOnParseError: false,
@@ -151,11 +152,18 @@ const AppSchedule = ({
         pipelineSchedules
       ),
       initialData: {
-        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+        cron: (
+          appData.configuration?.globalAppConfig?.schedule as AppScheduleClass
+        )?.cronExpression,
       },
       defaultCron: getCronDefaultValue(appData?.name ?? ''),
     };
-  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
+  }, [
+    appData.name,
+    appData.appType,
+    appData.configuration?.globalAppConfig?.schedule,
+    pipelineSchedules,
+  ]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -169,7 +177,7 @@ const AppSchedule = ({
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          {appData.appSchedule && (
+          {appData.configuration?.globalAppConfig?.schedule && (
             <>
               <div className="d-flex items-center gap-2">
                 <Typography.Text className="right-panel-label">
@@ -178,8 +186,10 @@ const AppSchedule = ({
                 <Typography.Text
                   className="font-medium"
                   data-testid="schedule-type">
-                  {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
-                    ''}
+                  {(
+                    appData.configuration?.globalAppConfig
+                      ?.schedule as AppScheduleClass
+                  ).scheduleTimeline ?? ''}
                 </Typography.Text>
               </div>
 
