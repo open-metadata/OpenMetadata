@@ -95,6 +95,7 @@ export class SearchIndexClass extends EntityClass {
     displayName: this.searchIndexName,
     service: this.service.name,
     fields: this.children,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

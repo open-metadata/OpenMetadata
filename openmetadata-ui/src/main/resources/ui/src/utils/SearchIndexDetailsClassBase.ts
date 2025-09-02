@@ -84,6 +84,7 @@ class SearchIndexClassBase {
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.SAMPLE_DATA,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.SEARCH_INDEX_SETTINGS,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({

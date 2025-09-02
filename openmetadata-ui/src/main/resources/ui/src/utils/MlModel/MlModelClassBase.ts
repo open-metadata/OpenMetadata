@@ -83,6 +83,7 @@ class MlModelDetailsClassBase {
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.DETAILS,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

@@ -40,9 +40,18 @@ export const ContractSemanticFormTab: React.FC<{
   onNext: () => void;
   onPrev: () => void;
   initialValues?: Partial<DataContract>;
-  nextLabel?: string;
-  prevLabel?: string;
-}> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({
+  onChange,
+  onNext,
+  onPrev,
+  initialValues,
+  buttonProps: { nextLabel, prevLabel, isNextVisible = true },
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const semanticsFormData: DataContract['semantics'] = Form.useWatch(
@@ -324,13 +333,16 @@ export const ContractSemanticFormTab: React.FC<{
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
-          {nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
+
+        {isNextVisible && (
+          <Button
+            className="contract-next-button"
+            type="primary"
+            onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+            <Icon component={RightIcon} />
+          </Button>
+        )}
       </div>
     </>
   );

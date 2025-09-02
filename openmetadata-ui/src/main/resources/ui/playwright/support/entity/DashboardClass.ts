@@ -51,6 +51,7 @@ export class DashboardClass extends EntityClass {
   entity = {
     name: this.dashboardName,
     displayName: this.dashboardName,
+    description: 'description',
     service: this.service.name,
     project: this.projectName,
   };

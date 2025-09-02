@@ -50,6 +50,7 @@ export class DatabaseSchemaClass extends EntityClass {
   entity = {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
