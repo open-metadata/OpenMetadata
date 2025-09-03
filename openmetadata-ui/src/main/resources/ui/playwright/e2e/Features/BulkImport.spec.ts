@@ -38,6 +38,7 @@ import {
   fillRowDetails,
   fillStoredProcedureCode,
   firstTimeGridAddRowAction,
+  performBulkDownload,
   performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
   pressKeyXTimes,
@@ -143,17 +144,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database service details', async () => {
       await dbService.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbService.entity.name);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbService.entity.name);
     });
 
     await test.step(
@@ -404,18 +395,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database details', async () => {
       await dbEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbEntity.entity.name);
     });
 
     await test.step(
@@ -613,17 +593,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database schema details', async () => {
       await dbSchemaEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbSchemaEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbSchemaEntity.entity.name);
     });
 
     await test.step(
@@ -787,18 +757,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data table details', async () => {
       await tableEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', tableEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, tableEntity.entity.name);
     });
 
     await test.step(
@@ -890,17 +849,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database schema details', async () => {
       await dbEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbEntity.entity.name);
     });
 
     await test.step(
@@ -988,17 +937,7 @@ test.describe('Bulk Import Export', () => {
       'should export data database schema details after edit changes',
       async () => {
         await dbEntity.visitEntityPage(page);
-
-        const downloadPromise = page.waitForEvent('download');
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="export-button-title"]');
-        await page.fill('#fileName', `${dbEntity.entity.name}-delete`);
-        await page.click('#submit-button');
-
-        const download = await downloadPromise;
-
-        // Wait for the download process to complete and save the downloaded file somewhere.
-        await download.saveAs('downloads/' + download.suggestedFilename());
+        await performBulkDownload(page, `${dbEntity.entity.name}-delete`);
       }
     );
 
@@ -1113,18 +1052,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database details', async () => {
       await dbEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', dbEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbEntity.entity.name);
     });
 
     await test.step('should import and test range selection', async () => {
