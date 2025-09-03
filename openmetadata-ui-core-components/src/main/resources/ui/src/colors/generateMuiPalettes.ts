@@ -44,18 +44,18 @@ export const generateMaterialPalette = (baseColor: string): ColorPalette => {
 
   const shadeKeys = [25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
-  const result: Record<number, string> = {};
+  const result = {} as ColorPalette;
   shadeKeys.forEach((key, index) => {
     if (key === 600) {
       // Shade 600 should exactly match user input
-      result[key] = normalizeHex(baseColor);
+      (result as any)[key] = normalizeHex(baseColor);
     } else {
       // Generate other shades using Material Design
-      result[key] = normalizeHex(hexFromArgb(palette.tone(tones[index])));
+      (result as any)[key] = normalizeHex(hexFromArgb(palette.tone(tones[index])));
     }
   });
 
-  return result;
+  return result as ColorPalette;
 };
 
 /**

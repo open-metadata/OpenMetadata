@@ -27,6 +27,7 @@ export default defineConfig({
         '@mui/material',
         '@mui/system',
         '@mui/icons-material',
+        '@mui/x-date-pickers',
         '@emotion/react',
         '@emotion/styled',
         '@material/material-color-utilities'

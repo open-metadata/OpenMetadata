@@ -44,13 +44,13 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
     styleOverrides: {
       root: {
         padding: '8px 12px',
-        position: 'relative',
+        position: 'relative' as const,
         color: colors.gray[600],
         backgroundColor: 'transparent',
         border: 'none',
         borderRadius: 0,
         minHeight: 'auto',
-        textTransform: 'none',
+        textTransform: 'none' as const,
         fontSize: '0.875rem',
         fontWeight: 500,
 
@@ -93,11 +93,11 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiBreadcrumbs: {
     styleOverrides: {
       root: {
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
       },
       ol: {
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
         gap: '8px',
         margin: 0,
@@ -146,14 +146,14 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiPagination: {
     styleOverrides: {
       root: {
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
         gap: '2px',
       },
       ul: {
         margin: 0,
         padding: 0,
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
         gap: '2px',
       },
@@ -162,10 +162,10 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiPaginationItem: {
     styleOverrides: {
       root: {
-        display: 'flex',
+        display: 'flex' as const,
         width: '40px',
         height: '40px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
         alignItems: 'center',
         justifyContent: 'center',
         padding: '12px',
@@ -268,11 +268,11 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiMenuItem: {
     styleOverrides: {
       root: {
-        position: 'relative',
-        display: 'flex',
+        position: 'relative' as const,
+        display: 'flex' as const,
         alignItems: 'center',
         borderRadius: '6px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
         margin: '1px 6px',
         padding: '8px 10px',
         fontSize: '0.875rem',
@@ -280,9 +280,9 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         color: colors.gray[700],
         backgroundColor: 'transparent',
         minHeight: 'auto',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        overflow: 'hidden' as const,
+        textOverflow: 'ellipsis' as const,
+        whiteSpace: 'nowrap' as const,
         transition: 'all 100ms linear',
         outline: `2px solid ${colors.brand[500]}`,
         outlineOffset: '-2px',

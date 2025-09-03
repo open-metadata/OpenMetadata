@@ -13,7 +13,7 @@
 import type { Components, Theme } from '@mui/material/styles';
 import { shadows } from './shadows';
 
-export const dataDisplayTheme = (colors: any): Components<Theme> => ({
+export const dataDisplayTheme = (colors: any): Components<Theme> & Record<string, any> => ({
   MuiCard: {
     styleOverrides: {
       root: {
@@ -53,15 +53,15 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         boxShadow: shadows.xs,
 
         '& .MuiAlert-icon .MuiSvgIcon-root': {
-          position: 'relative',
-          display: 'flex',
+          position: 'relative' as const,
+          display: 'flex' as const,
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: '16px',
 
           '&::before': {
             content: '""',
-            position: 'absolute',
+            position: 'absolute' as const,
             inset: '-8px',
             borderRadius: '50%',
             border: '2px solid',
@@ -71,7 +71,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
           },
           '&::after': {
             content: '""',
-            position: 'absolute',
+            position: 'absolute' as const,
             inset: '-16px',
             borderRadius: '50%',
             border: '2px solid',
@@ -90,9 +90,9 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
     },
     styleOverrides: {
       root: {
-        display: 'inline-flex',
+        display: 'inline-flex' as const,
         alignItems: 'center',
-        whiteSpace: 'nowrap',
+        whiteSpace: 'nowrap' as const,
         borderRadius: '6px',
         fontWeight: 500,
         border: '1px solid',
@@ -101,8 +101,8 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         height: 'auto',
         '& .MuiChip-label': {
           padding: 0,
-          overflow: 'visible',
-          textOverflow: 'clip',
+          overflow: 'visible' as const,
+          textOverflow: 'clip' as const,
         },
         '& .MuiChip-icon': {
           marginLeft: 0,
@@ -262,9 +262,9 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
     styleOverrides: {
       tooltip: {
         zIndex: 50,
-        display: 'flex',
+        display: 'flex' as const,
         maxWidth: '320px',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         alignItems: 'flex-start',
         gap: '4px',
         borderRadius: '8px',
@@ -302,10 +302,10 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
   MuiModal: {
     styleOverrides: {
       root: {
-        position: 'fixed',
+        position: 'fixed' as const,
         inset: 0,
         zIndex: 50,
-        display: 'flex',
+        display: 'flex' as const,
         minHeight: '100dvh',
         width: '100%',
         alignItems: 'flex-end',
@@ -352,8 +352,8 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         maxWidth: '544px',
         width: '100%',
         margin: 0,
-        position: 'relative',
-        overflow: 'hidden',
+        position: 'relative' as const,
+        overflow: 'hidden' as const,
 
         '@media (max-width: 639px)': {
           maxWidth: '100%',
@@ -363,7 +363,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         },
       },
       container: {
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
@@ -403,14 +403,14 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
   MuiDialogActions: {
     styleOverrides: {
       root: {
-        display: 'flex',
-        flexDirection: 'column-reverse',
+        display: 'flex' as const,
+        flexDirection: 'column-reverse' as const,
         gap: '12px',
         padding: '24px 16px 16px 16px',
         margin: 0,
 
         '@media (min-width: 640px)': {
-          flexDirection: 'row',
+          flexDirection: 'row' as const,
           alignItems: 'center',
           padding: '32px 24px 24px 24px',
 
@@ -439,7 +439,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         backgroundColor: colors.white,
         boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05)`,
         border: `1px solid ${colors.gray[200]}`,
-        overflow: 'hidden',
+        overflow: 'hidden' as const,
       },
     },
   },
@@ -447,7 +447,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
     styleOverrides: {
       root: {
         backgroundColor: colors.gray[50],
-        position: 'relative',
+        position: 'relative' as const,
         '& .MuiTableRow-root': {
           height: '44px',
         },
@@ -456,15 +456,15 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
           fontSize: '0.75rem',
           fontWeight: 500,
           color: colors.gray[500],
-          whiteSpace: 'nowrap',
-          position: 'relative',
+          whiteSpace: 'nowrap' as const,
+          position: 'relative' as const,
           lineHeight: 1.5,
           letterSpacing: '0.025em',
-          textTransform: 'none',
+          textTransform: 'none' as const,
 
           '&::after': {
             content: '""',
-            position: 'absolute',
+            position: 'absolute' as const,
             left: 0,
             right: 0,
             bottom: 0,
@@ -485,7 +485,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         backgroundColor: colors.white,
         '& .MuiTableRow-root': {
           height: '72px',
-          position: 'relative',
+          position: 'relative' as const,
           transition: 'background-color 150ms cubic-bezier(0.4, 0, 0.2, 1)',
           backgroundColor: 'transparent',
           outline: 'none',
@@ -504,7 +504,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
           },
 
           '&:last-child .MuiTableCell-root::after': {
-            display: 'none',
+            display: 'none' as const,
           },
         },
       },
@@ -513,7 +513,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
   MuiTableRow: {
     styleOverrides: {
       root: {
-        position: 'relative',
+        position: 'relative' as const,
         transition: 'background-color 150ms cubic-bezier(0.4, 0, 0.2, 1)',
         '&.MuiTableRow-hover:hover': {
           backgroundColor: colors.gray[50],
@@ -533,7 +533,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
     styleOverrides: {
       root: {
         borderBottom: 'none',
-        position: 'relative',
+        position: 'relative' as const,
         outline: 'none',
         '&:focus-visible': {
           zIndex: 1,
@@ -546,8 +546,8 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         fontSize: '0.75rem',
         fontWeight: 600,
         color: colors.gray[500],
-        whiteSpace: 'nowrap',
-        position: 'relative',
+        whiteSpace: 'nowrap' as const,
+        position: 'relative' as const,
         '&::after': {
           content: '""',
           position: 'absolute',
@@ -571,7 +571,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
         lineHeight: '1.25rem', // line-height for text-sm
         letterSpacing: '0%',
         color: '#181D27', // --Component-colors-Utility-Gray-utility-gray-900
-        position: 'relative',
+        position: 'relative' as const,
 
         '&::after': {
           content: '""',
@@ -614,10 +614,10 @@ export const dataDisplayTheme = (colors: any): Components<Theme> => ({
     styleOverrides: {
       root: {
         color: 'inherit',
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'center',
         gap: '4px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
         '&:hover': {
           color: colors.gray[500],
         },

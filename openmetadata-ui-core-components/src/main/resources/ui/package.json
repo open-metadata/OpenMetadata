@@ -66,6 +66,7 @@
   "peerDependencies": {
     "@mui/material": ">=7.0.0",
     "@mui/system": ">=7.0.0",
+    "@mui/x-date-pickers": ">=8.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
     "@emotion/react": ">=11.0.0",
@@ -81,6 +82,7 @@
     "vite-plugin-dts": "^3.0.0",
     "terser": "^5.0.0",
     "@mui/material": "^7.3.1",
+    "@mui/x-date-pickers": "^8.11.0",
     "@mui/system": "^7.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -19,7 +19,7 @@ import {
 export const formTheme = (colors: any) => ({
   MuiTextField: {
     defaultProps: {
-      variant: 'outlined',
+      variant: 'outlined' as const,
       InputLabelProps: {
         shrink: true,
       },
@@ -30,8 +30,8 @@ export const formTheme = (colors: any) => ({
     },
     styleOverrides: {
       root: {
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'flex' as const,
+        flexDirection: 'column' as const,
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
         gap: '6px',
@@ -41,10 +41,10 @@ export const formTheme = (colors: any) => ({
         padding: 0,
 
         '& .MuiInputLabel-root': {
-          position: 'static',
+          position: 'static' as const,
           transform: 'none',
-          display: 'flex',
-          cursor: 'default',
+          display: 'flex' as const,
+          cursor: 'default' as const,
           alignItems: 'center',
           gap: '2px',
           fontSize: '0.875rem',
@@ -98,7 +98,7 @@ export const formTheme = (colors: any) => ({
           '&.Mui-disabled': {
             backgroundColor: colors.gray[50],
             boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
-            cursor: 'not-allowed',
+            cursor: 'not-allowed' as const,
             '& .MuiOutlinedInput-notchedOutline': {
               border: 'none',
             },
@@ -142,7 +142,7 @@ export const formTheme = (colors: any) => ({
             padding: 0,
             fontSize: '1rem',
             lineHeight: '1.5rem',
-            resize: 'vertical',
+            resize: 'vertical' as const,
             minHeight: 'auto',
           },
         },
@@ -176,7 +176,7 @@ export const formTheme = (colors: any) => ({
         },
       },
       input: {
-        display: 'flex',
+        display: 'flex' as const,
         height: 'max-content',
         alignItems: 'center',
         padding: '10px 14px',
@@ -186,7 +186,7 @@ export const formTheme = (colors: any) => ({
         fontSize: '1rem',
         color: '${colors.gray[900]}',
         lineHeight: '1.5rem',
-        outline: 'none',
+        outline: 'none' as const,
         border: 'none',
         '&::placeholder': {
           color: colors.gray[500],
@@ -211,8 +211,8 @@ export const formTheme = (colors: any) => ({
   MuiFormControl: {
     styleOverrides: {
       root: {
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'flex' as const,
+        flexDirection: 'column' as const,
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
         gap: '6px',
@@ -222,10 +222,10 @@ export const formTheme = (colors: any) => ({
         padding: 0,
 
         '& .MuiInputLabel-root': {
-          position: 'static',
+          position: 'static' as const,
           transform: 'none',
-          display: 'flex',
-          cursor: 'default',
+          display: 'flex' as const,
+          cursor: 'default' as const,
           alignItems: 'center',
           gap: '2px',
           fontSize: '0.875rem',
@@ -303,12 +303,12 @@ export const formTheme = (colors: any) => ({
       },
 
       select: {
-        display: 'flex',
+        display: 'flex' as const,
         height: 'max-content',
         width: '100%',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        textAlign: 'left',
+        textAlign: 'left' as const,
         padding: '10px 14px',
         paddingRight: '40px',
         fontSize: '1rem',
@@ -316,8 +316,8 @@ export const formTheme = (colors: any) => ({
         color: '${colors.gray[900]}',
         backgroundColor: 'transparent',
         border: 'none',
-        outline: 'none',
-        overflow: 'hidden',
+        outline: 'none' as const,
+        overflow: 'hidden' as const,
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
 
@@ -357,7 +357,7 @@ export const formTheme = (colors: any) => ({
         padding: 0,
         width: '16px',
         height: '16px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
         transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
         borderRadius: 0,
         color: colors.gray[300], // Border color for unchecked state
@@ -427,12 +427,12 @@ export const formTheme = (colors: any) => ({
     styleOverrides: {
       root: {
         padding: 0,
-        display: 'flex',
+        display: 'flex' as const,
         width: '20px',
         height: '20px',
         minWidth: '20px',
         minHeight: '20px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: '50%',
@@ -513,11 +513,11 @@ export const formTheme = (colors: any) => ({
   MuiFormControlLabel: {
     styleOverrides: {
       root: {
-        display: 'flex',
+        display: 'flex' as const,
         alignItems: 'flex-start',
         margin: 0,
         gap: '12px',
-        cursor: 'pointer',
+        cursor: 'pointer' as const,
 
         '&.Mui-disabled': {
           cursor: 'not-allowed',
@@ -541,8 +541,8 @@ export const formTheme = (colors: any) => ({
         lineHeight: '1.5rem',
         fontWeight: 500,
         color: colors.gray[700],
-        cursor: 'pointer',
-        userSelect: 'none',
+        cursor: 'pointer' as const,
+        userSelect: 'none' as const,
         margin: 0,
 
         '&.Mui-disabled': {
@@ -586,7 +586,7 @@ export const formTheme = (colors: any) => ({
             },
           },
           '&.Mui-focusVisible': {
-            outline: 'none',
+            outline: 'none' as const,
           },
         },
         '& .MuiSwitch-thumb': {

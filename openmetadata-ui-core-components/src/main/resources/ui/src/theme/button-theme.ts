@@ -30,8 +30,8 @@ export const buttonTheme = (
     styleOverrides: {
       root: {
         '&.Mui-disabled': {
-          cursor: 'not-allowed !important',
-          pointerEvents: 'auto !important',
+          cursor: 'not-allowed !important' as const,
+          pointerEvents: 'auto !important' as const,
         },
       },
     },
@@ -43,11 +43,11 @@ export const buttonTheme = (
     styleOverrides: {
       root: {
         borderRadius: '8px',
-        textTransform: 'none',
+        textTransform: 'none' as const,
         fontWeight: 600,
         lineHeight: 1.43,
         transition: 'all 100ms linear',
-        position: 'relative',
+        position: 'relative' as const,
         '&:focus-visible': {
           outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
@@ -94,7 +94,7 @@ export const buttonTheme = (
         color: colors.white,
         boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC('transparent'),
         border: 'none',
-        position: 'relative',
+        position: 'relative' as const,
         ...buttonConstants.pseudoElements.whiteBorder,
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
@@ -134,7 +134,7 @@ export const buttonTheme = (
         color: colors.white,
         boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC('transparent'),
         border: 'none',
-        position: 'relative',
+        position: 'relative' as const,
         ...buttonConstants.pseudoElements.whiteBorder,
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
@@ -254,7 +254,7 @@ export const buttonTheme = (
       root: {
         borderRadius: '6px',
         transition: 'all 100ms linear',
-        position: 'relative',
+        position: 'relative' as const,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -285,7 +285,7 @@ export const buttonTheme = (
     },
     styleOverrides: {
       root: {
-        position: 'relative',
+        position: 'relative' as const,
         zIndex: 0,
         display: 'inline-flex',
         width: 'max-content',
@@ -314,7 +314,7 @@ export const buttonTheme = (
             borderRadius: 0,
           },
 
-          position: 'relative',
+          position: 'relative' as const,
           zIndex: 1,
           borderColor: 'transparent',
           backgroundColor: colors.white,
