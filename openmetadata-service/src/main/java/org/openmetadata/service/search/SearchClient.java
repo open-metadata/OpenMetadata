@@ -29,10 +29,10 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.ResultList;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
@@ -444,8 +444,13 @@ public interface SearchClient<T> {
   void close();
 
   default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end) throws IOException {
+      DataInsightCustomChart diChart, long start, long end, boolean live) throws IOException {
     return null;
+  }
+
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
+    return buildDIChart(diChart, start, end, false);
   }
 
   default List<Map<String, String>> fetchDIChartFields() throws IOException {

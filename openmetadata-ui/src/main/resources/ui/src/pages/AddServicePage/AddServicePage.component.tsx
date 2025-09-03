@@ -29,6 +29,7 @@ import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
@@ -79,7 +80,6 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
-
   const slashedBreadcrumb = getAddServiceEntityBreadcrumb(serviceCategory);
 
   const handleServiceTypeClick = (type: string) => {
@@ -185,7 +185,13 @@ const AddServicePage = () => {
     try {
       const serviceDetails = await postService(serviceCategory, configData);
 
-      await triggerTheAutoPilotApplication(serviceDetails);
+      if (
+        !EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(
+          getEntityTypeFromServiceCategory(serviceCategory)
+        )
+      ) {
+        await triggerTheAutoPilotApplication(serviceDetails);
+      }
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,

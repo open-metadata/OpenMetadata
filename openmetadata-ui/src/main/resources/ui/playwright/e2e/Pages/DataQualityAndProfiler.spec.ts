@@ -30,14 +30,10 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import {
-  visitDataQualityTab,
-  visitDataQualityTabWithCustomSearchBox,
-} from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { deleteTestCase } from '../../utils/testCases';
+import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -55,11 +51,27 @@ const testGlossary = new Glossary();
 const testGlossaryTerm1 = new GlossaryTerm(testGlossary);
 const testGlossaryTerm2 = new GlossaryTerm(testGlossary);
 
+const testCaseResult = {
+  result: 'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
+  testCaseStatus: 'Failed',
+  testResultValue: [
+    {
+      name: 'minValueForMaxInCol',
+      value: '10001',
+    },
+    {
+      name: 'maxValueForMaxInCol',
+      value: '27809',
+    },
+  ],
+  timestamp: getCurrentMillis(),
+};
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await table1.create(apiContext);
   await table2.create(apiContext);
-  await table2.createTestCase(apiContext, {
+  const testCase = await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
     entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
@@ -67,6 +79,13 @@ test.beforeAll(async ({ browser }) => {
     ],
     testDefinition: 'columnValuesToBeInSet',
   });
+
+  // Create test case result
+  await table2.addTestCaseResult(
+    apiContext,
+    testCase['fullyQualifiedName'],
+    testCaseResult
+  );
 
   // Create test tags and glossary terms
   await testClassification.create(apiContext);
@@ -109,7 +128,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     field: 'testCase',
     description: 'New table test case for TableColumnNameToExist',
   };
-  await visitDataQualityTabWithCustomSearchBox(page, table1);
+  await visitDataQualityTab(page, table1);
 
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="table"]');
@@ -258,7 +277,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     description: 'New table test case for columnValueLengthsToBeBetween',
   };
 
-  await visitDataQualityTabWithCustomSearchBox(page, table1);
+  await visitDataQualityTab(page, table1);
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="column"]');
 
@@ -398,13 +417,14 @@ test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
-    test.slow();
+    test.slow(true);
 
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
       serviceName: 'sample_data',
-      testCaseName: 'column_value_max_to_be_between',
     };
+
+    const testCase1 = table2.testCasesResponseData[0];
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
@@ -459,25 +479,16 @@ test(
       await expect(page.locator('#math_graph')).toBeVisible();
       await expect(page.locator('#sum_graph')).toBeVisible();
 
-      await page
-        .getByRole('menuitem', {
-          name: 'Data Quality',
-        })
-        .click();
-
-      await page.waitForSelector(
-        `[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`
-      );
       const getTestCaseDetails = page.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
       const getTestResult = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseResults/*?*'
       );
-      await page
-        .locator(`[data-testid="${DATA_QUALITY_TABLE.testCaseName}"]`)
-        .getByText(DATA_QUALITY_TABLE.testCaseName)
-        .click();
+
+      await page.goto(
+        `test-case/${testCase1.fullyQualifiedName}/test-case-results`
+      );
 
       const getTestCaseDetailsResponse = await getTestCaseDetails;
       const getTestResultResponse = await getTestResult;
@@ -485,9 +496,7 @@ test(
       expect(getTestCaseDetailsResponse.status()).toBe(200);
       expect(getTestResultResponse.status()).toBe(200);
 
-      await expect(
-        page.locator(`#${DATA_QUALITY_TABLE.testCaseName}_graph`)
-      ).toBeVisible();
+      await expect(page.locator(`#${testCase1.name}_graph`)).toBeVisible();
     };
 
     // Run all three user roles in parallel
@@ -507,7 +516,7 @@ test(
 
     const testCase = table2.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
-    await visitDataQualityTabWithCustomSearchBox(page, table2);
+    await visitDataQualityTab(page, table2);
 
     await test.step(
       'Array params value should be visible while editing the test case',
@@ -689,7 +698,7 @@ test(
       partitionValues: 'test',
     };
 
-    await table1.visitEntityPageWithCustomSearchBox(page);
+    await table1.visitEntityPage(page);
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
@@ -853,7 +862,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await domain.create(apiContext);
 
   // Add domain to table
-  await filterTable1.visitEntityPageWithCustomSearchBox(page);
+  await filterTable1.visitEntityPage(page);
   await assignDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,

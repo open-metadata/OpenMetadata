@@ -207,10 +207,18 @@ class StoredProcedureLineageMixin(ABC):
                 ).graph
 
             self.stored_procedure_query_lineage = True
+            # Prepare service names for lineage processing
+            service_names = [self.service_name]
+            if (
+                self.source_config.processCrossDatabaseLineage
+                and self.source_config.crossDatabaseServiceNames
+            ):
+                service_names.extend(self.source_config.crossDatabaseServiceNames)
+
             for either_lineage in get_lineage_by_query(
                 self.metadata,
                 query=query_by_procedure.query_text,
-                service_name=self.service_name,
+                service_names=service_names,
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(

@@ -26,6 +26,7 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
@@ -36,7 +37,6 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Getter
 @Repository
@@ -162,7 +162,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(recordEntity, entityClass));
   }
 
-  protected void postDelete(T recordEntity) {
+  protected void postDelete(T recordEntity, boolean hardDelete) {
     searchRepository.deleteTimeSeriesEntityById(JsonUtils.deepCopy(recordEntity, entityClass));
   }
 

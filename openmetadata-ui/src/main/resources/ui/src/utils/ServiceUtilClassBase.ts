@@ -15,7 +15,9 @@ import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
@@ -52,6 +54,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GRAFANA,
   GREENPLUM,
   HIVE,
   IBMDB2,
@@ -119,9 +122,11 @@ import {
   MlModelServiceTypeSmallCaseType,
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
+  SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
-import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
+import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
@@ -132,6 +137,7 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
@@ -143,6 +149,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getSecurityConfig } from './SecurityServiceUtils';
 import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
@@ -164,6 +171,10 @@ class ServiceUtilClassBase {
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
+    SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
+    DriveServiceType.GoogleDrive,
+    PipelineServiceType.Snowplow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -211,6 +222,11 @@ class ServiceUtilClassBase {
     ApiServiceTypeSmallCaseType
   >(APIServiceType);
 
+  SecurityServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    SecurityServiceTypeSmallCaseType
+  >(SecurityServiceType);
+
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
   }
@@ -239,7 +255,7 @@ class ServiceUtilClassBase {
       name: getTestConnectionName(connectionType),
       workflowType: WorkflowType.TestConnection,
       request: {
-        connection: { config: configData as ConfigClass },
+        connection: { config: configData as ConfigObject },
         serviceType,
         connectionType,
         serviceName,
@@ -305,7 +321,54 @@ class ServiceUtilClassBase {
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
+      securityServices: this.filterUnsupportedServiceType(
+        Object.values(SecurityServiceType) as string[]
+      ).sort(customServiceComparator),
     };
+  }
+
+  public getEntityTypeFromServiceType(serviceType: string): EntityType {
+    const serviceTypes = this.getSupportedServiceFromList();
+
+    // Check which service category the serviceType belongs to
+    if (serviceTypes.databaseServices.includes(serviceType)) {
+      return EntityType.TABLE;
+    }
+
+    if (serviceTypes.messagingServices.includes(serviceType)) {
+      return EntityType.TOPIC;
+    }
+
+    if (serviceTypes.dashboardServices.includes(serviceType)) {
+      return EntityType.DASHBOARD;
+    }
+
+    if (serviceTypes.pipelineServices.includes(serviceType)) {
+      return EntityType.PIPELINE;
+    }
+
+    if (serviceTypes.mlmodelServices.includes(serviceType)) {
+      return EntityType.MLMODEL;
+    }
+
+    if (serviceTypes.storageServices.includes(serviceType)) {
+      return EntityType.CONTAINER;
+    }
+
+    if (serviceTypes.searchServices.includes(serviceType)) {
+      return EntityType.SEARCH_INDEX;
+    }
+
+    if (serviceTypes.apiServices.includes(serviceType)) {
+      return EntityType.API_ENDPOINT;
+    }
+
+    if (serviceTypes.securityServices.includes(serviceType)) {
+      return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    // Default fallback
+    return EntityType.TABLE;
   }
 
   public getServiceLogo(type: string) {
@@ -589,6 +652,9 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;
 
+      case this.DashboardServiceTypeSmallCase.Grafana:
+        return GRAFANA;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -605,6 +671,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_STORAGE_DEFAULT;
         } else if (serviceTypes.searchServices.includes(type)) {
           logo = CUSTOM_SEARCH_DEFAULT;
+        } else if (serviceTypes.securityServices.includes(type)) {
+          logo = DEFAULT_SERVICE;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -636,6 +704,7 @@ class ServiceUtilClassBase {
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
     const api = this.ApiServiceTypeSmallCase;
+    const security = this.SecurityServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -671,6 +740,11 @@ class ServiceUtilClassBase {
         serviceType as typeof api[keyof typeof api]
       ):
         return ExplorePageTabs.API_ENDPOINT;
+
+      case Object.values(security).includes(
+        serviceType as typeof security[keyof typeof security]
+      ):
+        return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
 
       default:
         return ExplorePageTabs.TABLES;
@@ -713,9 +787,15 @@ class ServiceUtilClassBase {
     return getAPIConfig(type);
   }
 
+  public getSecurityServiceConfig(type: SecurityServiceType) {
+    return getSecurityConfig(type);
+  }
+
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
       PlatformInsightsWidget,
+      TotalDataAssetsWidget,
     };
 
     return widgets;

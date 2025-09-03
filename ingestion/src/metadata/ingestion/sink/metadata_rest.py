@@ -34,6 +34,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
@@ -41,6 +42,9 @@ from metadata.generated.schema.entity.data.searchIndex import (
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -684,6 +688,53 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.status.scanned(result)
 
         return Either(right=record)
+
+    @_run_dispatch.register
+    def write_data_contract_result(
+        self, record: DataContractResult
+    ) -> Either[DataContractResult]:
+        """
+        Send a DataContractResult to OM API
+        :param record: DataContractResult to be created/updated
+        """
+        try:
+            # Find the data contract by FQN to get its ID
+            data_contract = self.metadata.get_by_name(
+                entity=DataContract, fqn=record.dataContractFQN
+            )
+
+            if not data_contract:
+                error = f"Data contract not found: {record.dataContractFQN}"
+                return Either(
+                    left=StackTraceError(
+                        name="DataContractResult", error=error, stackTrace=None
+                    )
+                )
+
+            # Create or update the result using the mixin method
+            result = self.metadata.put_data_contract_result(
+                data_contract_id=data_contract.id, result=record
+            )
+
+            if result:
+                return Either(right=result)
+            else:
+                error = f"Failed to create data contract result for {record.dataContractFQN}"
+                return Either(
+                    left=StackTraceError(
+                        name="DataContractResult", error=error, stackTrace=None
+                    )
+                )
+
+        except Exception as exc:
+            error = f"Error processing data contract result: {exc}"
+            return Either(
+                left=StackTraceError(
+                    name="DataContractResult",
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     @_run_dispatch.register
     def write_pipeline_usage(self, pipeline_usage: PipelineUsage) -> Either[Pipeline]:

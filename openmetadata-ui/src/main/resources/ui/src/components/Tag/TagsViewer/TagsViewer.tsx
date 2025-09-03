@@ -29,6 +29,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   sizeCap = LIST_SIZE,
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
+  newLook = false,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -42,6 +43,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
         isVersionPage={tag?.added || tag?.removed}
         key={tag.tagFQN}
+        newLook={newLook}
         showOnlyName={tag.source === TagSource.Glossary}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}

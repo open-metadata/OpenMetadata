@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { groupBy, isEmpty, omit, reduce, sortBy, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Cell,
   Pie,
@@ -60,6 +61,7 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
@@ -310,26 +312,44 @@ const TotalDataAssetsWidget = ({
     }
   }, [graphData]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        className="items-center"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<TotalAssetsWidgetIcon height={24} width={24} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        title={t('label.data-insight-total-entity-summary')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => setSelectedSortBy(key)}
+        onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      widgetData?.w,
+      setSelectedSortBy,
+    ]
+  );
+
   return (
     <WidgetWrapper
       dataLength={graphData.length > 0 ? graphData.length : 10}
+      dataTestId="KnowledgePanel.TotalAssets"
+      header={widgetHeader}
       loading={isLoading}>
       <div className="total-data-assets-widget-container">
-        <WidgetHeader
-          className="items-center"
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.DATA_INSIGHT}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
-          title={t('label.data-insight-total-entity-summary')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => setSelectedSortBy(key)}
-        />
         <div className="widget-content flex-1 h-full">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
         </div>

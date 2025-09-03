@@ -143,6 +143,11 @@
       "$ref": "../type/entityReference.json",
       "deprecated": true
     },
+    "dataContract": {
+      "description": "Reference to the data contract that this test suite is associated with.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
     "summary": {
       "description": "Summary of the previous day test cases execution for this test suite.",
       "$ref": "./basic.json#/definitions/testSummary"

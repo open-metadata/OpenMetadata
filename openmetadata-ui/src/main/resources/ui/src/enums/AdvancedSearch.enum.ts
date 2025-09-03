@@ -74,6 +74,8 @@ export enum EntityFields {
   SERVICE_NAME = 'service.name.keyword',
   SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
   TAGS_LABEL_TYPE = 'tags.labelType',
+  TIER_LABEL_TYPE = 'tier.labelType',
+  CREATED_BY = 'createdBy',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
@@ -88,17 +90,21 @@ export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
   REVIEWERS = 'reviewers',
-  OWNERS = 'owners.fullyQualifiedName',
+  OWNERS = 'owners',
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
-  TAG = 'tags.tagFQN',
-  TIER = 'tier.tagFQN',
+  TAG = 'tags',
+  GLOSSARY_TERM = 'glossaryTerm',
+  TIER = 'tier',
+  DOMAIN = 'domains',
+  DATA_PRODUCT = 'dataProduct',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
   UPDATED_BY = 'updatedBy',
   CHANGE_DESCRIPTION = 'changeDescription',
+  DELETED = 'deleted',
 }

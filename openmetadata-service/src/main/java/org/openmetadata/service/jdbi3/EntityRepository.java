@@ -157,6 +157,7 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -177,6 +178,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -193,6 +195,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
@@ -209,7 +212,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -409,10 +411,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
     fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
+    fieldSupportMap.put(FIELD_FOLLOWERS, Pair.of(supportsFollower, this::fetchAndSetFollowers));
     fieldSupportMap.put(FIELD_DOMAINS, Pair.of(supportsDomains, this::fetchAndSetDomains));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
     fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
+    fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
+    fieldSupportMap.put(
+        FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
+    fieldSupportMap.put(
+        FIELD_CERTIFICATION, Pair.of(supportsCertification, this::fetchAndSetCertification));
 
     for (Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
         fieldSupportMap.entrySet()) {
@@ -759,6 +767,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return withHref(uriInfo, entityClone);
   }
 
+  public final Optional<T> getByNameOrNull(
+      UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
+    try {
+      return Optional.of(getByName(uriInfo, fqn, fields, include, fromCache));
+    } catch (EntityNotFoundException e) {
+      return Optional.empty();
+    }
+  }
+
   public final EntityReference getReferenceByName(String fqn, Include include) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
@@ -770,6 +787,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInBulk(fields, entities);
     entities.forEach(entity -> withHref(uriInfo, entity));
     return entities;
+  }
+
+  // Get Entity By Name excluding certain fields
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include) {
+    return getByNameWithExcludedFields(uriInfo, fqn, excludeFields, include, false);
+  }
+
+  // Form the Field Object by excluding certain fields and get entity by name
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include, boolean fromCache) {
+    Fields fields = EntityUtil.Fields.createWithExcludedFields(allowedFields, excludeFields);
+    return getByName(uriInfo, fqn, fields, include, fromCache);
   }
 
   public final T findByNameOrNull(String fqn, Include include) {
@@ -1181,11 +1211,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(entity);
   }
 
   protected void postCreate(List<T> entities) {
     for (T entity : entities) {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+      // Update RDF
+      RdfUpdater.updateEntity(entity);
     }
   }
 
@@ -1193,12 +1229,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @Transaction
@@ -1375,8 +1417,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
-      // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
@@ -1475,7 +1515,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1488,7 +1528,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = findByNameOrNull(name, ALL);
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-      postDelete(response.entity());
+      postDelete(response.entity(), hardDelete);
       deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
@@ -1501,7 +1541,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1511,7 +1551,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {}
+  protected void postDelete(T entity, boolean hardDelete) {
+    // Delete from RDF only on hard delete
+    if (hardDelete) {
+      RdfUpdater.deleteEntity(entity.getEntityReference());
+    }
+  }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (hardDelete) {
@@ -2390,6 +2435,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal());
+
+        // Update RDF store
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
       }
     }
   }
@@ -2410,6 +2458,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+
+      // Update RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+      }
     }
   }
 
@@ -2429,6 +2482,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
+
+      // Remove from RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFQN);
+      }
     }
   }
 
@@ -2509,38 +2567,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
-    if (!supportsDataProducts) {
-      return;
-    }
-
-    List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
-      // If no domains are being removed, nothing to do
-      return;
-    }
-
-    for (EntityReference domain : removedDomains) {
-      // Fetch domain data products
-      List<UUID> domainDataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      entityDataProducts.removeIf(
-          dataProduct -> {
-            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-            if (isNotDomainDataProduct) {
-              LOG.info(
-                  "Removing data product {} from entity {}",
-                  dataProduct.getFullyQualifiedName(),
-                  entity.getEntityReference().getType());
-            }
-            return isNotDomainDataProduct;
-          });
-    }
-  }
-
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
@@ -2613,6 +2639,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntity)
+            .withToEntity(toEntity)
+            .withRelationshipType(relationship);
+    RdfUpdater.addRelationship(entityRelationship);
+
+    if (bidirectional) {
+      // Also add the reverse relationship to RDF
+      EntityRelationship reverseRelationship =
+          new EntityRelationship()
+              .withFromId(toId)
+              .withToId(fromId)
+              .withFromEntity(toEntity)
+              .withToEntity(fromEntity)
+              .withRelationshipType(relationship);
+      RdfUpdater.addRelationship(reverseRelationship);
+    }
   }
 
   @Transaction
@@ -2693,9 +2741,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, toEntity, relationship, fromEntityType);
     ensureSingleRelationship(
         toEntity, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final EntityReference getFromEntityRef(
@@ -2704,20 +2762,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(
         entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.info(
+            "Skipping deleted entity reference in getFromEntityRef: {} {} - {}",
+            records.get(0).getType(),
+            records.get(0).getId(),
+            e.getMessage());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
-    return !records.isEmpty()
-        ? records.stream()
-            .map(fromRef -> Entity.getEntityReferenceById(fromRef.getType(), fromRef.getId(), ALL))
-            .collect(Collectors.toList())
-        : null;
+    if (!records.isEmpty()) {
+      List<EntityReference> refs = new ArrayList<>();
+      for (EntityRelationshipRecord record : records) {
+        try {
+          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
+        } catch (EntityNotFoundException e) {
+          // Skip deleted entities
+          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
+        }
+      }
+      return refs.isEmpty() ? null : refs;
+    }
+    return null;
   }
 
   public final EntityReference getToEntityRef(
@@ -2726,9 +2803,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findToRecords(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(
         entityType, fromId, records, relationship.value(), toEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public static void ensureSingleRelationship(
@@ -2783,6 +2870,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .delete(fromId, fromEntityType, toId, toEntityType, relationship.ordinal());
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntityType)
+            .withToEntity(toEntityType)
+            .withRelationshipType(relationship);
+    RdfUpdater.removeRelationship(entityRelationship);
   }
 
   public final void deleteTo(
@@ -4013,8 +4110,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4079,8 +4174,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4117,7 +4210,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(
@@ -4543,13 +4635,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
       }
       // Add relationships from updated
-      addRelationship(
-          fromId,
-          updatedToRef.getId(),
-          fromEntityType,
-          toEntityType,
-          relationshipType,
-          bidirectional);
+      if (updatedToRef != null) {
+        addRelationship(
+            fromId,
+            updatedToRef.getId(),
+            fromEntityType,
+            toEntityType,
+            relationshipType,
+            bidirectional);
+      }
     }
 
     /**
@@ -4624,7 +4718,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
 
       // Add relationships from updated
-      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      if (updatedFromRef != null) {
+        addRelationship(
+            updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      }
     }
 
     public final void storeUpdate() {
@@ -5018,6 +5115,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private void fetchAndSetFollowers(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || !supportsFollower) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> followersMap = batchFetchFollowers(entities);
+    for (T entity : entities) {
+      entity.setFollowers(followersMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
   private void fetchAndSetTags(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || !supportsTags) {
       return;
@@ -5064,7 +5171,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetChildren(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_CHILDREN) || entities == null || entities.isEmpty()) {
+    if (!fields.contains(FIELD_CHILDREN) || entities == null || nullOrEmpty(entities)) {
       return;
     }
 
@@ -5076,7 +5183,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void fetchAndSetReviewers(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || entities.isEmpty()) {
+    if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || nullOrEmpty(entities)) {
       return;
     }
 
@@ -5086,6 +5193,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> reviewers =
           reviewersMap.getOrDefault(entity.getId(), Collections.emptyList());
       entity.setReviewers(reviewers);
+    }
+  }
+
+  private void fetchAndSetVotes(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_VOTES) || !supportsVotes || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, Votes> votesMap = batchFetchVotes(entities);
+
+    for (T entity : entities) {
+      entity.setVotes(votesMap.getOrDefault(entity.getId(), new Votes()));
+    }
+  }
+
+  private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_DATA_PRODUCTS) || !supportsDataProducts || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> dataProductsMap = batchFetchDataProducts(entities);
+
+    for (T entity : entities) {
+      entity.setDataProducts(dataProductsMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
+  private void fetchAndSetCertification(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_CERTIFICATION) || !supportsCertification || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, AssetCertification> certificationMap = batchFetchCertification(entities);
+
+    for (T entity : entities) {
+      entity.setCertification(certificationMap.get(entity.getId()));
     }
   }
 
@@ -5143,6 +5286,110 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return ownersMap;
   }
 
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<T> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.FOLLOWS.ordinal(), Include.ALL);
+
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+
+    List<UUID> followerIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getFromId()))
+            .collect(Collectors.toList());
+
+    Map<UUID, EntityReference> followerRefs =
+        Entity.getEntityReferencesByIds(USER, followerIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    records.forEach(
+        record -> {
+          UUID entityId = UUID.fromString(record.getToId());
+          UUID followerId = UUID.fromString(record.getFromId());
+          EntityReference followerRef = followerRefs.get(followerId);
+          followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+        });
+
+    return followersMap;
+  }
+
+  private Map<UUID, Votes> batchFetchVotes(List<T> entities) {
+    var votesMap = new HashMap<UUID, Votes>();
+    if (entities == null || entities.isEmpty()) {
+      return votesMap;
+    }
+
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.VOTED.ordinal(), Entity.USER, ALL);
+
+    var upVoterIds = new HashMap<UUID, List<UUID>>();
+    var downVoterIds = new HashMap<UUID, List<UUID>>();
+    records.forEach(
+        rec -> {
+          UUID entityId = UUID.fromString(rec.getToId());
+          UUID userId = UUID.fromString(rec.getFromId());
+          VoteType type = JsonUtils.readValue(rec.getJson(), VoteType.class);
+          if (type == VoteType.VOTED_UP) {
+            upVoterIds.computeIfAbsent(entityId, k -> new ArrayList<>()).add(userId);
+          } else if (type == VoteType.VOTED_DOWN) {
+            downVoterIds.computeIfAbsent(entityId, k -> new ArrayList<>()).add(userId);
+          }
+        });
+
+    Set<UUID> allUserIds = new HashSet<>();
+    upVoterIds.values().forEach(allUserIds::addAll);
+    downVoterIds.values().forEach(allUserIds::addAll);
+    Map<UUID, EntityReference> userRefs =
+        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    for (T entity : entities) {
+      List<EntityReference> up =
+          upVoterIds.getOrDefault(entity.getId(), Collections.emptyList()).stream()
+              .map(userRefs::get)
+              .filter(Objects::nonNull)
+              .toList();
+      List<EntityReference> down =
+          downVoterIds.getOrDefault(entity.getId(), Collections.emptyList()).stream()
+              .map(userRefs::get)
+              .filter(Objects::nonNull)
+              .toList();
+      votesMap.put(
+          entity.getId(),
+          new Votes()
+              .withUpVotes(up.size())
+              .withDownVotes(down.size())
+              .withUpVoters(up)
+              .withDownVoters(down));
+    }
+
+    return votesMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
+    return batchFetchToIdsOneToMany(entities, Relationship.HAS, Entity.DATA_PRODUCT);
+  }
+
+  private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
+    var result = new HashMap<UUID, AssetCertification>();
+    if (entities == null || entities.isEmpty()) {
+      return result;
+    }
+    for (T entity : entities) {
+      result.put(entity.getId(), getCertification(entity));
+    }
+    return result;
+  }
+
   /**
    * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
    * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
@@ -5158,7 +5405,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
-  private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
+  protected Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
     if (entityFQNs == null || entityFQNs.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -5427,6 +5674,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
         record -> {
           var entityId = UUID.fromString(record.getFromId());
           var relatedRef = idReferenceMap.get(record.getToId());
+          if (relatedRef != null) {
+            resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+          }
+        });
+
+    return resultMap;
+  }
+
+  protected Map<UUID, List<EntityReference>> batchFetchToIdsOneToMany(
+      List<T> entities, Relationship relationship, String fromEntityType) {
+    var resultMap = new HashMap<UUID, List<EntityReference>>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), relationship.ordinal(), fromEntityType, ALL);
+
+    var idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                fromEntityType,
+                records.stream().map(e -> UUID.fromString(e.getFromId())).distinct().toList(),
+                ALL)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getToId());
+          var relatedRef = idReferenceMap.get(record.getFromId());
           if (relatedRef != null) {
             resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
           }

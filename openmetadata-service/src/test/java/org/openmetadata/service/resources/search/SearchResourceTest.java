@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.search;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
@@ -35,6 +36,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -174,6 +178,29 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
             assertEquals(
                 200, response.getStatus(), "Search in index '" + index + "' should succeed");
           });
+    }
+  }
+
+  @Test
+  void testDisplayNameFallbackSortingIntegration() throws IOException {
+    String testPrefix = "displayname_sort_test_" + System.currentTimeMillis();
+
+    // Create tables with different displayName scenarios to test the sorting behavior
+    List<Table> testTables = createTablesForDisplayNameSortTest(testPrefix);
+
+    // Wait for search indexing to complete
+    TestUtils.simulateWork(10);
+
+    try {
+      // Test sorting by displayName.keyword ASC - this is the scenario from the user's curl command
+      testDisplayNameSortingBehavior(testPrefix, "asc");
+
+      // Also test DESC sorting to ensure it works in both directions
+      testDisplayNameSortingBehavior(testPrefix, "desc");
+
+    } finally {
+      // Clean up test entities
+      cleanupTestTables(testTables);
     }
   }
 
@@ -839,12 +866,19 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testSearchQueryPaginationConsistency() throws IOException {
-    // Create multiple entities to test pagination
-    String pattern = "pagination_test_" + System.currentTimeMillis();
-    // Create 15 tables to ensure we have enough for pagination
+    // Create multiple entities to test pagination - varied score
+    String pattern = "pagination_test";
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
-      String tableName = pattern + "_table_" + String.format("%02d", i);
+      String minimalUUIDToBreakTies = UUID.randomUUID().toString().substring(0, 8);
+      String minimalUUIDsToBreakTies2 = UUID.randomUUID().toString().substring(0, 8);
+      String tableName =
+          "pagination_test_"
+              + i
+              + "_"
+              + UUID.randomUUID()
+              + minimalUUIDToBreakTies
+              + minimalUUIDsToBreakTies2;
       CreateTable createTable =
           tableResourceTest
               .createRequest(tableName)
@@ -855,7 +889,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       tables.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
     // Wait for indexing
-    TestUtils.simulateWork(5);
+    TestUtils.simulateWork(20);
     // Test pagination consistency
     assertDoesNotThrow(
         () -> {
@@ -905,14 +939,34 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           Set<String> tablePage1Ids = extractEntityIds(tablePage1);
           Set<String> tablePage2Ids = extractEntityIds(tablePage2);
 
+          Map<String, String> idToNameMap = getIdNameMapFromTables(tables);
+
+          // Helper to format id → name
+          Function<Set<String>, Map<String, String>> extractNames =
+              ids -> ids.stream().collect(Collectors.toMap(id -> id, idToNameMap::get));
+          LOG.info("Pagination Test - Page1 Entities: {}", extractNames.apply(tablePage1Ids));
+          LOG.info("Pagination Test - Page2 Entities: {}", extractNames.apply(tablePage2Ids));
+
           // Ensure no overlap between pages
           Set<String> intersection = new HashSet<>(tablePage1Ids);
           intersection.retainAll(tablePage2Ids);
-          assertTrue(intersection.isEmpty(), "No entities should appear in both pages");
-
+          assertTrue(
+              intersection.isEmpty(),
+              String.format(
+                  """
+                    No entities should appear in both pages, but found: %d
+                    Page 1 entities: %s
+                    Page 2 entities: %s""",
+                  intersection.size(), tablePage1Ids, tablePage2Ids));
           LOG.info(
               "Pagination test - Table total: {}, DataAsset total: {}", tableTotal, dataAssetTotal);
         });
+  }
+
+  // Get names from ids for logging
+  private Map<String, String> getIdNameMapFromTables(List<Table> tables) {
+    return tables.stream()
+        .collect(Collectors.toMap(table -> table.getId().toString(), Table::getName));
   }
 
   // Helper method to extract total hits from search response
@@ -1203,6 +1257,201 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       // This is where we might see the issue - when filtering by a database service,
       // we might still see dashboard/chart entities if they happen to have the same
       // service.displayName field
+    }
+  }
+
+  private List<Table> createTablesForDisplayNameSortTest(String testPrefix)
+      throws org.apache.http.client.HttpResponseException {
+    List<Table> tables = new ArrayList<>();
+
+    try {
+      // Table 1: Has a proper displayName starting with 'A'
+      CreateTable createTable1 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table1")
+              .withName("zebra_analytics_table_" + testPrefix)
+              .withDisplayName("Alpha Analytics Dashboard") // displayName starts with 'A'
+              .withDescription("Table with proper displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS));
+
+      // Table 2: Has null displayName (will fall back to name)
+      CreateTable createTable2 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table2")
+              .withName("alpha_data_table_" + testPrefix)
+              .withDisplayName(null) // null displayName - should fall back to name
+              .withDescription("Table with null displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS));
+
+      // Table 3: Has empty displayName (will fall back to name)
+      CreateTable createTable3 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table3")
+              .withName("beta_metrics_table_" + testPrefix)
+              .withDisplayName("") // empty displayName - should fall back to name
+              .withDescription("Table with empty displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS));
+
+      // Table 4: Has whitespace-only displayName (will fall back to name)
+      CreateTable createTable4 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table4")
+              .withName("gamma_reports_table_" + testPrefix)
+              .withDisplayName("   ") // whitespace-only displayName - should fall back to name
+              .withDescription("Table with whitespace displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable4, ADMIN_AUTH_HEADERS));
+
+      // Table 5: Has proper displayName starting with 'Z'
+      CreateTable createTable5 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table5")
+              .withName("omega_insights_table_" + testPrefix)
+              .withDisplayName("Zebra Business Intelligence") // displayName starts with 'Z'
+              .withDescription("Table with proper displayName starting with Z");
+
+      tables.add(tableResourceTest.createEntity(createTable5, ADMIN_AUTH_HEADERS));
+
+    } catch (Exception e) {
+      LOG.error("Error creating test tables: {}", e.getMessage());
+      // Clean up any tables that were created before the error
+      cleanupTestTables(tables);
+      throw e;
+    }
+
+    return tables;
+  }
+
+  private void testDisplayNameSortingBehavior(String testPrefix, String sortOrder)
+      throws IOException {
+    // Use a simpler approach - search by a pattern in the name and filter by entity type
+    // This avoids complex JSON encoding issues while still testing the sorting behavior
+    WebTarget target =
+        getResource("search/query")
+            .queryParam("q", testPrefix) // Search for our test prefix
+            .queryParam("index", "table") // Use table index directly
+            .queryParam("from", 0)
+            .queryParam("size", 15)
+            .queryParam("deleted", false)
+            .queryParam("sort_field", "displayName.keyword")
+            .queryParam("sort_order", sortOrder);
+
+    String searchResult = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode searchResponse = objectMapper.readTree(searchResult);
+
+    // Extract the hits from the search response
+    JsonNode hits = searchResponse.get("hits").get("hits");
+    assertTrue(hits.isArray(), "Search hits should be an array");
+    assertTrue(hits.size() >= 5, "Should find at least 5 test tables");
+
+    // Verify the sorting behavior
+    List<String> actualDisplayNames = new ArrayList<>();
+    List<String> actualNames = new ArrayList<>();
+
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.get("_source");
+      String displayName = source.get("displayName").asText();
+      String name = source.get("name").asText();
+
+      // Only process our test tables
+      if (name.contains(testPrefix)) {
+        actualDisplayNames.add(displayName);
+        actualNames.add(name);
+      }
+    }
+
+    assertEquals(5, actualDisplayNames.size(), "Should find exactly 5 test tables");
+
+    if ("asc".equals(sortOrder)) {
+      verifyAscendingSortOrder(actualDisplayNames, actualNames, testPrefix);
+    } else {
+      verifyDescendingSortOrder(actualDisplayNames, actualNames, testPrefix);
+    }
+
+    // Key assertion: Verify no empty displayName appears in results
+    for (String displayName : actualDisplayNames) {
+      assertNotNull(displayName, "DisplayName should never be null in search results");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in search results due to fallback logic");
+    }
+  }
+
+  private void verifyAscendingSortOrder(
+      List<String> displayNames, List<String> names, String testPrefix) {
+    // Print actual results for debugging
+    System.out.println("=== Actual Sort Results ===");
+    for (int i = 0; i < displayNames.size(); i++) {
+      System.out.println(String.format("%d. displayName='%s'", i, displayNames.get(i)));
+    }
+
+    // The key verification: displayName fallback is working
+    // 1. No empty displayNames in results (they should all fall back to name)
+    // 2. Proper sorting behavior
+
+    assertEquals(5, displayNames.size(), "Should find exactly 5 test tables");
+
+    // Verify no empty displayNames (this is the main fix)
+    for (String displayName : displayNames) {
+      assertNotNull(displayName, "DisplayName should never be null");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty (should fall back to name)");
+    }
+
+    // Verify the original issue is fixed: empty displayName doesn't sort to the top
+    assertNotEquals(
+        "", displayNames.getFirst(), "Empty displayName should not sort to the top in ASC order");
+
+    // Verify that entities with displayNames containing proper values are present
+    boolean hasAlphaAnalytics = displayNames.contains("Alpha Analytics Dashboard");
+    boolean hasZebraIntelligence = displayNames.contains("Zebra Business Intelligence");
+    boolean hasTableNames = displayNames.stream().anyMatch(name -> name.contains(testPrefix));
+
+    assertTrue(hasAlphaAnalytics, "Should find 'Alpha Analytics Dashboard'");
+    assertTrue(hasZebraIntelligence, "Should find 'Zebra Business Intelligence'");
+    assertTrue(hasTableNames, "Should find fallback table names with test prefix");
+  }
+
+  private void verifyDescendingSortOrder(
+      List<String> displayNames, List<String> names, String testPrefix) {
+    // Print actual results for debugging
+    System.out.println("=== Actual DESC Sort Results ===");
+    for (int i = 0; i < displayNames.size(); i++) {
+      System.out.printf("%d. displayName='%s'%n", i, displayNames.get(i));
+    }
+
+    assertEquals(5, displayNames.size(), "Should find exactly 5 test tables in DESC order");
+
+    // Verify no empty displayNames (this is the main fix)
+    for (String displayName : displayNames) {
+      assertNotNull(displayName, "DisplayName should never be null in DESC order");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in DESC order (should fall back to name)");
+    }
+
+    // Verify that entities with displayNames containing proper values are present
+    boolean hasAlphaAnalytics = displayNames.contains("Alpha Analytics Dashboard");
+    boolean hasZebraIntelligence = displayNames.contains("Zebra Business Intelligence");
+    boolean hasTableNames = displayNames.stream().anyMatch(name -> name.contains(testPrefix));
+
+    assertTrue(hasAlphaAnalytics, "Should find 'Alpha Analytics Dashboard' in DESC");
+    assertTrue(hasZebraIntelligence, "Should find 'Zebra Business Intelligence' in DESC");
+    assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
+  }
+
+  private void cleanupTestTables(List<Table> tables) {
+    for (Table table : tables) {
+      try {
+        tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+      } catch (Exception e) {
+        LOG.warn("Failed to cleanup test table {}: {}", table.getName(), e.getMessage());
+      }
     }
   }
 }

@@ -31,6 +31,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { getAllFeeds } from '../../../rest/feedsAPI';
@@ -78,8 +79,13 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 jest.mock(
   '../Widgets/Common/WidgetWrapper/WidgetWrapper',
   () =>
-    ({ children }: any) =>
-      <div data-testid="widget-wrapper">{children}</div>
+    ({ children, header }: any) =>
+      (
+        <div data-testid="widget-wrapper">
+          {header}
+          {children}
+        </div>
+      )
 );
 
 jest.mock(
@@ -220,7 +226,7 @@ describe('MyFeedWidget', () => {
         undefined,
         undefined,
         undefined,
-        10
+        PAGE_SIZE_MEDIUM
       );
     });
 
@@ -240,7 +246,7 @@ describe('MyFeedWidget', () => {
         undefined,
         undefined,
         undefined,
-        10
+        PAGE_SIZE_MEDIUM
       );
     });
   });

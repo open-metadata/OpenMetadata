@@ -25,7 +25,7 @@ const user2 = new UserClass();
 const user3 = new UserClass();
 let entityLinkList: string[];
 
-test.describe('Description Suggestions Table Entity', () => {
+test.describe.serial('Description Suggestions Table Entity', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -49,16 +49,6 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await table2.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.delete(apiContext);
-    await afterAction();
-  });
-
   test('View, Close, Reject and Accept the Suggestions', async ({
     browser,
   }) => {
@@ -66,7 +56,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     await test.step('View and Open the Suggestions', async () => {
       await redirectToHomePage(page);
-      await table.visitEntityPageWithCustomSearchBox(page);
+      await table.visitEntityPage(page);
 
       await expect(page.getByText('Suggested Descriptions')).toBeVisible();
 
@@ -157,9 +147,7 @@ test.describe('Description Suggestions Table Entity', () => {
         state: 'detached',
       });
 
-      await expect(page.locator('.ant-badge .ant-badge-count')).toContainText(
-        '6'
-      );
+      await expect(page.locator('.ant-badge [title="6"]')).toBeVisible();
 
       await expect(
         page.locator(
@@ -235,9 +223,15 @@ test.describe('Description Suggestions Table Entity', () => {
 
   test('Reject All Suggestions', async ({ browser }) => {
     const { page, afterAction } = await performAdminLogin(browser);
+    const { afterAction: afterAction2, apiContext: apiContext2 } =
+      await performUserLogin(browser, user1);
+
+    for (const entityLink of entityLinkList) {
+      await createTableDescriptionSuggestions(apiContext2, entityLink);
+    }
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     const allAvatarSuggestion = page
       .getByTestId('asset-description-container')
@@ -246,13 +240,13 @@ test.describe('Description Suggestions Table Entity', () => {
     // Click the first avatar
     await allAvatarSuggestion.nth(0).click();
 
-    const acceptResponse = page.waitForResponse(
+    const rejectResponse = page.waitForResponse(
       '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
     );
 
     await page.click(`[data-testid="reject-all-suggestions"]`);
 
-    await acceptResponse;
+    await rejectResponse;
 
     // check the last column description
     await expect(
@@ -267,6 +261,7 @@ test.describe('Description Suggestions Table Entity', () => {
     await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
 
     await afterAction();
+    await afterAction2();
   });
 
   test('Fetch on avatar click and then all Pending Suggestions button click', async ({
@@ -287,7 +282,7 @@ test.describe('Description Suggestions Table Entity', () => {
     }
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     const avatarSuggestion = page.waitForResponse(
       `/api/v1/suggestions?entityFQN=*userId=*`
@@ -313,7 +308,7 @@ test.describe('Description Suggestions Table Entity', () => {
       .getByTestId('profile-avatar');
 
     // Click the first avatar
-    await expect(allAvatarSuggestion).toHaveCount(4);
+    await expect(allAvatarSuggestion).toHaveCount(3);
 
     await afterAction();
     await afterAction2();
@@ -339,7 +334,7 @@ test.describe('Description Suggestions Table Entity', () => {
     }
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     for (let index = 0; index < 3; index++) {
       const avatarSuggestion = page.waitForResponse(
@@ -377,7 +372,7 @@ test.describe('Description Suggestions Table Entity', () => {
           page.getByTestId('more-suggestion-button')
         ).not.toBeVisible();
 
-        await expect(allAvatarSuggestion).toHaveCount(1);
+        await expect(allAvatarSuggestion).toHaveCount(0);
       }
     }
 
@@ -400,7 +395,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const suggestionFetchCallResponse = page.waitForResponse(
       '/api/v1/suggestions?entityFQN=*&limit=10'
     );
-    await table2.visitEntityPageWithCustomSearchBox(page);
+    await table2.visitEntityPage(page);
     await suggestionFetchCallResponse;
 
     const suggestionFetchCallResponse2 = page.waitForResponse(

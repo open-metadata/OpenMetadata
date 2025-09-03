@@ -245,7 +245,7 @@ const ActivityFeedCardNew = ({
               {/* Horizontal line connecting popover to end of container */}
               <div className="horizontal-line " />
 
-              <div className="d-flex flex-col w-full">
+              <div className="d-flex flex-col w-full min-w-0 overflow-hidden">
                 <div className="d-flex flex-col align-start">
                   <div
                     className={classNames(

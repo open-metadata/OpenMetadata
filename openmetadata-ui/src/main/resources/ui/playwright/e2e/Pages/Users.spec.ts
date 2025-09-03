@@ -139,11 +139,11 @@ test.describe('User with Admin Roles', () => {
   test('Update own admin details', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
 
-    await updateUserDetails(adminPage, {
-      ...updatedUserDetails,
-      isAdmin: true,
-      role: 'Admin',
-    });
+    await updateUserDetails(
+      adminPage,
+      updatedUserDetails.updatedDisplayName,
+      true
+    );
   });
 
   test('Create and Delete user', async ({ adminPage }) => {
@@ -325,7 +325,7 @@ test.describe('User with Data Consumer Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
 
-    await tableEntity.visitEntityPageWithCustomSearchBox(adminPage);
+    await tableEntity.visitEntityPage(adminPage);
 
     await addOwner({
       page: adminPage,
@@ -335,7 +335,7 @@ test.describe('User with Data Consumer Roles', () => {
       dataTestId: 'data-assets-header',
     });
 
-    await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
+    await tableEntity.visitEntityPage(dataConsumerPage);
 
     await checkDataConsumerPermissions(dataConsumerPage);
   });
@@ -345,10 +345,10 @@ test.describe('User with Data Consumer Roles', () => {
   }) => {
     await redirectToHomePage(dataConsumerPage);
 
-    await updateUserDetails(dataConsumerPage, {
-      ...updatedUserDetails,
-      isAdmin: false,
-    });
+    await updateUserDetails(
+      dataConsumerPage,
+      updatedUserDetails.updatedDisplayName
+    );
   });
 
   test('Reset Password for Data Consumer', async ({ dataConsumerPage }) => {
@@ -379,10 +379,10 @@ test.describe('User with Data Steward Roles', () => {
   test('Update user details for Data Steward', async ({ dataStewardPage }) => {
     await redirectToHomePage(dataStewardPage);
 
-    await updateUserDetails(dataStewardPage, {
-      ...updatedUserDetails,
-      isAdmin: false,
-    });
+    await updateUserDetails(
+      dataStewardPage,
+      updatedUserDetails.updatedDisplayName
+    );
   });
 
   test('Token generation & revocation for Data Steward', async ({
@@ -429,7 +429,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await tableEntity2.visitEntityPageWithCustomSearchBox(adminPage);
+    await tableEntity2.visitEntityPage(adminPage);
 
     await addOwner({
       page: adminPage,

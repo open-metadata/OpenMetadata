@@ -56,8 +56,7 @@ const GlossaryDetails = ({
   const { onAddGlossaryTerm } = useGlossaryStore();
 
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
-  const { tab: activeTab = EntityTabs.TERMS } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Glossary);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -87,6 +86,7 @@ const GlossaryDetails = ({
       {
         label: (
           <TabsLabel
+            count={glossary.termCount ?? glossary.childrenCount ?? 0}
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}

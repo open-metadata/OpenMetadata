@@ -55,7 +55,7 @@ export interface CreateDatabaseService {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -149,8 +149,12 @@ export interface DatabaseConnection {
  * Cockroach Database Connection Config
  *
  * SSAS Metadata Database Connection Config
+ *
+ * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -228,11 +232,15 @@ export interface ConfigClass {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -261,6 +269,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -286,6 +296,9 @@ export interface ConfigClass {
     awsConfig?:     AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -402,6 +415,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      */
     password?: string;
     /**
@@ -493,6 +508,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      */
     username?: string;
     /**
@@ -836,6 +854,25 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
@@ -1562,6 +1599,10 @@ export interface GCPCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  */
 export interface FilterPattern {
     /**
@@ -1572,6 +1613,15 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -1945,6 +1995,7 @@ export enum ConfigType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -1965,6 +2016,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
@@ -2065,6 +2117,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -2086,6 +2139,7 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",

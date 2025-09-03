@@ -176,9 +176,11 @@ export interface TestServiceConnectionRequest {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface RequestConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -275,6 +277,10 @@ export interface RequestConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -309,6 +315,8 @@ export interface RequestConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Kafka Connection Config
  *
@@ -358,6 +366,8 @@ export interface RequestConnection {
  *
  * Stitch Connection
  *
+ * Snowplow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -396,8 +406,10 @@ export interface RequestConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -451,7 +463,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
     /**
      * Billing Project ID
      */
@@ -532,6 +544,8 @@ export interface ConfigClass {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -560,6 +574,8 @@ export interface ConfigClass {
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
+     * URL to the Grafana instance.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -582,11 +598,15 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -614,6 +634,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -633,6 +655,9 @@ export interface ConfigClass {
     awsConfig?:     AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -750,6 +775,8 @@ export interface ConfigClass {
      *
      * Password
      *
+     * Password to connect to ServiceNow.
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -852,6 +879,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -979,6 +1009,8 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the tableau instance
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
@@ -1022,6 +1054,8 @@ export interface ConfigClass {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -1220,7 +1254,14 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -1232,6 +1273,8 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1262,6 +1305,24 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1416,6 +1477,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1601,6 +1666,22 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -1804,6 +1885,7 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    [property: string]: any;
 }
 
 /**
@@ -1832,6 +1914,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex exclude or include charts that matches the pattern.
  *
@@ -1935,6 +2021,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthConfigurationType {
     /**
@@ -1943,6 +2033,8 @@ export interface AuthConfigurationType {
      * Password to access the service.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -1959,6 +2051,8 @@ export interface AuthConfigurationType {
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -2447,6 +2541,15 @@ export interface ConsumerConfigSSLClass {
      * The private key associated with the SSL certificate.
      */
     sslKey?: string;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -3243,6 +3346,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -3251,6 +3364,15 @@ export interface ElasticsSearch {
      * Type of sink component ex: metadata
      */
     type: string;
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -3669,6 +3791,7 @@ export enum ConfigScheme {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -3876,6 +3999,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3909,8 +4034,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3948,12 +4075,14 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3987,6 +4116,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -3997,10 +4127,12 @@ export enum RESTType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",
@@ -4193,6 +4325,7 @@ export enum ServiceType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }
 

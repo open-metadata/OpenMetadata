@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Airbyte source to extract metadata
+Fivetran source to extract metadata
 """
 
 import traceback
@@ -166,7 +166,7 @@ class FivetranSource(PipelineServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
-        :param pipeline_details: pipeline_details object from airbyte
+        :param pipeline_details: pipeline_details object from fivetran
         :return: Lineage from inlets and outlets
         """
         self.client = cast(FivetranClient, self.client)

@@ -73,6 +73,7 @@ import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
+import org.openmetadata.service.search.indexes.SecurityServiceIndex;
 import org.openmetadata.service.search.indexes.SpreadsheetIndex;
 import org.openmetadata.service.search.indexes.StorageServiceIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
@@ -116,13 +117,14 @@ public class SearchIndexFactory {
       case Entity.TEST_SUITE -> new TestSuiteIndex((TestSuite) entity);
       case Entity.CHART -> new ChartIndex((Chart) entity);
       case Entity.DASHBOARD_DATA_MODEL -> new DashboardDataModelIndex((DashboardDataModel) entity);
-      case Entity.API_COLLCECTION -> new APICollectionIndex((APICollection) entity);
+      case Entity.API_COLLECTION -> new APICollectionIndex((APICollection) entity);
       case Entity.API_ENDPOINT -> new APIEndpointIndex((APIEndpoint) entity);
       case Entity.DASHBOARD_SERVICE -> new DashboardServiceIndex((DashboardService) entity);
       case Entity.DATABASE_SERVICE -> new DatabaseServiceIndex((DatabaseService) entity);
       case Entity.MESSAGING_SERVICE -> new MessagingServiceIndex((MessagingService) entity);
       case Entity.MLMODEL_SERVICE -> new MlModelServiceIndex((MlModelService) entity);
       case Entity.SEARCH_SERVICE -> new SearchServiceIndex((SearchService) entity);
+      case Entity.SECURITY_SERVICE -> new SecurityServiceIndex((SecurityService) entity);
       case Entity.API_SERVICE -> new APIServiceIndex((ApiService) entity);
       case Entity.SEARCH_INDEX -> new SearchEntityIndex(
           (org.openmetadata.schema.entity.data.SearchIndex) entity);

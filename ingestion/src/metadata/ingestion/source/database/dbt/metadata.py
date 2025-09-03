@@ -149,15 +149,41 @@ class DbtSource(DbtServiceSource):
         self, manifest_node: Any, catalog_node: Optional[Any]
     ) -> Optional[EntityReferenceList]:
         """
-        Returns dbt owner
+        Returns dbt owner with priority:
+        1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
+        2. manifest_node.meta.owner (old format)
+        3. catalog_node.metadata.owner (standard DBT location - LOWEST PRIORITY)
         """
         try:
-            owner_ref = None
             dbt_owner = None
-            if catalog_node:
-                dbt_owner = catalog_node.metadata.owner
-            if manifest_node:
-                dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
+
+            # PRIORITY 1: Check manifest node meta.openmetadata.owner
+            if manifest_node and manifest_node.meta:
+                openmetadata = manifest_node.meta.get("openmetadata", {})
+                if openmetadata:
+                    openmetadata_owner = openmetadata.get("owner")
+                    if openmetadata_owner:
+                        dbt_owner = openmetadata_owner
+
+            # PRIORITY 2: Check old format meta.owner
+            if not dbt_owner:
+                if manifest_node and manifest_node.meta:
+                    old_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
+                    if old_owner:
+                        dbt_owner = old_owner
+
+            # PRIORITY 3: Check catalog node
+            if not dbt_owner:
+                if catalog_node:
+                    try:
+                        catalog_owner = catalog_node.metadata.owner
+                        if catalog_owner:
+                            dbt_owner = catalog_owner
+                    except Exception as catalog_exc:
+                        logger.debug(
+                            f"Error accessing catalog_node.metadata.owner: {catalog_exc}"
+                        )
+
             if dbt_owner and isinstance(dbt_owner, str):
                 owner_ref = self.metadata.get_reference_by_name(
                     name=dbt_owner, is_owner=True
@@ -517,7 +543,7 @@ class DbtSource(DbtServiceSource):
 
                     if (
                         dbt_objects.dbt_sources
-                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                        and resource_type == DbtCommonEnum.SOURCE.value
                     ):
                         self.add_dbt_sources(
                             key,
@@ -681,20 +707,6 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
-
-        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
-            parent_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=get_corrected_name(dbt_node.database),
-                schema_name=get_corrected_name(dbt_node.schema_),
-                table_name=dbt_node.name,
-            )
-
-            # check if the parent table exists in OM before adding it to the upstream list
-            if self._get_table_entity(table_fqn=parent_fqn):
-                upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
 
@@ -898,7 +910,7 @@ class DbtSource(DbtServiceSource):
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_name=source_elements[0],
+                    service_names=source_elements[0],
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,

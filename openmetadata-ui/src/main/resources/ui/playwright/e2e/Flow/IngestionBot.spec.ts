@@ -24,6 +24,7 @@ import {
 } from '../../utils/domain';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
+import { setToken } from '../../utils/tokenStorage';
 
 const test = base.extend<{
   page: Page;
@@ -53,13 +54,7 @@ const test = base.extend<{
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
 
-    await page.evaluate((token) => {
-      // Set a new value for a key in localStorage
-      localStorage.setItem(
-        'om-session',
-        JSON.stringify({ oidcIdToken: token })
-      );
-    }, tokenData.config.JWTToken);
+    await setToken(page, tokenData.config.JWTToken);
 
     // await afterAction();
     await use(page);
@@ -131,7 +126,7 @@ test.describe('Ingestion Bot ', () => {
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset1) {
           await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPageWithCustomSearchBox(ingestionBotPage);
+          await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
             ingestionBotPage.getByTestId('permission-error-placeholder')
@@ -144,7 +139,7 @@ test.describe('Ingestion Bot ', () => {
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset2) {
           await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPageWithCustomSearchBox(ingestionBotPage);
+          await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
             ingestionBotPage.getByTestId('permission-error-placeholder')

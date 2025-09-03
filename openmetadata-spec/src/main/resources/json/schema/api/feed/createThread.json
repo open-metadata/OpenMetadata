@@ -59,6 +59,14 @@
     "chatbotDetails": {
       "description": "Details about the Chatbot conversation. This is only applicable if thread is of type Chatbot.",
       "$ref": "../../entity/feed/thread.json#/definitions/chatbotDetails"
+    },
+    "domains": {
+      "description": "Domain the entity belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
     }
   },
   "required": ["message", "from", "about"],

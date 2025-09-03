@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -45,6 +44,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.RdfTestUtils.*;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
@@ -139,6 +139,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -191,6 +192,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -201,6 +203,7 @@ import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -228,6 +231,7 @@ import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.resources.services.SecurityServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
@@ -242,7 +246,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
@@ -293,6 +296,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
       new Builder().filteredBy(Character::isLetterOrDigit).build();
+
+  public static final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
 
   public static Domain DOMAIN;
   public static Domain SUB_DOMAIN;
@@ -515,6 +520,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new MetricResourceTest().setupMetrics();
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
+    new SecurityServiceResourceTest().setupSecurityServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
     new PipelineServiceResourceTest().setupPipelineServices(test);
     new DashboardServiceResourceTest().setupDashboardServices(test);
@@ -671,6 +677,34 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
 
+  public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    EntityRulesSettings entityRulesSettings =
+        (EntityRulesSettings) currentSettings.getConfigValue();
+    entityRulesSettings
+        .getEntitySemantics()
+        .forEach(
+            rule -> {
+              if (ruleName.equals(rule.getName())) {
+                rule.setEnabled(enable);
+              }
+            });
+    systemRepository.updateSetting(currentSettings);
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -805,6 +839,251 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Clean up created entities
     for (T entity : entities) {
       deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_fieldFetchers(TestInfo test) throws HttpResponseException, IOException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    // Create all test resources first - these will be effectively final
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User testUser =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag testTag =
+        tagResourceTest.createEntity(tagResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    TagLabel testTagLabel = new TagLabel().withTagFQN(testTag.getFullyQualifiedName());
+
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain1 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS);
+    Domain testDomain2 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
+
+    // Create DataProduct for testing if supported
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    DataProduct testDataProduct = null;
+    if (supportsDataProducts && supportsDomains) {
+      CreateDataProduct createDataProduct =
+          dataProductResourceTest
+              .createRequest(test, 5)
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      testDataProduct = dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+    }
+
+    final String testName = "000_" + getEntityName(test);
+    final K createRequest =
+        createRequest(testName, "Test entity for field fetching", testName, null);
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    final UUID entityId = entity.getId(); // Store ID separately as it won't change
+
+    try {
+      String originalJson = JsonUtils.pojoToJson(entity);
+
+      if (supportsOwners) {
+        EntityReference owner =
+            new EntityReference()
+                .withId(testUser.getId())
+                .withType("user")
+                .withName(testUser.getName());
+        entity.setOwners(List.of(owner));
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      if (supportsTags) {
+        List<TagLabel> tags = Collections.singletonList(testTagLabel);
+        entity.setTags(tags);
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      if (supportsFollowers) {
+        addAndCheckFollower(entityId, testUser.getId(), Status.OK, 1, ADMIN_AUTH_HEADERS);
+        entity = getEntity(entityId, getAllowedFields(), ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      // Only attempt to patch domains if the entity supports both domains and domain patching
+      if (supportsDomains && supportsPatchDomains) {
+        List<EntityReference> domains =
+            Arrays.asList(
+                new EntityReference()
+                    .withId(testDomain1.getId())
+                    .withType("domain")
+                    .withName(testDomain1.getName()));
+        entity.setDomains(domains);
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+
+        // Add DataProducts if supported
+        if (supportsDataProducts && testDataProduct != null) {
+          entity.setDataProducts(List.of(testDataProduct.getEntityReference()));
+          entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        }
+      }
+
+      Map<String, String> params = new HashMap<>();
+      params.put("limit", "10");
+      ResultList<T> initialBatch = listEntities(params, ADMIN_AUTH_HEADERS);
+
+      Optional<T> ourEntity =
+          initialBatch.getData().stream().filter(e -> e.getId().equals(entityId)).findFirst();
+
+      assertTrue(
+          ourEntity.isPresent(),
+          "Our test entity should appear in first batch due to name sorting");
+
+      List<String> fieldCombinationsList = new ArrayList<>();
+      if (supportsOwners) fieldCombinationsList.add("owners");
+      if (supportsTags) fieldCombinationsList.add("tags");
+      if (supportsFollowers) fieldCombinationsList.add("followers");
+      if (supportsDomains) fieldCombinationsList.add("domains");
+      if (supportsDataProducts) fieldCombinationsList.add("dataProducts");
+      if (supportsExperts) fieldCombinationsList.add("experts");
+      if (supportsReviewers) fieldCombinationsList.add("reviewers");
+      if (supportsVotes) fieldCombinationsList.add("votes");
+
+      // Test combinations
+      if (supportsOwners && supportsTags) fieldCombinationsList.add("owners,tags");
+      if (supportsFollowers && supportsOwners) fieldCombinationsList.add("followers,owners");
+      if (supportsDomains && supportsTags) fieldCombinationsList.add("domains,tags");
+      if (supportsDataProducts && supportsDomains)
+        fieldCombinationsList.add("dataProducts,domains");
+
+      // Always test with all allowed fields
+      fieldCombinationsList.add(getAllowedFields());
+
+      for (String fields : fieldCombinationsList) {
+        if (fields == null || fields.isEmpty()) continue;
+
+        T individualEntity = getEntity(entityId, fields, ADMIN_AUTH_HEADERS);
+
+        params.clear();
+        params.put("fields", fields);
+        params.put("limit", "10");
+        ResultList<T> bulkResult = listEntities(params, ADMIN_AUTH_HEADERS);
+
+        Optional<T> batchEntity =
+            bulkResult.getData().stream().filter(e -> e.getId().equals(entityId)).findFirst();
+
+        assertTrue(
+            batchEntity.isPresent(),
+            "Test entity must be present in batch results due to name sorting");
+
+        final T batchEntityFound = batchEntity.get();
+
+        if (fields.contains("owners") && supportsOwners) {
+          List<EntityReference> batchOwners = listOrEmpty(batchEntityFound.getOwners());
+          List<EntityReference> indivOwners = listOrEmpty(individualEntity.getOwners());
+
+          assertFalse(batchOwners.isEmpty(), "Batch owners should not be empty");
+          assertFalse(indivOwners.isEmpty(), "Individual owners should not be empty");
+
+          final UUID testUserId = testUser.getId();
+          assertTrue(
+              batchOwners.stream().anyMatch(o -> o.getId().equals(testUserId)),
+              "Should find our test user in batch owners");
+          assertTrue(
+              indivOwners.stream().anyMatch(o -> o.getId().equals(testUserId)),
+              "Should find our test user in individual owners");
+        }
+
+        if (fields.contains("tags") && supportsTags) {
+          List<TagLabel> batchTags = listOrEmpty(batchEntityFound.getTags());
+          List<TagLabel> indivTags = listOrEmpty(individualEntity.getTags());
+
+          assertFalse(batchTags.isEmpty(), "Batch tags should not be empty");
+          assertFalse(indivTags.isEmpty(), "Individual tags should not be empty");
+
+          final String testTagFQN = testTagLabel.getTagFQN();
+          assertTrue(
+              batchTags.stream().anyMatch(t -> t.getTagFQN().equals(testTagFQN)),
+              "Should find our test tag in batch tags");
+          assertTrue(
+              indivTags.stream().anyMatch(t -> t.getTagFQN().equals(testTagFQN)),
+              "Should find our test tag in individual tags");
+        }
+
+        if (fields.contains("followers") && supportsFollowers) {
+          List<?> batchFollowers = listOrEmpty((List<?>) getField(batchEntityFound, "followers"));
+          List<?> indivFollowers = listOrEmpty((List<?>) getField(individualEntity, "followers"));
+
+          assertFalse(batchFollowers.isEmpty(), "Batch followers should not be empty");
+          assertFalse(indivFollowers.isEmpty(), "Individual followers should not be empty");
+
+          final UUID testUserId = testUser.getId();
+          assertTrue(
+              batchFollowers.stream()
+                  .anyMatch(f -> ((EntityReference) f).getId().equals(testUserId)),
+              "Should find our test user in batch followers");
+          assertTrue(
+              indivFollowers.stream()
+                  .anyMatch(f -> ((EntityReference) f).getId().equals(testUserId)),
+              "Should find our test user in individual followers");
+        }
+
+        if (fields.contains("domains") && supportsDomains && supportsPatchDomains) {
+          List<EntityReference> batchDomains = listOrEmpty(batchEntityFound.getDomains());
+          List<EntityReference> indivDomains = listOrEmpty(individualEntity.getDomains());
+
+          assertFalse(batchDomains.isEmpty(), "Batch domains should not be empty");
+          assertFalse(indivDomains.isEmpty(), "Individual domains should not be empty");
+
+          final UUID domain1Id = testDomain1.getId();
+
+          assertTrue(
+              batchDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
+              "Should find test domain 1 in batch domains");
+          assertTrue(
+              indivDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
+              "Should find test domain 1 in individual domains");
+        }
+
+        if (fields.contains("dataProducts") && supportsDataProducts && testDataProduct != null) {
+          List<EntityReference> batchDataProducts = listOrEmpty(batchEntityFound.getDataProducts());
+          List<EntityReference> indivDataProducts = listOrEmpty(individualEntity.getDataProducts());
+
+          assertEquals(
+              indivDataProducts.size(),
+              batchDataProducts.size(),
+              "DataProducts count mismatch between batch and individual fetch - This is the bug!");
+
+          if (!indivDataProducts.isEmpty()) {
+            assertFalse(
+                batchDataProducts.isEmpty(),
+                "Batch DataProducts empty when individual has them - This is the exact bug!");
+
+            final UUID dataProductId = testDataProduct.getId();
+            assertTrue(
+                batchDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in batch DataProducts");
+            assertTrue(
+                indivDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in individual DataProducts");
+          }
+        }
+
+        LOG.info("Successfully verified field combination: {}", fields);
+      }
+
+    } finally {
+      if (supportsOwners) userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsTags) tagResourceTest.deleteEntity(testTag.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsDataProducts && testDataProduct != null) {
+        dataProductResourceTest.deleteEntity(testDataProduct.getId(), ADMIN_AUTH_HEADERS);
+      }
+      if (supportsDomains) {
+        domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
+        domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+      }
     }
   }
 
@@ -984,8 +1263,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test
@@ -1213,11 +1492,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void get_entityListWithPagination_200(TestInfo test) throws IOException {
-    //    if (test.getTestClass().isPresent()) {
-    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
-    //        WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
-    //      }
-    //    }
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -1332,12 +1606,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
       }
     }
-
-    //    if (test.getTestClass().isPresent()) {
-    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
-    //        WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
-    //      }
-    //    }
   }
 
   protected void validateEntityListFromSearchWithPagination(
@@ -3370,7 +3638,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and update the entity with extension field intA to a new value
     JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
     jsonNode.set("intA", intAValue);
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     change = getChangeDescription(entity, MINOR_UPDATE);
     fieldUpdated(
         change,
@@ -3392,7 +3660,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
@@ -4319,6 +4587,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
+
+    // Verify entity is removed from RDF if enabled
+    // Note: Some entities like DataProduct don't support soft delete and are always hard deleted
+    boolean actuallyHardDeleted = hardDelete || !supportsSoftDelete;
+
+    if (!actuallyHardDeleted) {
+      // For soft delete, entity should still exist but marked as deleted
+      verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+    } else {
+      // For hard delete, entity should not exist in RDF
+      verifyEntityNotInRdf(entity.getFullyQualifiedName());
+    }
+
     return entity;
   }
 
@@ -4410,6 +4691,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Validate that change event was created
     validateChangeEvents(
         entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+
+    // Verify entity in RDF if enabled
+    verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+
     return entity;
   }
 
@@ -4564,6 +4849,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 
@@ -4604,6 +4907,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 

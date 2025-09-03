@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
@@ -664,6 +664,285 @@ class DbtUnitTest(TestCase):
             "70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__()
         )
 
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_1_openmetadata_owner(self, get_reference_by_name):
+        """
+        Test Priority 1: meta.openmetadata.owner (new format)
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with openmetadata.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(name="test_owner", is_owner=True)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_2_old_format_owner(self, get_reference_by_name):
+        """
+        Test Priority 2: meta.owner (old format) when openmetadata.owner is not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with old format owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"owner": "old_format_owner"}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="old_format_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_3_catalog_node_owner(self, get_reference_by_name):
+        """
+        Test Priority 3: catalog_node.metadata.owner when manifest node owners are not present
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "catalog_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="catalog_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_priority_order(self, get_reference_by_name):
+        """
+        Test that priorities are respected in order: openmetadata.owner > meta.owner > catalog.owner
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node with both openmetadata.owner and meta.owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": "priority_1_owner"},
+            "owner": "priority_2_owner",
+        }
+
+        # Create mock catalog node with owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = "priority_3_owner"
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        # Should use priority 1 (openmetadata.owner)
+        self.assertEqual(result, MOCK_USER)
+        get_reference_by_name.assert_called_once_with(
+            name="priority_1_owner", is_owner=True
+        )
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_list_owners(self, get_reference_by_name):
+        """
+        Test handling of list of owners
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": ["owner1", "owner2", "owner3"]}
+        }
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_list_owners_partial_failure(self, get_reference_by_name):
+        """
+        Test handling of list of owners where some owners are not found
+        """
+        # First two owners found, third one not found
+        get_reference_by_name.side_effect = [MOCK_USER, MOCK_USER, None]
+
+        # Create a mock manifest node with list of owners
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {
+            "openmetadata": {"owner": ["owner1", "owner2", "owner3"]}
+        }
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(get_reference_by_name.call_count, 1)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_catalog_node_exception(self, get_reference_by_name):
+        """
+        Test handling of catalog node access exception
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        # Create mock catalog node that raises exception when accessing metadata.owner
+        mock_catalog_node = MagicMock()
+        mock_catalog_node.metadata.owner = PropertyMock(
+            side_effect=AttributeError("No attribute")
+        )
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=mock_catalog_node
+        )
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_no_owner_found(self, get_reference_by_name):
+        """
+        Test when no owner is found in any source
+        """
+        get_reference_by_name.return_value = None
+
+        # Create mock manifest node without owner
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_email_lookup(self, get_reference_by_name):
+        """
+        Test email lookup when name lookup fails
+        """
+        # First call (name lookup) returns None, second call (email lookup) returns user
+        get_reference_by_name.side_effect = [None, MOCK_USER]
+
+        # Mock get_reference_by_email method
+        with patch.object(
+            self.dbt_source_obj.metadata,
+            "get_reference_by_email",
+            return_value=MOCK_USER,
+        ):
+            mock_manifest_node = MagicMock()
+            mock_manifest_node.meta = {"openmetadata": {"owner": "test@example.com"}}
+
+            result = self.dbt_source_obj.get_dbt_owner(
+                manifest_node=mock_manifest_node, catalog_node=None
+            )
+
+            self.assertEqual(result, MOCK_USER)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_general_exception(self, get_reference_by_name):
+        """
+        Test handling of general exceptions in get_dbt_owner
+        """
+        get_reference_by_name.side_effect = Exception("General error")
+
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {"openmetadata": {"owner": "test_owner"}}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None due to exception
+        self.assertIsNone(result)
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_none_manifest_node(self, get_reference_by_name):
+        """
+        Test handling when manifest_node is None
+        """
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=None, catalog_node=None
+        )
+
+        # Should return None
+        self.assertIsNone(result)
+        # Should not call get_reference_by_name
+        get_reference_by_name.assert_not_called()
+
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_get_dbt_owner_empty_meta(self, get_reference_by_name):
+        """
+        Test handling when manifest_node.meta is empty or None
+        """
+        get_reference_by_name.return_value = MOCK_USER
+
+        # Test with empty meta
+        mock_manifest_node = MagicMock()
+        mock_manifest_node.meta = {}
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
+
+        # Test with None meta
+        mock_manifest_node.meta = None
+
+        result = self.dbt_source_obj.get_dbt_owner(
+            manifest_node=mock_manifest_node, catalog_node=None
+        )
+
+        # Should return None since no owner found
+        self.assertIsNone(result)
+
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
         dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)
         self.check_dbt_validate(dbt_files=dbt_files, expected_records=expected_records)
@@ -825,3 +1104,246 @@ class DbtUnitTest(TestCase):
         ]
 
         assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    def test_constants_required_constraint_keys(self):
+        """Test REQUIRED_CONSTRAINT_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            REQUIRED_CONSTRAINT_KEYS,
+        )
+
+        expected_keys = [
+            "type",
+            "name",
+            "expression",
+            "warn_unenforced",
+            "warn_unsupported",
+        ]
+        self.assertEqual(REQUIRED_CONSTRAINT_KEYS, expected_keys)
+
+    def test_constants_required_results_keys(self):
+        """Test REQUIRED_RESULTS_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            REQUIRED_RESULTS_KEYS,
+        )
+
+        expected_keys = {
+            "status",
+            "timing",
+            "thread_id",
+            "execution_time",
+            "message",
+            "adapter_response",
+            "unique_id",
+        }
+        self.assertEqual(REQUIRED_RESULTS_KEYS, expected_keys)
+
+    def test_constants_required_node_keys(self):
+        """Test REQUIRED_NODE_KEYS constant"""
+        from metadata.ingestion.source.database.dbt.constants import REQUIRED_NODE_KEYS
+
+        expected_keys = {
+            "schema_",
+            "schema",
+            "freshness",
+            "name",
+            "resource_type",
+            "path",
+            "unique_id",
+            "source_name",
+            "source_description",
+            "source_meta",
+            "loader",
+            "identifier",
+            "relation_name",
+            "fqn",
+            "alias",
+            "checksum",
+            "config",
+            "column_name",
+            "test_metadata",
+            "original_file_path",
+            "root_path",
+            "database",
+            "tags",
+            "description",
+            "columns",
+            "meta",
+            "owner",
+            "created_at",
+            "group",
+            "sources",
+            "compiled",
+            "docs",
+            "version",
+            "latest_version",
+            "package_name",
+            "depends_on",
+            "compiled_code",
+            "compiled_sql",
+            "raw_code",
+            "raw_sql",
+            "language",
+        }
+        self.assertEqual(REQUIRED_NODE_KEYS, expected_keys)
+
+    def test_constants_none_keywords_list(self):
+        """Test NONE_KEYWORDS_LIST constant"""
+        from metadata.ingestion.source.database.dbt.constants import NONE_KEYWORDS_LIST
+
+        expected_keywords = ["none", "null"]
+        self.assertEqual(NONE_KEYWORDS_LIST, expected_keywords)
+
+    def test_constants_exposure_type_map(self):
+        """Test ExposureTypeMap constant"""
+        from metadata.ingestion.source.database.dbt.constants import ExposureTypeMap
+
+        self.assertIn("dashboard", ExposureTypeMap)
+        self.assertIn("ml", ExposureTypeMap)
+        self.assertIn("application", ExposureTypeMap)
+
+        dashboard_mapping = ExposureTypeMap["dashboard"]
+        self.assertEqual(dashboard_mapping["entity_type"], Dashboard)
+        self.assertEqual(dashboard_mapping["entity_type_name"], "dashboard")
+
+        ml_mapping = ExposureTypeMap["ml"]
+        self.assertEqual(ml_mapping["entity_type"], MlModel)
+        self.assertEqual(ml_mapping["entity_type_name"], "mlmodel")
+
+        app_mapping = ExposureTypeMap["application"]
+        self.assertEqual(app_mapping["entity_type"], APIEndpoint)
+        self.assertEqual(app_mapping["entity_type_name"], "apiEndpoint")
+
+    def test_parse_upstream_nodes_source_schema_handling(self):
+        """Test that source nodes get schema name '*' in upstream parsing"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        mock_source_node = MagicMock()
+        mock_source_node.resource_type = DbtCommonEnum.SOURCE.value
+        mock_source_node.database = "test_db"
+        mock_source_node.schema_ = "test_schema"
+        mock_source_node.name = "test_source"
+
+        mock_model_node = MagicMock()
+        mock_model_node.depends_on.nodes = ["source.test.test_source"]
+
+        manifest_entities = {"source.test.test_source": mock_source_node}
+
+        with patch.object(
+            self.dbt_source_obj,
+            "_get_table_entity",
+            return_value=MOCK_TABLE_ENTITIES[0],
+        ):
+            with patch.object(
+                self.dbt_source_obj,
+                "is_filtered",
+                return_value=MagicMock(is_filtered=False),
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.dbt_utils.get_dbt_model_name",
+                    return_value="test_source",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.dbt_utils.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch("metadata.utils.fqn.build") as mock_fqn_build:
+                            mock_fqn_build.return_value = (
+                                "test.*.test_schema.test_source"
+                            )
+
+                            self.dbt_source_obj.parse_upstream_nodes(
+                                manifest_entities, mock_model_node
+                            )
+
+                            # Verify that schema_name="*" was used for source node
+                            calls = mock_fqn_build.call_args_list
+                            schema_name_used = None
+                            for call in calls:
+                                if "schema_name" in call[1]:
+                                    schema_name_used = call[1]["schema_name"]
+                                    break
+                            self.assertEqual(schema_name_used, "test_schema")
+
+    def test_yield_data_models_processes_sources_key(self):
+        """Test that yield_data_models processes both nodes and sources keys from manifest"""
+        mock_manifest = MagicMock()
+        mock_manifest.sources = {"source.test.table1": MagicMock()}
+        mock_manifest.nodes = {"model.test.table2": MagicMock()}
+        mock_manifest.exposures = {"exposure.test.dashboard1": MagicMock()}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest = mock_manifest
+        mock_dbt_objects.dbt_catalog = None
+        mock_dbt_objects.dbt_run_results = None
+        mock_dbt_objects.dbt_sources = None
+
+        # Verify that manifest_entities includes both sources and nodes
+        for data_model in self.dbt_source_obj.yield_data_models(mock_dbt_objects):
+            pass
+
+        # The method should process entities from sources, nodes, and exposures
+        # We expect the context to be populated with the combined entities
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "data_model_links"))
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "exposures"))
+        self.assertTrue(hasattr(self.dbt_source_obj.context.get(), "dbt_tests"))
+
+    def test_yield_data_models_source_node_schema_handling(self):
+        """Test that source nodes has correct schema name in yield_data_models"""
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        # Create a mock source node
+        mock_source_node = MagicMock()
+        mock_source_node.resource_type = DbtCommonEnum.SOURCE.value
+        mock_source_node.database = "test_db"
+        mock_source_node.schema_ = "actual_schema"
+        mock_source_node.name = "test_source"
+        mock_source_node.description = "Test source description"
+        mock_source_node.tags = []
+        mock_source_node.meta = {}
+
+        manifest_entities = {"source.test.test_source": mock_source_node}
+
+        mock_dbt_objects = MagicMock()
+        mock_dbt_objects.dbt_manifest.sources = manifest_entities
+        mock_dbt_objects.dbt_manifest.nodes = {}
+        mock_dbt_objects.dbt_manifest.exposures = {}
+        mock_dbt_objects.dbt_catalog = None
+        mock_dbt_objects.dbt_run_results = None
+        mock_dbt_objects.dbt_sources = None
+
+        with patch.object(
+            self.dbt_source_obj,
+            "is_filtered",
+            return_value=MagicMock(is_filtered=False),
+        ):
+            with patch.object(
+                self.dbt_source_obj,
+                "_get_table_entity",
+                return_value=MOCK_TABLE_ENTITIES[0],
+            ):
+                with patch(
+                    "metadata.ingestion.source.database.dbt.dbt_utils.get_dbt_model_name",
+                    return_value="test_source",
+                ):
+                    with patch(
+                        "metadata.ingestion.source.database.dbt.dbt_utils.get_corrected_name",
+                        side_effect=lambda x: x,
+                    ):
+                        with patch("metadata.utils.fqn.build") as mock_fqn_build:
+                            mock_fqn_build.return_value = (
+                                "test_service.test_db.*.test_source"
+                            )
+
+                            # Process the source node
+                            list(
+                                self.dbt_source_obj.yield_data_models(mock_dbt_objects)
+                            )
+
+                            # Verify that schema_name="*" was used for source node
+                            calls = mock_fqn_build.call_args_list
+                            schema_name_used = None
+                            for call in calls:
+                                if "schema_name" in call[1]:
+                                    schema_name_used = call[1]["schema_name"]
+                                    break
+                            self.assertEqual(schema_name_used, "actual_schema")

@@ -20,9 +20,11 @@ import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg'
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import './upload-file.less';
 import { UploadFileProps } from './UploadFile.interface';
 
 const UploadFile: FC<UploadFileProps> = ({
+  disabled,
   fileType,
   beforeUpload,
   onCSVUploaded,
@@ -55,9 +57,10 @@ const UploadFile: FC<UploadFileProps> = ({
     <Dragger
       accept={fileType}
       beforeUpload={beforeUpload}
-      className="file-dragger-wrapper p-lg bg-white"
+      className="file-dragger-wrapper"
       customRequest={handleUpload}
       data-testid="upload-file-widget"
+      disabled={disabled}
       multiple={false}
       showUploadList={false}>
       <Space
@@ -66,10 +69,10 @@ const UploadFile: FC<UploadFileProps> = ({
         direction="vertical"
         size={42}>
         <ImportIcon height={86} width={86} />
-        <Typography.Text className="font-medium text-md">
+        <Typography.Text>
           <Transi18next
             i18nKey="message.drag-and-drop-or-browse-csv-files-here"
-            renderElement={<span className="text-primary browse-text" />}
+            renderElement={<span className="browse-text" />}
             values={{
               text: t('label.browse'),
             }}

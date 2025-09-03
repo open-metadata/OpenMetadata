@@ -18,7 +18,6 @@ import {
   assignDomain,
   removeDataProduct,
   removeDomain,
-  updateDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -40,6 +39,7 @@ import {
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
+  editAnnouncement,
   followEntity,
   hardDeleteEntity,
   removeCertification,
@@ -95,11 +95,6 @@ export class EntityClass {
     // Override for entity visit
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async visitEntityPageWithCustomSearchBox(_: Page) {
-    // Override for entity visit
-  }
-
   async prepareCustomProperty(apiContext: APIRequestContext) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
@@ -148,7 +143,11 @@ export class EntityClass {
     await assignDomain(page, domain1);
     await assignDataProduct(page, domain1, dataProduct1);
     await assignDataProduct(page, domain1, dataProduct2, 'Edit');
-    await updateDomain(page, domain2);
+    await removeDataProduct(page, dataProduct1);
+    await removeDataProduct(page, dataProduct2);
+    await removeDomain(page, domain1);
+
+    await assignDomain(page, domain2);
     await assignDataProduct(page, domain2, dataProduct3);
     await removeDataProduct(page, dataProduct3);
     await removeDomain(page, domain2);
@@ -485,7 +484,7 @@ export class EntityClass {
   async followUnfollowEntity(page: Page, entity: string) {
     await followEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, true);
-    await this.visitEntityPageWithCustomSearchBox(page);
+    await this.visitEntityPage(page);
     await unFollowEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, false);
   }
@@ -494,6 +493,10 @@ export class EntityClass {
     await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
+    });
+    await editAnnouncement(page, {
+      title: 'Edited Playwright Test Announcement',
+      description: 'Updated Playwright Test Announcement Description',
     });
     await replyAnnouncement(page);
     await deleteAnnouncement(page);

@@ -154,7 +154,7 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
-
+  public static final String SECURITY_SERVICE = "securityService";
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
   //
@@ -176,7 +176,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
 
-  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_COLLECTION = "apiCollection";
   public static final String API_ENDPOINT = "apiEndpoint";
 
   public static final String API = "api";
@@ -230,6 +230,7 @@ public final class Entity {
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
+  public static final String DATA_CONTRACT_RESULT = "dataContractResult";
 
   //
   // Other entities
@@ -280,6 +281,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SECURITY, SECURITY_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
@@ -295,7 +297,7 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(MLMODEL, MLMODEL_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(TOPIC, MESSAGING_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API, API_SERVICE);
-    ENTITY_SERVICE_TYPE_MAP.put(API_COLLCECTION, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_COLLECTION, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
@@ -312,10 +314,11 @@ public final class Entity {
             MLMODEL_SERVICE,
             PIPELINE_SERVICE,
             API_SERVICE,
-            API_COLLCECTION,
+            API_COLLECTION,
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            SECURITY_SERVICE,
             DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
@@ -528,6 +531,24 @@ public final class Entity {
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
+  }
+
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include) {
+    return getEntityByNameWithExcludedFields(entityType, fqn, excludeFields, include, false);
+  }
+
+  // Retrieve the entity by name excluding specific fields. Useful for import using CSV where
+  // certain fields are already sent in the csv
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity =
+        (T)
+            entityRepository.getByNameWithExcludedFields(
+                null, fqn, excludeFields, include, fromCache);
+    return entity;
   }
 
   public static <T> List<T> getEntityByNames(

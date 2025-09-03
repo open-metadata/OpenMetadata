@@ -43,18 +43,14 @@ export class GlossaryTerm extends EntityClass {
     if (parent) {
       this.data.parent = parent;
     }
-
-    this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
+    this.data.name = name ?? this.data.name;
+    this.data.displayName = name ?? this.data.displayName;
     this.data.reviewers = glossary.data.reviewers;
   }
 
   async visitEntityPage(page: Page) {
-    await this.visitPage(page);
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page) {
     await this.visitPage(page);
   }
 

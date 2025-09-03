@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { searchData } from '../../../rest/miscAPI';
 import { MyDataWidget } from './MyDataWidget.component';
@@ -88,7 +89,7 @@ describe('MyDataWidget component', () => {
     expect(searchData).toHaveBeenCalledWith(
       '',
       1,
-      10,
+      PAGE_SIZE_MEDIUM,
       '(owners.id:113)',
       'updatedAt',
       'desc',

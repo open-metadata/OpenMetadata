@@ -197,14 +197,34 @@ export const showAdvancedSearchDialog = async (page: Page) => {
 export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
-  optionTitle: string
+  optionTitle: string,
+  isSearchable = false
 ) => {
-  await dropdownLocator.click();
-  await page.keyboard.type(optionTitle);
+  if (isSearchable) {
+    // Force click on the selector to ensure it opens even if there's an existing selection
+    await dropdownLocator
+      .locator('.ant-select-selector')
+      .click({ force: true });
+
+    // Clear any existing input and type the new value
+    const combobox = dropdownLocator.getByRole('combobox');
+    await combobox.clear();
+    await combobox.fill(optionTitle);
+  } else {
+    await dropdownLocator.click();
+  }
+
+  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
+
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
+  await optionLocator.waitFor({ state: 'visible' });
+  await optionLocator.click();
 };
 
 export const fillRule = async (
@@ -227,7 +247,8 @@ export const fillRule = async (
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    field.id
+    field.id,
+    true
   );
 
   // Perform click on operator
@@ -595,7 +616,8 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    'Database'
+    'Database',
+    true
   );
   await selectOption(
     page,

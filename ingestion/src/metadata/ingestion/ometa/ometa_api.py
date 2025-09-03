@@ -37,6 +37,7 @@ from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContractMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
@@ -116,6 +117,7 @@ class OpenMetadata(
     ESMixin,
     OMetaServerMixin,
     OMetaDashboardMixin,
+    OMetaDataContractMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
     DataInsightMixin,
@@ -289,6 +291,7 @@ class OpenMetadata(
             .replace("storedprocedure", "storedProcedure")
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
+            .replace("datacontract", "dataContract")
         )
         class_path = ".".join(
             filter(
@@ -325,7 +328,7 @@ class OpenMetadata(
         resp = fn(
             # this might be a regular pydantic model so we build the context manually
             self.get_suffix(entity),
-            data=data.model_dump_json(context={"mask_secrets": False}),
+            data=data.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         if not resp:
             raise EmptyPayloadException(
@@ -334,7 +337,22 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def create_or_update(self, data: C) -> T:
-        """Run a PUT requesting via create request C"""
+        """
+        Run a PUT request via create request C.
+
+        Note: This method uses PUT operations with server-side business rules that may prevent
+        certain field overwrites across various entity types for data integrity reasons. If you
+        need to override existing metadata fields, consider using patch methods instead:
+
+        - For descriptions: Use patch_description(force=True)
+        - For general metadata: Use patch(override_metadata=True)
+
+        Args:
+            data: Create request object
+
+        Returns:
+            Updated or created entity
+        """
         return self._create(data=data, method="put")
 
     def create(self, data: C) -> T:

@@ -27,7 +27,6 @@ import { TopicClass } from '../support/entity/TopicClass';
 import {
   getApiContext,
   getEntityTypeSearchIndexMapping,
-  redirectToHomePage,
   toastNotification,
 } from './common';
 import { parseCSV } from './entityImport';
@@ -104,7 +103,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 8 })) {
+    for (const _ of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -124,7 +123,7 @@ export const deleteEdge = async (
 
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   await page
     .locator(
@@ -132,7 +131,7 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
@@ -504,8 +503,7 @@ export const addPipelineBetweenNodes = async (
   pipelineItem?: PipelineClass,
   bVerifyPipeline = false
 ) => {
-  await redirectToHomePage(page);
-  await sourceEntity.visitEntityPageWithCustomSearchBox(page);
+  await sourceEntity.visitEntityPage(page);
   await visitLineageTab(page);
   await editLineage(page);
 

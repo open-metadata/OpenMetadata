@@ -363,6 +363,7 @@ export const CustomizablePage = () => {
     case PageType.MlModel:
     case PageType.APIEndpoint:
     case PageType.APICollection:
+    case PageType.Chart:
       return (
         <CustomizeDetailsPage
           initialPageData={currentPage}

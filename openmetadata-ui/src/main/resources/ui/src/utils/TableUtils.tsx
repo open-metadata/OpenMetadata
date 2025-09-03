@@ -39,6 +39,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
@@ -131,7 +132,9 @@ import TableProfiler from '../components/Database/Profiler/TableProfiler/TablePr
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -158,6 +161,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -421,6 +425,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
@@ -451,6 +456,8 @@ export const getEntityIcon = (
     [EntityType.API_COLLECTION]: APICollectionIcon,
     [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
     ['location']: LocationIcon,
+    [EntityType.QUERY]: QueryIcon,
+    [SearchIndex.QUERY]: QueryIcon,
   };
 
   switch (indexType) {
@@ -903,6 +910,36 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.KNOWLEDGE_GRAPH}
+          name={get(
+            labelMap,
+            EntityTabs.KNOWLEDGE_GRAPH,
+            t('label.knowledge-graph')
+          )}
+        />
+      ),
+      key: EntityTabs.KNOWLEDGE_GRAPH,
+      children: (
+        <KnowledgeGraph
+          depth={2}
+          entity={
+            tableDetails
+              ? {
+                  id: tableDetails.id,
+                  name: tableDetails.name,
+                  fullyQualifiedName: tableDetails.fullyQualifiedName,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
+      ),
+      isHidden: !useApplicationStore.getState().rdfEnabled,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.DBT}
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
@@ -958,17 +995,18 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
     },
-    // {
-    //   label: (
-    //     <TabsLabel
-    //       id={EntityTabs.CONTRACT}
-    //       isActive={activeTab === EntityTabs.CONTRACT}
-    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
-    //     />
-    //   ),
-    //   key: EntityTabs.CONTRACT,
-    //   children: <ContractTab />,
-    // },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
     {
       label: (
         <TabsLabel
@@ -1283,4 +1321,104 @@ export const pruneEmptyChildren = (columns: Column[]): Column[] => {
       children: prunedChildren,
     };
   });
+};
+
+export const getSchemaFieldCount = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  let count = 0;
+
+  const countFields = (items: T[]): void => {
+    items.forEach((item) => {
+      count++;
+      if (item.children && item.children.length > 0) {
+        countFields(item.children);
+      }
+    });
+  };
+
+  countFields(fields);
+
+  return count;
+};
+
+export const getSchemaDepth = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  if (!fields || fields.length === 0) {
+    return 0;
+  }
+
+  let maxDepth = 1;
+
+  const calculateDepth = (items: T[], currentDepth: number): void => {
+    items.forEach((item) => {
+      maxDepth = Math.max(maxDepth, currentDepth);
+      if (item.children && item.children.length > 0) {
+        calculateDepth(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  calculateDepth(fields, 1);
+
+  return maxDepth;
+};
+
+export const isLargeSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 500
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const shouldCollapseSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 50
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const getExpandAllKeysToDepth = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  maxDepth = 3
+): string[] => {
+  const keys: string[] = [];
+
+  const collectKeys = (items: T[], currentDepth = 0): void => {
+    if (currentDepth >= maxDepth) {
+      return;
+    }
+
+    items.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        if (item.name) {
+          keys.push(item.name);
+        }
+        // Continue collecting keys from children up to maxDepth
+        collectKeys(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  collectKeys(fields);
+
+  return keys;
+};
+
+export const getSafeExpandAllKeys = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  isLargeSchema: boolean,
+  allKeys: string[]
+): string[] => {
+  if (!isLargeSchema) {
+    return allKeys;
+  }
+
+  // For large schemas, expand to exactly 2 levels deep
+  return getExpandAllKeysToDepth(fields, 2);
 };

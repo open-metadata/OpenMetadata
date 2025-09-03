@@ -40,6 +40,11 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest
     .fn()
     .mockResolvedValue({ data: [], paging: {} }),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),

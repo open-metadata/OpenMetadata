@@ -50,7 +50,8 @@ public class ElasticSearchLineChartAggregator
       long start,
       long end,
       List<FormulaHolder> formulas,
-      Map metricFormulaHolder)
+      Map metricFormulaHolder,
+      boolean live)
       throws IOException {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     AbstractAggregationBuilder aggregationBuilder;
@@ -119,12 +120,21 @@ public class ElasticSearchLineChartAggregator
         searchSourceBuilder.aggregation(aggregationBuilder);
       }
     }
-    QueryBuilder queryFilter =
-        new RangeQueryBuilder(DataInsightSystemChartRepository.TIMESTAMP_FIELD).gte(start).lte(end);
-    searchSourceBuilder.query(queryFilter);
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    es.org.elasticsearch.action.search.SearchRequest searchRequest;
+    if (!live) {
+      QueryBuilder queryFilter =
+          new RangeQueryBuilder(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+              .gte(start)
+              .lte(end);
+      searchSourceBuilder.query(queryFilter);
+      searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    } else {
+      searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
+    }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

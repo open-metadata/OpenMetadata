@@ -14,15 +14,24 @@
  * This schema defines the configuration for a Spark Engine runner.
  */
 export interface SparkEngineConfig {
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote: string;
     type:   Type;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 export enum Type {

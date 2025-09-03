@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS index_mapping_versions (
     PRIMARY KEY (entityType),
     INDEX idx_version (version),
     INDEX idx_updatedAt (updatedAt)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- remove old reset link email template

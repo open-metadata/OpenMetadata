@@ -124,6 +124,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -138,7 +139,6 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -529,6 +529,38 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Parameter 'invalidParameter' is not defined in the test definition. Defined parameters are: [missingValueMatch, missingCountValue]");
+  }
+
+  @Test
+  void post_testWithInvalidColumnName_4xx(TestInfo test) {
+    String invalidColumnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>",
+            TEST_TABLE1.getFullyQualifiedName(), "nonExistentColumn");
+    CreateTestCase create =
+        createRequest(test)
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName())
+            .withEntityLink(invalidColumnLink);
+
+    assertResponseContains(
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name nonExistentColumn");
+  }
+
+  @Test
+  void post_testWithWrongCaseColumnName_4xx(TestInfo test) {
+    String wrongCaseColumnLink =
+        String.format("<#E::table::%s::columns::%s>", TEST_TABLE1.getFullyQualifiedName(), "C1");
+    CreateTestCase create =
+        createRequest(test)
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName())
+            .withEntityLink(wrongCaseColumnLink);
+
+    assertResponseContains(
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name C1");
   }
 
   @Test

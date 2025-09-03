@@ -28,7 +28,7 @@ test(
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
-    await table.visitEntityPageWithCustomSearchBox(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.name);
     const testCaseName = `multi-pipeline-test-${uuid()}`;
     const pipelineName = `test suite pipeline 2`;
 
@@ -193,7 +193,7 @@ test(
       apiContext,
       testCaseNames
     );
-    await table.visitEntityPageWithCustomSearchBox(page, table.entity.name);
+    await table.visitEntityPage(page, table.entity.name);
     await page.getByText('Data Observability').click();
     await page.getByRole('menuitem', { name: 'Data Quality' }).click();
 

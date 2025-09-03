@@ -143,6 +143,9 @@ const AddTestSuitePipeline = ({
   return (
     <Form.Provider onFormChange={handleFromChange}>
       <ScheduleInterval
+        buttonProps={{
+          okText: isEditMode ? t('label.save') : t('label.create'),
+        }}
         debugLog={{ allow: true }}
         defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
         includePeriodOptions={includePeriodOptions}

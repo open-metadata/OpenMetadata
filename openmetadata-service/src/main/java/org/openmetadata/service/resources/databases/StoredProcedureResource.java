@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
@@ -30,7 +31,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/storedProcedures")
 @Tag(
@@ -44,7 +44,7 @@ public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owners,tags,followers,extension,domains,sourceHash";
+  static final String FIELDS = "owners,tags,followers,votes,extension,domains,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {

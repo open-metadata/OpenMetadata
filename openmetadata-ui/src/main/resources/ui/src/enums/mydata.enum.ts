@@ -23,6 +23,7 @@ export enum FeedFilter {
 
 export enum MyTaskFilter {
   ALL = 'ALL',
-  OWNER = 'OWNER',
-  FOLLOWS = 'FOLLOWS',
+  ASSIGNED_TO = 'ASSIGNED_TO',
+  MENTIONS = 'MENTIONS',
+  OWNER_OR_FOLLOWS = 'OWNER_OR_FOLLOWS',
 }

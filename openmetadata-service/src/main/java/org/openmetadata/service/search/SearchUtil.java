@@ -45,7 +45,7 @@ public class SearchUtil {
           "search_entity_search_index",
           Entity.SEARCH_INDEX,
           "api_collection_search_index",
-          Entity.API_COLLCECTION,
+          Entity.API_COLLECTION,
           "api_endpoint_search_index",
           Entity.API_ENDPOINT,
           "directory_search_index",
@@ -87,6 +87,7 @@ public class SearchUtil {
           "pipeline_service_index",
           "storage_service_index",
           "search_service_index",
+          "security_service_index",
           "metadata_service_index",
           "drive_service_index" -> true;
       default -> false;

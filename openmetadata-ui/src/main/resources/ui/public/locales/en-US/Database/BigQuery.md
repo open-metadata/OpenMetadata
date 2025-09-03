@@ -8,7 +8,7 @@ We need to enable the Data Catalog API and use an account with a specific set of
 
 ### Data Catalog API Permissions
 
-- Go to [Google Cloud Data Catalog API](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com) page,
+- Go to <a href="https://console.cloud.google.com/apis/library/datacatalog.googleapis.com" target="_blank">Google Cloud Data Catalog API</a> page,
 - Select the `GCP Project ID` that you want to enable the `Data Catalog API` on,
 - Click on `Enable API`, which will enable the Data Catalog API on the selected project.
 
@@ -33,13 +33,13 @@ Optional permissions, required for Usage & Lineage workflow
 - `bigquery.readsessions.getData`
 
 
-You can visit [this](https://docs.open-metadata.org/connectors/database/bigquery/roles) documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
+You can visit <a href="https://docs.open-metadata.org/connectors/database/bigquery/roles" target="_blank">this</a> documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
 
-You can find further information on the BigQuery connector in the [docs](https://docs.open-metadata.org/connectors/database/bigquery).
+You can find further information on the BigQuery connector in the <a href="https://docs.open-metadata.org/connectors/database/bigquery" target="_blank">docs</a>.
 
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `table_storage` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `table_storage` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
 ## Connection Details
 
@@ -60,9 +60,9 @@ $$section
 
 You can authenticate with your BigQuery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check <a href="https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console" target="_blank">this</a> documentation on how to create the service account keys and download it.
 
-If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCP credentials empty.
+If you want to use <a href="https://cloud.google.com/docs/authentication#adc" target="_blank">ADC authentication</a> for BigQuery you can just leave the GCP credentials empty.
 
 $$
 
@@ -157,7 +157,7 @@ $$
 $$section
 ### Taxonomy Project ID $(id="taxonomyProjectID")
 
-BigQuery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+BigQuery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control <a href="https://cloud.google.com/bigquery/docs/column-level-security" target="_blank">here</a>
 
 If you have attached policy tags to the columns of table available in BigQuery, then OpenMetadata will fetch those tags and attach it to the respective columns.
 
@@ -167,7 +167,7 @@ $$
 $$section
 ### Taxonomy Location $(id="taxonomyLocation")
 
-BigQuery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+BigQuery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how you can create policy tags and set up column-level access control <a href="https://cloud.google.com/bigquery/docs/column-level-security" target="_blank">here</a>
 
 If you have attached policy tags to the columns of table available in BigQuery, then OpenMetadata will fetch those tags and attach it to the respective columns.
 

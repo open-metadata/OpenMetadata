@@ -49,7 +49,7 @@
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/dataContract.json#/definitions/qualityExpectation"
+        "$ref": "../../type/entityReference.json"
       },
       "default": null
     },
@@ -77,9 +77,9 @@
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "scheduleConfig": {
-      "description": "Configuration for scheduling data contract validation checks.",
-      "$ref": "../../entity/data/dataContract.json#/properties/scheduleConfig"
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": [

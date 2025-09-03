@@ -85,11 +85,10 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPageWithCustomSearchBox(page);
+      await entity.visitEntityPage(page);
     });
 
-    // Need to address fixes for Domain / Data Product update
-    test.fixme('Domain Add, Update and Remove', async ({ page }) => {
+    test('Domain Add, Update and Remove', async ({ page }) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
@@ -145,7 +144,9 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    test(`Announcement create & delete`, async ({ page }) => {
+    test(`Announcement create, edit & delete`, async ({ page }) => {
+      test.slow();
+
       await entity.announcement(page);
     });
 
@@ -217,14 +218,14 @@ entities.forEach((EntityClass) => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    // get the token from localStorage
+    // get the token
     const token = await getToken(page);
 
     // create a new context with the token
     const apiContext = await getAuthContext(token);
     await deleteEntity.create(apiContext);
     await redirectToHomePage(page);
-    await deleteEntity.visitEntityPageWithCustomSearchBox(page);
+    await deleteEntity.visitEntityPage(page);
 
     await test.step('Soft delete', async () => {
       await deleteEntity.softDeleteEntity(

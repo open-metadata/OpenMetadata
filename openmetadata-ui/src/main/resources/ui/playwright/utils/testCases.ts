@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage, toastNotification } from './common';
+import { toastNotification } from './common';
 
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`delete-${testCaseName}`).click();
@@ -30,8 +30,7 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
 };
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
-  await redirectToHomePage(page);
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
   await page.getByTestId('profiler').click();
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'

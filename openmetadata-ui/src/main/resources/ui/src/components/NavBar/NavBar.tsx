@@ -126,6 +126,12 @@ const NavBar = () => {
     return pathname === ROUTES.MY_DATA;
   }, [location.pathname]);
 
+  const isTourPage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname.includes(ROUTES.TOUR);
+  }, [location.pathname]);
+
   const fetchOMVersion = async () => {
     try {
       const res = await getVersion();
@@ -460,11 +466,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {isHomePage ? (
-              <Typography.Text className="font-semibold navbar-title">
-                {t('label.home')}
-              </Typography.Text>
-            ) : (
+            {!isHomePage && !isTourPage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList

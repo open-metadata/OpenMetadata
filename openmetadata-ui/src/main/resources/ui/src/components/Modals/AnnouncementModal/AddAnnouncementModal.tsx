@@ -13,7 +13,7 @@
 
 import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { Moment } from 'moment';
+import { DateTime } from 'luxon';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
@@ -43,8 +43,8 @@ interface Props {
 export interface CreateAnnouncement {
   title: string;
   description: string;
-  startTime: Moment;
-  endTime: Moment;
+  startTime: DateTime;
+  endTime: DateTime;
 }
 
 const AddAnnouncementModal: FC<Props> = ({
@@ -66,8 +66,8 @@ const AddAnnouncementModal: FC<Props> = ({
     endTime,
     description,
   }: CreateAnnouncement) => {
-    const startTimeMs = startTime.valueOf();
-    const endTimeMs = endTime.valueOf();
+    const startTimeMs = startTime.toMillis();
+    const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));

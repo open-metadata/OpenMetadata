@@ -92,6 +92,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -642,7 +643,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  protected void postDelete(GlossaryTerm entity) {
+  protected void postDelete(GlossaryTerm entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this glossary term
     daoCollection
         .tagUsageDAO()
@@ -1329,6 +1331,106 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         invalidateTerm(tagRecord.getId());
       }
     }
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsById(
+      UUID glossaryId, String query, int limit, int offset, String fieldsParam, Include include) {
+    Glossary glossary =
+        Entity.getEntity(GLOSSARY, glossaryId, "id,name,fullyQualifiedName", include);
+    return searchGlossaryTermsInternal(
+        glossary.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByFQN(
+      String glossaryFqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include) {
+    return searchGlossaryTermsInternal(glossaryFqn, query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByParentId(
+      UUID parentId, String query, int limit, int offset, String fieldsParam, Include include) {
+    GlossaryTerm parentTerm =
+        Entity.getEntity(GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", include);
+    return searchGlossaryTermsInternal(
+        parentTerm.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByParentFQN(
+      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
+    return searchGlossaryTermsInternal(parentFqn, query, limit, offset, fieldsParam, include);
+  }
+
+  private String prepareSearchTerm(String query) {
+    // For LIKE queries, add wildcards
+    return "%" + query.trim() + "%";
+  }
+
+  private ResultList<GlossaryTerm> searchGlossaryTermsInternal(
+      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
+
+    CollectionDAO.GlossaryTermDAO dao = daoCollection.glossaryTermDAO();
+
+    // Build the parent hash for filtering
+    String parentHash = parentFqn != null ? FullyQualifiedName.buildHash(parentFqn) + ".%" : "%";
+
+    // If no search query, use regular listing
+    if (query == null || query.trim().isEmpty()) {
+      ListFilter filter = new ListFilter(include);
+      if (parentFqn != null) {
+        filter.addQueryParam("parent", parentFqn);
+      }
+
+      // Use cursor-based pagination with limit and convert offset to cursor
+      String afterCursor = offset > 0 ? String.valueOf(offset) : null;
+      ResultList<GlossaryTerm> result =
+          listAfter(null, getFields(fieldsParam), filter, limit, afterCursor);
+
+      // Convert pagination info
+      String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+      String after =
+          result.getPaging() != null && result.getPaging().getAfter() != null
+              ? String.valueOf(offset + limit)
+              : null;
+      int total =
+          result.getPaging() != null ? result.getPaging().getTotal() : result.getData().size();
+
+      return new ResultList<>(result.getData(), before, after, total);
+    }
+
+    // For search queries, fetch limit+1 to determine if there are more pages
+    // Prepare search term for full-text search
+    String searchTerm = prepareSearchTerm(query.trim());
+
+    // Fetch limit+1 records to check if there's a next page
+    List<String> jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+
+    // Check if we have more than limit results
+    boolean hasMore = jsons.size() > limit;
+    if (hasMore) {
+      // Remove the extra record
+      jsons = jsons.subList(0, limit);
+    }
+
+    List<GlossaryTerm> terms = new ArrayList<>();
+    for (String json : jsons) {
+      GlossaryTerm term = JsonUtils.readValue(json, GlossaryTerm.class);
+      setFields(term, getFields(fieldsParam));
+      terms.add(term);
+    }
+
+    // Set up pagination info
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = hasMore ? String.valueOf(offset + limit) : null;
+
+    // For the total count, we only know it's at least offset + terms.size() + (hasMore ? 1 : 0)
+    // This is sufficient for pagination without the expensive COUNT query
+    int knownTotal = offset + terms.size() + (hasMore ? 1 : 0);
+
+    return new ResultList<>(terms, before, after, knownTotal);
   }
 
   /**

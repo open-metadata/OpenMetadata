@@ -62,7 +62,7 @@ test.describe('Tags Suggestions Table Entity', () => {
 
     await test.step('View and Open the Suggestions', async () => {
       await redirectToHomePage(page);
-      await table.visitEntityPageWithCustomSearchBox(page);
+      await table.visitEntityPage(page);
 
       await expect(page.getByText('Suggested Descriptions')).toBeVisible();
 
@@ -192,7 +192,7 @@ test.describe('Tags Suggestions Table Entity', () => {
     );
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     const allAvatarSuggestion = page
       .getByTestId('asset-description-container')
@@ -226,7 +226,7 @@ test.describe('Tags Suggestions Table Entity', () => {
     const { page, afterAction } = await performAdminLogin(browser);
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     const allAvatarSuggestion = page
       .getByTestId('asset-description-container')

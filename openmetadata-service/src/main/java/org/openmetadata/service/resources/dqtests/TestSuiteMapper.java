@@ -14,6 +14,7 @@ public class TestSuiteMapper implements EntityMapper<TestSuite, CreateTestSuite>
         copy(new TestSuite(), create, user)
             .withDescription(create.getDescription())
             .withDisplayName(create.getDisplayName())
+            .withDataContract(create.getDataContract())
             .withName(create.getName());
     if (create.getBasicEntityReference() != null) {
       Table table =

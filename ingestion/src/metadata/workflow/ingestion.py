@@ -44,6 +44,11 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.importer import (
     DynamicImportException,
     MissingPluginException,
@@ -178,12 +183,20 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
-    def validate(self):
+    @inject
+    def validate(
+        self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None
+    ):
+        if profiler_config_class is None:
+            raise DependencyNotFoundError(
+                "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
+            )
+
         try:
             if not self.config.source.serviceConnection.root.config.supportsProfiler:
                 raise AttributeError()
         except AttributeError:
-            if ProfilerProcessorConfig.model_validate(
+            if profiler_config_class.model_validate(
                 self.config.processor.model_dump().get("config")
             ).ignoreValidation:
                 logger.debug(

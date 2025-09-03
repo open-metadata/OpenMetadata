@@ -65,7 +65,7 @@ export const getNewWidgetPlacement = (
 };
 
 /**
- * Creates a placeholder widget
+ * Creates a placeholder widget with collision prevention
  */
 const createPlaceholderWidget = (x = 0, y = 0) => ({
   h: customizeMyDataPageClassBase.defaultWidgetHeight,
@@ -73,14 +73,14 @@ const createPlaceholderWidget = (x = 0, y = 0) => ({
   w: 1,
   x,
   y,
-  static: false,
+  static: true, // Prevent collision - nothing can overlap this widget
   isDraggable: false,
 });
 
 /**
  * Separates regular widgets from placeholder widgets
  */
-const separateWidgets = (layout: WidgetConfig[]) => {
+export const separateWidgets = (layout: WidgetConfig[]) => {
   const regularWidgets = layout.filter(
     (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
   );
@@ -104,10 +104,10 @@ const packWidgetsTightly = (widgets: WidgetConfig[]): WidgetConfig[] => {
   }
 
   // Filter out placeholder widgets and sort by current position
-  const regularWidgets = widgets.filter(
-    (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
-  );
-  const sortedWidgets = [...regularWidgets].sort((a, b) => {
+  const { regularWidgets, placeholderWidget } = separateWidgets(widgets);
+
+  // Sort widgets by position to ensure proper tight packing
+  const sortedWidgets = regularWidgets.sort((a, b) => {
     if (a.y !== b.y) {
       return a.y - b.y;
     }
@@ -121,6 +121,20 @@ const packWidgetsTightly = (widgets: WidgetConfig[]): WidgetConfig[] => {
   let maxHeightInRow = 0;
 
   sortedWidgets.forEach((widget) => {
+    if (
+      widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER &&
+      widget.y === placeholderWidget?.y &&
+      widget.x >= placeholderWidget?.x
+    ) {
+      // Keep the widget's original position if it's at or after placeholder position
+      packedWidgets.push({
+        ...widget,
+        static: false,
+      });
+
+      return;
+    }
+
     // Check if widget fits in current row
     if (
       currentX + widget.w >
@@ -289,13 +303,16 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
+      // Calculate position at the end of all existing widgets
+      const placement = getNewWidgetPlacement(regularWidgets, widgetWidth);
+
       const newWidget = {
         w: widgetWidth,
         h: widgetHeight,
         i: widgetFQN,
         static: false,
-        x: 0,
-        y: 0,
+        x: placement.x,
+        y: placement.y,
       };
 
       return ensurePlaceholderAtEnd([...regularWidgets, newWidget]);
@@ -427,25 +444,19 @@ export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
  */
 export const getLayoutWithEmptyWidgetPlaceholder = (
   layout: WidgetConfig[],
-  emptyWidgetHeight = 4,
+  emptyWidgetHeight = 2,
   emptyWidgetWidth = 1
-) => {
-  // Handle empty or null layout
-  if (!layout || layout.length === 0) {
-    return [
-      {
-        h: emptyWidgetHeight,
-        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-        w: emptyWidgetWidth,
-        x: 0,
-        y: 0,
-        isDraggable: false,
-      },
-    ];
-  }
-
-  return ensurePlaceholderAtEnd(layout);
-};
+) => [
+  ...layout,
+  {
+    h: emptyWidgetHeight,
+    i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+    w: emptyWidgetWidth,
+    x: 0,
+    y: 1000,
+    isDraggable: false,
+  },
+];
 
 /**
  * Creates a landing page layout with empty widget placeholder

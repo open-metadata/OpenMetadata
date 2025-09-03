@@ -30,6 +30,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.driveService import (
+    DriveConnection,
+    DriveServiceType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -52,6 +56,10 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.entity.services.searchService import (
     SearchConnection,
     SearchServiceType,
+)
+from metadata.generated.schema.entity.services.securityService import (
+    SecurityConnection,
+    SecurityServiceType,
 )
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
@@ -99,6 +107,10 @@ from metadata.generated.schema.metadataIngestion.dbtPipeline import (
     DbtConfigType,
     DbtPipeline,
 )
+from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
+    DriveMetadataConfigType,
+    DriveServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,
     MessagingServiceMetadataPipeline,
@@ -114,6 +126,10 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchMetadataConfigType,
     SearchServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.securityServiceMetadataPipeline import (
+    SecurityMetadataConfigType,
+    SecurityServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     StorageMetadataConfigType,
@@ -144,6 +160,8 @@ SERVICE_TYPE_MAP = {
     **{service: MlModelConnection for service in MlModelServiceType.__members__},
     **{service: StorageConnection for service in StorageServiceType.__members__},
     **{service: SearchConnection for service in SearchServiceType.__members__},
+    **{service: SecurityConnection for service in SecurityServiceType.__members__},
+    **{service: DriveConnection for service in DriveServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
@@ -157,6 +175,8 @@ SOURCE_CONFIG_CLASS_MAP = {
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
     SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
+    SecurityMetadataConfigType.SecurityMetadata.value: SecurityServiceMetadataPipeline,
+    DriveMetadataConfigType.DriveMetadata.value: DriveServiceMetadataPipeline,
     DbtConfigType.DBT.value: DbtPipeline,
 }
 
@@ -190,6 +210,7 @@ def get_service_type(
     Type[MetadataConnection],
     Type[PipelineConnection],
     Type[MlModelConnection],
+    Type[DriveConnection],
 ]:
     """
     Return the service type for a source string
@@ -215,6 +236,7 @@ def get_source_config_class(
     Type[PipelineServiceMetadataPipeline],
     Type[MlModelServiceMetadataPipeline],
     Type[DatabaseServiceMetadataPipeline],
+    Type[DriveServiceMetadataPipeline],
     Type[DbtPipeline],
 ]:
     """
@@ -240,6 +262,7 @@ def get_connection_class(
         Type[MetadataConnection],
         Type[PipelineConnection],
         Type[MlModelConnection],
+        Type[DriveConnection],
     ],
 ) -> Type[T]:
     """
@@ -270,25 +293,31 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     Convert the validation error into a message to log
     """
     missing_fields = [
-        f"Extra parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Extra parameter in {err.get('loc')}"
+        (
+            f"Extra parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Extra parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "extra_forbidden"
     ]
 
     extra_fields = [
-        f"Missing parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Missing parameter in {err.get('loc')}"
+        (
+            f"Missing parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Missing parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "missing"
     ]
 
     invalid_fields = [
-        f"Invalid parameter value for '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Invalid parameter value for {err.get('loc')}"
+        (
+            f"Invalid parameter value for '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Invalid parameter value for {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") not in ("missing", "extra")
     ]

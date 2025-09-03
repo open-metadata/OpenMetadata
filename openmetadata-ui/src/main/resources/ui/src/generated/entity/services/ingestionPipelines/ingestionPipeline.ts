@@ -524,9 +524,21 @@ export enum AuthProvider {
  *
  * Regex to only fetch containers that matches the pattern.
  *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ *
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch tags that matches the pattern.
  */
@@ -808,6 +820,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * DriveService Metadata Pipeline Configuration.
+ *
  * SearchService Metadata Pipeline Configuration.
  *
  * TestSuite Pipeline Configuration.
@@ -929,15 +943,20 @@ export interface Pipeline {
      * Number of Threads to use in order to parallelize Table ingestion.
      *
      * Number of Threads to use in order to parallelize lineage ingestion.
+     *
+     * Number of Threads to use in order to parallelize Drive ingestion.
      */
     threads?: number;
     /**
      * Pipeline type
      */
-    type?: ConfigType;
+    type?: FluffyType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
+     * instead of raw name (e.g. file_name)
      */
     useFqnForFiltering?: boolean;
     /**
@@ -1172,6 +1191,62 @@ export interface Pipeline {
      */
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
+    /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to turn off fetching metadata for directories.
+     */
+    includeDirectories?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for files.
+     */
+    includeFiles?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for spreadsheets.
+     */
+    includeSpreadsheets?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for worksheets.
+     */
+    includeWorksheets?: boolean;
+    /**
+     * Optional configuration to soft delete directories in OpenMetadata if the source
+     * directories are deleted. Also, if the directory is deleted, all the associated entities
+     * like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted
+     */
+    markDeletedDirectories?: boolean;
+    /**
+     * Optional configuration to soft delete files in OpenMetadata if the source files are
+     * deleted. Also, if the file is deleted, all the associated entities like lineage, etc.,
+     * with that file will be deleted
+     */
+    markDeletedFiles?: boolean;
+    /**
+     * Optional configuration to soft delete spreadsheets in OpenMetadata if the source
+     * spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated
+     * entities like worksheets, lineage, etc., with that spreadsheet will be deleted
+     */
+    markDeletedSpreadsheets?: boolean;
+    /**
+     * Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets
+     * are deleted. Also, if the worksheet is deleted, all the associated entities like lineage,
+     * etc., with that worksheet will be deleted
+     */
+    markDeletedWorksheets?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
      */
@@ -1443,13 +1518,19 @@ export interface CollateAIAppConfig {
  * Action to take on those entities. E.g., propagate description through lineage, auto
  * tagging, etc.
  *
- * Apply Tags to the selected assets.
+ * Apply Classification Tags to the selected assets.
  *
- * Remove Tags Action Type
+ * Remove Classification Tags Action Type
+ *
+ * Apply Glossary Terms to the selected assets.
+ *
+ * Remove Glossary Terms Action Type
  *
  * Add domains to the selected assets.
  *
  * Remove domains from the selected assets.
+ *
+ * Apply Tags to the selected assets.
  *
  * Add a Custom Property to the selected assets.
  *
@@ -1481,6 +1562,12 @@ export interface Action {
      * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
+     *
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
@@ -1495,6 +1582,9 @@ export interface Action {
     /**
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
+     *
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
      *
      * Update the domains even if they are defined in the asset. By default, we will only apply
      * the domains to assets without domains.
@@ -1524,9 +1614,9 @@ export interface Action {
      */
     overwriteMetadata?: boolean;
     /**
-     * Tags to apply
+     * Classification Tags to apply (source must be 'Classification')
      *
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
     tags?: TierElement[];
     /**
@@ -1536,13 +1626,23 @@ export interface Action {
     /**
      * Remove tags from all the children and parent of the selected assets.
      *
+     * Remove terms from all the children and parent of the selected assets.
+     *
      * Remove descriptions from all the children and parent of the selected assets.
      */
     applyToAll?: boolean;
     /**
      * Remove tags by its label type
+     *
+     * Remove terms by its label type
      */
     labels?: LabelElement[];
+    /**
+     * Glossary Terms to apply
+     *
+     * Glossary Terms to remove
+     */
+    terms?: TierElement[];
     /**
      * Domains to apply
      */
@@ -1627,6 +1727,8 @@ export interface Action {
 
 /**
  * Remove tags by its label type
+ *
+ * Remove terms by its label type
  */
 export enum LabelElement {
     Automated = "Automated",
@@ -1653,7 +1755,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",
@@ -1892,7 +1994,11 @@ export interface TestCaseParameterValue {
  *
  * Add Tags action type.
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
+ *
+ * Add Terms action type.
+ *
+ * Remove Terms Action Type.
  *
  * Add Domain Action Type.
  *
@@ -1933,6 +2039,7 @@ export enum ActionType {
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTermsAction = "AddTermsAction",
     AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
@@ -1943,6 +2050,7 @@ export enum ActionType {
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTermsAction = "RemoveTermsAction",
     RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
@@ -2073,6 +2181,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -2255,6 +2364,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials for Google Drive API
  */
 export interface DbtSecurityConfigClass {
     /**
@@ -2560,15 +2671,24 @@ export interface ProcessingEngine {
     /**
      * The type of the engine configuration
      */
-    type: ProcessingEngineType;
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    type:    ProcessingEngineType;
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2626,9 +2746,13 @@ export interface ServiceConnections {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -2668,6 +2792,8 @@ export interface ServiceConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Google BigQuery Connection Config
  *
@@ -2760,6 +2886,10 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2820,6 +2950,8 @@ export interface ServiceConnection {
  *
  * Stitch Connection
  *
+ * Snowplow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -2846,8 +2978,16 @@ export interface ServiceConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -2901,7 +3041,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -2916,6 +3056,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -2926,6 +3068,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -2969,6 +3113,8 @@ export interface ConfigClass {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      *
      * BigQuery APIs URL.
      *
@@ -3026,6 +3172,8 @@ export interface ConfigClass {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -3048,6 +3196,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -3110,6 +3260,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -3218,6 +3370,9 @@ export interface ConfigClass {
      *
      * Username
      *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -3250,6 +3405,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -3265,9 +3422,16 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * API key to authenticate with the SAP ERP APIs.
      *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -3306,6 +3470,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -3323,6 +3489,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -3332,6 +3500,8 @@ export interface ConfigClass {
      */
     sslConfig?: SSLConfigObject;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
@@ -3445,6 +3615,10 @@ export interface ConfigClass {
      */
     orgId?: string;
     /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
+    /**
      * Billing Project ID
      */
     billingProjectId?: string;
@@ -3460,6 +3634,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -3469,6 +3645,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -3496,6 +3674,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -3514,6 +3694,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -3717,6 +3900,8 @@ export interface ConfigClass {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -3866,6 +4051,24 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -4222,6 +4425,22 @@ export interface ConfigClass {
      */
     subscription_id?: string;
     /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -4254,6 +4473,29 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
+    [property: string]: any;
 }
 
 /**
@@ -4326,6 +4568,10 @@ export enum AuthMechanismEnum {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -4334,12 +4580,16 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -4811,6 +5061,15 @@ export interface QlikCertificatesBy {
 }
 
 /**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
+}
+
+/**
  * Available sources to fetch the metadata.
  *
  * Deltalake Metastore configuration.
@@ -5275,6 +5534,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -5402,6 +5663,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ConfigElasticsSearch {
@@ -5410,6 +5681,15 @@ export interface ConfigElasticsSearch {
      * Type of sink component ex: metadata
      */
     type: string;
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -5975,6 +6255,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -6012,8 +6294,16 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
-export enum RESTType {
+export enum PurpleType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -6031,6 +6321,7 @@ export enum RESTType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -6051,12 +6342,15 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -6090,6 +6384,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -6100,10 +6395,13 @@ export enum RESTType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",
@@ -6181,6 +6479,8 @@ export interface StorageMetadataBucketDetails {
  *
  * Object Store Source Config Metadata Pipeline type
  *
+ * Drive Source Config Metadata Pipeline type
+ *
  * Search Source Config Metadata Pipeline type
  *
  * DBT Config Pipeline type
@@ -6191,7 +6491,7 @@ export interface StorageMetadataBucketDetails {
  *
  * Reverse Ingestion Config Pipeline type
  */
-export enum ConfigType {
+export enum FluffyType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
     AutoClassification = "AutoClassification",
@@ -6201,6 +6501,7 @@ export enum ConfigType {
     DatabaseMetadata = "DatabaseMetadata",
     DatabaseUsage = "DatabaseUsage",
     Dbt = "DBT",
+    DriveMetadata = "DriveMetadata",
     MessagingMetadata = "MessagingMetadata",
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",

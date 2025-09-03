@@ -189,6 +189,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     isSelected,
     showDqTracing: showDqTracing ?? false,
     isTraced,
+    isBaseNode: isRootNode,
   });
 
   const onExpand = useCallback(

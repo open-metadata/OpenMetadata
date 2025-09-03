@@ -80,6 +80,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -246,6 +247,15 @@ public class UserRepository extends EntityRepository<User> {
         JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+
+    // Update lastActivityTime immediately on login for metrics visibility
+    // This ensures user metrics show activity right after login
+    if (!orginalUser.getIsBot()) {
+      // Track in the batch system for ongoing updates
+      UserActivityTracker.getInstance().trackActivity(orginalUser.getName());
+      // Also update immediately in DB for instant visibility
+      updateUserLastActivityTime(orginalUser.getName(), lastLoginTime);
+    }
   }
 
   @Transaction
@@ -279,6 +289,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> nameHashes = new ArrayList<>();
 
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
+      // User FQNs are stored with quoteName applied, so we must match that format
       String fqn = quoteName(entry.getKey().toLowerCase());
       String fqnHash = FullyQualifiedName.buildHash(fqn);
 
@@ -991,7 +1002,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected void postDelete(User entity) {
+  protected void postDelete(User entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // If the User is bot it's token needs to be invalidated
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
@@ -1017,7 +1029,7 @@ public class UserRepository extends EntityRepository<User> {
           updated.getLastLoginTime(),
           false,
           objectMatch,
-          true);
+          false);
 
       // Updates
       updateRoles(original, updated);
@@ -1142,12 +1154,30 @@ public class UserRepository extends EntityRepository<User> {
       // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
       EntityReference originalDefaultPersona =
           getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
-      if (originalDefaultPersona != null) {
-        // Delete the relationship: persona --DEFAULTS_TO--> user
-        deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+
+      EntityReference updatedDefaultPersona = updated.getDefaultPersona();
+      PersonaRepository personaRepository =
+          (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+      Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
+
+      // Only process defaultPersona changes if it's not just the system providing a default value
+      // If the updated default persona is the system default and the original had no explicit
+      // default,
+      // then this is not an actual change - it's just the system providing a default value
+      boolean isSystemDefaultBeingApplied =
+          updatedDefaultPersona != null
+              && systemDefaultPersona != null
+              && updatedDefaultPersona.getId().equals(systemDefaultPersona.getId())
+              && originalDefaultPersona == null;
+
+      if (!isSystemDefaultBeingApplied) {
+        if (originalDefaultPersona != null) {
+          // Delete the relationship: persona --DEFAULTS_TO--> user
+          deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+        }
+        assignDefaultPersona(updated, updatedDefaultPersona);
+        recordChange("defaultPersona", originalDefaultPersona, updatedDefaultPersona, true);
       }
-      assignDefaultPersona(updated, updated.getDefaultPersona());
-      recordChange("defaultPersona", originalDefaultPersona, updated.getDefaultPersona(), true);
     }
 
     private void updatePersonaPreferences(User original, User updated) {
@@ -1155,15 +1185,26 @@ public class UserRepository extends EntityRepository<User> {
 
       if (updatedPreferences != null && !updatedPreferences.isEmpty()) {
         var userPersonas = updated.getPersonas();
-        if (userPersonas == null || userPersonas.isEmpty()) {
-          throw new BadRequestException(
-              "User has no personas assigned. Cannot set persona preferences.");
-        }
         var assignedPersonaIds =
-            userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet());
+            userPersonas != null
+                ? userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet())
+                : new HashSet<UUID>();
+
+        // Get system default persona ID to allow preferences for it
+        PersonaRepository personaRepository =
+            (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+        Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
+        UUID systemDefaultPersonaId =
+            systemDefaultPersona != null ? systemDefaultPersona.getId() : null;
+
         for (var pref : updatedPreferences) {
-          if (!assignedPersonaIds.contains(pref.getPersonaId())) {
-            throw new BadRequestException(
+          // Allow preferences for assigned personas OR system default persona
+          boolean isAssignedPersona = assignedPersonaIds.contains(pref.getPersonaId());
+          boolean isSystemDefaultPersona =
+              systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
+
+          if (!isAssignedPersona && !isSystemDefaultPersona) {
+            LOG.warn(
                 "Persona with ID %s is not assigned to this user".formatted(pref.getPersonaId()));
           }
           if (pref.getLandingPageSettings() != null) {
