@@ -7,6 +7,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 @Slf4j
 public class MigrationUtil {
 
+  public static final String FLYWAY_TABLE_NAME = "DATABASE_CHANGE_LOG";
+
   private final ConnectionType connectionType;
 
   public MigrationUtil(ConnectionType connectionType) {
@@ -14,12 +16,12 @@ public class MigrationUtil {
   }
 
   /**
-   * Migrate data from old Flyway schema history table to server_change_log if it exists.
+   * Migrate data from old Flyway schema history table to SERVER_CHANGE_LOG if it exists.
    * This consolidates migration tracking into a single table.
    */
   public void migrateFlywayHistory(Handle handle) {
     try {
-      LOG.info("Starting v1100 migration of Flyway history to server_change_log");
+      LOG.info("Starting v1100 migration of Flyway history to SERVER_CHANGE_LOG");
 
       // Check if DATABASE_CHANGE_LOG table exists
       boolean tableExists = checkTableExists(handle, "DATABASE_CHANGE_LOG");
@@ -32,19 +34,19 @@ public class MigrationUtil {
       // Check if Flyway records have already been migrated
       if (hasFlywayDataAlreadyMigrated(handle)) {
         LOG.info(
-            "Flyway records have already been migrated to server_change_log, skipping migration");
+            "Flyway records have already been migrated to SERVER_CHANGE_LOG, skipping migration");
         return;
       }
 
       // Insert missing v000 baseline record if not present
       insertV000RecordIfMissing(handle);
 
-      // Migrate Flyway migration records to server_change_log
+      // Migrate Flyway migration records to SERVER_CHANGE_LOG
       int migratedCount = migrateFlywayHistoryRecords(handle);
 
       if (migratedCount > 0) {
         LOG.info(
-            "Successfully migrated {} Flyway migration records to server_change_log",
+            "Successfully migrated {} Flyway migration records to SERVER_CHANGE_LOG",
             migratedCount);
       } else {
         LOG.info("No new Flyway migration records to migrate");
@@ -55,7 +57,7 @@ public class MigrationUtil {
     }
   }
 
-  private boolean checkTableExists(Handle handle, String tableName) {
+  public boolean checkTableExists(Handle handle, String tableName) {
     String query =
         switch (connectionType) {
           case MYSQL -> "SELECT COUNT(*) FROM information_schema.tables "
@@ -69,16 +71,16 @@ public class MigrationUtil {
     return count > 0;
   }
 
-  private boolean hasFlywayDataAlreadyMigrated(Handle handle) {
+  public boolean hasFlywayDataAlreadyMigrated(Handle handle) {
     String countQuery =
         switch (connectionType) {
           case MYSQL -> """
-          SELECT COUNT(*) FROM server_change_log scl
+          SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
           INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
           WHERE scl.migrationfilename LIKE '%flyway%'
           """;
           case POSTGRES -> """
-          SELECT COUNT(*) FROM server_change_log scl
+          SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
           INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
           WHERE scl.migrationfilename LIKE '%flyway%'
           """;
@@ -93,11 +95,11 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT IGNORE INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          INSERT IGNORE INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
           VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/mysql/v000__create_db_connection_info.sql', '0', NOW(), NULL)
           """;
           case POSTGRES -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
           VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/postgres/v000__create_db_connection_info.sql', '0', current_timestamp, NULL)
           ON CONFLICT (version) DO NOTHING
           """;
@@ -113,7 +115,7 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
           SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
                  CASE
                    WHEN script LIKE 'v%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/mysql/', script)
@@ -123,11 +125,11 @@ public class MigrationUtil {
                  installed_on,
                  NULL as metrics
           FROM DATABASE_CHANGE_LOG
-          WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM server_change_log)
+          WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
           AND success = true
           """;
           case POSTGRES -> """
-          INSERT INTO server_change_log (version, migrationfilename, checksum, installed_on, metrics)
+          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
           SELECT '0.0.' || CAST(version AS INTEGER) as version,
                  CASE
                    WHEN script LIKE 'v%__.sql' THEN 'bootstrap/sql/migrations/flyway/postgres/' || script
@@ -137,7 +139,7 @@ public class MigrationUtil {
                  installed_on,
                  NULL as metrics
           FROM "DATABASE_CHANGE_LOG"
-          WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM server_change_log)
+          WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
           AND success = true
           """;
         };

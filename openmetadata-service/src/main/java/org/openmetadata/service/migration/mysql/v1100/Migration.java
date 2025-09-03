@@ -15,7 +15,6 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    // Migrate Flyway schema history to server_change_log
     MigrationUtil migrationUtil = new MigrationUtil(ConnectionType.MYSQL);
     migrationUtil.migrateFlywayHistory(handle);
   }

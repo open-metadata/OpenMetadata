@@ -124,8 +124,13 @@ public interface MigrationDAO {
   List<String> getMigrationVersions();
 
   @SqlQuery(
-      "SELECT version FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%flyway%' ORDER BY version")
+      "SELECT version FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%/migrations/flyway/%' ORDER BY version")
   List<String> getFlywayMigrationVersions();
+
+  @SqlQuery(
+      "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%/migrations/flyway/%' ORDER BY version")
+  @RegisterRowMapper(FromServerChangeLogMapper.class)
+  List<ServerChangeLog> getFlywayMigrationRecords();
 
   @Getter
   @Setter

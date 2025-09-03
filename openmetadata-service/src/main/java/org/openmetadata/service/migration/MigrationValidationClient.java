@@ -84,7 +84,7 @@ public class MigrationValidationClient {
       return migrationDAO.getFlywayMigrationVersions();
     } catch (Exception e) {
       // If there's an error (e.g., table doesn't exist yet), return empty list
-      LOG.debug("Could not fetch Flyway versions from server_change_log: {}", e.getMessage());
+      LOG.debug("Could not fetch Flyway versions from SERVER_CHANGE_LOG: {}", e.getMessage());
       return List.of();
     }
   }
