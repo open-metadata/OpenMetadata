@@ -148,32 +148,6 @@ export interface Assignees {
      * Add the Reviewers to the assignees List.
      */
     addReviewers?: boolean;
-    /**
-     * Additional assignees with optional users and teams.
-     */
-    extraAssignees?: ExtraAssignees;
-    /**
-     * List of team names to assign the task to.
-     */
-    teams?: string[];
-    /**
-     * List of user names to assign the task to.
-     */
-    users?: string[];
-}
-
-/**
- * Additional assignees with optional users and teams.
- */
-export interface ExtraAssignees {
-    /**
-     * List of additional team names to assign the task to.
-     */
-    teams?: string[];
-    /**
-     * List of additional user names to assign the task to.
-     */
-    users?: string[];
 }
 
 export interface InputNamespaceMap {
