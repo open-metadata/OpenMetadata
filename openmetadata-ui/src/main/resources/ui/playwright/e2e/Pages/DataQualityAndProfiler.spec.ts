@@ -548,18 +548,18 @@ test(
         'Table test case display name'
       );
 
-      await expect(page.locator('#tableTestForm_table')).toHaveValue(
+      await expect(page.locator('[id="root\\/selected-entity"]')).toHaveValue(
         table2.entityResponseData?.['name']
       );
-      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+      await expect(page.locator('[id="root\\/column"]')).toHaveValue(
         table2.entity?.columns[3].name
       );
-      await expect(page.locator('#tableTestForm_name')).toHaveValue(
+      await expect(page.locator('[id="root\\/name"]')).toHaveValue(
         testCaseName
       );
-      await expect(page.locator('#tableTestForm_testDefinition')).toHaveValue(
-        'Column Values To Be In Set'
-      );
+      await expect(
+        page.locator('[id="root\\/columnValuesToBeInSet"]')
+      ).toHaveValue('Column Values To Be In Set');
 
       // Edit test case display name
       const updateTestCaseResponse = page.waitForResponse(
