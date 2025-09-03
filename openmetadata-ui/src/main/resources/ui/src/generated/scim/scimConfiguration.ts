@@ -15,12 +15,12 @@
  * Okta.
  */
 export interface ScimConfiguration {
-    /**
-     * Whether SCIM provisioning is enabled.
-     */
-    enabled?: boolean;
-    /**
-     * The name of the identity provider for SCIM (e.g., azure, okta).
-     */
-    identityProvider?: string;
+  /**
+   * Whether SCIM provisioning is enabled.
+   */
+  enabled?: boolean;
+  /**
+   * The name of the identity provider for SCIM (e.g., azure, okta).
+   */
+  identityProvider?: string;
 }

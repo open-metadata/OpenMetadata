@@ -14,20 +14,20 @@
  * Quality validation details for data contract.
  */
 export interface QualityValidation {
-    /**
-     * Number of quality checks failed.
-     */
-    failed?: number;
-    /**
-     * Number of quality checks passed.
-     */
-    passed?: number;
-    /**
-     * Overall quality score (0-100).
-     */
-    qualityScore?: number;
-    /**
-     * Total number of quality checks.
-     */
-    total?: number;
+  /**
+   * Number of quality checks failed.
+   */
+  failed?: number;
+  /**
+   * Number of quality checks passed.
+   */
+  passed?: number;
+  /**
+   * Overall quality score (0-100).
+   */
+  qualityScore?: number;
+  /**
+   * Total number of quality checks.
+   */
+  total?: number;
 }

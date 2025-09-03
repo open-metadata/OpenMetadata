@@ -15,18 +15,18 @@
  * connection steps.
  */
 export interface TestConnectionResult {
-    /**
-     * Last time that the test connection was executed
-     */
-    lastUpdatedAt?: number;
-    /**
-     * Test Connection Result computation status.
-     */
-    status?: StatusType;
-    /**
-     * Steps to test the connection. Order matters.
-     */
-    steps: TestConnectionStepResult[];
+  /**
+   * Last time that the test connection was executed
+   */
+  lastUpdatedAt?: number;
+  /**
+   * Test Connection Result computation status.
+   */
+  status?: StatusType;
+  /**
+   * Steps to test the connection. Order matters.
+   */
+  steps: TestConnectionStepResult[];
 }
 
 /**
@@ -35,9 +35,9 @@ export interface TestConnectionResult {
  * Enum defining possible Test Connection Result status
  */
 export enum StatusType {
-    Failed = "Failed",
-    Running = "Running",
-    Successful = "Successful",
+  Failed = 'Failed',
+  Running = 'Running',
+  Successful = 'Successful',
 }
 
 /**
@@ -45,25 +45,25 @@ export enum StatusType {
  * or tags.
  */
 export interface TestConnectionStepResult {
-    /**
-     * In case of failed step, this field would contain the actual error faced during the step.
-     */
-    errorLog?: string;
-    /**
-     * Is this step mandatory to be passed?
-     */
-    mandatory: boolean;
-    /**
-     * Results or exceptions to be shared after running the test. This message comes from the
-     * test connection definition
-     */
-    message?: string;
-    /**
-     * Name of the step being tested
-     */
-    name: string;
-    /**
-     * Did the step pass successfully?
-     */
-    passed: boolean;
+  /**
+   * In case of failed step, this field would contain the actual error faced during the step.
+   */
+  errorLog?: string;
+  /**
+   * Is this step mandatory to be passed?
+   */
+  mandatory: boolean;
+  /**
+   * Results or exceptions to be shared after running the test. This message comes from the
+   * test connection definition
+   */
+  message?: string;
+  /**
+   * Name of the step being tested
+   */
+  name: string;
+  /**
+   * Did the step pass successfully?
+   */
+  passed: boolean;
 }

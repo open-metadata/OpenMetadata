@@ -11,6 +11,6 @@
  *  limitations under the License.
  */
 export interface HelloPipelinesConfigurationClass {
-    echo:  string;
-    sleep: number;
+  echo: string;
+  sleep: number;
 }

@@ -14,14 +14,14 @@
  * Entity Relationship Node Information.
  */
 export interface NodeInformation {
-    /**
-     * Entity information.
-     */
-    entity?: any;
-    /**
-     * Paging information for the node.
-     */
-    paging?: LayerPaging;
+  /**
+   * Entity information.
+   */
+  entity?: any;
+  /**
+   * Paging information for the node.
+   */
+  paging?: LayerPaging;
 }
 
 /**
@@ -30,12 +30,12 @@ export interface NodeInformation {
  * Layer Paging Information for Entity Relationships and Lineage.
  */
 export interface LayerPaging {
-    /**
-     * Total Downstream Entity Count
-     */
-    entityDownstreamCount?: number;
-    /**
-     * Total Upstream Entity Count
-     */
-    entityUpstreamCount?: number;
+  /**
+   * Total Downstream Entity Count
+   */
+  entityDownstreamCount?: number;
+  /**
+   * Total Upstream Entity Count
+   */
+  entityUpstreamCount?: number;
 }

@@ -14,40 +14,40 @@
  * Configuration for RDF/Knowledge Graph support in OpenMetadata
  */
 export interface RDFConfiguration {
-    /**
-     * Base URI for RDF resources
-     */
-    baseUri?: string;
-    /**
-     * Dataset name in RDF storage
-     */
-    dataset?: string;
-    /**
-     * Enable or disable RDF support
-     */
-    enabled: boolean;
-    /**
-     * Password for RDF storage authentication
-     */
-    password?: string;
-    /**
-     * SPARQL endpoint URL for remote RDF storage
-     */
-    remoteEndpoint?: string;
-    /**
-     * Type of RDF storage backend
-     */
-    storageType: StorageType;
-    /**
-     * Username for RDF storage authentication
-     */
-    username?: string;
+  /**
+   * Base URI for RDF resources
+   */
+  baseUri?: string;
+  /**
+   * Dataset name in RDF storage
+   */
+  dataset?: string;
+  /**
+   * Enable or disable RDF support
+   */
+  enabled: boolean;
+  /**
+   * Password for RDF storage authentication
+   */
+  password?: string;
+  /**
+   * SPARQL endpoint URL for remote RDF storage
+   */
+  remoteEndpoint?: string;
+  /**
+   * Type of RDF storage backend
+   */
+  storageType: StorageType;
+  /**
+   * Username for RDF storage authentication
+   */
+  username?: string;
 }
 
 /**
  * Type of RDF storage backend
  */
 export enum StorageType {
-    Fuseki = "FUSEKI",
-    Qlever = "QLEVER",
+  Fuseki = 'FUSEKI',
+  Qlever = 'QLEVER',
 }

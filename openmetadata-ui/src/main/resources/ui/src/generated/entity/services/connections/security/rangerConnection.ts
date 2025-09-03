@@ -14,18 +14,18 @@
  * Apache Ranger Connection Config
  */
 export interface RangerConnection {
-    /**
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType: AuthenticationType;
-    /**
-     * Apache Ranger Admin URL.
-     */
-    hostPort: string;
-    /**
-     * Service Type
-     */
-    type?: RangerType;
+  /**
+   * Authentication type to connect to Apache Ranger.
+   */
+  authType: AuthenticationType;
+  /**
+   * Apache Ranger Admin URL.
+   */
+  hostPort: string;
+  /**
+   * Service Type
+   */
+  type?: RangerType;
 }
 
 /**
@@ -34,14 +34,14 @@ export interface RangerConnection {
  * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationType {
-    /**
-     * Ranger password to authenticate to the API.
-     */
-    password: string;
-    /**
-     * Ranger user to authenticate to the API.
-     */
-    username: string;
+  /**
+   * Ranger password to authenticate to the API.
+   */
+  password: string;
+  /**
+   * Ranger user to authenticate to the API.
+   */
+  username: string;
 }
 
 /**
@@ -50,5 +50,5 @@ export interface AuthenticationType {
  * Apache Ranger service type
  */
 export enum RangerType {
-    Ranger = "Ranger",
+  Ranger = 'Ranger',
 }
