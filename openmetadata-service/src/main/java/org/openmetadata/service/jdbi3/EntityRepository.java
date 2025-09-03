@@ -5349,7 +5349,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
-    return batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DATA_PRODUCT);
+    return batchFetchToIdsOneToMany(entities, Relationship.HAS, Entity.DATA_PRODUCT);
   }
 
   private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
@@ -5647,6 +5647,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
         record -> {
           var entityId = UUID.fromString(record.getFromId());
           var relatedRef = idReferenceMap.get(record.getToId());
+          if (relatedRef != null) {
+            resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+          }
+        });
+
+    return resultMap;
+  }
+
+  protected Map<UUID, List<EntityReference>> batchFetchToIdsOneToMany(
+      List<T> entities, Relationship relationship, String fromEntityType) {
+    var resultMap = new HashMap<UUID, List<EntityReference>>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), relationship.ordinal(), fromEntityType, ALL);
+
+    var idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                fromEntityType,
+                records.stream().map(e -> UUID.fromString(e.getFromId())).distinct().toList(),
+                ALL)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getToId());
+          var relatedRef = idReferenceMap.get(record.getFromId());
           if (relatedRef != null) {
             resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
           }
