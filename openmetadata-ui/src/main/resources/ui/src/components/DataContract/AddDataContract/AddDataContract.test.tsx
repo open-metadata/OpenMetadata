@@ -14,11 +14,11 @@ import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ContractStatus,
   DataContract,
   SemanticsRule,
 } from '../../../generated/entity/data/dataContract';
 import { Column, Table } from '../../../generated/entity/data/table';
+import { EntityStatus } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -61,7 +61,7 @@ const mockContract: DataContract = {
     id: 'table-id',
     type: EntityType.TABLE,
   } as EntityReference,
-  status: ContractStatus.Active,
+  entityStatus: EntityStatus.Approved,
   semantics: [] as SemanticsRule[],
   qualityExpectations: [] as EntityReference[],
   schema: [] as Column[],
@@ -217,7 +217,7 @@ describe('AddDataContract', () => {
             id: 'table-id',
             type: EntityType.TABLE,
           },
-          status: ContractStatus.Active,
+          entityStatus: EntityStatus.Approved,
           semantics: undefined,
         })
       );
