@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.governance;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateChart;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateStorageService;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Chart;
@@ -77,6 +80,7 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
+import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 
@@ -88,6 +92,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   private static DatabaseResourceTest databaseTest;
   private static DatabaseSchemaResourceTest schemaTest;
   private static TableResourceTest tableTest;
+  private static ClassificationResourceTest classificationTest;
   private static TagResourceTest tagTest;
   private static GlossaryResourceTest glossaryTest;
   private static GlossaryTermResourceTest glossaryTermTest;
@@ -109,6 +114,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     databaseTest = new DatabaseResourceTest();
     schemaTest = new DatabaseSchemaResourceTest();
     tableTest = new TableResourceTest();
+    classificationTest = new ClassificationResourceTest();
     tagTest = new TagResourceTest();
     glossaryTest = new GlossaryResourceTest();
     glossaryTermTest = new GlossaryTermResourceTest();
@@ -2083,5 +2089,350 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.debug("Error message: {}", errorResponse);
 
     LOG.info("test_MixedEntityTypesWithReviewerSupport completed successfully");
+  }
+
+  @Test
+  @Order(11)
+  void test_MutualExclusivitySmartReplacement(TestInfo test)
+      throws IOException, HttpResponseException, InterruptedException {
+    LOG.info("Starting test_MutualExclusivitySmartReplacement");
+
+    // Ensure we have database schema for table creation
+    if (databaseSchema == null) {
+      // Create database service
+      CreateDatabaseService createService =
+          databaseServiceTest.createRequest(
+              "mutex_db_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
+      DatabaseService mutexDbService =
+          databaseServiceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+      // Create database
+      CreateDatabase createDatabase =
+          new CreateDatabase()
+              .withName("mutex_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+              .withService(mutexDbService.getFullyQualifiedName())
+              .withDescription("Database for mutual exclusivity test");
+      Database mutexDb = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+      // Create database schema
+      CreateDatabaseSchema createSchema =
+          new CreateDatabaseSchema()
+              .withName("mutex_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+              .withDatabase(mutexDb.getFullyQualifiedName())
+              .withDescription("Schema for mutual exclusivity test");
+      databaseSchema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+      LOG.debug("Created database schema for test: {}", databaseSchema.getName());
+    }
+
+    // Step 1: Create classification with mutual exclusivity
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(
+                "MutualExclusiveClassification_"
+                    + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDescription("Classification with mutually exclusive tags")
+            .withMutuallyExclusive(true)
+            .withProvider(org.openmetadata.schema.type.ProviderType.USER);
+    ClassificationResourceTest classificationTest = new ClassificationResourceTest();
+    Classification classification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created mutually exclusive classification: {}", classification.getName());
+
+    // Create glossary with mutual exclusivity
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(
+                "MutualExclusiveGlossary_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Mutual Exclusive Glossary")
+            .withDescription("Glossary with mutually exclusive terms")
+            .withMutuallyExclusive(true);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created mutually exclusive glossary: {}", glossary.getName());
+
+    // Step 2: Create 2 tags under the classification
+    CreateTag createTag1 =
+        new CreateTag()
+            .withName("Tag1")
+            .withDescription("First tag in mutually exclusive classification")
+            .withClassification(classification.getName());
+    Tag tag1 = tagTest.createEntity(createTag1, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created tag1: {}", tag1.getFullyQualifiedName());
+
+    CreateTag createTag2 =
+        new CreateTag()
+            .withName("Tag2")
+            .withDescription("Second tag in mutually exclusive classification")
+            .withClassification(classification.getName());
+    Tag tag2 = tagTest.createEntity(createTag2, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created tag2: {}", tag2.getFullyQualifiedName());
+
+    // Create 2 glossary terms under the glossary
+    CreateGlossaryTerm createTerm1 =
+        new CreateGlossaryTerm()
+            .withName("Term1")
+            .withDisplayName("Term 1")
+            .withDescription("First term in mutually exclusive glossary")
+            .withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = glossaryTermTest.createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created term1: {}", term1.getFullyQualifiedName());
+
+    CreateGlossaryTerm createTerm2 =
+        new CreateGlossaryTerm()
+            .withName("Term2")
+            .withDisplayName("Term 2")
+            .withDescription("Second term in mutually exclusive glossary")
+            .withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term2 = glossaryTermTest.createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created term2: {}", term2.getFullyQualifiedName());
+
+    // Step 3: Create a table and add tag1 and term1
+    CreateTable createTable =
+        new CreateTable()
+            .withName("test_mutex_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withDescription("Test table for mutual exclusivity smart replacement")
+            .withColumns(
+                List.of(
+                    new Column().withName("col1").withDataType(ColumnDataType.STRING),
+                    new Column().withName("col2").withDataType(ColumnDataType.INT)));
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created test table: {}", table.getName());
+
+    // Add tag1 and term1 to the table
+    List<org.openmetadata.schema.type.TagLabel> initialTags = new ArrayList<>();
+
+    // Add tag1 from mutually exclusive classification
+    org.openmetadata.schema.type.TagLabel tagLabel1 = new org.openmetadata.schema.type.TagLabel();
+    tagLabel1.setTagFQN(tag1.getFullyQualifiedName());
+    tagLabel1.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    tagLabel1.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED);
+    tagLabel1.setSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION);
+    initialTags.add(tagLabel1);
+
+    // Add term1 from mutually exclusive glossary
+    org.openmetadata.schema.type.TagLabel termLabel1 = new org.openmetadata.schema.type.TagLabel();
+    termLabel1.setTagFQN(term1.getFullyQualifiedName());
+    termLabel1.setLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+    termLabel1.setState(org.openmetadata.schema.type.TagLabel.State.CONFIRMED);
+    termLabel1.setSource(org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY);
+    termLabel1.setName(term1.getName());
+    termLabel1.setDisplayName(term1.getDisplayName());
+    initialTags.add(termLabel1);
+
+    table.setTags(initialTags);
+    table =
+        tableTest.patchEntity(
+            table.getId(), JsonUtils.pojoToJson(table), table, ADMIN_AUTH_HEADERS);
+    LOG.debug(
+        "Added initial tag1 ({}) and term1 ({}) to table",
+        tag1.getFullyQualifiedName(),
+        term1.getFullyQualifiedName());
+
+    // Step 4: Create workflow that tries to add tag2 and term2 (mutually exclusive with tag1 and
+    // term1)
+    String workflowJson =
+        String.format(
+            """
+    {
+      "name": "MutualExclusivityWorkflow",
+      "displayName": "Mutual Exclusivity Workflow",
+      "description": "Test workflow for mutual exclusivity smart replacement",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {
+            "scheduleTimeline": "None"
+          },
+          "batchSize": 100,
+          "filters": ""
+        },
+        "output": [
+          "relatedEntity",
+          "updatedBy"
+        ]
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "StartNode",
+          "displayName": "Start"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetEntityAttribute_2",
+          "displayName": "Set Tags",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "%s"
+          },
+          "input": [
+            "relatedEntity",
+            "updatedBy"
+          ],
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          },
+          "output": []
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "SetEntityAttribute_3",
+          "displayName": "Set Glossary Term",
+          "config": {
+            "fieldName": "glossaryTerms",
+            "fieldValue": "%s"
+          },
+          "input": [
+            "relatedEntity",
+            "updatedBy"
+          ],
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          },
+          "output": []
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "EndNode_4",
+          "displayName": "End"
+        }
+      ],
+      "edges": [
+        {
+          "from": "SetEntityAttribute_3",
+          "to": "EndNode_4"
+        },
+        {
+          "from": "SetEntityAttribute_2",
+          "to": "SetEntityAttribute_3"
+        },
+        {
+          "from": "StartNode",
+          "to": "SetEntityAttribute_2"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """,
+            tag2.getFullyQualifiedName(), term2.getFullyQualifiedName());
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create the workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+
+    if (response.getStatus() == Response.Status.CREATED.getStatusCode()
+        || response.getStatus() == Response.Status.OK.getStatusCode()) {
+      WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+      assertNotNull(createdWorkflow);
+      LOG.debug("MutualExclusivityWorkflow created successfully");
+    } else {
+      String responseBody = response.readEntity(String.class);
+      LOG.error(
+          "Failed to create workflow. Status: {}, Response: {}",
+          response.getStatus(),
+          responseBody);
+      throw new RuntimeException("Failed to create workflow: " + responseBody);
+    }
+
+    // Step 5: Trigger the workflow
+    Response triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/MutualExclusivityWorkflow/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+
+    if (triggerResponse.getStatus() == Response.Status.OK.getStatusCode()) {
+      LOG.debug("Workflow triggered successfully");
+    } else {
+      LOG.warn("Workflow trigger response: {}", triggerResponse.getStatus());
+    }
+
+    final UUID tableId = table.getId();
+
+    // Step 6: Wait for workflow to process and assert tags are replaced
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                Table checkTable = tableTest.getEntity(tableId, "tags", ADMIN_AUTH_HEADERS);
+                LOG.debug("Checking table tags: {}", checkTable.getTags());
+                if (checkTable.getTags() != null) {
+                  // Check that tag1 is REPLACED by tag2 (mutually exclusive)
+                  boolean hasTag1 =
+                      checkTable.getTags().stream()
+                          .anyMatch(tag -> tag1.getFullyQualifiedName().equals(tag.getTagFQN()));
+                  boolean hasTag2 =
+                      checkTable.getTags().stream()
+                          .anyMatch(tag -> tag2.getFullyQualifiedName().equals(tag.getTagFQN()));
+                  // Check that term1 is REPLACED by term2 (mutually exclusive)
+                  boolean hasTerm1 =
+                      checkTable.getTags().stream()
+                          .anyMatch(tag -> term1.getFullyQualifiedName().equals(tag.getTagFQN()));
+                  boolean hasTerm2 =
+                      checkTable.getTags().stream()
+                          .anyMatch(tag -> term2.getFullyQualifiedName().equals(tag.getTagFQN()));
+
+                  // Both tag1 and term1 should be replaced
+                  return !hasTag1 && hasTag2 && !hasTerm1 && hasTerm2;
+                }
+                return false;
+              } catch (Exception e) {
+                LOG.warn("Error checking table tags: {}", e.getMessage());
+                return false;
+              }
+            });
+
+    // Verify smart replacement occurred
+    Table updatedTable = tableTest.getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedTable);
+    assertNotNull(updatedTable.getTags());
+
+    // Tag1 should be REPLACED by Tag2 (mutually exclusive in same classification)
+    boolean hasTag1 =
+        updatedTable.getTags().stream()
+            .anyMatch(tag -> tag1.getFullyQualifiedName().equals(tag.getTagFQN()));
+    assertFalse(hasTag1, "Tag1 should be replaced due to mutual exclusivity");
+
+    boolean hasTag2 =
+        updatedTable.getTags().stream()
+            .anyMatch(tag -> tag2.getFullyQualifiedName().equals(tag.getTagFQN()));
+    assertTrue(hasTag2, "Tag2 should be present");
+
+    // Term1 should be REPLACED by Term2 (mutually exclusive in same glossary)
+    boolean hasTerm1 =
+        updatedTable.getTags().stream()
+            .anyMatch(tag -> term1.getFullyQualifiedName().equals(tag.getTagFQN()));
+    assertFalse(hasTerm1, "Term1 should be replaced due to mutual exclusivity");
+
+    boolean hasTerm2 =
+        updatedTable.getTags().stream()
+            .anyMatch(tag -> term2.getFullyQualifiedName().equals(tag.getTagFQN()));
+    assertTrue(hasTerm2, "Term2 should be present");
+
+    LOG.debug(
+        "Smart replacement successful. Final tags: {}",
+        updatedTable.getTags().stream().map(t -> t.getTagFQN()).toList());
+
+    // Verify exactly 2 tags remain (tag2 and term2)
+    assertEquals(
+        2, updatedTable.getTags().size(), "Should have exactly 2 tags after smart replacement");
+
+    LOG.info("test_MutualExclusivitySmartReplacement completed successfully");
   }
 }

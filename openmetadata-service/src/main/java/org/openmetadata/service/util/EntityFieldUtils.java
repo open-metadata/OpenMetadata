@@ -157,6 +157,7 @@ public class EntityFieldUtils {
 
   /**
    * Appends tags to the entity by fetching actual Tag entities.
+   * If new tags are mutually exclusive with existing tags, replaces the conflicting tags.
    */
   public static void appendTags(EntityInterface entity, String tagFQNs) {
     if (tagFQNs == null || tagFQNs.isEmpty()) {
@@ -164,10 +165,10 @@ public class EntityFieldUtils {
     }
 
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
-    List<TagLabel> newTags = new ArrayList<>(existingTags);
-
+    List<TagLabel> newTagsToAdd = new ArrayList<>();
     String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
 
+    // First, collect all new tags to add
     for (String fqn : fqns) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
@@ -183,7 +184,7 @@ public class EntityFieldUtils {
               TagLabel tagLabel = EntityUtil.toTagLabel(tag);
               tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
               tagLabel.setState(TagLabel.State.CONFIRMED);
-              newTags.add(tagLabel);
+              newTagsToAdd.add(tagLabel);
             }
           } catch (Exception e) {
             LOG.warn("Could not fetch tag {}: {}", trimmedFQN, e.getMessage());
@@ -192,19 +193,62 @@ public class EntityFieldUtils {
       }
     }
 
-    // Validate mutual exclusivity
-    try {
-      TagLabelUtil.checkMutuallyExclusive(newTags);
-    } catch (IllegalArgumentException e) {
-      throw new RuntimeException(
-          "Cannot add tags due to mutual exclusivity constraint: " + e.getMessage(), e);
-    }
+    // Try to append first
+    List<TagLabel> combinedTags = new ArrayList<>(existingTags);
+    combinedTags.addAll(newTagsToAdd);
 
-    entity.setTags(newTags);
+    // Check for mutual exclusivity
+    try {
+      TagLabelUtil.checkMutuallyExclusive(combinedTags);
+      // If no exception, we can safely append
+      entity.setTags(combinedTags);
+    } catch (IllegalArgumentException e) {
+      // Mutual exclusivity conflict detected - remove conflicting tags and add new ones
+      LOG.debug(
+          "Mutual exclusivity conflict detected. Replacing conflicting tags: {}", e.getMessage());
+
+      // Keep only non-glossary tags that don't conflict with new tags
+      List<TagLabel> filteredTags = new ArrayList<>();
+      for (TagLabel existingTag : existingTags) {
+        // Keep glossary terms (they have different source)
+        if (TagLabel.TagSource.GLOSSARY.equals(existingTag.getSource())) {
+          filteredTags.add(existingTag);
+          continue;
+        }
+
+        // Check if this existing tag conflicts with any new tag
+        boolean conflicts = false;
+        for (TagLabel newTag : newTagsToAdd) {
+          List<TagLabel> testList = List.of(existingTag, newTag);
+          try {
+            TagLabelUtil.checkMutuallyExclusive(testList);
+          } catch (IllegalArgumentException ex) {
+            conflicts = true;
+            break;
+          }
+        }
+
+        if (!conflicts) {
+          filteredTags.add(existingTag);
+        }
+      }
+
+      // Add the new tags
+      filteredTags.addAll(newTagsToAdd);
+
+      // Final validation
+      try {
+        TagLabelUtil.checkMutuallyExclusive(filteredTags);
+        entity.setTags(filteredTags);
+      } catch (IllegalArgumentException ex) {
+        throw new RuntimeException("Cannot resolve tag conflicts: " + ex.getMessage(), ex);
+      }
+    }
   }
 
   /**
    * Appends glossary terms to the entity by fetching actual GlossaryTerm entities.
+   * If new glossary terms are mutually exclusive with existing tags/terms, replaces the conflicting ones.
    */
   public static void appendGlossaryTerms(EntityInterface entity, String termFQNs) {
     if (termFQNs == null || termFQNs.isEmpty()) {
@@ -213,10 +257,10 @@ public class EntityFieldUtils {
 
     // Get existing tags (glossary terms are stored as tags with source=GLOSSARY)
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
-    List<TagLabel> newTags = new ArrayList<>(existingTags);
-
+    List<TagLabel> newTermsToAdd = new ArrayList<>();
     String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
 
+    // First, collect all new glossary terms to add
     for (String fqn : fqns) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
@@ -237,7 +281,7 @@ public class EntityFieldUtils {
               TagLabel tagLabel = EntityUtil.toTagLabel(term);
               tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
               tagLabel.setState(TagLabel.State.CONFIRMED);
-              newTags.add(tagLabel);
+              newTermsToAdd.add(tagLabel);
             }
           } catch (Exception e) {
             LOG.warn("Could not fetch glossary term {}: {}", trimmedFQN, e.getMessage());
@@ -246,15 +290,53 @@ public class EntityFieldUtils {
       }
     }
 
-    // Validate mutual exclusivity
-    try {
-      TagLabelUtil.checkMutuallyExclusive(newTags);
-    } catch (IllegalArgumentException e) {
-      throw new RuntimeException(
-          "Cannot add glossary terms due to mutual exclusivity constraint: " + e.getMessage(), e);
-    }
+    // Try to append first
+    List<TagLabel> combinedTags = new ArrayList<>(existingTags);
+    combinedTags.addAll(newTermsToAdd);
 
-    entity.setTags(newTags);
+    // Check for mutual exclusivity
+    try {
+      TagLabelUtil.checkMutuallyExclusive(combinedTags);
+      // If no exception, we can safely append
+      entity.setTags(combinedTags);
+    } catch (IllegalArgumentException e) {
+      // Mutual exclusivity conflict detected - remove conflicting tags/terms and add new ones
+      LOG.debug(
+          "Mutual exclusivity conflict detected. Replacing conflicting glossary terms: {}",
+          e.getMessage());
+
+      // Keep only tags/terms that don't conflict with new terms
+      List<TagLabel> filteredTags = new ArrayList<>();
+      for (TagLabel existingTag : existingTags) {
+        // Check if this existing tag/term conflicts with any new term
+        boolean conflicts = false;
+        for (TagLabel newTerm : newTermsToAdd) {
+          List<TagLabel> testList = List.of(existingTag, newTerm);
+          try {
+            TagLabelUtil.checkMutuallyExclusive(testList);
+          } catch (IllegalArgumentException ex) {
+            conflicts = true;
+            break;
+          }
+        }
+
+        if (!conflicts) {
+          filteredTags.add(existingTag);
+        }
+      }
+
+      // Add the new terms
+      filteredTags.addAll(newTermsToAdd);
+
+      // Final validation
+      try {
+        TagLabelUtil.checkMutuallyExclusive(filteredTags);
+        entity.setTags(filteredTags);
+      } catch (IllegalArgumentException ex) {
+        throw new RuntimeException(
+            "Cannot resolve glossary term conflicts: " + ex.getMessage(), ex);
+      }
+    }
   }
 
   /**
