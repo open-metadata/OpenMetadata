@@ -15,9 +15,9 @@
  * catalog.
  */
 export enum Status {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }

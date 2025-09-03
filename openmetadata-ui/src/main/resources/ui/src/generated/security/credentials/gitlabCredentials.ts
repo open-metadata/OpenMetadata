@@ -14,13 +14,13 @@
  * Credentials for a Gitlab repository
  */
 export interface GitlabCredentials {
-    repositoryName:  string;
-    repositoryOwner: string;
-    token?:          string;
-    /**
-     * Credentials Type
-     */
-    type?: GitlabType;
+  repositoryName: string;
+  repositoryOwner: string;
+  token?: string;
+  /**
+   * Credentials Type
+   */
+  type?: GitlabType;
 }
 
 /**
@@ -29,5 +29,5 @@ export interface GitlabCredentials {
  * Gitlab Credentials type
  */
 export enum GitlabType {
-    Gitlab = "Gitlab",
+  Gitlab = 'Gitlab',
 }

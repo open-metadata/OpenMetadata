@@ -14,31 +14,31 @@
  * Sets the GlossaryTerm Status to the configured value.
  */
 export interface SetGlossaryTermStatusTask {
-    config?: NodeConfiguration;
-    /**
-     * Description of the Node.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this Node.
-     */
-    displayName?:       string;
-    input?:             string[];
-    inputNamespaceMap?: InputNamespaceMap;
-    /**
-     * Name that identifies this Node.
-     */
-    name?:    string;
-    subType?: string;
-    type?:    string;
-    [property: string]: any;
+  config?: NodeConfiguration;
+  /**
+   * Description of the Node.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this Node.
+   */
+  displayName?: string;
+  input?: string[];
+  inputNamespaceMap?: InputNamespaceMap;
+  /**
+   * Name that identifies this Node.
+   */
+  name?: string;
+  subType?: string;
+  type?: string;
+  [property: string]: any;
 }
 
 export interface NodeConfiguration {
-    /**
-     * Choose which Status to apply to the Glossary Term
-     */
-    glossaryTermStatus: EntityStatus;
+  /**
+   * Choose which Status to apply to the Glossary Term
+   */
+  glossaryTermStatus: EntityStatus;
 }
 
 /**
@@ -48,14 +48,14 @@ export interface NodeConfiguration {
  * catalog.
  */
 export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
-    updatedBy?:    string;
+  relatedEntity: string;
+  updatedBy?: string;
 }

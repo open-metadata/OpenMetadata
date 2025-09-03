@@ -14,46 +14,46 @@
  * Response object for the search entity relationship request from Elastic Search.
  */
 export interface EsEntityRelationshipData {
-    /**
-     * Columns associated with the relationship.
-     */
-    columns?: Column[];
-    /**
-     * Description of the relationship.
-     */
-    description?: string;
-    /**
-     * Doc Id for the Entity Relationship.
-     */
-    docId?: string;
-    /**
-     * Entity in the relationship (upstream/source entity).
-     */
-    entity?: RelationshipRef;
-    /**
-     * Related Entity in the relationship (downstream/target entity).
-     */
-    relatedEntity?: RelationshipRef;
-    /**
-     * Type of relationship.
-     */
-    relationshipType?: string;
+  /**
+   * Columns associated with the relationship.
+   */
+  columns?: Column[];
+  /**
+   * Description of the relationship.
+   */
+  description?: string;
+  /**
+   * Doc Id for the Entity Relationship.
+   */
+  docId?: string;
+  /**
+   * Entity in the relationship (upstream/source entity).
+   */
+  entity?: RelationshipRef;
+  /**
+   * Related Entity in the relationship (downstream/target entity).
+   */
+  relatedEntity?: RelationshipRef;
+  /**
+   * Type of relationship.
+   */
+  relationshipType?: string;
 }
 
 export interface Column {
-    /**
-     * Column FQN in the entity.
-     */
-    columnFQN?: string;
-    /**
-     * Related column FQN in the related entity.
-     */
-    relatedColumnFQN?: string;
-    /**
-     * Type of relationship between columns.
-     */
-    relationshipType?: string;
-    [property: string]: any;
+  /**
+   * Column FQN in the entity.
+   */
+  columnFQN?: string;
+  /**
+   * Related column FQN in the related entity.
+   */
+  relatedColumnFQN?: string;
+  /**
+   * Type of relationship between columns.
+   */
+  relationshipType?: string;
+  [property: string]: any;
 }
 
 /**
@@ -64,20 +64,20 @@ export interface Column {
  * Related Entity in the relationship (downstream/target entity).
  */
 export interface RelationshipRef {
-    /**
-     * FullyQualifiedName Hash of the entity.
-     */
-    fqnHash?: string;
-    /**
-     * FullyQualifiedName of the entity.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Unique identifier of this entity instance.
-     */
-    id?: string;
-    /**
-     * Type of the entity.
-     */
-    type?: string;
+  /**
+   * FullyQualifiedName Hash of the entity.
+   */
+  fqnHash?: string;
+  /**
+   * FullyQualifiedName of the entity.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Unique identifier of this entity instance.
+   */
+  id?: string;
+  /**
+   * Type of the entity.
+   */
+  type?: string;
 }

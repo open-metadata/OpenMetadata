@@ -15,12 +15,12 @@
  * particular date
  */
 export interface UsageRequest {
-    /**
-     * Usage count of table
-     */
-    count: number;
-    /**
-     * Date of execution of SQL query
-     */
-    date: string;
+  /**
+   * Usage count of table
+   */
+  count: number;
+  /**
+   * Date of execution of SQL query
+   */
+  date: string;
 }

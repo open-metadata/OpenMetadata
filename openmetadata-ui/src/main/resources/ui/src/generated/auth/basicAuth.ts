@@ -14,8 +14,8 @@
  * User basic Auth Mechanism.
  */
 export interface BasicAuth {
-    /**
-     * User Password
-     */
-    password: string;
+  /**
+   * User Password
+   */
+  password: string;
 }

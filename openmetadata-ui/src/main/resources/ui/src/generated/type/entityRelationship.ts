@@ -16,44 +16,44 @@
  * entity to another. For example, a database contains tables.
  */
 export interface EntityRelationship {
-    /**
-     * `true` indicates the relationship has been soft deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Type of the entity from which the relationship originates. Examples: `database`, `table`,
-     * `metrics` ...
-     */
-    fromEntity: string;
-    /**
-     * Fully qualified name of the entity from which the relationship originates.
-     */
-    fromFQN?: string;
-    /**
-     * Unique identifier that identifies the entity from which the relationship originates.
-     */
-    fromId?: string;
-    /**
-     * Describes relationship between the two entities as an integer.
-     */
-    relation?: number;
-    /**
-     * Describes relationship between the two entities. Eg: Database --- Contains --> Table.
-     */
-    relationshipType: RelationshipType;
-    /**
-     * Type of the entity towards which the relationship refers to. Examples: `database`,
-     * `table`, `metrics` ...
-     */
-    toEntity: string;
-    /**
-     * Fully qualified name of the entity towards which the relationship refers to.
-     */
-    toFQN?: string;
-    /**
-     * Unique identifier that identifies the entity towards which the relationship refers to.
-     */
-    toId?: string;
+  /**
+   * `true` indicates the relationship has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Type of the entity from which the relationship originates. Examples: `database`, `table`,
+   * `metrics` ...
+   */
+  fromEntity: string;
+  /**
+   * Fully qualified name of the entity from which the relationship originates.
+   */
+  fromFQN?: string;
+  /**
+   * Unique identifier that identifies the entity from which the relationship originates.
+   */
+  fromId?: string;
+  /**
+   * Describes relationship between the two entities as an integer.
+   */
+  relation?: number;
+  /**
+   * Describes relationship between the two entities. Eg: Database --- Contains --> Table.
+   */
+  relationshipType: RelationshipType;
+  /**
+   * Type of the entity towards which the relationship refers to. Examples: `database`,
+   * `table`, `metrics` ...
+   */
+  toEntity: string;
+  /**
+   * Fully qualified name of the entity towards which the relationship refers to.
+   */
+  toFQN?: string;
+  /**
+   * Unique identifier that identifies the entity towards which the relationship refers to.
+   */
+  toId?: string;
 }
 
 /**
@@ -63,27 +63,27 @@ export interface EntityRelationship {
  * relationship from is a Strong entity and to is Weak entity when possible.
  */
 export enum RelationshipType {
-    AddressedTo = "addressedTo",
-    AppliedTo = "appliedTo",
-    Contains = "contains",
-    CreatedBy = "createdBy",
-    DefaultsTo = "defaultsTo",
-    EditedBy = "editedBy",
-    Expert = "expert",
-    Follows = "follows",
-    Has = "has",
-    IsAbout = "isAbout",
-    JoinedWith = "joinedWith",
-    MentionedIn = "mentionedIn",
-    Owns = "owns",
-    ParentOf = "parentOf",
-    ReactedTo = "reactedTo",
-    RelatedTo = "relatedTo",
-    RelatesTo = "relatesTo",
-    RepliedTo = "repliedTo",
-    Reviews = "reviews",
-    TestedBy = "testedBy",
-    Upstream = "upstream",
-    Uses = "uses",
-    Voted = "voted",
+  AddressedTo = 'addressedTo',
+  AppliedTo = 'appliedTo',
+  Contains = 'contains',
+  CreatedBy = 'createdBy',
+  DefaultsTo = 'defaultsTo',
+  EditedBy = 'editedBy',
+  Expert = 'expert',
+  Follows = 'follows',
+  Has = 'has',
+  IsAbout = 'isAbout',
+  JoinedWith = 'joinedWith',
+  MentionedIn = 'mentionedIn',
+  Owns = 'owns',
+  ParentOf = 'parentOf',
+  ReactedTo = 'reactedTo',
+  RelatedTo = 'relatedTo',
+  RelatesTo = 'relatesTo',
+  RepliedTo = 'repliedTo',
+  Reviews = 'reviews',
+  TestedBy = 'testedBy',
+  Upstream = 'upstream',
+  Uses = 'uses',
+  Voted = 'voted',
 }

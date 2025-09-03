@@ -14,17 +14,17 @@
  * Credentials for a Kubernetes cluster
  */
 export interface KubernetesCredentials {
-    /**
-     * Whether the Kubernetes secrets manager is running in the same cluster where the
-     * OpenMetadata services are running
-     */
-    inCluster?: boolean;
-    /**
-     * The path to the kubeconfig file
-     */
-    kubeconfigPath?: string;
-    /**
-     * The namespace of the Kubernetes cluster
-     */
-    namespace?: string;
+  /**
+   * Whether the Kubernetes secrets manager is running in the same cluster where the
+   * OpenMetadata services are running
+   */
+  inCluster?: boolean;
+  /**
+   * The path to the kubeconfig file
+   */
+  kubeconfigPath?: string;
+  /**
+   * The namespace of the Kubernetes cluster
+   */
+  namespace?: string;
 }

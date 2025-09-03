@@ -14,13 +14,13 @@
  * Credentials for a GitHub repository
  */
 export interface GithubCredentials {
-    repositoryName:  string;
-    repositoryOwner: string;
-    token?:          string;
-    /**
-     * Credentials Type
-     */
-    type?: GithubType;
+  repositoryName: string;
+  repositoryOwner: string;
+  token?: string;
+  /**
+   * Credentials Type
+   */
+  type?: GithubType;
 }
 
 /**
@@ -29,5 +29,5 @@ export interface GithubCredentials {
  * GitHub Credentials type
  */
 export enum GithubType {
-    GitHub = "GitHub",
+  GitHub = 'GitHub',
 }

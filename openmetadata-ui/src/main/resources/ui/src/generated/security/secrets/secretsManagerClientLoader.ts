@@ -15,7 +15,7 @@
  * Credentials should be loaded from the environment.
  */
 export enum SecretsManagerClientLoader {
-    Airflow = "airflow",
-    Env = "env",
-    Noop = "noop",
+  Airflow = 'airflow',
+  Env = 'env',
+  Noop = 'noop',
 }

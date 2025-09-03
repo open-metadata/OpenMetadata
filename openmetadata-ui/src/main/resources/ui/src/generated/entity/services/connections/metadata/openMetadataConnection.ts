@@ -14,141 +14,141 @@
  * OpenMetadata Connection Config
  */
 export interface OpenMetadataConnection {
-    /**
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
-    /**
-     * OpenMetadata Server Authentication Provider.
-     */
-    authProvider?: AuthProvider;
-    /**
-     * Cluster name to differentiate OpenMetadata Server instance
-     */
-    clusterName?: string;
-    /**
-     * Regex to only include/exclude databases that matches the pattern.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
-     * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
-     */
-    elasticsSearch?: ElasticsSearch;
-    /**
-     * Validate Openmetadata Server & Client Version.
-     */
-    enableVersionValidation?: boolean;
-    extraHeaders?:            { [key: string]: string };
-    /**
-     * Force the overwriting of any entity during the ingestion.
-     */
-    forceEntityOverwriting?: boolean;
-    /**
-     * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
-     */
-    hostPort: string;
-    /**
-     * Include Dashboards for Indexing
-     */
-    includeDashboards?: boolean;
-    /**
-     * Include Database Services for Indexing
-     */
-    includeDatabaseServices?: boolean;
-    /**
-     * Include Glossary Terms for Indexing
-     */
-    includeGlossaryTerms?: boolean;
-    /**
-     * Include Messaging Services for Indexing
-     */
-    includeMessagingServices?: boolean;
-    /**
-     * Include MlModels for Indexing
-     */
-    includeMlModels?: boolean;
-    /**
-     * Include Pipelines for Indexing
-     */
-    includePipelines?: boolean;
-    /**
-     * Include Pipeline Services for Indexing
-     */
-    includePipelineServices?: boolean;
-    /**
-     * Include Tags for Policy
-     */
-    includePolicy?: boolean;
-    /**
-     * Include Tables for Indexing
-     */
-    includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
-    /**
-     * Include Teams for Indexing
-     */
-    includeTeams?: boolean;
-    /**
-     * Include Topics for Indexing
-     */
-    includeTopics?: boolean;
-    /**
-     * Include Users for Indexing
-     */
-    includeUsers?: boolean;
-    /**
-     * Limit the number of records for Indexing.
-     */
-    limitRecords?: number;
-    /**
-     * Regex to only include/exclude schemas that matches the pattern.
-     */
-    schemaFilterPattern?: FilterPattern;
-    /**
-     * Secrets Manager Loader for the Pipeline Service Client.
-     */
-    secretsManagerLoader?: SecretsManagerClientLoader;
-    /**
-     * Secrets Manager Provider for OpenMetadata Server.
-     */
-    secretsManagerProvider?: SecretsManagerProvider;
-    /**
-     * OpenMetadata Client security configuration.
-     */
-    securityConfig?: OpenMetadataJWTClientConfig;
-    /**
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: Config;
-    /**
-     * If set to true, when creating a service during the ingestion we will store its Service
-     * Connection. Otherwise, the ingestion will create a bare service without connection
-     * details.
-     */
-    storeServiceConnection?: boolean;
-    /**
-     * Flag to enable Data Insight Extraction
-     */
-    supportsDataInsightExtraction?: boolean;
-    /**
-     * Flag to enable ElasticSearch Reindexing Extraction
-     */
-    supportsElasticSearchReindexingExtraction?: boolean;
-    /**
-     * Regex to only include/exclude tables that matches the pattern.
-     */
-    tableFilterPattern?: FilterPattern;
-    /**
-     * Service Type
-     */
-    type?: OpenmetadataType;
-    /**
-     * Flag to verify SSL Certificate for OpenMetadata Server.
-     */
-    verifySSL?: VerifySSL;
+  /**
+   * OpenMetadata server API version to use.
+   */
+  apiVersion?: string;
+  /**
+   * OpenMetadata Server Authentication Provider.
+   */
+  authProvider?: AuthProvider;
+  /**
+   * Cluster name to differentiate OpenMetadata Server instance
+   */
+  clusterName?: string;
+  /**
+   * Regex to only include/exclude databases that matches the pattern.
+   */
+  databaseFilterPattern?: FilterPattern;
+  /**
+   * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
+   */
+  elasticsSearch?: ElasticsSearch;
+  /**
+   * Validate Openmetadata Server & Client Version.
+   */
+  enableVersionValidation?: boolean;
+  extraHeaders?: { [key: string]: string };
+  /**
+   * Force the overwriting of any entity during the ingestion.
+   */
+  forceEntityOverwriting?: boolean;
+  /**
+   * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
+   */
+  hostPort: string;
+  /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
+  /**
+   * Include MlModels for Indexing
+   */
+  includeMlModels?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
+   * Regex to only include/exclude schemas that matches the pattern.
+   */
+  schemaFilterPattern?: FilterPattern;
+  /**
+   * Secrets Manager Loader for the Pipeline Service Client.
+   */
+  secretsManagerLoader?: SecretsManagerClientLoader;
+  /**
+   * Secrets Manager Provider for OpenMetadata Server.
+   */
+  secretsManagerProvider?: SecretsManagerProvider;
+  /**
+   * OpenMetadata Client security configuration.
+   */
+  securityConfig?: OpenMetadataJWTClientConfig;
+  /**
+   * SSL Configuration for OpenMetadata Server
+   */
+  sslConfig?: Config;
+  /**
+   * If set to true, when creating a service during the ingestion we will store its Service
+   * Connection. Otherwise, the ingestion will create a bare service without connection
+   * details.
+   */
+  storeServiceConnection?: boolean;
+  /**
+   * Flag to enable Data Insight Extraction
+   */
+  supportsDataInsightExtraction?: boolean;
+  /**
+   * Flag to enable ElasticSearch Reindexing Extraction
+   */
+  supportsElasticSearchReindexingExtraction?: boolean;
+  /**
+   * Regex to only include/exclude tables that matches the pattern.
+   */
+  tableFilterPattern?: FilterPattern;
+  /**
+   * Service Type
+   */
+  type?: OpenmetadataType;
+  /**
+   * Flag to verify SSL Certificate for OpenMetadata Server.
+   */
+  verifySSL?: VerifySSL;
 }
 
 /**
@@ -158,16 +158,16 @@ export interface OpenMetadataConnection {
  * the one configured on OpenMetadata server.
  */
 export enum AuthProvider {
-    Auth0 = "auth0",
-    AwsCognito = "aws-cognito",
-    Azure = "azure",
-    Basic = "basic",
-    CustomOidc = "custom-oidc",
-    Google = "google",
-    LDAP = "ldap",
-    Okta = "okta",
-    Openmetadata = "openmetadata",
-    Saml = "saml",
+  Auth0 = 'auth0',
+  AwsCognito = 'aws-cognito',
+  Azure = 'azure',
+  Basic = 'basic',
+  CustomOidc = 'custom-oidc',
+  Google = 'google',
+  LDAP = 'ldap',
+  Okta = 'okta',
+  Openmetadata = 'openmetadata',
+  Saml = 'saml',
 }
 
 /**
@@ -180,25 +180,25 @@ export enum AuthProvider {
  * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
-    config?: { [key: string]: any };
-    /**
-     * Type of sink component ex: metadata
-     */
-    type: string;
+  config?: { [key: string]: any };
+  /**
+   * Type of sink component ex: metadata
+   */
+  type: string;
 }
 
 /**
@@ -208,9 +208,9 @@ export interface ElasticsSearch {
  * Credentials should be loaded from the environment.
  */
 export enum SecretsManagerClientLoader {
-    Airflow = "airflow",
-    Env = "env",
-    Noop = "noop",
+  Airflow = 'airflow',
+  Env = 'env',
+  Noop = 'noop',
 }
 
 /**
@@ -220,16 +220,16 @@ export enum SecretsManagerClientLoader {
  * providers as the ones configured on the OpenMetadata server.
  */
 export enum SecretsManagerProvider {
-    Aws = "aws",
-    AwsSsm = "aws-ssm",
-    AzureKv = "azure-kv",
-    DB = "db",
-    Gcp = "gcp",
-    InMemory = "in-memory",
-    Kubernetes = "kubernetes",
-    ManagedAws = "managed-aws",
-    ManagedAwsSsm = "managed-aws-ssm",
-    ManagedAzureKv = "managed-azure-kv",
+  Aws = 'aws',
+  AwsSsm = 'aws-ssm',
+  AzureKv = 'azure-kv',
+  DB = 'db',
+  Gcp = 'gcp',
+  InMemory = 'in-memory',
+  Kubernetes = 'kubernetes',
+  ManagedAws = 'managed-aws',
+  ManagedAwsSsm = 'managed-aws-ssm',
+  ManagedAzureKv = 'managed-azure-kv',
 }
 
 /**
@@ -238,10 +238,10 @@ export enum SecretsManagerProvider {
  * openMetadataJWTClientConfig security configs.
  */
 export interface OpenMetadataJWTClientConfig {
-    /**
-     * OpenMetadata generated JWT token.
-     */
-    jwtToken: string;
+  /**
+   * OpenMetadata generated JWT token.
+   */
+  jwtToken: string;
 }
 
 /**
@@ -252,18 +252,18 @@ export interface OpenMetadataJWTClientConfig {
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
+  /**
+   * The CA certificate used for SSL validation.
+   */
+  caCertificate?: string;
+  /**
+   * The SSL certificate used for client authentication.
+   */
+  sslCertificate?: string;
+  /**
+   * The private key associated with the SSL certificate.
+   */
+  sslKey?: string;
 }
 
 /**
@@ -272,7 +272,7 @@ export interface Config {
  * OpenMetadata service type
  */
 export enum OpenmetadataType {
-    OpenMetadata = "OpenMetadata",
+  OpenMetadata = 'OpenMetadata',
 }
 
 /**
@@ -281,7 +281,7 @@ export enum OpenmetadataType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  */
 export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
+  Ignore = 'ignore',
+  NoSSL = 'no-ssl',
+  Validate = 'validate',
 }

@@ -14,6 +14,6 @@
  * Lineage Direction Schema.
  */
 export enum LineageDirection {
-    Downstream = "Downstream",
-    Upstream = "Upstream",
+  Downstream = 'Downstream',
+  Upstream = 'Upstream',
 }

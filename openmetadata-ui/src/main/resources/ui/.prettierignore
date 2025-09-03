@@ -44,11 +44,6 @@ swagger.html
 src/generated/antlr
 src/antlr/generated
 
-
-# Generated TS
-src/generated/
-
-
 # Assets
 *.gif
 *.svg

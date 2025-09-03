@@ -14,51 +14,51 @@
  * Schema to capture data contract execution results over time.
  */
 export interface DataContractResult {
-    /**
-     * Overall status of the contract execution.
-     */
-    contractExecutionStatus: ContractExecutionStatus;
-    /**
-     * Fully qualified name of the data contract.
-     */
-    dataContractFQN: string;
-    /**
-     * Time taken to execute the contract validation in milliseconds.
-     */
-    executionTime?: number;
-    /**
-     * Unique Data Contract validation execution identifier of this data contract result
-     * instance.
-     */
-    id?: string;
-    /**
-     * Incident ID if the contract execution failed and an incident was created.
-     */
-    incidentId?: string;
-    /**
-     * Quality expectations validation details.
-     */
-    qualityValidation?: QualityValidation;
-    /**
-     * Detailed result of the data contract execution.
-     */
-    result?: string;
-    /**
-     * Schema validation details.
-     */
-    schemaValidation?: SchemaValidation;
-    /**
-     * Semantics validation details.
-     */
-    semanticsValidation?: SemanticsValidation;
-    /**
-     * SLA validation details.
-     */
-    slaValidation?: SlaValidation;
-    /**
-     * Timestamp when the data contract was executed.
-     */
-    timestamp: number;
+  /**
+   * Overall status of the contract execution.
+   */
+  contractExecutionStatus: ContractExecutionStatus;
+  /**
+   * Fully qualified name of the data contract.
+   */
+  dataContractFQN: string;
+  /**
+   * Time taken to execute the contract validation in milliseconds.
+   */
+  executionTime?: number;
+  /**
+   * Unique Data Contract validation execution identifier of this data contract result
+   * instance.
+   */
+  id?: string;
+  /**
+   * Incident ID if the contract execution failed and an incident was created.
+   */
+  incidentId?: string;
+  /**
+   * Quality expectations validation details.
+   */
+  qualityValidation?: QualityValidation;
+  /**
+   * Detailed result of the data contract execution.
+   */
+  result?: string;
+  /**
+   * Schema validation details.
+   */
+  schemaValidation?: SchemaValidation;
+  /**
+   * Semantics validation details.
+   */
+  semanticsValidation?: SemanticsValidation;
+  /**
+   * SLA validation details.
+   */
+  slaValidation?: SlaValidation;
+  /**
+   * Timestamp when the data contract was executed.
+   */
+  timestamp: number;
 }
 
 /**
@@ -67,12 +67,12 @@ export interface DataContractResult {
  * Status of the data contract execution.
  */
 export enum ContractExecutionStatus {
-    Aborted = "Aborted",
-    Failed = "Failed",
-    PartialSuccess = "PartialSuccess",
-    Queued = "Queued",
-    Running = "Running",
-    Success = "Success",
+  Aborted = 'Aborted',
+  Failed = 'Failed',
+  PartialSuccess = 'PartialSuccess',
+  Queued = 'Queued',
+  Running = 'Running',
+  Success = 'Success',
 }
 
 /**
@@ -81,22 +81,22 @@ export enum ContractExecutionStatus {
  * Quality validation details for data contract.
  */
 export interface QualityValidation {
-    /**
-     * Number of quality checks failed.
-     */
-    failed?: number;
-    /**
-     * Number of quality checks passed.
-     */
-    passed?: number;
-    /**
-     * Overall quality score (0-100).
-     */
-    qualityScore?: number;
-    /**
-     * Total number of quality checks.
-     */
-    total?: number;
+  /**
+   * Number of quality checks failed.
+   */
+  failed?: number;
+  /**
+   * Number of quality checks passed.
+   */
+  passed?: number;
+  /**
+   * Overall quality score (0-100).
+   */
+  qualityScore?: number;
+  /**
+   * Total number of quality checks.
+   */
+  total?: number;
 }
 
 /**
@@ -105,22 +105,22 @@ export interface QualityValidation {
  * Schema validation details for data contract.
  */
 export interface SchemaValidation {
-    /**
-     * Number of schema checks failed.
-     */
-    failed?: number;
-    /**
-     * List of fields that failed validation.
-     */
-    failedFields?: string[];
-    /**
-     * Number of schema checks passed.
-     */
-    passed?: number;
-    /**
-     * Total number of schema checks.
-     */
-    total?: number;
+  /**
+   * Number of schema checks failed.
+   */
+  failed?: number;
+  /**
+   * List of fields that failed validation.
+   */
+  failedFields?: string[];
+  /**
+   * Number of schema checks passed.
+   */
+  passed?: number;
+  /**
+   * Total number of schema checks.
+   */
+  total?: number;
 }
 
 /**
@@ -129,27 +129,27 @@ export interface SchemaValidation {
  * Semantics validation details for data contract.
  */
 export interface SemanticsValidation {
-    /**
-     * Number of semantics rules failed.
-     */
-    failed?: number;
-    /**
-     * List of rules that failed validation.
-     */
-    failedRules?: FailedRule[];
-    /**
-     * Number of semantics rules passed.
-     */
-    passed?: number;
-    /**
-     * Total number of semantics rules.
-     */
-    total?: number;
+  /**
+   * Number of semantics rules failed.
+   */
+  failed?: number;
+  /**
+   * List of rules that failed validation.
+   */
+  failedRules?: FailedRule[];
+  /**
+   * Number of semantics rules passed.
+   */
+  passed?: number;
+  /**
+   * Total number of semantics rules.
+   */
+  total?: number;
 }
 
 export interface FailedRule {
-    reason?:   string;
-    ruleName?: string;
+  reason?: string;
+  ruleName?: string;
 }
 
 /**
@@ -158,20 +158,20 @@ export interface FailedRule {
  * SLA validation details for data contract.
  */
 export interface SlaValidation {
-    /**
-     * Actual latency in milliseconds.
-     */
-    actualLatency?: number;
-    /**
-     * Whether availability requirement was met.
-     */
-    availabilityMet?: boolean;
-    /**
-     * Whether latency requirement was met.
-     */
-    latencyMet?: boolean;
-    /**
-     * Whether refresh frequency requirement was met.
-     */
-    refreshFrequencyMet?: boolean;
+  /**
+   * Actual latency in milliseconds.
+   */
+  actualLatency?: number;
+  /**
+   * Whether availability requirement was met.
+   */
+  availabilityMet?: boolean;
+  /**
+   * Whether latency requirement was met.
+   */
+  latencyMet?: boolean;
+  /**
+   * Whether refresh frequency requirement was met.
+   */
+  refreshFrequencyMet?: boolean;
 }

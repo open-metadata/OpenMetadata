@@ -14,16 +14,16 @@
  * Search Entity Relationship Response for the Entity Relationship Request
  */
 export interface SearchEntityRelationshipResult {
-    /**
-     * Downstream Edges for the node.
-     */
-    downstreamEdges?: any;
-    /**
-     * Nodes in the entity relationship response.
-     */
-    nodes?: any;
-    /**
-     * Upstream Edges for the entity.
-     */
-    upstreamEdges?: any;
+  /**
+   * Downstream Edges for the node.
+   */
+  downstreamEdges?: any;
+  /**
+   * Nodes in the entity relationship response.
+   */
+  nodes?: any;
+  /**
+   * Upstream Edges for the entity.
+   */
+  upstreamEdges?: any;
 }

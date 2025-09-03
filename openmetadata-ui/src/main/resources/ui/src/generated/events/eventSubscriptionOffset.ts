@@ -15,16 +15,16 @@
  * position of events processed.
  */
 export interface EventSubscriptionOffset {
-    /**
-     * The current position in the events.
-     */
-    currentOffset: number;
-    /**
-     * The offset from where event processing starts.
-     */
-    startingOffset: number;
-    /**
-     * Update time of the job status.
-     */
-    timestamp?: number;
+  /**
+   * The current position in the events.
+   */
+  currentOffset: number;
+  /**
+   * The offset from where event processing starts.
+   */
+  startingOffset: number;
+  /**
+   * Update time of the job status.
+   */
+  timestamp?: number;
 }

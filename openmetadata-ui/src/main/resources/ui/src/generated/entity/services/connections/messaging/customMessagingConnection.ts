@@ -15,21 +15,21 @@
  * OpenMetadata yet.
  */
 export interface CustomMessagingConnection {
-    connectionOptions?: { [key: string]: string };
-    /**
-     * Source Python Class Name to instantiated by the ingestion workflow
-     */
-    sourcePythonClass?:          string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Regex to only fetch topics that matches the pattern.
-     */
-    topicFilterPattern?: FilterPattern;
-    /**
-     * Custom messaging service type
-     */
-    type: ServiceType;
-    [property: string]: any;
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Source Python Class Name to instantiated by the ingestion workflow
+   */
+  sourcePythonClass?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Regex to only fetch topics that matches the pattern.
+   */
+  topicFilterPattern?: FilterPattern;
+  /**
+   * Custom messaging service type
+   */
+  type: ServiceType;
+  [property: string]: any;
 }
 
 /**
@@ -38,19 +38,19 @@ export interface CustomMessagingConnection {
  * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
  * Custom messaging service type
  */
 export enum ServiceType {
-    CustomMessaging = "CustomMessaging",
+  CustomMessaging = 'CustomMessaging',
 }

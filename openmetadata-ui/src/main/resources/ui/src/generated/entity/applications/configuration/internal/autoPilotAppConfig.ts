@@ -14,18 +14,18 @@
  * Configuration for the AutoPilot Application.
  */
 export interface AutoPilotAppConfig {
-    /**
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active: boolean;
-    /**
-     * Service Entity Link for which to trigger the application.
-     */
-    entityLink?: string;
-    /**
-     * Application Type
-     */
-    type?: AutoPilotAppType;
+  /**
+   * Whether the AutoPilot Workflow should be active or not.
+   */
+  active: boolean;
+  /**
+   * Service Entity Link for which to trigger the application.
+   */
+  entityLink?: string;
+  /**
+   * Application Type
+   */
+  type?: AutoPilotAppType;
 }
 
 /**
@@ -34,5 +34,5 @@ export interface AutoPilotAppConfig {
  * Application type.
  */
 export enum AutoPilotAppType {
-    AutoPilotApplication = "AutoPilotApplication",
+  AutoPilotApplication = 'AutoPilotApplication',
 }

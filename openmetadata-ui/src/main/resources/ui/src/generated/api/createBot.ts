@@ -14,28 +14,28 @@
  * Create bot API request
  */
 export interface CreateBot {
-    /**
-     * Bot user name created for this bot on behalf of which the bot performs all the
-     * operations, such as updating description, responding on the conversation threads, etc.
-     */
-    botUser: string;
-    /**
-     * Description of the bot.
-     */
-    description?: string;
-    /**
-     * Name used for display purposes. Example 'FirstName LastName'.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Bot belongs to.
-     */
-    domains?: string[];
-    /**
-     * Name of the bot.
-     */
-    name:      string;
-    provider?: ProviderType;
+  /**
+   * Bot user name created for this bot on behalf of which the bot performs all the
+   * operations, such as updating description, responding on the conversation threads, etc.
+   */
+  botUser: string;
+  /**
+   * Description of the bot.
+   */
+  description?: string;
+  /**
+   * Name used for display purposes. Example 'FirstName LastName'.
+   */
+  displayName?: string;
+  /**
+   * Fully qualified names of the domains the Bot belongs to.
+   */
+  domains?: string[];
+  /**
+   * Name of the bot.
+   */
+  name: string;
+  provider?: ProviderType;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface CreateBot {
  * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
+  Automation = 'automation',
+  System = 'system',
+  User = 'user',
 }

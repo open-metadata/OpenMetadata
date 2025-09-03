@@ -14,61 +14,61 @@
  * Create Suggestion request
  */
 export interface CreateSuggestion {
-    /**
-     * Message in Markdown format. See markdown support for more details.
-     */
-    description?: string;
-    /**
-     * Data asset about which this thread is created for with format
-     * <#E::{entities}::{entityName}::{field}::{fieldValue}.
-     */
-    entityLink: string;
-    /**
-     * Tags or Glossary Terms.
-     */
-    tagLabels?: TagLabel[];
-    type?:      SuggestionType;
+  /**
+   * Message in Markdown format. See markdown support for more details.
+   */
+  description?: string;
+  /**
+   * Data asset about which this thread is created for with format
+   * <#E::{entities}::{entityName}::{field}::{fieldValue}.
+   */
+  entityLink: string;
+  /**
+   * Tags or Glossary Terms.
+   */
+  tagLabels?: TagLabel[];
+  type?: SuggestionType;
 }
 
 /**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
-    /**
-     * Description for the tag label.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this tag.
-     */
-    displayName?: string;
-    /**
-     * Link to the tag resource.
-     */
-    href?: string;
-    /**
-     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
-     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
-     * used to determine the tag label.
-     */
-    labelType: LabelType;
-    /**
-     * Name of the tag or glossary term.
-     */
-    name?: string;
-    /**
-     * Label is from Tags or Glossary.
-     */
-    source: TagSource;
-    /**
-     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-     */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
+  /**
+   * Description for the tag label.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this tag.
+   */
+  displayName?: string;
+  /**
+   * Link to the tag resource.
+   */
+  href?: string;
+  /**
+   * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+   * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+   * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+   * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+   * used to determine the tag label.
+   */
+  labelType: LabelType;
+  /**
+   * Name of the tag or glossary term.
+   */
+  name?: string;
+  /**
+   * Label is from Tags or Glossary.
+   */
+  source: TagSource;
+  /**
+   * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+   * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+   */
+  state: State;
+  style?: Style;
+  tagFQN: string;
 }
 
 /**
@@ -79,19 +79,19 @@ export interface TagLabel {
  * used to determine the tag label.
  */
 export enum LabelType {
-    Automated = "Automated",
-    Derived = "Derived",
-    Generated = "Generated",
-    Manual = "Manual",
-    Propagated = "Propagated",
+  Automated = 'Automated',
+  Derived = 'Derived',
+  Generated = 'Generated',
+  Manual = 'Manual',
+  Propagated = 'Propagated',
 }
 
 /**
  * Label is from Tags or Glossary.
  */
 export enum TagSource {
-    Classification = "Classification",
-    Glossary = "Glossary",
+  Classification = 'Classification',
+  Glossary = 'Glossary',
 }
 
 /**
@@ -99,8 +99,8 @@ export enum TagSource {
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
 export enum State {
-    Confirmed = "Confirmed",
-    Suggested = "Suggested",
+  Confirmed = 'Confirmed',
+  Suggested = 'Suggested',
 }
 
 /**
@@ -108,20 +108,20 @@ export enum State {
  * that entity in UI.
  */
 export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
+  /**
+   * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+   */
+  color?: string;
+  /**
+   * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+   */
+  iconURL?: string;
 }
 
 /**
  * Type of a Suggestion.
  */
 export enum SuggestionType {
-    SuggestDescription = "SuggestDescription",
-    SuggestTagLabel = "SuggestTagLabel",
+  SuggestDescription = 'SuggestDescription',
+  SuggestTagLabel = 'SuggestTagLabel',
 }

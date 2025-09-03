@@ -14,10 +14,10 @@
  * Status of the data contract execution.
  */
 export enum ContractExecutionStatus {
-    Aborted = "Aborted",
-    Failed = "Failed",
-    PartialSuccess = "PartialSuccess",
-    Queued = "Queued",
-    Running = "Running",
-    Success = "Success",
+  Aborted = 'Aborted',
+  Failed = 'Failed',
+  PartialSuccess = 'PartialSuccess',
+  Queued = 'Queued',
+  Running = 'Running',
+  Success = 'Success',
 }

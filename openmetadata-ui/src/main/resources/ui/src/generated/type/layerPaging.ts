@@ -14,12 +14,12 @@
  * Layer Paging Information for Entity Relationships and Lineage.
  */
 export interface LayerPaging {
-    /**
-     * Total Downstream Entity Count
-     */
-    entityDownstreamCount?: number;
-    /**
-     * Total Upstream Entity Count
-     */
-    entityUpstreamCount?: number;
+  /**
+   * Total Downstream Entity Count
+   */
+  entityDownstreamCount?: number;
+  /**
+   * Total Upstream Entity Count
+   */
+  entityUpstreamCount?: number;
 }

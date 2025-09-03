@@ -15,33 +15,33 @@
  * OpenMetadata yet.
  */
 export interface CustomDashboardConnection {
-    /**
-     * Regex exclude or include charts that matches the pattern.
-     */
-    chartFilterPattern?: FilterPattern;
-    connectionOptions?:  { [key: string]: string };
-    /**
-     * Regex to exclude or include dashboards that matches the pattern.
-     */
-    dashboardFilterPattern?: FilterPattern;
-    /**
-     * Regex exclude or include data models that matches the pattern.
-     */
-    dataModelFilterPattern?: FilterPattern;
-    /**
-     * Regex to exclude or include projects that matches the pattern.
-     */
-    projectFilterPattern?: FilterPattern;
-    /**
-     * Source Python Class Name to instantiated by the ingestion workflow
-     */
-    sourcePythonClass?:          string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Custom dashboard service type
-     */
-    type: ServiceType;
-    [property: string]: any;
+  /**
+   * Regex exclude or include charts that matches the pattern.
+   */
+  chartFilterPattern?: FilterPattern;
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Regex to exclude or include dashboards that matches the pattern.
+   */
+  dashboardFilterPattern?: FilterPattern;
+  /**
+   * Regex exclude or include data models that matches the pattern.
+   */
+  dataModelFilterPattern?: FilterPattern;
+  /**
+   * Regex to exclude or include projects that matches the pattern.
+   */
+  projectFilterPattern?: FilterPattern;
+  /**
+   * Source Python Class Name to instantiated by the ingestion workflow
+   */
+  sourcePythonClass?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Custom dashboard service type
+   */
+  type: ServiceType;
+  [property: string]: any;
 }
 
 /**
@@ -56,19 +56,19 @@ export interface CustomDashboardConnection {
  * Regex to exclude or include projects that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
  * Custom dashboard service type
  */
 export enum ServiceType {
-    CustomDashboard = "CustomDashboard",
+  CustomDashboard = 'CustomDashboard',
 }

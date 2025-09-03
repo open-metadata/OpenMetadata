@@ -15,7 +15,7 @@
  * non-deleted entities using the parameter include.
  */
 export enum Include {
-    All = "all",
-    Deleted = "deleted",
-    NonDeleted = "non-deleted",
+  All = 'all',
+  Deleted = 'deleted',
+  NonDeleted = 'non-deleted',
 }
