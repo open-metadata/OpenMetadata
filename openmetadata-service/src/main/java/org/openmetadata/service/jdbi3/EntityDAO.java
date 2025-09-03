@@ -534,6 +534,12 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default T jsonToEntity(String json, Object identity) {
     Class<T> clz = getEntityClass();
+    // Debug logging to check if translations field is in JSON
+    if (json != null && json.contains("\"translations\"")) {
+      LOG.info("DEBUG: Entity {} JSON contains translations field", identity);
+    } else {
+      LOG.info("DEBUG: Entity {} JSON does NOT contain translations field", identity);
+    }
     T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);

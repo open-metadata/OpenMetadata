@@ -38,7 +38,10 @@
     "indexType": {
       "description": "Whether the entity is index or index template.",
       "type": "string",
-      "enum": ["Index", "IndexTemplate"],
+      "enum": [
+        "Index",
+        "IndexTemplate"
+      ],
       "default": "Index"
     },
     "dataType": {
@@ -144,6 +147,10 @@
             "$ref": "#/definitions/searchIndexField"
           },
           "default": null
+        },
+        "translations": {
+          "description": "Multi-language translations for field displayName and description fields.",
+          "$ref": "../../type/translations.json"
         }
       },
       "required": [
@@ -216,7 +223,6 @@
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
-
     "owners": {
       "description": "Owners of this searchIndex.",
       "$ref": "../../type/entityReferenceList.json"
@@ -253,6 +259,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
     "domains": {
       "description": "Domains the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from the messaging service it belongs to.",

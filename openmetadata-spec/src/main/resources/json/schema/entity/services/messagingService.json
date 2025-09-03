@@ -13,8 +13,15 @@
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Kafka", "Redpanda", "Kinesis", "CustomMessaging"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "enum": [
+        "Kafka",
+        "Redpanda",
+        "Kinesis",
+        "CustomMessaging"
+      ],
       "javaEnums": [
         {
           "name": "Kafka"
@@ -144,11 +151,15 @@
       "type": "boolean",
       "default": false
     },
-    "dataProducts" : {
-      "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
-    "domains" : {
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
       "description": "Domains the Messaging service belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -156,11 +167,15 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "ingestionRunner" : {
+    "ingestionRunner": {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
   "additionalProperties": false
 }

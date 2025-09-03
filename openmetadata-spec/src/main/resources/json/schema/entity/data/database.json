@@ -6,9 +6,10 @@
   "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Database",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-  },
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {},
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this database instance.",
@@ -30,9 +31,9 @@
       "description": "Description of the database instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this Database.",
@@ -101,13 +102,17 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
     "sourceUrl": {
       "description": "Source URL of database.",
@@ -172,6 +177,10 @@
       }
     }
   },
-  "required": ["id", "name", "service"],
+  "required": [
+    "id",
+    "name",
+    "service"
+  ],
   "additionalProperties": false
 }

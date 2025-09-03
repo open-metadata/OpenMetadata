@@ -736,4 +736,122 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
           field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
     }
   }
+
+  @Test
+  void test_fieldTranslations(TestInfo test) throws IOException {
+    // Create a topic with message schema fields
+    String topicName = getEntityName(test) + UUID.randomUUID();
+    String defaultDisplayName = "Default Display Name";
+    String defaultDescription = "Default Description";
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field()
+                .withName("field1")
+                .withDataType(FieldDataType.STRING)
+                .withDisplayName("Field One")
+                .withDescription("First field description"),
+            new Field()
+                .withName("field2")
+                .withDataType(FieldDataType.INT)
+                .withDisplayName("Field Two")
+                .withDescription("Second field description"));
+
+    MessageSchema messageSchema =
+        new MessageSchema().withSchemaType(SchemaType.Avro).withSchemaFields(fields);
+
+    CreateTopic createRequest =
+        createRequest(topicName)
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withMessageSchema(messageSchema);
+
+    Topic topic = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID topicId = topic.getId();
+
+    // Store original JSON for patch comparison
+    String originalJson = JsonUtils.pojoToJson(topic);
+
+    // Update field translations to Spanish
+    for (Field field : topic.getMessageSchema().getSchemaFields()) {
+      if (field.getName().equals("field1")) {
+        field.setDisplayName("Campo Uno");
+        field.setDescription("Descripción del primer campo");
+      } else if (field.getName().equals("field2")) {
+        field.setDisplayName("Campo Dos");
+        field.setDescription("Descripción del segundo campo");
+      }
+    }
+
+    // Patch with Spanish locale
+    WebTarget target = getResource(topicId);
+    target = target.queryParam("locale", "es");
+    String updatedJson = JsonUtils.pojoToJson(topic);
+    com.fasterxml.jackson.databind.JsonNode patch =
+        com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+    Topic patchedTopic = TestUtils.patch(target, patch, Topic.class, ADMIN_AUTH_HEADERS);
+
+    // Verify Spanish translations - GET with locale=es and fields=messageSchema
+    target = getResource(topicId);
+    target = target.queryParam("locale", "es").queryParam("fields", "messageSchema");
+    Topic topicWithEs = TestUtils.get(target, Topic.class, ADMIN_AUTH_HEADERS);
+
+    Field field1Es =
+        topicWithEs.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1Es);
+    assertEquals("Campo Uno", field1Es.getDisplayName());
+    assertEquals("Descripción del primer campo", field1Es.getDescription());
+
+    Field field2Es =
+        topicWithEs.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("field2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field2Es);
+    assertEquals("Campo Dos", field2Es.getDisplayName());
+    assertEquals("Descripción del segundo campo", field2Es.getDescription());
+
+    // Verify English content remains unchanged - GET with locale=en and fields=messageSchema
+    target = getResource(topicId);
+    target = target.queryParam("locale", "en").queryParam("fields", "messageSchema");
+    Topic topicWithEn = TestUtils.get(target, Topic.class, ADMIN_AUTH_HEADERS);
+
+    Field field1En =
+        topicWithEn.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1En);
+    assertEquals("Field One", field1En.getDisplayName());
+    assertEquals("First field description", field1En.getDescription());
+
+    Field field2En =
+        topicWithEn.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("field2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field2En);
+    assertEquals("Field Two", field2En.getDisplayName());
+    assertEquals("Second field description", field2En.getDescription());
+
+    // Test non-existent locale - GET with locale=fr
+    target = getResource(topicId);
+    target = target.queryParam("locale", "fr").queryParam("fields", "messageSchema");
+    Topic topicWithFr = TestUtils.get(target, Topic.class, ADMIN_AUTH_HEADERS);
+
+    Field field1Fr =
+        topicWithFr.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("field1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(field1Fr);
+    // Should return empty strings for non-existent locale
+    assertEquals("", field1Fr.getDisplayName());
+    assertEquals("", field1Fr.getDescription());
+  }
 }

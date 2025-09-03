@@ -5,7 +5,9 @@
   "description": "This schema defines a type as an entity. Types includes property types and entity types. Custom types can also be defined by the users to extend the metadata system.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.Type",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "entityName": {
       "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
@@ -16,7 +18,10 @@
       "description": "Metadata category to which a type belongs to.",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.type.Category",
-      "enum": ["field", "entity"],
+      "enum": [
+        "field",
+        "entity"
+      ],
       "javaEnums": [
         {
           "name": "Field"
@@ -91,15 +96,22 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../type/entityReferenceList.json"
+      "$ref": "../type/entityReferenceList.json"
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     }
   },
-  "required": ["name", "description"],
+  "required": [
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

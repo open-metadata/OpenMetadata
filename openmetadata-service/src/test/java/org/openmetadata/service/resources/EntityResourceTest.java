@@ -1229,6 +1229,148 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  void test_translations(TestInfo test) throws HttpResponseException {
+    // Test translation support for entities with displayName and description
+
+    // Create entity with default English content
+    String entityName = getEntityName(test);
+    String defaultDisplayName = "English Display Name";
+    String defaultDescription = "English Description";
+
+    K createRequest = createRequest(entityName, defaultDescription, defaultDisplayName, null);
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID entityId = entity.getId();
+
+    try {
+      // Test 1: GET with no locale or locale=en should return default content
+      T entityWithDefault = getEntity(entityId, "", ADMIN_AUTH_HEADERS);
+      assertEquals(defaultDisplayName, entityWithDefault.getDisplayName());
+      assertEquals(defaultDescription, entityWithDefault.getDescription());
+
+      T entityWithEn = getEntityWithLocale(entityId, "en", "", ADMIN_AUTH_HEADERS);
+      assertEquals(defaultDisplayName, entityWithEn.getDisplayName());
+      assertEquals(defaultDescription, entityWithEn.getDescription());
+
+      // Test 2: Add Spanish translation via PATCH with locale parameter
+      String spanishDisplayName = "Nombre de Visualización en Español";
+      String spanishDescription = "Descripción en Español";
+
+      String originalJson = JsonUtils.pojoToJson(entity);
+      entity.setDisplayName(spanishDisplayName);
+      entity.setDescription(spanishDescription);
+      patchEntityWithLocale(entityId, originalJson, entity, "es", ADMIN_AUTH_HEADERS);
+
+      // Test 3: GET with locale=es should return Spanish translation
+      T entityWithEs = getEntityWithLocale(entityId, "es", "", ADMIN_AUTH_HEADERS);
+      assertEquals(spanishDisplayName, entityWithEs.getDisplayName());
+      assertEquals(spanishDescription, entityWithEs.getDescription());
+
+      // Test 4: GET with locale=en should still return English content
+      T entityWithEnAfterTranslation = getEntityWithLocale(entityId, "en", "", ADMIN_AUTH_HEADERS);
+      assertEquals(defaultDisplayName, entityWithEnAfterTranslation.getDisplayName());
+      assertEquals(defaultDescription, entityWithEnAfterTranslation.getDescription());
+
+      // Test 5: Add French translation
+      String frenchDisplayName = "Nom d'Affichage en Français";
+      String frenchDescription = "Description en Français";
+
+      entity.setDisplayName(frenchDisplayName);
+      entity.setDescription(frenchDescription);
+      patchEntityWithLocale(entityId, originalJson, entity, "fr", ADMIN_AUTH_HEADERS);
+
+      // Test 6: GET with locale=fr should return French translation
+      T entityWithFr = getEntityWithLocale(entityId, "fr", "", ADMIN_AUTH_HEADERS);
+      assertEquals(frenchDisplayName, entityWithFr.getDisplayName());
+      assertEquals(frenchDescription, entityWithFr.getDescription());
+
+      // Test 7: List entities with different locales
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("locale", "es");
+      ResultList<T> spanishList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+      Optional<T> spanishEntity =
+          spanishList.getData().stream().filter(e -> e.getId().equals(entityId)).findFirst();
+      if (spanishEntity.isPresent()) {
+        assertEquals(spanishDisplayName, spanishEntity.get().getDisplayName());
+        assertEquals(spanishDescription, spanishEntity.get().getDescription());
+      }
+
+      // Test 8: Update default English content via PATCH without locale
+      String updatedEnglishDisplayName = "Updated English Display Name";
+      String updatedEnglishDescription = "Updated English Description";
+
+      // Fetch the current entity state before patching - include all fields
+      T currentEntity = getEntity(entityId, getAllowedFields(), ADMIN_AUTH_HEADERS);
+      String currentJson = JsonUtils.pojoToJson(currentEntity);
+
+      currentEntity.setDisplayName(updatedEnglishDisplayName);
+      currentEntity.setDescription(updatedEnglishDescription);
+      T updatedEntity = patchEntity(entityId, currentJson, currentEntity, ADMIN_AUTH_HEADERS);
+
+      // Verify English content is updated
+      T entityWithUpdatedEn = getEntityWithLocale(entityId, "en", "", ADMIN_AUTH_HEADERS);
+      assertEquals(updatedEnglishDisplayName, entityWithUpdatedEn.getDisplayName());
+      assertEquals(updatedEnglishDescription, entityWithUpdatedEn.getDescription());
+
+      // Test 9: Spanish and French translations should remain unchanged
+      T entityWithEsAfterUpdate = getEntityWithLocale(entityId, "es", "", ADMIN_AUTH_HEADERS);
+      assertEquals(spanishDisplayName, entityWithEsAfterUpdate.getDisplayName());
+      assertEquals(spanishDescription, entityWithEsAfterUpdate.getDescription());
+
+      T entityWithFrAfterUpdate = getEntityWithLocale(entityId, "fr", "", ADMIN_AUTH_HEADERS);
+      assertEquals(frenchDisplayName, entityWithFrAfterUpdate.getDisplayName());
+      assertEquals(frenchDescription, entityWithFrAfterUpdate.getDescription());
+
+      // Test 10: Locale fallback - request with es-MX should fall back to es
+      T entityWithEsMx = getEntityWithLocale(entityId, "es-MX", "", ADMIN_AUTH_HEADERS);
+      assertEquals(spanishDisplayName, entityWithEsMx.getDisplayName());
+      assertEquals(spanishDescription, entityWithEsMx.getDescription());
+
+      // Test 11: Non-existent locale should return empty strings to signal translation can be
+      // provided
+      T entityWithUnknownLocale = getEntityWithLocale(entityId, "ja", "", ADMIN_AUTH_HEADERS);
+      assertEquals("", entityWithUnknownLocale.getDisplayName());
+      assertEquals("", entityWithUnknownLocale.getDescription());
+
+    } finally {
+      // Clean up
+      deleteEntity(entityId, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  // Helper methods for translation tests
+  protected T getEntityWithLocale(
+      UUID id, String locale, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(id);
+    if (locale != null) {
+      target = target.queryParam("locale", locale);
+    }
+    if (fields != null && !fields.isEmpty()) {
+      target = target.queryParam("fields", fields);
+    }
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  protected T patchEntityWithLocale(
+      UUID id, String originalJson, T updated, String locale, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      String updatedEntityJson = JsonUtils.pojoToJson(updated);
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
+
+      WebTarget target = getResource(id);
+      if (locale != null) {
+        target = target.queryParam("locale", locale);
+      }
+      return TestUtils.patch(target, patch, entityClass, authHeaders);
+    } catch (JsonProcessingException ignored) {
+      return null;
+    }
+  }
+
+  @Test
   void patchWrongDomainId(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsDomains);
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);

@@ -6,12 +6,17 @@
   "description": "A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers publish messages and consumed by consumers.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Topic",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "cleanupPolicy": {
       "javaType": "org.openmetadata.schema.type.topic.CleanupPolicy",
       "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
-      "enum": ["delete", "compact"]
+      "enum": [
+        "delete",
+        "compact"
+      ]
     },
     "topicConfig": {
       "javaType": "org.openmetadata.schema.type.topic.TopicConfig",
@@ -76,7 +81,7 @@
       "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
     "messageSchema": {
-        "$ref": "../../type/schema.json"
+      "$ref": "../../type/schema.json"
     },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",
@@ -158,19 +163,23 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "sourceUrl": {
       "description": "Source URL of topic.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -188,6 +197,11 @@
       "maxLength": 32
     }
   },
-  "required": ["id", "name", "partitions", "service"],
+  "required": [
+    "id",
+    "name",
+    "partitions",
+    "service"
+  ],
   "additionalProperties": false
 }

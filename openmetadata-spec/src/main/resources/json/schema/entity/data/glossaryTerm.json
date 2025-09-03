@@ -6,7 +6,9 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.GlossaryTerm",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "termReference": {
       "type": "object",
@@ -25,7 +27,13 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
+      "enum": [
+        "Draft",
+        "In Review",
+        "Approved",
+        "Deprecated",
+        "Rejected"
+      ]
     }
   },
   "properties": {
@@ -135,31 +143,35 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System glossary can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     },
-    "mutuallyExclusive" : {
-      "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
-      "type" : "boolean",
-      "default" : "false"
+    "mutuallyExclusive": {
+      "description": "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type": "boolean",
+      "default": "false"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domains" : {
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
+    "domains": {
       "description": "Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -168,6 +180,11 @@
       "type": "integer"
     }
   },
-  "required": ["id", "name", "description", "glossary"],
+  "required": [
+    "id",
+    "name",
+    "description",
+    "glossary"
+  ],
   "additionalProperties": false
 }

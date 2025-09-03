@@ -77,6 +77,10 @@ export interface Workflow {
      */
     status?: WorkflowStatus;
     /**
+     * Multi-language translations for displayName and description fields.
+     */
+    translations?: Translations;
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -4712,6 +4716,36 @@ export enum WorkflowStatus {
     Pending = "Pending",
     Running = "Running",
     Successful = "Successful",
+}
+
+/**
+ * Multi-language translations for displayName and description fields.
+ *
+ * Container for multi-language translations of entity fields
+ */
+export interface Translations {
+    /**
+     * List of translations for different locales
+     */
+    translations?: Translation[];
+}
+
+/**
+ * Translation for a specific locale
+ */
+export interface Translation {
+    /**
+     * Translated description
+     */
+    description?: string;
+    /**
+     * Translated display name
+     */
+    displayName?: string;
+    /**
+     * Locale code (e.g., 'en', 'es', 'fr', 'zh-CN')
+     */
+    locale: string;
 }
 
 /**

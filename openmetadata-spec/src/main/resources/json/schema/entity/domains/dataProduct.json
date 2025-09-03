@@ -6,29 +6,65 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "lifecycleStage": {
       "description": "Lifecycle stage of the data product",
       "type": "string",
-      "enum": ["IDEATION", "DESIGN", "DEVELOPMENT", "TESTING", "PRODUCTION", "DEPRECATED", "RETIRED"],
+      "enum": [
+        "IDEATION",
+        "DESIGN",
+        "DEVELOPMENT",
+        "TESTING",
+        "PRODUCTION",
+        "DEPRECATED",
+        "RETIRED"
+      ],
       "default": "DEVELOPMENT"
     },
     "portType": {
       "description": "Type of the data product port",
       "type": "string",
-      "enum": ["INPUT", "OUTPUT"]
+      "enum": [
+        "INPUT",
+        "OUTPUT"
+      ]
     },
     "portProtocol": {
       "description": "Protocol used by the port for data access",
       "type": "string",
-      "enum": ["REST", "GRPC", "GRAPHQL", "JDBC", "KAFKA", "FILE", "S3", "AZURE_BLOB", "GCS", "WEBHOOK", "CUSTOM"],
+      "enum": [
+        "REST",
+        "GRPC",
+        "GRAPHQL",
+        "JDBC",
+        "KAFKA",
+        "FILE",
+        "S3",
+        "AZURE_BLOB",
+        "GCS",
+        "WEBHOOK",
+        "CUSTOM"
+      ],
       "default": "REST"
     },
     "portFormat": {
       "description": "Data format supported by the port",
       "type": "string",
-      "enum": ["JSON", "CSV", "PARQUET", "AVRO", "ORC", "XML", "PROTOBUF", "DELTA", "ICEBERG", "CUSTOM"],
+      "enum": [
+        "JSON",
+        "CSV",
+        "PARQUET",
+        "AVRO",
+        "ORC",
+        "XML",
+        "PROTOBUF",
+        "DELTA",
+        "ICEBERG",
+        "CUSTOM"
+      ],
       "default": "JSON"
     },
     "dataProductPort": {
@@ -65,7 +101,10 @@
           "$ref": "../../type/entityReference.json"
         }
       },
-      "required": ["name", "portType"],
+      "required": [
+        "name",
+        "portType"
+      ],
       "additionalProperties": false
     },
     "slaDefinition": {
@@ -75,7 +114,12 @@
         "tier": {
           "description": "SLA tier (e.g., GOLD, SILVER, BRONZE)",
           "type": "string",
-          "enum": ["GOLD", "SILVER", "BRONZE", "CUSTOM"]
+          "enum": [
+            "GOLD",
+            "SILVER",
+            "BRONZE",
+            "CUSTOM"
+          ]
         },
         "availability": {
           "description": "Expected availability percentage (e.g., 99.9)",
@@ -148,7 +192,7 @@
     "experts": {
       "description": "List of users who are experts for this Data Product.",
       "$ref": "../../type/entityReferenceList.json",
-      "default" : null
+      "default": null
     },
     "domains": {
       "description": "Domains or sub-domains to which this Data Product belongs to.",
@@ -156,7 +200,7 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "inputPorts": {
       "description": "Input ports for consuming data into this data product",
@@ -212,11 +256,19 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "description"],
+  "required": [
+    "id",
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

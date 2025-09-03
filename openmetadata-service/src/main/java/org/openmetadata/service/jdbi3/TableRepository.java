@@ -168,6 +168,45 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  protected void initializeChildrenTranslations(Table table) {
+    // Ensure the table has a translations field
+    if (table.getTranslations() == null) {
+      table.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+
+    // Initialize translations for all columns
+    if (table.getColumns() != null) {
+      for (Column column : table.getColumns()) {
+        if (column.getTranslations() == null) {
+          column.setTranslations(new org.openmetadata.schema.type.Translations());
+        }
+        if (column.getTranslations().getTranslations() == null) {
+          column.getTranslations().setTranslations(new ArrayList<>());
+        }
+
+        // Also handle nested columns recursively
+        initializeNestedColumnTranslations(column.getChildren());
+      }
+    }
+  }
+
+  private void initializeNestedColumnTranslations(List<Column> columns) {
+    if (columns == null) {
+      return;
+    }
+    for (Column column : columns) {
+      if (column.getTranslations() == null) {
+        column.setTranslations(new org.openmetadata.schema.type.Translations());
+      }
+      if (column.getTranslations().getTranslations() == null) {
+        column.getTranslations().setTranslations(new ArrayList<>());
+      }
+      // Recursively handle nested columns
+      initializeNestedColumnTranslations(column.getChildren());
+    }
+  }
+
+  @Override
   public void setFields(Table table, Fields fields) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {
@@ -209,6 +248,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    // Use UUID as key since the table object reference might change
+    Map<UUID, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (Table table : entities) {
+      if (table.getTranslations() != null) {
+        translationsMap.put(table.getId(), table.getTranslations());
+      }
+    }
+
     // Bulk fetch and set default fields for all tables
     fetchAndSetDefaultFields(entities);
 
@@ -227,6 +275,11 @@ public class TableRepository extends EntityRepository<Table> {
           }
 
           clearFieldsInternal(table, fields);
+
+          // Restore translations after clearing fields for locale-based translation application
+          if (translationsMap.containsKey(table.getId())) {
+            table.setTranslations(translationsMap.get(table.getId()));
+          }
         });
   }
 

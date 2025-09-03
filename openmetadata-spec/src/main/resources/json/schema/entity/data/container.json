@@ -36,18 +36,45 @@
     "fileFormat": {
       "javaType": "org.openmetadata.schema.type.ContainerFileFormat",
       "description": "This schema defines the file formats for the object/files within a container.",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
-      "enum": ["zip", "gz", "zstd", "csv", "tsv", "json", "parquet", "avro"],
+      "enum": [
+        "zip",
+        "gz",
+        "zstd",
+        "csv",
+        "tsv",
+        "json",
+        "parquet",
+        "avro"
+      ],
       "javaEnums": [
-        {"name": "Zip"},
-        {"name": "Gz"},
-        {"name": "Zstd"},
-        {"name": "Csv"},
-        {"name": "Tsv"},
-        {"name": "Json"},
-        {"name": "Parquet"},
-        {"name": "Avro"}
+        {
+          "name": "Zip"
+        },
+        {
+          "name": "Gz"
+        },
+        {
+          "name": "Zstd"
+        },
+        {
+          "name": "Csv"
+        },
+        {
+          "name": "Tsv"
+        },
+        {
+          "name": "Json"
+        },
+        {
+          "name": "Parquet"
+        },
+        {
+          "name": "Avro"
+        }
       ]
     }
   },
@@ -161,13 +188,17 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the Container. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
     "sourceUrl": {
       "description": "Source URL of container.",
@@ -177,7 +208,7 @@
       "description": "Full path of the container/file.",
       "type": "string"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },

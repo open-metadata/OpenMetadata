@@ -198,6 +198,10 @@
       "minLength": 1,
       "maxLength": 32
     },
+    "translations": {
+      "description": "Translations for the entity",
+      "$ref": "../../type/translations.json"
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"

@@ -397,6 +397,12 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
+    public Fields append(String field) {
+      Set<String> newFieldList = new HashSet<>(fieldList);
+      newFieldList.add(field);
+      return new Fields(newFieldList);
+    }
+
     // Create Fields Objects by excluding certain fields
     public static Fields createWithExcludedFields(
         Set<String> allowedFields, Set<String> excludeFields) {

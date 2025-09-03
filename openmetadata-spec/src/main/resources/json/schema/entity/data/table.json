@@ -371,6 +371,10 @@
             "$ref": "../../tests/customMetric.json"
           },
           "default": null
+        },
+        "translations": {
+          "description": "Multi-language translations for column displayName and description fields.",
+          "$ref": "../../type/translations.json"
         }
       },
       "required": [
@@ -1164,6 +1168,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
     },
     "sourceUrl": {
       "description": "Source URL of table.",

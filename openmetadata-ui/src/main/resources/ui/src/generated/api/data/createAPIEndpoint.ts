@@ -251,6 +251,10 @@ export interface Field {
      * Tags associated with the column.
      */
     tags?: TagLabel[];
+    /**
+     * Multi-language translations for field displayName and description fields.
+     */
+    translations?: Translations;
 }
 
 /**
@@ -367,6 +371,36 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Multi-language translations for field displayName and description fields.
+ *
+ * Container for multi-language translations of entity fields
+ */
+export interface Translations {
+    /**
+     * List of translations for different locales
+     */
+    translations?: Translation[];
+}
+
+/**
+ * Translation for a specific locale
+ */
+export interface Translation {
+    /**
+     * Translated description
+     */
+    description?: string;
+    /**
+     * Translated display name
+     */
+    displayName?: string;
+    /**
+     * Locale code (e.g., 'en', 'es', 'fr', 'zh-CN')
+     */
+    locale: string;
 }
 
 /**

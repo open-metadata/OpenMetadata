@@ -193,6 +193,10 @@
       "type": "boolean",
       "default": false
     },
+    "translations": {
+      "description": "Multi-language translations for displayName and description fields.",
+      "$ref": "../../type/translations.json"
+    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
@@ -307,5 +311,13 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime"]
+  "required": [
+    "id",
+    "name",
+    "appType",
+    "className",
+    "scheduleType",
+    "permission",
+    "runtime"
+  ]
 }
