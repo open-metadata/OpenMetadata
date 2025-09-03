@@ -21,16 +21,7 @@ import { generateAllMuiPalettes } from '../colors/generateMuiPalettes';
 import { navigationTheme } from './navigation-theme';
 import { shadows } from './shadows';
 import type { CustomColors, ThemeColors } from '../types';
-
-// Extend MUI palette to include allShades
-declare module '@mui/material/styles' {
-  interface Palette {
-    allShades: any;
-  }
-  interface PaletteOptions {
-    allShades?: any;
-  }
-}
+import './mui-theme-types';
 
 /**
  * Creates dynamic MUI theme with user customizations or default colors

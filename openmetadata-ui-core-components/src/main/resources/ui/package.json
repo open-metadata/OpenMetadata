@@ -4,33 +4,33 @@
   "description": "OpenMetadata shared UI core components and theme system",
   "main": "./dist/index.cjs.js",
   "module": "./dist/index.es.js",
-  "types": "./dist/types/index.d.ts",
+  "types": "./dist/types/src/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js",
-      "types": "./dist/types/index.d.ts"
+      "types": "./dist/types/src/index.d.ts"
     },
     "./theme": {
       "import": "./dist/theme/index.es.js",
       "require": "./dist/theme/index.cjs.js",
-      "types": "./dist/types/theme/index.d.ts"
+      "types": "./dist/types/src/theme/index.d.ts"
     },
     "./colors": {
       "import": "./dist/colors/index.es.js",
       "require": "./dist/colors/index.cjs.js",
-      "types": "./dist/types/colors/index.d.ts"
+      "types": "./dist/types/src/colors/index.d.ts"
     },
     "./components": {
       "import": "./dist/components/index.es.js",
       "require": "./dist/components/index.cjs.js",
-      "types": "./dist/types/components/index.d.ts"
+      "types": "./dist/types/src/components/index.d.ts"
     },
     "./utils": {
       "import": "./dist/utils/index.es.js",
       "require": "./dist/utils/index.cjs.js",
-      "types": "./dist/types/utils/index.d.ts"
+      "types": "./dist/types/src/utils/index.d.ts"
     }
   },
   "files": [
