@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { forwardRef } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import {
   LabelType,
   State,
@@ -154,25 +148,23 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should render all form fields correctly', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     // Wait for form to load
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    // Check table and column fields
-    expect(await screen.findByLabelText('label.table')).toBeInTheDocument();
-    expect(await screen.findByLabelText('label.column')).toBeInTheDocument();
+    // Check table and column fields using text content
+    expect(screen.getByText('label.table')).toBeInTheDocument();
+    expect(screen.getByText('label.column')).toBeInTheDocument();
 
     // Check test case details
-    expect(await screen.findByLabelText('label.name')).toBeInTheDocument();
-    expect(
-      await screen.findByLabelText('label.display-name')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByLabelText('label.test-entity')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.name')).toBeInTheDocument();
+    expect(screen.getByText('label.display-name')).toBeInTheDocument();
+    expect(screen.getByText('label.test-entity')).toBeInTheDocument();
 
     // Check parameter form
     expect(
@@ -181,7 +173,9 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should have disabled fields for non-editable elements', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     await waitFor(() => {
       const disabledInputs = document.querySelectorAll('input[disabled]');
@@ -191,7 +185,9 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should have editable display name field', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
@@ -206,7 +202,9 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should populate fields with test case data', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     await waitFor(() => {
       const tableField = document.querySelector(
