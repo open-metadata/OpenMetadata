@@ -27,6 +27,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.workflow.application import AppRunner
 
+MOCK_PIPELINE_FQN = "OpenMetadata.CollateAIApplication"
+
 
 class MockAppRunner(AppRunner):
     """Mock AppRunner for testing"""
@@ -55,12 +57,19 @@ class TestApplicationPrivateConfig(TestCase):
         self.app_config = {
             "sourcePythonClass": "test.MockAppRunner",
             "workflowConfig": self.workflow_config,
-            "ingestionPipelineFQN": "OpenMetadata.CollateAIApplication",
+            "ingestionPipelineFQN": MOCK_PIPELINE_FQN,
         }
 
     @patch.object(SecretsManagerFactory, "get_secrets_manager")
     def test_retrieve_app_private_config_success(self, mock_get_secrets_manager):
         """Test successful retrieval of private config from secrets manager"""
+        # Mock app with secret reference
+        mock_app = MagicMock()
+        mock_app.privateConfiguration.root = (
+            "secret:external-app-collateaiapplication-private-config"
+        )
+        self.mock_metadata.get_by_name.return_value = mock_app
+
         # Mock secrets manager
         mock_secrets_manager = MagicMock()
         mock_secrets_manager.get_string_value.return_value = json.dumps(
@@ -81,10 +90,17 @@ class TestApplicationPrivateConfig(TestCase):
 
         # Test retrieval with secret key
         secret_key = "external-app-collateaiapplication-private-config"
-        private_config = runner._retrieve_app_private_config(secret_key)
+        private_config = runner._retrieve_app_private_config(
+            secret_key, MOCK_PIPELINE_FQN
+        )
+
+        # Verify app was fetched - called twice (once in init, once in test)
+        self.assertEqual(self.mock_metadata.get_by_name.call_count, 2)
 
         # Verify secrets manager was called with correct secret ID
-        mock_secrets_manager.get_string_value.assert_called_with(secret_key)
+        mock_secrets_manager.get_string_value.assert_called_with(
+            "external-app-collateaiapplication-private-config"
+        )
 
         # Verify returned config
         self.assertIsNotNone(private_config)
@@ -100,6 +116,11 @@ class TestApplicationPrivateConfig(TestCase):
         self, mock_get_secrets_manager
     ):
         """Test successful retrieval of private config with secret: prefix"""
+        # Mock app with secret reference
+        mock_app = MagicMock()
+        mock_app.privateConfiguration.root = "secret:my-app-private-config"
+        self.mock_metadata.get_by_name.return_value = mock_app
+
         # Mock secrets manager
         mock_secrets_manager = MagicMock()
         mock_secrets_manager.get_string_value.return_value = json.dumps(
@@ -115,7 +136,12 @@ class TestApplicationPrivateConfig(TestCase):
 
         # Test retrieval with secret: prefix
         secret_key_with_prefix = "secret:my-app-private-config"
-        private_config = runner._retrieve_app_private_config(secret_key_with_prefix)
+        private_config = runner._retrieve_app_private_config(
+            secret_key_with_prefix, MOCK_PIPELINE_FQN
+        )
+
+        # Verify app was fetched - called twice (once in init, once in test)
+        self.assertEqual(self.mock_metadata.get_by_name.call_count, 2)
 
         # Verify secrets manager was called with secret key without prefix
         mock_secrets_manager.get_string_value.assert_called_with(
@@ -136,7 +162,9 @@ class TestApplicationPrivateConfig(TestCase):
             "token": "test_token_789",
             "collateURL": "http://localhost:8585",
         }
-        private_config = runner._retrieve_app_private_config(dict_config)
+        private_config = runner._retrieve_app_private_config(
+            dict_config, MOCK_PIPELINE_FQN
+        )
 
         # Should return the same dictionary
         self.assertEqual(private_config, dict_config)
@@ -147,7 +175,7 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test with None input
-        private_config = runner._retrieve_app_private_config(None)
+        private_config = runner._retrieve_app_private_config(None, MOCK_PIPELINE_FQN)
 
         # Should return None
         self.assertIsNone(private_config)
@@ -158,7 +186,7 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test with empty string
-        private_config = runner._retrieve_app_private_config("")
+        private_config = runner._retrieve_app_private_config("", MOCK_PIPELINE_FQN)
 
         # Should return None
         self.assertIsNone(private_config)
@@ -169,7 +197,7 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test with invalid type (integer)
-        private_config = runner._retrieve_app_private_config(123)
+        private_config = runner._retrieve_app_private_config(123, MOCK_PIPELINE_FQN)
 
         # Should return None
         self.assertIsNone(private_config)
@@ -179,6 +207,11 @@ class TestApplicationPrivateConfig(TestCase):
         self, mock_get_secrets_manager
     ):
         """Test when no secret is found in secrets manager"""
+        # Mock app with secret reference
+        mock_app = MagicMock()
+        mock_app.privateConfiguration.root = "secret:non-existent-secret"
+        self.mock_metadata.get_by_name.return_value = mock_app
+
         # Mock secrets manager to return None
         mock_secrets_manager = MagicMock()
         mock_secrets_manager.get_string_value.return_value = None
@@ -188,7 +221,9 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test retrieval when secret doesn't exist
-        private_config = runner._retrieve_app_private_config("non-existent-secret")
+        private_config = runner._retrieve_app_private_config(
+            "non-existent-secret", MOCK_PIPELINE_FQN
+        )
 
         # Should return None
         self.assertIsNone(private_config)
@@ -196,6 +231,11 @@ class TestApplicationPrivateConfig(TestCase):
     @patch.object(SecretsManagerFactory, "get_secrets_manager")
     def test_retrieve_app_private_config_json_error(self, mock_get_secrets_manager):
         """Test when secrets manager returns invalid JSON"""
+        # Mock app with secret reference
+        mock_app = MagicMock()
+        mock_app.privateConfiguration.root = "secret:secret-with-invalid-json"
+        self.mock_metadata.get_by_name.return_value = mock_app
+
         # Mock secrets manager to return invalid JSON
         mock_secrets_manager = MagicMock()
         mock_secrets_manager.get_string_value.return_value = "invalid json content"
@@ -205,7 +245,9 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test retrieval with invalid JSON
-        private_config = runner._retrieve_app_private_config("secret-with-invalid-json")
+        private_config = runner._retrieve_app_private_config(
+            "secret-with-invalid-json", MOCK_PIPELINE_FQN
+        )
 
         # Should return None due to JSON parsing error
         self.assertIsNone(private_config)
@@ -213,6 +255,11 @@ class TestApplicationPrivateConfig(TestCase):
     @patch.object(SecretsManagerFactory, "get_secrets_manager")
     def test_retrieve_app_private_config_exception(self, mock_get_secrets_manager):
         """Test when secrets manager raises an exception"""
+        # Mock app with secret reference
+        mock_app = MagicMock()
+        mock_app.privateConfiguration.root = "secret:secret-key"
+        self.mock_metadata.get_by_name.return_value = mock_app
+
         # Mock secrets manager to raise an exception
         mock_secrets_manager = MagicMock()
         mock_secrets_manager.get_string_value.side_effect = Exception(
@@ -224,7 +271,9 @@ class TestApplicationPrivateConfig(TestCase):
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
         # Test retrieval when exception occurs
-        private_config = runner._retrieve_app_private_config("secret-key")
+        private_config = runner._retrieve_app_private_config(
+            "secret-key", MOCK_PIPELINE_FQN
+        )
 
         # Should return None due to exception
         self.assertIsNone(private_config)
