@@ -58,9 +58,21 @@ jobs:
       - name: Generate TypeScript types
         run: |
           cd openmetadata-ui/src/main/resources/ui
-          # Create a symlink to the root node_modules
-          ln -sf ../../../../../node_modules .
-          ./json2ts-generate-all.sh -l true
+          # Ensure we have access to both local and root node_modules
+          # The script needs tools from root node_modules but also local dependencies
+          if [ ! -L "node_modules" ]; then
+            # Backup local node_modules temporarily
+            mv node_modules node_modules_local 2>/dev/null || true
+            # Create symlink to root node_modules for the generation script
+            ln -sf ../../../../../node_modules .
+            # Run the generation script
+            ./json2ts-generate-all.sh -l true
+            # Restore local node_modules for subsequent steps
+            rm -f node_modules
+            mv node_modules_local node_modules 2>/dev/null || true
+          else
+            ./json2ts-generate-all.sh -l true
+          fi
 
       - name: Format code (ESLint + Prettier)
         run: |
