@@ -50,9 +50,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -513,8 +511,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withName(definition.getName())
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
-            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withBoundType(definition.getBoundType())
+            .withConfiguration(definition.getConfiguration());
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -1054,7 +1052,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     EventPublisherJob config =
-        (JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class))
+        (JsonUtils.convertValue(
+                AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class))
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
@@ -1167,7 +1166,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
     DataInsightsAppConfig config =
-        JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class)
+        JsonUtils.convertValue(
+                AppBoundConfigurationUtil.getAppConfiguration(app), DataInsightsAppConfig.class)
             .withBatchSize(batchSize)
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);

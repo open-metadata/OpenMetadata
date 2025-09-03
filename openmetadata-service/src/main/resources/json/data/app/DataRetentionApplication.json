@@ -1,12 +1,17 @@
 {
   "name": "DataRetentionApplication",
   "displayName": "Data Retention",
-  "appConfiguration": {
-    "changeEventRetentionPeriod": 7,
-    "activityThreadsRetentionPeriod": 60
-  },
-  "appSchedule": {
-    "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * 0"
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "changeEventRetentionPeriod": 7,
+        "activityThreadsRetentionPeriod": 60
+      },
+      "schedule": {
+        "scheduleTimeline": "Custom",
+        "cronExpression": "0 0 * * 0"
+      }
+    }
   }
 }

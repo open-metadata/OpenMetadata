@@ -1,9 +1,14 @@
 {
   "name": "AutoPilotApplication",
   "displayName": "AutoPilot",
-  "appConfiguration": {
-    "type": "AutoPilotApplication",
-    "active": true,
-    "entityLink": null
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "type": "AutoPilotApplication",
+        "active": true,
+        "entityLink": null
+      }
+    }
   }
 }

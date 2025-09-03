@@ -24,10 +24,6 @@ export interface AppMarketPlaceDefinition {
      */
     allowConfiguration?: boolean;
     /**
-     * Application Configuration object.
-     */
-    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
-    /**
      * Application Logo Url.
      */
     appLogoUrl?: string;
@@ -40,6 +36,10 @@ export interface AppMarketPlaceDefinition {
      */
     appType: AppType;
     /**
+     * This schema defines the scope of the application.
+     */
+    boundType?: AppBoundType;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -48,6 +48,10 @@ export interface AppMarketPlaceDefinition {
      * 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.
      */
     className: string;
+    /**
+     * Configuration for the application based on its bound type.
+     */
+    configuration?: AppBoundConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -73,10 +77,6 @@ export interface AppMarketPlaceDefinition {
      * it belongs to.
      */
     domains?: EntityReference[];
-    /**
-     * Event subscriptions that will be created when the application is installed.
-     */
-    eventSubscriptions?: CreateEventSubscription[];
     /**
      * Features of the Application.
      */
@@ -170,6 +170,130 @@ export interface AppMarketPlaceDefinition {
 export enum AgentType {
     CollateAI = "CollateAI",
     Metadata = "Metadata",
+}
+
+/**
+ * This schema defines the type of application.
+ */
+export enum AppType {
+    External = "external",
+    Internal = "internal",
+}
+
+/**
+ * This schema defines the scope of the application.
+ */
+export enum AppBoundType {
+    Global = "Global",
+    Service = "Service",
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
+ * Configuration for the application based on its bound type.
+ */
+export interface AppBoundConfiguration {
+    /**
+     * Configuration for Global Application.
+     */
+    globalAppConfig?: GlobalAppConfig;
+    /**
+     * Configuration for Service Application.
+     */
+    serviceAppConfig?: ServiceAppConfig[];
+}
+
+/**
+ * Configuration for Global Application.
+ *
+ * Global Configuration for platform-wide applications
+ */
+export interface GlobalAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?: AppSchedule;
 }
 
 /**
@@ -531,6 +655,9 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  */
 export interface EntityReference {
     /**
@@ -628,6 +755,9 @@ export enum MetadataAttribute {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  */
 export interface TagLabel {
     /**
@@ -1041,476 +1171,98 @@ export enum Type {
 }
 
 /**
- * This schema defines the type of application.
- */
-export enum AppType {
-    External = "external",
-    Internal = "internal",
-}
-
-/**
- * Change that lead to this version of the entity.
+ * Application Private configuration loaded at runtime.
  *
- * Description of the change.
+ * Private Configuration for the CollateAI External Application.
  */
-export interface ChangeDescription {
-    changeSummary?: { [key: string]: ChangeSummary };
+export interface PrivateConfig {
     /**
-     * Names of fields added during the version changes.
+     * Collate Server public URL. WAII will use this information to interact with the server.
+     * E.g., https://sandbox.getcollate.io
      */
-    fieldsAdded?: FieldChange[];
+    collateURL?: string;
     /**
-     * Fields deleted during the version changes with old value before deleted.
+     * Limits for the CollateAI Application.
      */
-    fieldsDeleted?: FieldChange[];
+    limits?: AppLimitsConfig;
     /**
-     * Fields modified during the version changes with old and new values.
+     * WAII API Token
      */
-    fieldsUpdated?: FieldChange[];
+    token?: string;
     /**
-     * When a change did not result in change, this could be same as the current version.
+     * WAII API host URL
      */
-    previousVersion?: number;
-}
-
-export interface ChangeSummary {
-    changedAt?: number;
-    /**
-     * Name of the user or bot who made this change
-     */
-    changedBy?:    string;
-    changeSource?: ChangeSource;
+    waiiInstance?: string;
     [property: string]: any;
 }
 
 /**
- * The source of the change. This will change based on the context of the change (example:
- * manual vs programmatic)
- */
-export enum ChangeSource {
-    Automated = "Automated",
-    Derived = "Derived",
-    Ingested = "Ingested",
-    Manual = "Manual",
-    Propagated = "Propagated",
-    Suggested = "Suggested",
-}
-
-export interface FieldChange {
-    /**
-     * Name of the entity field that changed.
-     */
-    name?: string;
-    /**
-     * New value of the field. Note that this is a JSON string and use the corresponding field
-     * type to deserialize it.
-     */
-    newValue?: any;
-    /**
-     * Previous value of the field. Note that this is a JSON string and use the corresponding
-     * field type to deserialize it.
-     */
-    oldValue?: any;
-}
-
-/**
- * This defines schema for sending alerts for OpenMetadata
- */
-export interface CreateEventSubscription {
-    /**
-     * Type of Alert
-     */
-    alertType: AlertType;
-    /**
-     * Maximum number of events sent in a batch (Default 10).
-     */
-    batchSize?: number;
-    /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
-     */
-    className?: string;
-    config?:    { [key: string]: any };
-    /**
-     * A short description of the Alert, comprehensible to regular users.
-     */
-    description?: string;
-    /**
-     * Subscription Config.
-     */
-    destinations?: Destination[];
-    /**
-     * Display name for this Alert.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Event Subscription belongs to.
-     */
-    domains?: string[];
-    /**
-     * Is the alert enabled.
-     */
-    enabled?: boolean;
-    /**
-     * Input for the Filters.
-     */
-    input?: AlertFilteringInput;
-    /**
-     * Name that uniquely identifies this Alert.
-     */
-    name: string;
-    /**
-     * Owners of this Alert.
-     */
-    owners?: EntityReference[];
-    /**
-     * Poll Interval in seconds.
-     */
-    pollInterval?: number;
-    provider?:     ProviderType;
-    /**
-     * Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.
-     */
-    resources?: string[];
-    /**
-     * Number of times to retry callback on failure. (Default 3).
-     */
-    retries?: number;
-    trigger?: Trigger;
-}
-
-/**
- * Type of Alert
+ * Limits for the CollateAI Application.
  *
- * Type of Alerts supported.
+ * Private Configuration for the App Limits.
  */
-export enum AlertType {
-    ActivityFeed = "ActivityFeed",
-    Custom = "Custom",
-    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
-    Notification = "Notification",
-    Observability = "Observability",
+export interface AppLimitsConfig {
+    /**
+     * The records of the limits.
+     */
+    actions: { [key: string]: number };
+    /**
+     * The start of this limit cycle.
+     */
+    billingCycleStart: Date;
 }
 
 /**
- * Subscription which has a type and the config.
- */
-export interface Destination {
-    category: SubscriptionCategory;
-    config?:  Webhook;
-    /**
-     * Is the subscription enabled.
-     */
-    enabled?: boolean;
-    /**
-     * Unique identifier that identifies this Event Subscription.
-     */
-    id?: string;
-    /**
-     * Read timeout in seconds. (Default 12s).
-     */
-    readTimeout?:   number;
-    statusDetails?: TionStatus;
-    /**
-     * Connection timeout in seconds. (Default 10s).
-     */
-    timeout?: number;
-    type:     SubscriptionType;
-}
-
-/**
- * Subscription Endpoint Type.
- */
-export enum SubscriptionCategory {
-    Admins = "Admins",
-    Assignees = "Assignees",
-    External = "External",
-    Followers = "Followers",
-    Mentions = "Mentions",
-    Owners = "Owners",
-    Teams = "Teams",
-    Users = "Users",
-}
-
-/**
- * This schema defines webhook for receiving events from OpenMetadata.
+ * In case the app supports scheduling, list of different app schedules
  *
- * This schema defines email config for receiving events from OpenMetadata.
- *
- * A generic map that can be deserialized later.
+ * This schema defines the type of AppSchedule.
  */
-export interface Webhook {
-    /**
-     * Endpoint to receive the webhook events over POST requests.
-     */
-    endpoint?: string;
-    /**
-     * Custom headers to be sent with the webhook request.
-     */
-    headers?: { [key: string]: any };
-    /**
-     * HTTP operation to send the webhook request. Supports POST or PUT.
-     */
-    httpMethod?: HTTPMethod;
-    /**
-     * Query parameters to be added to the webhook request URL.
-     */
-    queryParams?: { [key: string]: any };
-    /**
-     * List of receivers to send mail to
-     */
-    receivers?: string[];
-    /**
-     * Secret set by the webhook client used for computing HMAC SHA256 signature of webhook
-     * payload and sent in `X-OM-Signature` header in POST requests to publish the events.
-     */
-    secretKey?: string;
-    /**
-     * Send the Event to Admins
-     *
-     * Send the Mails to Admins
-     */
-    sendToAdmins?: boolean;
-    /**
-     * Send the Event to Followers
-     *
-     * Send the Mails to Followers
-     */
-    sendToFollowers?: boolean;
-    /**
-     * Send the Event to Owners
-     *
-     * Send the Mails to Owners
-     */
-    sendToOwners?: boolean;
-    [property: string]: any;
-}
-
-/**
- * HTTP operation to send the webhook request. Supports POST or PUT.
- */
-export enum HTTPMethod {
-    Post = "POST",
-    Put = "PUT",
-}
-
-/**
- * Current status of the subscription, including details on the last successful and failed
- * attempts, and retry information.
- *
- * Detailed status of the destination during a test operation, including HTTP response
- * information.
- */
-export interface TionStatus {
-    /**
-     * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
-     */
-    lastFailedAt?: number;
-    /**
-     * Detailed reason for the last failure received during callback.
-     */
-    lastFailedReason?: string;
-    /**
-     * HTTP status code received during the last failed callback attempt.
-     */
-    lastFailedStatusCode?: number;
-    /**
-     * Timestamp of the last successful callback in UNIX UTC epoch time in milliseconds.
-     */
-    lastSuccessfulAt?: number;
-    /**
-     * Timestamp for the next retry attempt in UNIX epoch time in milliseconds. Only valid if
-     * `status` is `awaitingRetry`.
-     */
-    nextAttempt?: number;
-    /**
-     * Status is `disabled` when the event subscription was created with `enabled` set to false
-     * and it never started publishing events. Status is `active` when the event subscription is
-     * functioning normally and a 200 OK response was received for the callback notification.
-     * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
-     * response was received for the callback notification. Status is `awaitingRetry` when the
-     * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
-     * `retryLimitReached` after all retries fail.
-     *
-     * Overall test status, indicating if the test operation succeeded or failed.
-     */
-    status?: Status;
-    /**
-     * Current timestamp of this status in UNIX epoch time in milliseconds.
-     *
-     * Timestamp when the response was received, in UNIX epoch time milliseconds.
-     */
-    timestamp?: number;
-    /**
-     * Body of the HTTP response, if any, returned by the server.
-     */
-    entity?: string;
-    /**
-     * HTTP headers returned in the response as a map of header names to values.
-     */
-    headers?: any;
-    /**
-     * URL location if the response indicates a redirect or newly created resource.
-     */
-    location?: string;
-    /**
-     * Media type of the response entity, if specified (e.g., application/json).
-     */
-    mediaType?: string;
-    /**
-     * Detailed reason for failure if the test did not succeed.
-     */
-    reason?: string;
-    /**
-     * HTTP status code of the response (e.g., 200 for OK, 404 for Not Found).
-     */
-    statusCode?: number;
-    /**
-     * HTTP status reason phrase associated with the status code (e.g., 'Not Found').
-     */
-    statusInfo?: string;
-}
-
-/**
- * Status is `disabled` when the event subscription was created with `enabled` set to false
- * and it never started publishing events. Status is `active` when the event subscription is
- * functioning normally and a 200 OK response was received for the callback notification.
- * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
- * response was received for the callback notification. Status is `awaitingRetry` when the
- * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
- * `retryLimitReached` after all retries fail.
- *
- * Overall test status, indicating if the test operation succeeded or failed.
- */
-export enum Status {
-    Active = "active",
-    AwaitingRetry = "awaitingRetry",
-    Disabled = "disabled",
-    Failed = "failed",
-    RetryLimitReached = "retryLimitReached",
-    StatusFailed = "Failed",
-    Success = "Success",
-}
-
-/**
- * Subscription Endpoint Type.
- */
-export enum SubscriptionType {
-    ActivityFeed = "ActivityFeed",
-    Email = "Email",
-    GChat = "GChat",
-    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
-    MSTeams = "MsTeams",
-    Slack = "Slack",
-    Webhook = "Webhook",
-}
-
-/**
- * Input for the Filters.
- *
- * Observability of the event subscription.
- */
-export interface AlertFilteringInput {
-    /**
-     * List of filters for the event subscription.
-     */
-    actions?: ArgumentsInput[];
-    /**
-     * List of filters for the event subscription.
-     */
-    filters?: ArgumentsInput[];
-}
-
-/**
- * Observability Filters for Event Subscription.
- */
-export interface ArgumentsInput {
-    /**
-     * Arguments List
-     */
-    arguments?: Argument[];
-    effect?:    Effect;
-    /**
-     * Name of the filter
-     */
-    name?: string;
-    /**
-     * Prefix Condition for the filter.
-     */
-    prefixCondition?: PrefixCondition;
-}
-
-/**
- * Argument for the filter.
- */
-export interface Argument {
-    /**
-     * Value of the Argument
-     */
-    input?: string[];
-    /**
-     * Name of the Argument
-     */
-    name?: string;
-}
-
-export enum Effect {
-    Exclude = "exclude",
-    Include = "include",
-}
-
-/**
- * Prefix Condition for the filter.
- *
- * Prefix Condition to be applied to the Condition.
- */
-export enum PrefixCondition {
-    And = "AND",
-    Or = "OR",
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
- * Trigger Configuration for Alerts.
- */
-export interface Trigger {
+export interface AppSchedule {
     /**
      * Cron Expression in case of Custom scheduled Trigger
      */
-    cronExpression?: string;
-    /**
-     * Schedule Info
-     */
-    scheduleInfo?: ScheduleInfo;
-    triggerType:   TriggerType;
+    cronExpression?:  string;
+    scheduleTimeline: ScheduleTimeline;
 }
 
 /**
- * Schedule Info
+ * This schema defines the Application ScheduleTimeline Options
  */
-export enum ScheduleInfo {
+export enum ScheduleTimeline {
     Custom = "Custom",
     Daily = "Daily",
+    Hourly = "Hourly",
     Monthly = "Monthly",
+    None = "None",
     Weekly = "Weekly",
 }
 
 /**
- * Trigger Configuration for Alerts.
+ * Service Configuration for service-bound applications
  */
-export enum TriggerType {
-    RealTime = "RealTime",
-    Scheduled = "Scheduled",
+export interface ServiceAppConfig {
+    /**
+     * Application Configuration object.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
+     * References to pipelines deployed for this database service to extract metadata, usage,
+     * lineage etc..
+     */
+    pipeline?: EntityReference;
+    /**
+     * Application Private configuration loaded at runtime.
+     */
+    privateConfig?: PrivateConfig;
+    /**
+     * In case the app supports scheduling, list of different app schedules
+     */
+    schedule?:  AppSchedule;
+    serviceRef: EntityReference;
 }
 
 /**

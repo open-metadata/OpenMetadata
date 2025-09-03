@@ -10,7 +10,7 @@ import org.openmetadata.service.jdbi3.AppRepository;
 @Slf4j
 public class ApplicationContext {
   private static ApplicationContext instance;
-  private final HashMap<String, AbstractNativeApplication> apps;
+  private final HashMap<String, AbstractNativeApplicationBase> apps;
 
   private ApplicationContext() {
     this.apps = new HashMap<>();
@@ -35,7 +35,7 @@ public class ApplicationContext {
     for (App app : installedApps) {
       try {
         // Initialize the apps. This will already load the context with Collate apps that require it
-        AbstractNativeApplication initializedApp =
+        AbstractNativeApplicationBase initializedApp =
             ApplicationHandler.getInstance()
                 .runAppInit(app, Entity.getCollectionDAO(), Entity.getSearchRepository());
         instance.registerApp(initializedApp);
@@ -46,24 +46,24 @@ public class ApplicationContext {
     }
   }
 
-  public void registerApp(AbstractNativeApplication app) {
+  public void registerApp(AbstractNativeApplicationBase app) {
     this.apps.put(app.getApp().getName(), app);
   }
 
-  public void unregisterApp(AbstractNativeApplication app) {
+  public void unregisterApp(AbstractNativeApplicationBase app) {
     this.apps.remove(app.getApp().getName());
   }
 
-  public AbstractNativeApplication getApp(String name) {
-    AbstractNativeApplication app = this.apps.get(name);
+  public AbstractNativeApplicationBase getApp(String name) {
+    AbstractNativeApplicationBase app = this.apps.get(name);
     if (app == null) {
       throw new IllegalStateException(String.format("App %s needs to be initialized first.", name));
     }
     return app;
   }
 
-  public AbstractNativeApplication getAppIfExists(String name) {
-    AbstractNativeApplication app = this.apps.get(name);
+  public AbstractNativeApplicationBase getAppIfExists(String name) {
+    AbstractNativeApplicationBase app = this.apps.get(name);
     return app;
   }
 }

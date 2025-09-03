@@ -23,7 +23,10 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
+import org.openmetadata.schema.entity.app.AppBoundType;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -142,7 +145,12 @@ public class SearchIndexEndToEndTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(jobData, Object.class))));
 
     // Use reflection to set jobData directly to avoid ApplicationContext initialization
     try {
@@ -300,7 +308,12 @@ public class SearchIndexEndToEndTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(jobData, Object.class))));
 
     // Use reflection to set jobData directly to avoid ApplicationContext initialization
     try {
@@ -399,7 +412,12 @@ public class SearchIndexEndToEndTest {
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(jobData, Object.class))));
 
     // Use reflection to set jobData directly to avoid ApplicationContext initialization
     try {

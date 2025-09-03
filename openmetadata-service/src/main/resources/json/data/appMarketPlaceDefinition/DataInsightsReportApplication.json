@@ -15,8 +15,13 @@
   "runtime": {
     "enabled": "true"
   },
-  "appConfiguration": {
-    "sendToAdmins": true,
-    "sendToTeams": true
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "sendToAdmins": true,
+        "sendToTeams": true
+      }
+    }
   }
 }

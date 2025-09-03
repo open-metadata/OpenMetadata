@@ -1,8 +1,13 @@
 {
   "name": "McpApplication",
   "displayName": "MCP Server",
-  "appConfiguration": {
-    "originValidationEnabled": false,
-    "originHeaderUri": "http://localhost"
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "originValidationEnabled": false,
+        "originHeaderUri": "http://localhost"
+      }
+    }
   }
 }

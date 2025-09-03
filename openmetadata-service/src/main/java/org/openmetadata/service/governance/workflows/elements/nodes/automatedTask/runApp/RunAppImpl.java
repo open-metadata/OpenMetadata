@@ -39,6 +39,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -79,7 +80,12 @@ public class RunAppImpl {
           runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
-      updatedApp.setAppConfiguration(config);
+      // TODO: Refactor once we have a better way to handle App Configurations
+      if (AppBoundConfigurationUtil.isGlobalApp(app)) {
+        AppBoundConfigurationUtil.setAppConfiguration(updatedApp, config);
+      } else {
+        AppBoundConfigurationUtil.setAppConfiguration(updatedApp, service.getId(), config);
+      }
       wasSuccessful =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
       deployIngestionPipeline(pipelineServiceClient, app);
@@ -111,7 +117,8 @@ public class RunAppImpl {
   }
 
   private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
-    Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
+    Object config =
+        JsonUtils.deepCopy(AppBoundConfigurationUtil.getAppConfiguration(app), Object.class);
 
     switch (app.getName()) {
       case "CollateAIApplication" -> config =
@@ -241,7 +248,7 @@ public class RunAppImpl {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
-    EntityReference pipelineRef = app.getPipelines().get(0);
+    EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
 
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
@@ -251,7 +258,7 @@ public class RunAppImpl {
 
     Map<String, Object> ingestionPipelineConfig =
         JsonUtils.readOrConvertValue(ingestionPipeline.getSourceConfig().getConfig(), Map.class);
-    ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
+    ingestionPipelineConfig.put("appConfig", AppBoundConfigurationUtil.getAppConfiguration(app));
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
     pipelineServiceClient.deployPipeline(

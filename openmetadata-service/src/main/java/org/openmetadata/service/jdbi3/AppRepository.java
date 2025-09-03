@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
@@ -15,6 +14,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.ServiceAppConfiguration;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -30,13 +30,14 @@ import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
   public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
-  public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
+  public static final String UPDATE_FIELDS = "configuration";
 
   public AppRepository() {
     super(
@@ -52,14 +53,53 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void setFields(App entity, EntityUtil.Fields fields) {
-    entity.setPipelines(
-        fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    setIngestionPipeline(entity);
     entity.withBot(getBotUser(entity));
   }
 
   @Override
-  protected List<EntityReference> getIngestionPipelines(App service) {
-    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+  public List<EntityReference> getIngestionPipelines(App app) {
+    return findTo(app.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+  }
+
+  protected void setIngestionPipeline(App app) {
+    // Find all ingestion pipelines associated with this app via relationships
+    List<EntityReference> pipelineRefs = getIngestionPipelines(app);
+
+    // For global apps, set the first pipeline in globalAppConfig
+    if (AppBoundConfigurationUtil.isGlobalApp(app) && !pipelineRefs.isEmpty()) {
+      AppBoundConfigurationUtil.setPipeline(app, pipelineRefs.get(0));
+    }
+    // For service-bound apps, match pipelines to their respective service configurations
+    else if (AppBoundConfigurationUtil.isServiceBoundApp(app)) {
+      matchPipelinesToServiceConfigs(app, pipelineRefs);
+    }
+  }
+
+  private void matchPipelinesToServiceConfigs(App app, List<EntityReference> pipelineRefs) {
+    List<ServiceAppConfiguration> serviceConfigs =
+        AppBoundConfigurationUtil.getAllServiceConfigurations(app);
+
+    for (EntityReference pipelineRef : pipelineRefs) {
+      // Extract service ID from pipeline name (format: appName_serviceId)
+      String pipelineName = pipelineRef.getName();
+      if (pipelineName.contains("_")) {
+        String[] parts = pipelineName.split("_");
+        if (parts.length >= 2) {
+          String serviceId = parts[parts.length - 1]; // Get the last part as serviceId
+
+          // Find matching service configuration and set the pipeline
+          for (ServiceAppConfiguration config : serviceConfigs) {
+            if (config.getServiceRef() != null
+                && config.getServiceRef().getId().toString().equals(serviceId)) {
+              AppBoundConfigurationUtil.setPipeline(
+                  app, config.getServiceRef().getId(), pipelineRef);
+              break;
+            }
+          }
+        }
+      }
+    }
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -352,7 +392,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionById(
@@ -364,7 +404,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(
@@ -377,7 +417,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeById(
@@ -390,7 +430,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return JsonUtils.readValue(result.getFirst(), clazz);
   }
 
   @Override
@@ -410,7 +450,7 @@ public class AppRepository extends EntityRepository<App> {
 
   public App addEventSubscription(App app, EventSubscription eventSubscription) {
     EntityReference existing =
-        listOrEmpty(app.getEventSubscriptions()).stream()
+        AppBoundConfigurationUtil.getEventSubscriptions(app).stream()
             .filter(e -> e.getId().equals(eventSubscription.getId()))
             .findFirst()
             .orElse(null);
@@ -423,9 +463,11 @@ public class AppRepository extends EntityRepository<App> {
         Entity.APPLICATION,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    List<EntityReference> newSubs =
+        new ArrayList<>(AppBoundConfigurationUtil.getEventSubscriptions(app));
     newSubs.add(eventSubscription.getEntityReference());
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    AppBoundConfigurationUtil.setEventSubscriptions(app, newSubs);
+    App updated = JsonUtils.deepCopy(app, App.class);
     updated.setOpenMetadataServerConnection(null);
     getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
@@ -438,9 +480,11 @@ public class AppRepository extends EntityRepository<App> {
         eventSubscriptionId,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    List<EntityReference> newSubs =
+        new ArrayList<>(AppBoundConfigurationUtil.getEventSubscriptions(app));
     newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    AppBoundConfigurationUtil.setEventSubscriptions(app, newSubs);
+    App updated = JsonUtils.deepCopy(app, App.class);
     updated.setOpenMetadataServerConnection(null);
     getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
@@ -469,12 +513,10 @@ public class AppRepository extends EntityRepository<App> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      recordChange("appBoundType", original.getBoundType(), updated.getBoundType());
       recordChange(
-          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-      recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
+          "appBoundConfiguration", original.getConfiguration(), updated.getConfiguration());
       recordChange("bot", original.getBot(), updated.getBot());
-      recordChange(
-          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
     }
   }
 }

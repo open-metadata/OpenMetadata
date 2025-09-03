@@ -43,18 +43,22 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
 
 const mockAppData = {
   name: 'test-app',
-  appConfiguration: {
-    testField: 'testValue',
+  configuration: {
+    globalAppConfig: {
+      config: {
+        testField: 'testValue',
+      },
+      schedule: {
+        cronExpression: 'test-cron-expression',
+        scheduleTimeline: ScheduleTimeline.Custom,
+      },
+    },
   },
   id: 'test-id',
   className: 'test-class',
   appType: AppType.Internal,
   permission: Permissions.All,
   scheduleType: ScheduleType.NoSchedule,
-  appSchedule: {
-    cronExpression: 'test-cron-expression',
-    scheduleTimeline: ScheduleTimeline.Custom,
-  },
   runtime: {},
 } as App;
 

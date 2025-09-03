@@ -16,10 +16,15 @@
   "runtime": {
     "enabled": "true"
   },
-  "appConfiguration": {
-    "type": "HelloPipelines",
-    "sleep": 10,
-    "echo": "hello pipelines"
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "type": "HelloPipelines",
+        "sleep": 10,
+        "echo": "hello pipelines"
+      }
+    }
   },
   "enabled": false
 }

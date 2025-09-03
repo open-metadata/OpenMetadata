@@ -87,7 +87,11 @@ const mockProps2 = {
     ...mockProps1.appData,
     appType: AppType.External,
     pipelines: [{}] as EntityReference[],
-    appSchedule: null,
+    configuration: {
+      globalAppConfig: {
+        schedule: null,
+      },
+    },
     scheduleType: ScheduleType.Scheduled,
     name: 'DataInsightsReportApplication',
   },

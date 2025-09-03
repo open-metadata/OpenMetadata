@@ -23,6 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
+import org.openmetadata.schema.entity.app.AppBoundType;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -71,7 +74,12 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(jobData, Object.class))));
 
     assertDoesNotThrow(
         () -> searchIndexApp.init(testApp),
@@ -144,7 +152,12 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(smallJobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(smallJobData, Object.class))));
 
     searchIndexApp.init(testApp);
     EventPublisherJob tunedJobData = searchIndexApp.getJobData();
@@ -171,7 +184,12 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
     App testApp =
         new App()
             .withName("SearchIndexingApplication")
-            .withAppConfiguration(JsonUtils.convertValue(jobData, Object.class));
+            .withBoundType(AppBoundType.Global)
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(
+                        new GlobalAppConfiguration()
+                            .withConfig(JsonUtils.convertValue(jobData, Object.class))));
 
     assertDoesNotThrow(() -> searchIndexApp.init(testApp), "App initialization should succeed");
     assertNotNull(searchIndexApp.getJobData(), "Job data should be initialized");

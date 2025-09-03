@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
@@ -365,7 +366,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     try {
       if (app.getAppType().equals(AppType.Internal)) {
         return getInternalAppRuns(app, serviceUUID);
-      } else if (!app.getPipelines().isEmpty()) {
+      } else if (AppBoundConfigurationUtil.getPipeline(app) != null) {
         return getExternalAppRuns(app, serviceUUID);
       }
     } catch (Exception e) {
@@ -386,7 +387,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * Get app runs for external apps through ingestion pipeline
    */
   private ResultList<AppRunRecord> getExternalAppRuns(App app, UUID serviceUUID) {
-    EntityReference pipelineRef = app.getPipelines().get(0);
+    EntityReference pipelineRef = AppBoundConfigurationUtil.getPipeline(app);
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 

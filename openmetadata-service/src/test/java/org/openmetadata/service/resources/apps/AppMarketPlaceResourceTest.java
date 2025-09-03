@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
 import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
@@ -50,7 +52,11 @@ public class AppMarketPlaceResourceTest
           .withAppType(AppType.Internal)
           .withScheduleType(ScheduleType.Scheduled)
           .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-          .withAppConfiguration(new AppConfiguration().withAdditionalProperty("test", "20"))
+          .withConfiguration(
+              new AppBoundConfiguration()
+                  .withGlobalAppConfig(
+                      new GlobalAppConfiguration()
+                          .withConfig(new AppConfiguration().withAdditionalProperty("test", "20"))))
           .withPermission(NativeAppPermission.All)
           .withAppLogoUrl(new URI("https://test.com"))
           .withAppScreenshots(new HashSet<>(List.of("AppLogo")))
@@ -82,7 +88,7 @@ public class AppMarketPlaceResourceTest
     assertEquals(expected.getClassName(), updated.getClassName());
     assertEquals(expected.getAppType(), updated.getAppType());
     assertEquals(expected.getScheduleType(), updated.getScheduleType());
-    assertEquals(expected.getAppConfiguration(), updated.getAppConfiguration());
+    assertEquals(expected.getConfiguration(), updated.getConfiguration());
     assertEquals(expected.getPermission(), updated.getPermission());
     assertEquals(expected.getAppLogoUrl(), updated.getAppLogoUrl());
     assertEquals(expected.getAppScreenshots(), updated.getAppScreenshots());

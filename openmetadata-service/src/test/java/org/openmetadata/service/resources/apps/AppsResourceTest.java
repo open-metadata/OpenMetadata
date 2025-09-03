@@ -43,15 +43,16 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppBoundConfiguration;
+import org.openmetadata.schema.entity.app.AppBoundType;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.GlobalAppConfiguration;
 import org.openmetadata.schema.entity.app.NativeAppPermission;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.data.Database;
@@ -125,8 +126,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // Create Request
     return new CreateApp()
         .withName(appMarketPlaceDefinition.getName())
-        .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
-        .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+        .withBoundType(AppBoundType.Global)
+        .withConfiguration(appMarketPlaceDefinition.getConfiguration());
+    // TODO: Check this here
+    // .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
   }
 
   @Test
@@ -446,7 +449,9 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.Scheduled)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-            .withAppConfiguration(Map.of())
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(new GlobalAppConfiguration().withConfig(Map.of())))
             .withPermission(NativeAppPermission.All)
             .withEventSubscriptions(
                 List.of(
@@ -470,7 +475,11 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // install app
     CreateApp installApp =
-        new CreateApp().withName(createRequest.getName()).withAppConfiguration(Map.of());
+        new CreateApp()
+            .withName(createRequest.getName())
+            .withConfiguration(
+                new AppBoundConfiguration()
+                    .withGlobalAppConfig(new GlobalAppConfiguration().withConfig(Map.of())));
     createEntity(installApp, ADMIN_AUTH_HEADERS);
     TestUtils.get(
         getResource(String.format("events/subscriptions/name/%s", subscriptionName)),

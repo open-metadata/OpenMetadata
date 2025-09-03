@@ -14,5 +14,10 @@
   "runtime": {
     "enabled": "true"
   },
-  "appConfiguration": {}
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {}
+    }
+  }
 }

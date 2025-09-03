@@ -16,11 +16,16 @@
     "enabled": true
   },
   "supportsInterrupt": true,
-  "appConfiguration": {
-    "entities": [
-      "all"
-    ],
-    "recreateIndex": false,
-    "batchSize": "100"
+  "boundType": "Global",
+  "configuration": {
+    "globalAppConfig": {
+      "config": {
+        "entities": [
+          "all"
+        ],
+        "recreateIndex": false,
+        "batchSize": "100"
+      }
+    }
   }
 }

@@ -52,7 +52,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AbstractGlobalNativeApplication;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -64,6 +64,7 @@ import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.AppBoundConfigurationUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -72,7 +73,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesS
 import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class SearchIndexApp extends AbstractNativeApplication {
+public class SearchIndexApp extends AbstractGlobalNativeApplication {
 
   /**
    * Custom exception for reindexing job failures
@@ -177,7 +178,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    jobData =
+        JsonUtils.convertValue(
+            AppBoundConfigurationUtil.getAppConfiguration(app), EventPublisherJob.class);
   }
 
   @Override
@@ -210,9 +213,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     String jobName = jobExecutionContext.getJobDetail().getKey().getName();
     if (jobName.equals(ON_DEMAND_JOB)) {
-      Map<String, Object> jsonAppConfig =
-          JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
-      getApp().setAppConfiguration(jsonAppConfig);
+      Map<String, Object> jsonAppConfig = JsonUtils.convertValue(jobData, new TypeReference<>() {});
+      getApp().getConfiguration().getGlobalAppConfig().setConfig(jsonAppConfig);
     }
   }
 
@@ -223,8 +225,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return JsonUtils.readValue(appConfigJson, EventPublisherJob.class);
     }
 
-    if (getApp() != null && getApp().getAppConfiguration() != null) {
-      return JsonUtils.convertValue(getApp().getAppConfiguration(), EventPublisherJob.class);
+    if (getApp() != null && AppBoundConfigurationUtil.getAppConfiguration(getApp()) != null) {
+      return JsonUtils.convertValue(
+          AppBoundConfigurationUtil.getAppConfiguration(getApp()), EventPublisherJob.class);
     }
 
     LOG.error("Unable to initialize jobData from JobDataMap or App configuration");

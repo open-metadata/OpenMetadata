@@ -15,7 +15,7 @@
       "type": "object",
       "properties": {
         "schedule": {
-          "$ref": "../../../../entity/applications/app.json#definitions/appSchedule",
+          "$ref": "../../../../entity/applications/appSchedule.json",
           "description": "Defines the schedule of the Periodic Trigger."
         },
         "entityType": {
