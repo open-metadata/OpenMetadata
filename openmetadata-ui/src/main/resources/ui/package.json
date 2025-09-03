@@ -16,7 +16,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
-    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
+    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
     "pre-commit": "lint-staged --concurrent false",
     "test": "jest --passWithNoTests",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
