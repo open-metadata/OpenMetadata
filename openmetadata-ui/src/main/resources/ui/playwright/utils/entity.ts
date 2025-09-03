@@ -207,6 +207,10 @@ export const updateOwner = async ({
     await page.getByTestId('selectable-list-update-btn').click();
     await patchRequest;
   }
+
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const removeOwnersFromList = async ({
