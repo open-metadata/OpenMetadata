@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -38,6 +40,7 @@ const CustomControls: FC<LineageControlProps> = ({
     ExploreQuickFilterField[]
   >([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const navigate = useNavigate();
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -166,6 +169,16 @@ const CustomControls: FC<LineageControlProps> = ({
           </Space>
         </div>
       )}
+      <div className="d-flex gap-4 items-center">
+        <Button ghost className="font-semibold" type="primary">
+          Lineage
+        </Button>
+        <Button
+          className="font-semibold"
+          onClick={() => navigate({ search: '?mode=impact_analysis' })}>
+          Impact Analysis
+        </Button>
+      </div>
     </div>
   );
 };
