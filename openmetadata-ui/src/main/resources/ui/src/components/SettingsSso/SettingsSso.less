@@ -1,0 +1,304 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../styles/variables.less';
+.scim-token-card {
+  background-color: @white;
+  padding: @size-lg;
+  border-radius: @size-sm;
+  border: 1px solid @grey-15;
+  .ant-card-body {
+    padding: 0px;
+  }
+  .ant-input-affix-wrapper {
+    border-radius: @size-xs;
+  }
+  .card-title {
+    color: @grey-700;
+    font-style: normal;
+    font-weight: 600;
+    line-height: @size-lg;
+    margin-bottom: @size-md;
+  }
+  .card-description {
+    font-weight: 400;
+    color: @grey-700;
+  }
+  .read-docs-link {
+    color: @blue-12 !important;
+    margin-left: 8px;
+  }
+  .token-label {
+    color: @text-color-tertiary;
+    font-weight: 600;
+    margin-bottom: @size-md;
+  }
+  .created-by-label,
+  .created-on-label {
+    color: @grey-400;
+    font-weight: 500;
+    margin-right: @size-3xl;
+  }
+
+  .created-by-value,
+  .created-on-value {
+    font-weight: 500;
+  }
+  .generate-scim-token-btn {
+    width: 152px;
+  }
+  .scim-token-card .ant-divider.scim-divider {
+    margin: 0;
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+.scim-modal-delete {
+  .ant-modal-content {
+    width: 400px !important;
+    padding-bottom: 0px;
+    border-radius: @size-sm;
+  }
+  .ant-modal-body {
+    padding-bottom: 32px;
+  }
+
+  .scim-modal-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: @size-md;
+  }
+
+  .scim-modal-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: @red-22;
+  }
+
+  .scim-modal-delete-title {
+    font-weight: 600;
+  }
+
+  .scim-modal-delete-desc {
+    font-weight: 400;
+    color: @grey-600;
+  }
+  .ant-modal-footer {
+    padding: 0px;
+  }
+
+  .ant-modal-footer,
+  .ant-modal-footer .ant-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: @size-md;
+    border-top: none !important;
+    padding-bottom: @size-lg;
+  }
+  .ant-btn {
+    height: 44px;
+    font-weight: 600;
+    padding: 10px @size-xl;
+    border-radius: @size-md;
+  }
+  .ant-modal-header {
+    display: none !important;
+  }
+
+  .scim-modal-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: none !important;
+    padding: 0;
+  }
+  .scim-modal-cancel-button {
+    background-color: @white;
+    color: @black;
+    border: 1px solid @grey-400;
+    padding: 10px @size-xl;
+    border-radius: @size-xs;
+    width: 170px;
+  }
+  .scim-modal-delete-button {
+    background-color: @red-14;
+    color: @white;
+    padding: 10px @size-xl;
+    border-radius: @size-xs;
+    width: 170px;
+  }
+}
+.enable-sso-card-container {
+  background-color: @white;
+  padding: @size-md;
+  border-radius: @size-sm;
+  margin: @size-xs 0px @size-lg 0px;
+  border: 1px solid @grey-15;
+  .enable-self-signup-header {
+    color: @grey-700;
+    font-weight: 600px;
+    line-height: 20px;
+    font-size: @font-size-base;
+    margin: 0;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
+    font-weight: 400;
+  }
+
+  .enable-self-signup-text {
+    color: @grey-700;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
+  }
+
+  // Custom toggle styling to match design
+  .ant-switch {
+    width: 36px;
+    height: 20px;
+    border-radius: 20px;
+    background-color: @grey-300;
+    border: none;
+    position: relative;
+
+    .ant-switch-handle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: @white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      top: 2px;
+      left: 2px;
+      border: none;
+      position: absolute;
+      transition: all 0.2s ease;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    &.ant-switch-checked {
+      background-color: @primary-6;
+
+      .ant-switch-handle {
+        left: calc(100% - 18px);
+        background-color: @white;
+      }
+    }
+
+    &:hover:not(.ant-switch-disabled) {
+      background-color: @grey-400;
+
+      &.ant-switch-checked {
+        background-color: @primary-7;
+      }
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 2px rgba(21, 112, 239, 0.2);
+    }
+
+    .ant-switch-inner {
+      display: none;
+    }
+  }
+}
+.settings-sso {
+  border: 1px solid @grey-15;
+  border-radius: @size-sm;
+  padding: @size-lg;
+  height: calc(100vh - (@om-navbar-height + 48px));
+  margin-top: @size-xs;
+}
+
+.sso-provider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: @size-lg;
+
+  color: @grey-900;
+  .sso-form-header {
+    color: @grey-900;
+  }
+}
+
+// SSO-specific breadcrumb styling - only applies within SSO settings page
+.sso-settings-page {
+  .content-height-with-resizable-panel {
+    height: calc(100vh - var(--ant-navbar-height) - 32px);
+  }
+  .right-panel-splitter {
+    margin-left: 12px;
+  }
+  .breadcrumb-container {
+    ol .breadcrumb-item {
+      a.link-title {
+        color: @navigation-text-color;
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+        text-decoration: none;
+
+        &:hover {
+          color: @primary-6;
+          text-decoration: none;
+        }
+      }
+
+      span.inactive-link,
+      span.inactive-link.cursor-text,
+      span.link-title.inactive-link {
+        color: @blue-41 !important;
+
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+
+        &.font-medium {
+          font-weight: 400;
+          color: @blue-41;
+        }
+      }
+
+      span.text-grey-muted {
+        color: @navigation-text-color;
+
+        font-size: @font-size-base;
+        font-weight: 400;
+        line-height: @size-mlg;
+        margin: 0 @size-xs;
+        padding: 0;
+        visibility: hidden;
+        position: relative;
+
+        &::after {
+          content: '>';
+          visibility: visible;
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          color: @navigation-text-color;
+        }
+      }
+    }
+  }
+}

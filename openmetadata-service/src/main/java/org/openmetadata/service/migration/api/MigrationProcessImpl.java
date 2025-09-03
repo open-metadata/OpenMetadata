@@ -21,6 +21,7 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
@@ -46,7 +47,7 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.migrationDAO = handle.attach(MigrationDAO.class);
     this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
     this.authenticationConfiguration =
-        this.openMetadataApplicationConfig.getAuthenticationConfiguration();
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
   }
 
   public void initializeWorkflowHandler() {
