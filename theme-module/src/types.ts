@@ -41,6 +41,13 @@ export interface ThemeColors {
     75: string; // Custom shade for chip background
     150: string; // Custom shade for chip border
   };
+  blue: ColorPalette;
+  blueLight: ColorPalette;
+  indigo: ColorPalette;
+  purple: ColorPalette;
+  pink: ColorPalette;
+  rose: ColorPalette;
+  orange: ColorPalette;
   error: ColorPalette;
   warning: ColorPalette;
   success: ColorPalette;
