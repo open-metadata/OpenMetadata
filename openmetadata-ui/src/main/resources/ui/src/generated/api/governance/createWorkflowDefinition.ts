@@ -163,18 +163,8 @@ export interface Assignees {
 }
 
 /**
- * Choose which Status to apply to the Glossary Term
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Additional assignees with optional users and teams.
  */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-
 export interface ExtraAssignees {
     /**
      * List of additional team names to assign the task to.

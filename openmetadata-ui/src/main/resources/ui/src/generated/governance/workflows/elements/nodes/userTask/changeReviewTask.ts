@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Defines a Task for a given User to approve with detailed change information and
- * suggestion capabilities.
+ * Defines a Task for reviewing entity changes with the ability to approve, reject, or
+ * suggest modifications.
  */
-export interface DetailedUserApprovalTask {
+export interface ChangeReviewTask {
     branches?: string[];
     config?:   NodeConfiguration;
     /**
