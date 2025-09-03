@@ -82,10 +82,10 @@ public interface SearchClient<T> {
           + "}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
+      "for (int i = ctx._source.tags.length - 1; i >= 0; i--) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.dataProducts.length; i++) { if (ctx._source.dataProducts[i].fullyQualifiedName == params.fqn) { ctx._source.dataProducts.remove(i) }}";
+      "for (int i = ctx._source.dataProducts.length - 1; i >= 0; i--) { if (ctx._source.dataProducts[i].fullyQualifiedName == params.fqn) { ctx._source.dataProducts.remove(i) }}";
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
@@ -102,10 +102,10 @@ public interface SearchClient<T> {
           + "}";
 
   String REMOVE_LINEAGE_SCRIPT =
-      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
+      "for (int i = ctx._source.upstreamLineage.length - 1; i >= 0; i--) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "for (int i = 0; i < ctx._source.upstreamEntityRelationship.length; i++) { if (ctx._source.upstreamEntityRelationship[i].docId == '%s') { ctx._source.upstreamEntityRelationship.remove(i) }}";
+      "for (int i = ctx._source.upstreamEntityRelationship.length - 1; i >= 0; i--) { if (ctx._source.upstreamEntityRelationship[i].docId == '%s') { ctx._source.upstreamEntityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
@@ -120,9 +120,9 @@ public interface SearchClient<T> {
           + "   ctx._source.upstreamEntityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}"
           + "if (!docIdExists) {ctx._source.upstreamEntityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
-      "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
+      "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); break; } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } Set seen = new HashSet(); List uniqueTags = []; for (def tag : ctx._source.tags) { if (!seen.contains(tag.tagFQN)) { seen.add(tag.tagFQN); uniqueTags.add(tag); } } Collections.sort(uniqueTags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)); ctx._source.tags = uniqueTags;";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
+      "for (int i = ctx._source.testSuites.length - 1; i >= 0; i--) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   String ADD_OWNERS_SCRIPT =
       "if (ctx._source.owners == null || ctx._source.owners.isEmpty() || "
