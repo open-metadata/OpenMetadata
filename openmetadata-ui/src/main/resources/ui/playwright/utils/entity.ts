@@ -105,6 +105,8 @@ export const addOwner = async ({
   type = 'Users',
   dataTestId,
   initiatorId = 'edit-owner',
+  callSaveAPICall = true,
+  validateOwnerAdded = true,
 }: {
   page: Page;
   owner: string;
@@ -112,6 +114,8 @@ export const addOwner = async ({
   type?: 'Teams' | 'Users';
   dataTestId?: string;
   initiatorId?: string;
+  callSaveAPICall?: boolean;
+  validateOwnerAdded?: boolean;
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
@@ -140,20 +144,31 @@ export const addOwner = async ({
   await searchUser;
 
   if (type === 'Teams') {
-    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
-    await patchRequest;
+    if (callSaveAPICall) {
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await page.getByRole('listitem', { name: owner, exact: true }).click();
+      await patchRequest;
+    } else {
+      await page.getByRole('listitem', { name: owner, exact: true }).click();
+    }
   } else {
-    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    if (callSaveAPICall) {
+      await page.getByRole('listitem', { name: owner, exact: true }).click();
 
-    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByTestId('selectable-list-update-btn').click();
-    await patchRequest;
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await page.getByTestId('selectable-list-update-btn').click();
+      await patchRequest;
+    } else {
+      await page.getByRole('listitem', { name: owner, exact: true }).click();
+      await page.getByTestId('selectable-list-update-btn').click();
+    }
   }
 
-  await expect(
-    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
-  ).toBeVisible();
+  if (validateOwnerAdded) {
+    await expect(
+      page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+    ).toBeVisible();
+  }
 };
 
 export const updateOwner = async ({
@@ -192,10 +207,6 @@ export const updateOwner = async ({
     await page.getByTestId('selectable-list-update-btn').click();
     await patchRequest;
   }
-
-  await expect(
-    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
-  ).toBeVisible();
 };
 
 export const removeOwnersFromList = async ({

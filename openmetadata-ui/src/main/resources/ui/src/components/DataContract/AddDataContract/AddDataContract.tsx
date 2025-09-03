@@ -13,6 +13,7 @@
 
 import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,6 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
-import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -81,20 +81,26 @@ const AddDataContract: React.FC<{
     );
 
     try {
-      await (contract
-        ? updateContract({
-            ...getUpdatedContractDetails(contract, formValues),
-            semantics: validSemantics,
-          })
-        : createContract({
-            ...formValues,
-            entity: {
-              id: table.id,
-              type: EntityType.TABLE,
-            },
-            semantics: validSemantics,
-            entityStatus: EntityStatus.Approved,
-          }));
+      if (contract) {
+        const jsonPatch = compare(contract, {
+          ...contract,
+          ...formValues,
+          displayName: formValues.name,
+        });
+
+        await updateContract(contract?.id, jsonPatch);
+      } else {
+        await createContract({
+          ...formValues,
+          displayName: formValues.name,
+          entity: {
+            id: table.id,
+            type: EntityType.TABLE,
+          },
+          semantics: validSemantics,
+          entityStatus: EntityStatus.Approved,
+        });
+      }
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
       onSave();

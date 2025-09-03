@@ -286,11 +286,15 @@ const ContractDetail: React.FC<{
     return (
       <Row align="middle" justify="space-between">
         <Col flex="auto">
-          <Typography.Text className="contract-title">
+          <Typography.Text
+            className="contract-title"
+            data-testid="contract-title">
             {getEntityName(contract)}
           </Typography.Text>
 
-          <Typography.Text className="contract-time">
+          <Typography.Text
+            className="contract-time"
+            data-testid="contract-last-updated-time">
             {t('message.modified-time-ago-by', {
               time: getRelativeTime(contract.updatedAt),
               by: contract.updatedBy,
@@ -316,7 +320,9 @@ const ContractDetail: React.FC<{
         <Col>
           <div className="contract-action-container">
             {!isEmpty(contract.owners) && (
-              <div className="contract-owner-label-container">
+              <div
+                className="contract-owner-label-container"
+                data-testid="contract-owner-card">
                 <Typography.Text>{t('label.owner-plural')}</Typography.Text>
                 <OwnerLabel
                   avatarSize={24}
@@ -461,30 +467,35 @@ const ContractDetail: React.FC<{
                 </ExpandableCard>
               </Col>
 
-              <Col span={24}>
-                <ExpandableCard
-                  cardProps={{
-                    className: 'expandable-card-contract',
-                    title: (
-                      <div className="contract-card-title-container">
-                        <Typography.Text className="contract-card-title">
-                          {t('label.schema')}
-                        </Typography.Text>
-                        <Typography.Text className="contract-card-description">
-                          {t('message.expected-schema-structure-of-this-asset')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }}>
-                  <Table
-                    columns={schemaColumns}
-                    dataSource={schemaDetail}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
-                  />
-                </ExpandableCard>
-              </Col>
+              {!isEmpty(schemaDetail) && (
+                <Col span={24}>
+                  <ExpandableCard
+                    cardProps={{
+                      className: 'expandable-card-contract',
+                      title: (
+                        <div className="contract-card-title-container">
+                          <Typography.Text className="contract-card-title">
+                            {t('label.schema')}
+                          </Typography.Text>
+                          <Typography.Text className="contract-card-description">
+                            {t(
+                              'message.expected-schema-structure-of-this-asset'
+                            )}
+                          </Typography.Text>
+                        </div>
+                      ),
+                    }}
+                    dataTestId="schema-table-card">
+                    <Table
+                      columns={schemaColumns}
+                      dataSource={schemaDetail}
+                      pagination={false}
+                      rowKey="name"
+                      size="small"
+                    />
+                  </ExpandableCard>
+                </Col>
+              )}
             </Row>
           </Col>
 

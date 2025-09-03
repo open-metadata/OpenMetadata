@@ -310,6 +310,11 @@ test.describe('Data Contracts', () => {
 
       await page.reload();
 
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await expect(
         page.getByTestId('contract-status-card-item-Semantics-status')
       ).toContainText('Passed');
@@ -511,6 +516,85 @@ test.describe('Data Contracts', () => {
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
       await download.saveAs('downloads/' + download.suggestedFilename());
+    });
+
+    await test.step('Edit and Validate Contract data', async () => {
+      await page.getByTestId('contract-edit-button').click();
+
+      // Change the Contract Details
+      await page
+        .getByTestId('contract-name')
+        .fill(DATA_CONTRACT_DETAILS.displayName);
+      await page.click('.om-block-editor[contenteditable="true"]');
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
+
+      await addOwner({
+        page,
+        owner: 'admin',
+        type: 'Users',
+        endpoint: EntityTypeEndpoint.Table,
+        initiatorId: 'select-owners',
+        dataTestId: 'user-tag',
+        callSaveAPICall: false,
+        validateOwnerAdded: false,
+      });
+
+      await expect(
+        page.getByTestId('user-tag').getByText('admin')
+      ).toBeVisible();
+
+      // Move to Schema Tab
+      await page.getByRole('button', { name: 'Schema' }).click();
+
+      // TODO: will enable this once nested column is fixed
+      //   await page.waitForSelector('[data-testid="loader"]', {
+      //     state: 'detached',
+      //   });
+
+      //   await page.getByRole('checkbox', { name: 'Select all' }).click();
+
+      //   await expect(
+      //     page.getByRole('checkbox', { name: 'Select all' })
+      //   ).not.toBeChecked();
+
+      // Move to Semantic Tab
+      await page.getByRole('button', { name: 'Semantics' }).click();
+
+      await page.getByTestId('delete-condition-button').last().click();
+
+      await expect(
+        page.getByTestId('query-builder-form-field').getByText('Description')
+      ).not.toBeVisible();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Validate the Updated Values
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DATA_CONTRACT_DETAILS.displayName
+      );
+
+      await expect(
+        page.getByTestId('contract-owner-card').getByTestId('admin')
+      ).toBeVisible();
+
+      await expect(
+        page.locator(
+          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+        )
+      ).toContainText(DATA_CONTRACT_DETAILS.description2);
+
+      // TODO: will enable this once nested column is fixed
+      //   await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
 
     await test.step('Delete contract', async () => {
