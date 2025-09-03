@@ -53,7 +53,7 @@ jobs:
       - name: Install UI dependencies
         run: |
           cd openmetadata-ui/src/main/resources/ui
-          yarn install --frozen-lockfile
+          yarn install --frozen-lockfile --ignore-scripts
 
       - name: Generate TypeScript types
         run: |
