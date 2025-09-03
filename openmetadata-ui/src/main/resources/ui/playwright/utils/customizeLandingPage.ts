@@ -17,6 +17,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -183,9 +184,7 @@ export const addCuratedAssetPlaceholder = async ({
   });
 
   await openAddCustomizeWidgetModal(page);
-  await page.locator('[data-testid="loader"]').waitFor({
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
 

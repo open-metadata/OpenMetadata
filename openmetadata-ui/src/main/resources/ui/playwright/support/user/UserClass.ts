@@ -203,7 +203,11 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.fill('input[id="email"]', userName);
+    await page.waitForURL('**/signin');
+    await page.waitForLoadState('networkidle');
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
     const loginRes = page.waitForResponse('/api/v1/users/login');
@@ -219,6 +223,17 @@ export class UserClass {
 
     if (modal) {
       await page.getByRole('dialog').getByRole('img').first().click();
+    }
+
+    // Collapse the left side bar after logging in if it's open
+    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+
+    const hasOpenClass = await leftNavBar.evaluate((el) =>
+      el.classList.contains('sidebar-open')
+    );
+
+    if (hasOpenClass) {
+      await page.getByTestId('sidebar-toggle').click();
     }
   }
 

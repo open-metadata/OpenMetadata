@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
-
-export interface AutoPilotStatus {
-  serviceFQN: string;
-  status: WorkflowStatus;
+/**
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum Status {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
