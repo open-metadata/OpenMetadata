@@ -1705,4 +1705,383 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     LOG.info("test_InvalidWorkflowDefinition completed successfully");
   }
+
+  @Test
+  @Order(7)
+  void test_UserApprovalTaskWithoutReviewerSupport(TestInfo test) throws IOException {
+    LOG.info("Starting test_UserApprovalTaskWithoutReviewerSupport");
+
+    // Create a workflow with user approval task for an entity type that doesn't support reviewers
+    // Database entity does not support reviewers, only certain entities like GlossaryTerm do
+    String invalidWorkflowJson =
+        """
+    {
+      "name": "databaseApprovalWorkflow",
+      "displayName": "Database Approval Workflow",
+      "description": "Invalid workflow with user approval task for database entity",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityType": "database",
+          "events": ["Created", "Updated"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ApproveDatabase",
+          "displayName": "Approve Database",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ApproveDatabase"
+        },
+        {
+          "from": "ApproveDatabase",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition invalidWorkflow =
+        JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Try to create the workflow with user approval task for entity without reviewer support
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidWorkflow));
+
+    // Should return error status (400 Bad Request or similar)
+    assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    assertTrue(
+        response.getStatus() >= 400,
+        "Expected error status code >= 400, got: " + response.getStatus());
+
+    LOG.debug(
+        "Workflow with user approval task for non-reviewer entity failed as expected with status: {}",
+        response.getStatus());
+
+    // Verify error message contains expected validation error
+    String errorResponse = response.readEntity(String.class);
+    assertTrue(
+        errorResponse.contains("does not support reviewers")
+            || errorResponse.contains("User approval tasks"),
+        "Error message should mention reviewer support issue. Got: " + errorResponse);
+    LOG.debug("Error message: {}", errorResponse);
+
+    LOG.info("test_UserApprovalTaskWithoutReviewerSupport completed successfully");
+  }
+
+  @Test
+  @Order(8)
+  void test_ChangeReviewTaskWithoutReviewerSupport(TestInfo test) throws IOException {
+    LOG.info("Starting test_ChangeReviewTaskWithoutReviewerSupport");
+
+    // Create a workflow with change review task for multiple entity types,
+    // including one that doesn't support reviewers
+    String invalidWorkflowJson =
+        """
+    {
+      "name": "multiEntityChangeReviewWorkflow",
+      "displayName": "Multi-Entity Change Review Workflow",
+      "description": "Invalid workflow with change review task for entities without reviewer support",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table", "dashboard"],
+          "schedule": {
+            "cronExpression": "0 0 * * *"
+          },
+          "batchSize": 10
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ReviewChanges",
+          "displayName": "Review Changes",
+          "type": "userTask",
+          "subType": "changeReviewTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ReviewChanges"
+        },
+        {
+          "from": "ReviewChanges",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition invalidWorkflow =
+        JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Try to create the workflow with change review task for entities without reviewer support
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidWorkflow));
+
+    // Should return error status (400 Bad Request or similar)
+    assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    assertTrue(
+        response.getStatus() >= 400,
+        "Expected error status code >= 400, got: " + response.getStatus());
+
+    LOG.debug(
+        "Workflow with change review task for non-reviewer entities failed as expected with status: {}",
+        response.getStatus());
+
+    // Verify error message contains expected validation error
+    String errorResponse = response.readEntity(String.class);
+    assertTrue(
+        errorResponse.contains("does not support reviewers")
+            || errorResponse.contains("User approval tasks"),
+        "Error message should mention reviewer support issue. Got: " + errorResponse);
+    LOG.debug("Error message: {}", errorResponse);
+
+    LOG.info("test_ChangeReviewTaskWithoutReviewerSupport completed successfully");
+  }
+
+  @Test
+  @Order(9)
+  void test_EventBasedMultipleEntitiesWithoutReviewerSupport(TestInfo test) throws IOException {
+    LOG.info("Starting test_EventBasedMultipleEntitiesWithoutReviewerSupport");
+
+    // Create a workflow with user approval task for multiple entity types using eventBasedEntity
+    // trigger
+    // None of these entities (table, database, dashboard) support reviewers
+    String invalidWorkflowJson =
+        """
+    {
+      "name": "multiEntityEventBasedApprovalWorkflow",
+      "displayName": "Multi-Entity Event Based Approval Workflow",
+      "description": "Invalid workflow with user approval task for multiple entities without reviewer support",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table", "database", "dashboard"],
+          "events": ["Created", "Updated"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ApproveEntity",
+          "displayName": "Approve Entity",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ApproveEntity"
+        },
+        {
+          "from": "ApproveEntity",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition invalidWorkflow =
+        JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Try to create the workflow with user approval task for multiple entities without reviewer
+    // support
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidWorkflow));
+
+    // Should return error status (400 Bad Request or similar)
+    assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    assertTrue(
+        response.getStatus() >= 400,
+        "Expected error status code >= 400, got: " + response.getStatus());
+
+    LOG.debug(
+        "Workflow with user approval task for multiple non-reviewer entities failed as expected with status: {}",
+        response.getStatus());
+
+    // Verify error message contains expected validation error - should fail on first entity without
+    // reviewer support
+    String errorResponse = response.readEntity(String.class);
+    assertTrue(
+        errorResponse.contains("does not support reviewers")
+            || errorResponse.contains("User approval tasks"),
+        "Error message should mention reviewer support issue. Got: " + errorResponse);
+    LOG.debug("Error message: {}", errorResponse);
+
+    LOG.info("test_EventBasedMultipleEntitiesWithoutReviewerSupport completed successfully");
+  }
+
+  @Test
+  @Order(10)
+  void test_MixedEntityTypesWithReviewerSupport(TestInfo test) throws IOException {
+    LOG.info("Starting test_MixedEntityTypesWithReviewerSupport");
+
+    // Create a workflow with user approval task mixing entities with and without reviewer support
+    // glossaryTerm supports reviewers, but table doesn't
+    String invalidWorkflowJson =
+        """
+    {
+      "name": "mixedEntityApprovalWorkflow",
+      "displayName": "Mixed Entity Approval Workflow",
+      "description": "Invalid workflow with user approval task for mixed entities",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm", "table"],
+          "events": ["Created", "Updated"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "ApproveEntity",
+          "displayName": "Approve Entity",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            },
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "ApproveEntity"
+        },
+        {
+          "from": "ApproveEntity",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition invalidWorkflow =
+        JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Try to create the workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidWorkflow));
+
+    // Should return error status because table doesn't support reviewers
+    assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    assertTrue(
+        response.getStatus() >= 400,
+        "Expected error status code >= 400, got: " + response.getStatus());
+
+    LOG.debug(
+        "Workflow with mixed entity types (some without reviewer support) failed as expected with status: {}",
+        response.getStatus());
+
+    // Verify error message mentions table doesn't support reviewers
+    String errorResponse = response.readEntity(String.class);
+    assertTrue(
+        errorResponse.contains("table")
+            && (errorResponse.contains("does not support reviewers")
+                || errorResponse.contains("User approval tasks")),
+        "Error message should mention table doesn't support reviewers. Got: " + errorResponse);
+    LOG.debug("Error message: {}", errorResponse);
+
+    LOG.info("test_MixedEntityTypesWithReviewerSupport completed successfully");
+  }
 }

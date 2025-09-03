@@ -173,9 +173,9 @@
     },
     {
       "type": "userTask",
-      "subType": "detailedUserApprovalTask",
-      "name": "DetailedApprovalForUpdates",
-      "displayName": "Detailed Approval for Updates",
+      "subType": "changeReviewTask",
+      "name": "ChangeReviewForUpdates",
+      "displayName": "Review Changes for Updates",
       "config": {
         "assignees": {
           "addReviewers": true
@@ -196,7 +196,7 @@
       "config": {},
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "DetailedApprovalForUpdates"
+        "updatedBy": "ChangeReviewForUpdates"
       }
     },
     {
@@ -210,7 +210,7 @@
       },
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "DetailedApprovalForUpdates"
+        "updatedBy": "ChangeReviewForUpdates"
       }
     },
     {
@@ -222,8 +222,8 @@
     {
       "type": "endEvent",
       "subType": "endEvent",
-      "name": "DetailedApprovalEnd",
-      "displayName": "Approved After Detailed Review"
+      "name": "ChangeReviewEnd",
+      "displayName": "Approved After Change Review"
     },
     {
       "type": "automatedTask",
@@ -326,15 +326,15 @@
     },
     {
       "from": "SetGlossaryTermStatusToInReviewForUpdate",
-      "to": "DetailedApprovalForUpdates"
+      "to": "ChangeReviewForUpdates"
     },
     {
-      "from": "DetailedApprovalForUpdates",
+      "from": "ChangeReviewForUpdates",
       "to": "SetGlossaryTermStatusToApprovedDetailed",
       "condition": "true"
     },
     {
-      "from": "DetailedApprovalForUpdates",
+      "from": "ChangeReviewForUpdates",
       "to": "RollbackGlossaryTermChanges",
       "condition": "false"
     },
@@ -344,7 +344,7 @@
     },
     {
       "from": "SetGlossaryTermStatusToApprovedDetailed",
-      "to": "DetailedApprovalEnd"
+      "to": "ChangeReviewEnd"
     },
     {
       "from": "ApproveGlossaryTerm",

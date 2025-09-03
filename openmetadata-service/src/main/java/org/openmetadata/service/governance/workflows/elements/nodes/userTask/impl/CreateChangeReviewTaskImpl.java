@@ -39,7 +39,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
-public class CreateDetailedApprovalTaskImpl implements TaskListener {
+public class CreateChangeReviewTaskImpl implements TaskListener {
   private Expression inputNamespaceMapExpr;
   private Expression approvalThresholdExpr;
   private Expression rejectionThresholdExpr;

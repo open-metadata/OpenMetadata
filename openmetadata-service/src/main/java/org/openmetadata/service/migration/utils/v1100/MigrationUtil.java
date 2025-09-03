@@ -186,17 +186,17 @@ public class MigrationUtil {
       }
     }
 
-    // Check and add DetailedApprovalForUpdates node
-    if (nodes.stream().noneMatch(node -> "DetailedApprovalForUpdates".equals(node.getName()))) {
+    // Check and add ChangeReviewForUpdates node
+    if (nodes.stream().noneMatch(node -> "ChangeReviewForUpdates".equals(node.getName()))) {
       try {
-        WorkflowNodeDefinitionInterface detailedApprovalNode =
+        WorkflowNodeDefinitionInterface changeReviewNode =
             JsonUtils.readValue(
                 """
                     {
                       "type": "userTask",
-                      "subType": "detailedUserApprovalTask",
-                      "name": "DetailedApprovalForUpdates",
-                      "displayName": "Detailed Approval for Updates",
+                      "subType": "changeReviewTask",
+                      "name": "ChangeReviewForUpdates",
+                      "displayName": "Review Changes for Updates",
                       "config": {
                         "assignees": {
                           "addReviewers": true
@@ -211,11 +211,11 @@ public class MigrationUtil {
                     }
                     """,
                 WorkflowNodeDefinitionInterface.class);
-        nodes.add(detailedApprovalNode);
-        LOG.info("Added new node: DetailedApprovalForUpdates");
+        nodes.add(changeReviewNode);
+        LOG.info("Added new node: ChangeReviewForUpdates");
         nodesAdded = true;
       } catch (Exception e) {
-        LOG.error("Failed to add DetailedApprovalForUpdates node", e);
+        LOG.error("Failed to add ChangeReviewForUpdates node", e);
       }
     }
 
@@ -233,7 +233,7 @@ public class MigrationUtil {
                       "config": {},
                       "inputNamespaceMap": {
                         "relatedEntity": "global",
-                        "updatedBy": "DetailedApprovalForUpdates"
+                        "updatedBy": "ChangeReviewForUpdates"
                       }
                     }
                     """,
@@ -263,7 +263,7 @@ public class MigrationUtil {
                       },
                       "inputNamespaceMap": {
                         "relatedEntity": "global",
-                        "updatedBy": "DetailedApprovalForUpdates"
+                        "updatedBy": "ChangeReviewForUpdates"
                       }
                     }
                     """,
@@ -298,25 +298,25 @@ public class MigrationUtil {
       }
     }
 
-    // Check and add DetailedApprovalEnd node
-    if (nodes.stream().noneMatch(node -> "DetailedApprovalEnd".equals(node.getName()))) {
+    // Check and add ChangeReviewEnd node
+    if (nodes.stream().noneMatch(node -> "ChangeReviewEnd".equals(node.getName()))) {
       try {
-        WorkflowNodeDefinitionInterface detailedApprovalEndNode =
+        WorkflowNodeDefinitionInterface changeReviewEndNode =
             JsonUtils.readValue(
                 """
                     {
                       "type": "endEvent",
                       "subType": "endEvent",
-                      "name": "DetailedApprovalEnd",
-                      "displayName": "Approved After Detailed Review"
+                      "name": "ChangeReviewEnd",
+                      "displayName": "Approved After Change Review"
                     }
                     """,
                 WorkflowNodeDefinitionInterface.class);
-        nodes.add(detailedApprovalEndNode);
-        LOG.info("Added new node: DetailedApprovalEnd");
+        nodes.add(changeReviewEndNode);
+        LOG.info("Added new node: ChangeReviewEnd");
         nodesAdded = true;
       } catch (Exception e) {
-        LOG.error("Failed to add DetailedApprovalEnd node", e);
+        LOG.error("Failed to add ChangeReviewEnd node", e);
       }
     }
 
@@ -382,24 +382,23 @@ public class MigrationUtil {
             "SetGlossaryTermStatusToInReviewForUpdate",
             "false");
 
-    // Add edge from SetGlossaryTermStatusToInReviewForUpdate to DetailedApprovalForUpdates
+    // Add edge from SetGlossaryTermStatusToInReviewForUpdate to ChangeReviewForUpdates
     edgesModified |=
         addEdgeIfNotExists(
-            edges, "SetGlossaryTermStatusToInReviewForUpdate", "DetailedApprovalForUpdates", null);
+            edges, "SetGlossaryTermStatusToInReviewForUpdate", "ChangeReviewForUpdates", null);
 
-    // Add edges for DetailedApprovalForUpdates outcomes
+    // Add edges for ChangeReviewForUpdates outcomes
     edgesModified |=
         addEdgeIfNotExists(
-            edges, "DetailedApprovalForUpdates", "SetGlossaryTermStatusToApprovedDetailed", "true");
+            edges, "ChangeReviewForUpdates", "SetGlossaryTermStatusToApprovedDetailed", "true");
     edgesModified |=
-        addEdgeIfNotExists(
-            edges, "DetailedApprovalForUpdates", "RollbackGlossaryTermChanges", "false");
+        addEdgeIfNotExists(edges, "ChangeReviewForUpdates", "RollbackGlossaryTermChanges", "false");
 
     // Add edges for final nodes
     edgesModified |= addEdgeIfNotExists(edges, "RollbackGlossaryTermChanges", "RollbackEnd", null);
     edgesModified |=
         addEdgeIfNotExists(
-            edges, "SetGlossaryTermStatusToApprovedDetailed", "DetailedApprovalEnd", null);
+            edges, "SetGlossaryTermStatusToApprovedDetailed", "ChangeReviewEnd", null);
 
     return edgesModified;
   }

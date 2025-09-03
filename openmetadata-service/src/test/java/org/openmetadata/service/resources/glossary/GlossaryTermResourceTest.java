@@ -3012,7 +3012,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             () ->
                 WorkflowHandler.getInstance()
                     .isActivityWithVariableExecuting(
-                        "DetailedApprovalForUpdates.approvalTask",
+                        "ChangeReviewForUpdates.approvalTask",
                         getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
                         entityLink));
   }

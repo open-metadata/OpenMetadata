@@ -7,7 +7,7 @@
   "type": "string",
   "enum": [
     "userApprovalTask",
-    "detailedUserApprovalTask",
+    "changeReviewTask",
     "checkEntityAttributesTask",
     "setEntityAttributeTask",
     "endEvent",

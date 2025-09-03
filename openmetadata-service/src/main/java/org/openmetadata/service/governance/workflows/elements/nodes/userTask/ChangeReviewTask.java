@@ -20,11 +20,11 @@ import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
-import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.DetailedUserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ChangeReviewTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateDetailedApprovalTaskImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateChangeReviewTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -35,13 +35,12 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
 
-public class DetailedUserApprovalTask implements NodeInterface {
+public class ChangeReviewTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
   private final List<Message> messages = new ArrayList<>();
 
-  public DetailedUserApprovalTask(
-      DetailedUserApprovalTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+  public ChangeReviewTask(ChangeReviewTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
     String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
@@ -113,7 +112,7 @@ public class DetailedUserApprovalTask implements NodeInterface {
 
     EndEvent terminatedEvent =
         new EndEventBuilder()
-            .id(getFlowableElementId(subProcessId, "detailedTerminatedEvent"))
+            .id(getFlowableElementId(subProcessId, "changeReviewTerminatedEvent"))
             .build();
     terminatedEvent.addEventDefinition(terminateEventDefinition);
     attachMainWorkflowTerminationListener(terminatedEvent);
@@ -174,10 +173,10 @@ public class DetailedUserApprovalTask implements NodeInterface {
             .addFieldExtension(assigneesVarNameExpr)
             .build();
 
-    FlowableListener createDetailedOpenMetadataTaskListener =
+    FlowableListener createChangeReviewTaskListener =
         new FlowableListenerBuilder()
             .event("create")
-            .implementation(CreateDetailedApprovalTaskImpl.class.getName())
+            .implementation(CreateChangeReviewTaskImpl.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
             .addFieldExtension(approvalThresholdExpr)
             .addFieldExtension(rejectionThresholdExpr)
@@ -192,7 +191,7 @@ public class DetailedUserApprovalTask implements NodeInterface {
     return new UserTaskBuilder()
         .id(getFlowableElementId(subProcessId, "approvalTask"))
         .addListener(setCandidateUsersListener)
-        .addListener(createDetailedOpenMetadataTaskListener)
+        .addListener(createChangeReviewTaskListener)
         .addListener(completionValidatorListener)
         .build();
   }
@@ -200,8 +199,8 @@ public class DetailedUserApprovalTask implements NodeInterface {
   private BoundaryEvent getTerminationEvent(String subProcessId) {
     // Use a consistent format that matches what getFlowableElementId produces
     // This ensures uniqueness per node within the workflow definition
-    // DetailedUserApprovalTask uses terminateDetailedProcess to distinguish from UserApprovalTask
-    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateDetailedProcess");
+    // ChangeReviewTask uses terminateChangeReviewProcess to distinguish from UserApprovalTask
+    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateChangeReviewProcess");
 
     Message terminationMessage = new Message();
     terminationMessage.setId(uniqueMessageName);
@@ -212,7 +211,7 @@ public class DetailedUserApprovalTask implements NodeInterface {
     terminationMessageDefinition.setMessageRef(uniqueMessageName);
 
     BoundaryEvent terminationEvent = new BoundaryEvent();
-    terminationEvent.setId(getFlowableElementId(subProcessId, "detailedTerminationEvent"));
+    terminationEvent.setId(getFlowableElementId(subProcessId, "changeReviewTerminationEvent"));
     terminationEvent.addEventDefinition(terminationMessageDefinition);
     return terminationEvent;
   }

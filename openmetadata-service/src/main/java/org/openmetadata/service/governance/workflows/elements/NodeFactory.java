@@ -12,7 +12,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.DetailedUserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ChangeReviewTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
@@ -23,7 +23,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
 import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.DetailedUserApprovalTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.ChangeReviewTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
 
 public class NodeFactory {
@@ -38,8 +38,8 @@ public class NodeFactory {
           (SetEntityAttributeTaskDefinition) nodeDefinition, config);
       case USER_APPROVAL_TASK -> new UserApprovalTask(
           (UserApprovalTaskDefinition) nodeDefinition, config);
-      case DETAILED_USER_APPROVAL_TASK -> new DetailedUserApprovalTask(
-          (DetailedUserApprovalTaskDefinition) nodeDefinition, config);
+      case CHANGE_REVIEW_TASK -> new ChangeReviewTask(
+          (ChangeReviewTaskDefinition) nodeDefinition, config);
       case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
           (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);

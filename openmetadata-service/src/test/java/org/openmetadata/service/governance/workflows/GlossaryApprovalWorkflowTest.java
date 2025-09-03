@@ -322,7 +322,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     // Wait for workflow instance to finish
     WorkflowInstance instance =
-        waitForWorkflowInstanceCompletion(workflowInstanceId, "DetailedApprovalEnd");
+        waitForWorkflowInstanceCompletion(workflowInstanceId, "ChangeReviewEnd");
 
     // Fetch workflow states using the enhanced API that gets states from latest workflow instance
     List<WorkflowInstanceState> states =
@@ -342,9 +342,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             "CheckGlossaryTermIsReadyToBeReviewed",
             "CheckIfEntityIsFirstVersion",
             "SetGlossaryTermStatusToInReviewForUpdate",
-            "DetailedApprovalForUpdates",
+            "ChangeReviewForUpdates",
             "SetGlossaryTermStatusToApprovedDetailed",
-            "DetailedApprovalEnd");
+            "ChangeReviewEnd");
     assertWorkflowStatesSequence(states, expectedStages);
 
     // Assert specific displayNames for known stages based on the actual workflow definition
@@ -358,10 +358,10 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
                 "Check if Glossary Term is Ready to be Reviewed",
             "CheckIfEntityIsFirstVersion", "Check if Entity is First Version",
             "SetGlossaryTermStatusToInReviewForUpdate", "Set Status to 'In Review' (Update)",
-            "DetailedApprovalForUpdates", "Detailed Approval for Updates",
+            "ChangeReviewForUpdates", "Review Changes for Updates",
             "SetGlossaryTermStatusToApprovedDetailed",
                 "Set Status to 'Approved' (After Detailed Review)",
-            "DetailedApprovalEnd", "Approved After Detailed Review");
+            "ChangeReviewEnd", "Approved After Change Review");
     assertStageDisplayNames(states, expectedDisplayNames);
 
     // Assert that the workflow instance is finished
