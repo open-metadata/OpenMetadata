@@ -57,6 +57,12 @@ jobs:
           ln -sf ../../../../../node_modules .
           ./json2ts-generate-all.sh -l true
 
+      - name: Format code (ESLint + Prettier)
+        run: |
+          cd openmetadata-ui/src/main/resources/ui
+          yarn run lint:fix
+          yarn run pretty
+
       - name: Check for changes
         id: git-check
         run: |
