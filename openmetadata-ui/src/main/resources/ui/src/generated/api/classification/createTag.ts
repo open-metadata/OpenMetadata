@@ -54,6 +54,10 @@ export interface CreateTag {
    */
   parent?: string;
   provider?: ProviderType;
+  /**
+   * User references of the reviewers for this tag.
+   */
+  reviewers?: EntityReference[];
   style?: Style;
 }
 

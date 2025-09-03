@@ -41,6 +41,10 @@ export interface Classification {
    */
   domains?: EntityReference[];
   /**
+   * Status of the tag.
+   */
+  entityStatus?: EntityStatus;
+  /**
    * FullyQualifiedName same as `name`.
    */
   fullyQualifiedName?: string;
@@ -71,6 +75,10 @@ export interface Classification {
    */
   owners?: EntityReference[];
   provider?: ProviderType;
+  /**
+   * User references of the reviewers for this tag.
+   */
+  reviewers?: EntityReference[];
   /**
    * Total number of children tag terms under this classification. This includes all the
    * children in the hierarchy.
@@ -215,6 +223,20 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Status of the tag.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }
 
 /**

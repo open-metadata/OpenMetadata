@@ -63,6 +63,10 @@ export interface Table {
    */
   domains?: EntityReference[];
   /**
+   * Status of the Table.
+   */
+  entityStatus?: EntityStatus;
+  /**
    * Entity extension data with custom attributes added to the entity.
    */
   extension?: any;
@@ -866,6 +870,20 @@ export interface DataModel {
 export enum ModelType {
   DDL = 'DDL',
   Dbt = 'DBT',
+}
+
+/**
+ * Status of the Table.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }
 
 /**

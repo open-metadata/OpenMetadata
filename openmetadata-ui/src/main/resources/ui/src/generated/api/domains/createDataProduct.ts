@@ -50,6 +50,10 @@ export interface CreateDataProduct {
    * Owners of this DataProduct.
    */
   owners?: EntityReference[];
+  /**
+   * User references of the reviewers for this DataProduct.
+   */
+  reviewers?: EntityReference[];
   style?: Style;
   /**
    * Tags for this Data Product.

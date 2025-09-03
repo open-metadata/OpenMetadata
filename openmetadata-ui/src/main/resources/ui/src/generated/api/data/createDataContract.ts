@@ -34,6 +34,7 @@ export interface CreateDataContract {
    * Reference to the data entity (table, topic, etc.) this contract applies to.
    */
   entity: EntityReference;
+  entityStatus?: EntityStatus;
   /**
    * Entity extension data with custom attributes added to the entity.
    */
@@ -66,7 +67,6 @@ export interface CreateDataContract {
    * Source URL of the data contract.
    */
   sourceUrl?: string;
-  status?: ContractStatus;
 }
 
 /**
@@ -125,6 +125,18 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }
 
 /**
@@ -639,13 +651,4 @@ export enum ProviderType {
   Automation = 'automation',
   System = 'system',
   User = 'user',
-}
-
-/**
- * Status of the data contract.
- */
-export enum ContractStatus {
-  Active = 'Active',
-  Deprecated = 'Deprecated',
-  Draft = 'Draft',
 }

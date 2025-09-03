@@ -53,6 +53,10 @@ export interface Dashboard {
    */
   domains?: EntityReference[];
   /**
+   * Status of the Dashboard.
+   */
+  entityStatus?: EntityStatus;
+  /**
    * Entity extension data with custom attributes added to the entity.
    */
   extension?: any;
@@ -369,6 +373,20 @@ export interface EntityReference {
 export enum DashboardType {
   Dashboard = 'Dashboard',
   Report = 'Report',
+}
+
+/**
+ * Status of the Dashboard.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
+  InReview = 'In Review',
+  Rejected = 'Rejected',
 }
 
 /**
