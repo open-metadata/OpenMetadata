@@ -83,6 +83,10 @@ export interface SnowflakeConnection {
    * Snowflake Passphrase Key used with Private Key
    */
   snowflakePrivatekeyPassphrase?: string;
+  /**
+   * Snowflake source host for the Snowflake account.
+   */
+  snowflakeSourceHost?: string;
   supportsDatabase?: boolean;
   supportsDataDiff?: boolean;
   supportsDBTExtraction?: boolean;
