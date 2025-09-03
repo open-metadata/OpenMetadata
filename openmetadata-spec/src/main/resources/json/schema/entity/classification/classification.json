@@ -84,6 +84,15 @@
     "owners": {
       "description": "Owners of this Classification.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the tag.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "description"],
