@@ -1,7 +1,7 @@
 package org.openmetadata.service.migration.postgres.v1100;
 
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import lombok.SneakyThrows;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v1100.MigrationUtil;
@@ -15,7 +15,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
+    MigrationUtil migrationUtil = new MigrationUtil(ConnectionType.POSTGRES);
     migrationUtil.migrateEntityStatusForExistingEntities(handle);
     migrationUtil.migrateFlywayHistory(handle);
   }

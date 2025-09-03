@@ -5,17 +5,17 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
 public class MigrationUtil {
   private static final int BATCH_SIZE = 500;
-  private final CollectionDAO collectionDAO;
+  private final ConnectionType connectionType;
   private boolean isPostgres = false;
+  public static final String FLYWAY_TABLE_NAME = "DATABASE_CHANGE_LOG";
 
-  public MigrationUtil(CollectionDAO collectionDAO) {
-    this.collectionDAO = collectionDAO;
+  public MigrationUtil(ConnectionType connectionType) {
+    this.connectionType = connectionType;
   }
 
   public void migrateEntityStatusForExistingEntities(Handle handle) {
@@ -371,15 +371,15 @@ public class MigrationUtil {
     String countQuery =
         switch (connectionType) {
           case MYSQL -> """
-          SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
-          INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
-          WHERE scl.migrationfilename LIKE '%flyway%'
-          """;
+              SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
+              INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
+              WHERE scl.migrationfilename LIKE '%flyway%'
+              """;
           case POSTGRES -> """
-          SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
-          INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
-          WHERE scl.migrationfilename LIKE '%flyway%'
-          """;
+              SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
+              INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
+              WHERE scl.migrationfilename LIKE '%flyway%'
+              """;
         };
 
     Integer count = handle.createQuery(countQuery).mapTo(Integer.class).one();
@@ -391,14 +391,14 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT IGNORE INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
-          VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/mysql/v000__create_db_connection_info.sql', '0', NOW(), NULL)
-          """;
+              INSERT IGNORE INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/mysql/v000__create_db_connection_info.sql', '0', NOW(), NULL)
+              """;
           case POSTGRES -> """
-          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
-          VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/postgres/v000__create_db_connection_info.sql', '0', current_timestamp, NULL)
-          ON CONFLICT (version) DO NOTHING
-          """;
+              INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/postgres/v000__create_db_connection_info.sql', '0', current_timestamp, NULL)
+              ON CONFLICT (version) DO NOTHING
+              """;
         };
 
     int inserted = handle.createUpdate(insertQuery).execute();
@@ -411,35 +411,35 @@ public class MigrationUtil {
     String insertQuery =
         switch (connectionType) {
           case MYSQL -> """
-          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
-          SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
-                 CASE
-                   WHEN script LIKE 'v%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/mysql/', script)
-                   ELSE CONCAT('bootstrap/sql/migrations/flyway/mysql/v', version, '__', REPLACE(LOWER(description), ' ', '_'), '.sql')
-                 END as migrationfilename,
-                 CAST(checksum as CHAR(256)) as checksum,
-                 installed_on,
-                 NULL as metrics
-          FROM DATABASE_CHANGE_LOG
-          WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
-          AND success = true
-          """;
+              INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
+                     CASE
+                       WHEN script LIKE 'v%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/mysql/', script)
+                       ELSE CONCAT('bootstrap/sql/migrations/flyway/mysql/v', version, '__', REPLACE(LOWER(description), ' ', '_'), '.sql')
+                     END as migrationfilename,
+                     CAST(checksum as CHAR(256)) as checksum,
+                     installed_on,
+                     NULL as metrics
+              FROM DATABASE_CHANGE_LOG
+              WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
+              AND success = true
+              """;
           case POSTGRES -> """
-          INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
-          SELECT '0.0.' || CAST(version AS INTEGER) as version,
-                 CASE
-                   WHEN script LIKE 'v%__.sql' THEN 'bootstrap/sql/migrations/flyway/postgres/' || script
-                   ELSE 'bootstrap/sql/migrations/flyway/postgres/v' || version || '__' || REPLACE(LOWER(description), ' ', '_') || '.sql'
-                 END as migrationfilename,
-                 checksum::VARCHAR(256) as checksum,
-                 installed_on,
-                 NULL as metrics
-          FROM "DATABASE_CHANGE_LOG"
-          WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
-          AND success = true
-          """;
+              INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              SELECT '0.0.' || CAST(version AS INTEGER) as version,
+                     CASE
+                       WHEN script LIKE 'v%__.sql' THEN 'bootstrap/sql/migrations/flyway/postgres/' || script
+                       ELSE 'bootstrap/sql/migrations/flyway/postgres/v' || version || '__' || REPLACE(LOWER(description), ' ', '_') || '.sql'
+                     END as migrationfilename,
+                     checksum::VARCHAR(256) as checksum,
+                     installed_on,
+                     NULL as metrics
+              FROM "DATABASE_CHANGE_LOG"
+              WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
+              AND success = true
+              """;
         };
 
     return handle.createUpdate(insertQuery).execute();
-
   }
+}
