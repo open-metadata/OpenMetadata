@@ -243,15 +243,22 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
   data.forEach((filter) => {
     if (!isEmpty(filter.value)) {
       const should = [] as Array<QueryFieldInterface>;
+
+      // Convert entityType to entityType.keyword for exact term matching in queries
+      const queryFieldKey =
+        filter.key === EntityFields.ENTITY_TYPE
+          ? EntityFields.ENTITY_TYPE_KEYWORD
+          : filter.key;
+
       filter.value?.forEach((filterValue) => {
         const term = {
-          [filter.key]: filterValue.key,
+          [queryFieldKey]: filterValue.key,
         };
 
         if (filterValue.key === NULL_OPTION_KEY) {
           should.push({
             bool: {
-              must_not: { exists: { field: filter.key } },
+              must_not: { exists: { field: queryFieldKey } },
             },
           });
         } else {
