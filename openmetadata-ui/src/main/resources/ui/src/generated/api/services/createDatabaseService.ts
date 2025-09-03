@@ -728,6 +728,10 @@ export interface ConfigObject {
      */
     snowflakePrivatekeyPassphrase?: string;
     /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
+    /**
      * Snowflake warehouse.
      */
     warehouse?: string;

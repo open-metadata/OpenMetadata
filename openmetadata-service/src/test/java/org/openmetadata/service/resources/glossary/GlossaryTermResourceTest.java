@@ -96,7 +96,6 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
@@ -106,6 +105,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
@@ -391,7 +391,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // term g1t1 under glossary1 is created in Approved mode without reviewers
     GlossaryTerm g1t1 = createTerm(glossary1, null, "g1t1");
-    assertEquals(Status.APPROVED, g1t1.getStatus());
+    assertEquals(EntityStatus.APPROVED, g1t1.getEntityStatus());
 
     //
     // glossary2 created with reviewers user1, user2
@@ -408,15 +408,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Creating a glossary term g2t1 should be in `Draft` mode (because glossary has reviewers)
     GlossaryTerm g2t1 = createTerm(glossary2, null, "g2t1");
-    assertEquals(Status.DRAFT, g2t1.getStatus());
+    assertEquals(EntityStatus.DRAFT, g2t1.getEntityStatus());
     waitForTaskToBeCreated(g2t1.getFullyQualifiedName());
     assertEquals(
-        Status.IN_REVIEW, getEntity(g2t1.getId(), authHeaders(USER1.getName())).getStatus());
+        EntityStatus.IN_REVIEW,
+        getEntity(g2t1.getId(), authHeaders(USER1.getName())).getEntityStatus());
     assertApprovalTask(g2t1, TaskStatus.Open); // A Request Approval task is opened
 
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
     String json = JsonUtils.pojoToJson(g2t1);
-    g2t1.setStatus(Status.APPROVED);
+    g2t1.setEntityStatus(EntityStatus.APPROVED);
     assertResponse(
         () -> patchEntity(g2t1.getId(), json, g2t1, ADMIN_AUTH_HEADERS),
         FORBIDDEN,
@@ -424,7 +425,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // A reviewer can change the `Draft` to `Approved` status using PATCH or PUT
     GlossaryTerm g2t1Updated = patchEntity(g2t1.getId(), json, g2t1, authHeaders(USER1.getName()));
-    assertEquals(Status.APPROVED, g2t1Updated.getStatus());
+    assertEquals(EntityStatus.APPROVED, g2t1Updated.getEntityStatus());
     assertApprovalTask(g2t1, TaskStatus.Closed); // The Request Approval task is closed
 
     //
@@ -434,16 +435,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // `Approved`.
     //
     GlossaryTerm g2t2 = createTerm(glossary2, null, "g2t2");
-    assertEquals(Status.DRAFT, g2t2.getStatus());
+    assertEquals(EntityStatus.DRAFT, g2t2.getEntityStatus());
     waitForTaskToBeCreated(g2t2.getFullyQualifiedName());
     assertEquals(
-        Status.IN_REVIEW, getEntity(g2t2.getId(), authHeaders(USER1.getName())).getStatus());
+        EntityStatus.IN_REVIEW,
+        getEntity(g2t2.getId(), authHeaders(USER1.getName())).getEntityStatus());
     Thread approvalTask =
         assertApprovalTask(g2t2, TaskStatus.Open); // A Request Approval task is opened
     int taskId = approvalTask.getTask().getId();
 
     // Even admin can't resolve the task
-    ResolveTask resolveTask = new ResolveTask().withNewValue(Status.APPROVED.value());
+    ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
     assertResponse(
         () -> taskTest.resolveTask(taskId, resolveTask, ADMIN_AUTH_HEADERS),
         FORBIDDEN,
@@ -453,7 +455,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     taskTest.resolveTask(taskId, resolveTask, authHeaders(USER1.getName()));
     assertApprovalTask(g2t2, TaskStatus.Closed); // A Request Approval task is opened
     g2t2 = getEntity(g2t2.getId(), authHeaders(USER1.getName()));
-    assertEquals(Status.APPROVED, g2t2.getStatus());
+    assertEquals(EntityStatus.APPROVED, g2t2.getEntityStatus());
 
     //
     // Glossary terms g2t3 created is in `Draft` status. Automatically a Request Approval task is
@@ -462,10 +464,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // state.
     //
     GlossaryTerm g2t3 = createTerm(glossary2, null, "g2t3");
-    assertEquals(Status.DRAFT, g2t3.getStatus());
+    assertEquals(EntityStatus.DRAFT, g2t3.getEntityStatus());
     waitForTaskToBeCreated(g2t3.getFullyQualifiedName());
     assertEquals(
-        Status.IN_REVIEW, getEntity(g2t3.getId(), authHeaders(USER1.getName())).getStatus());
+        EntityStatus.IN_REVIEW,
+        getEntity(g2t3.getId(), authHeaders(USER1.getName())).getEntityStatus());
     approvalTask = assertApprovalTask(g2t3, TaskStatus.Open); // A Request Approval task is opened
     int taskId2 = approvalTask.getTask().getId();
 
@@ -482,7 +485,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         taskId2, new ResolveTask().withNewValue("rejected"), authHeaders(USER1.getName()));
     assertApprovalTask(g2t3, TaskStatus.Closed); // A Request Approval task is opened
     g2t3 = getEntity(g2t3.getId(), authHeaders(USER1.getName()));
-    assertEquals(Status.REJECTED, g2t3.getStatus());
+    assertEquals(EntityStatus.REJECTED, g2t3.getEntityStatus());
 
     //
     // Glossary terms g2t4 created is in `Draft` status. Automatically a Request Approval task is
@@ -491,15 +494,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // task.
     //
     final GlossaryTerm g2t4 = createTerm(glossary2, null, "g2t4");
-    assertEquals(Status.DRAFT, g2t4.getStatus());
+    assertEquals(EntityStatus.DRAFT, g2t4.getEntityStatus());
     waitForTaskToBeCreated(g2t4.getFullyQualifiedName());
     assertEquals(
-        Status.IN_REVIEW, getEntity(g2t4.getId(), authHeaders(USER1.getName())).getStatus());
+        EntityStatus.IN_REVIEW,
+        getEntity(g2t4.getId(), authHeaders(USER1.getName())).getEntityStatus());
     assertApprovalTask(g2t4, TaskStatus.Open); // A Request Approval task is opened
 
     // Non reviewer - even Admin - can't change the `Draft` to `Approved` status using PATCH
     String json2 = JsonUtils.pojoToJson(g2t4);
-    g2t4.setStatus(Status.REJECTED);
+    g2t4.setEntityStatus(EntityStatus.REJECTED);
     assertResponse(
         () -> patchEntity(g2t4.getId(), json2, g2t4, ADMIN_AUTH_HEADERS),
         FORBIDDEN,
@@ -507,17 +511,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // A reviewer can change the `Draft` to `Rejected` status using PATCH
     GlossaryTerm g2t4Updated = patchEntity(g2t4.getId(), json2, g2t4, authHeaders(USER1.getName()));
-    assertEquals(Status.REJECTED, g2t4Updated.getStatus());
+    assertEquals(EntityStatus.REJECTED, g2t4Updated.getEntityStatus());
     assertApprovalTask(g2t4, TaskStatus.Closed); // The Request Approval task is closed
 
     // Creating a glossary term g2t5 should be in `Draft` mode (because glossary has reviewers)
     // adding a new reviewer should add the person as assignee to the task
 
     GlossaryTerm g2t5 = createTerm(glossary2, null, "g2t5");
-    assertEquals(Status.DRAFT, g2t5.getStatus());
+    assertEquals(EntityStatus.DRAFT, g2t5.getEntityStatus());
     waitForTaskToBeCreated(g2t5.getFullyQualifiedName());
     g2t5 = getEntity(g2t5.getId(), authHeaders(USER1.getName()));
-    assertEquals(Status.IN_REVIEW, g2t5.getStatus());
+    assertEquals(EntityStatus.IN_REVIEW, g2t5.getEntityStatus());
     assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
 
     String origJson = JsonUtils.pojoToJson(g2t5);
@@ -535,7 +539,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(
         g2t5.getReviewers().containsAll(newReviewers)
             && newReviewers.containsAll(g2t5.getReviewers()));
-    assertEquals(g2t5.getStatus(), Status.IN_REVIEW);
+    assertEquals(g2t5.getEntityStatus(), EntityStatus.IN_REVIEW);
 
     Thread approvalTask1 =
         assertApprovalTask(g2t5, TaskStatus.Open); // A Request Approval task is opened
@@ -1289,8 +1293,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         assertTermReferences(expectedTermRefs, actualTermRefs);
       }
       case "status" -> {
-        Status expectedStatus = Status.fromValue(expected.toString());
-        Status actualStatus = Status.fromValue(actual.toString());
+        EntityStatus expectedStatus = EntityStatus.fromValue(expected.toString());
+        EntityStatus actualStatus = EntityStatus.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);
       }
       default -> assertCommonFieldChange(fieldName, expected, actual);
@@ -2103,8 +2107,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // The term should be auto-approved since creator (USER1) is a reviewer
     assertEquals(
-        Status.APPROVED,
-        updatedTerm.getStatus(),
+        EntityStatus.APPROVED,
+        updatedTerm.getEntityStatus(),
         "Term should be auto-approved when creator is a reviewer");
 
     // CRITICAL: Verify that updatedBy is the reviewer (USER1), not governance-bot
@@ -2185,8 +2189,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Fetch the updated term to see status change
     GlossaryTerm updatedTerm = getEntity(createdTerm.getId(), "", ADMIN_AUTH_HEADERS);
     assertEquals(
-        Status.IN_REVIEW,
-        updatedTerm.getStatus(),
+        EntityStatus.IN_REVIEW,
+        updatedTerm.getEntityStatus(),
         "Term should be moved to IN_REVIEW after workflow creation");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2246,8 +2250,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Verify term status moved to IN_REVIEW
     GlossaryTerm updatedTerm = getEntity(term.getId(), "", ADMIN_AUTH_HEADERS);
     assertEquals(
-        Status.IN_REVIEW,
-        updatedTerm.getStatus(),
+        EntityStatus.IN_REVIEW,
+        updatedTerm.getEntityStatus(),
         "Term should be moved to IN_REVIEW after non-reviewer update");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2264,7 +2268,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       // CRITICAL: Verify final term has been approved by USER1, not governance-bot
       GlossaryTerm finalTerm = getEntity(term.getId(), "", ADMIN_AUTH_HEADERS);
       assertEquals(
-          Status.APPROVED, finalTerm.getStatus(), "Term should be approved after task resolution");
+          EntityStatus.APPROVED,
+          finalTerm.getEntityStatus(),
+          "Term should be approved after task resolution");
       assertEquals(
           USER1.getName(),
           finalTerm.getUpdatedBy(),
@@ -2328,8 +2334,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Term should be auto-approved since ADMIN is a member of the reviewer team
     assertEquals(
-        Status.APPROVED,
-        updatedTerm.getStatus(),
+        EntityStatus.APPROVED,
+        updatedTerm.getEntityStatus(),
         "Term should be auto-approved when created by team member");
 
     // CRITICAL: Verify that updatedBy is the team member (admin), not governance-bot
@@ -2381,13 +2387,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Simplified test - just verify term creation works with team reviewers
     assertNotNull(term);
     // Term starts with DRAFT
-    assertSame(Status.DRAFT, term.getStatus());
+    assertSame(EntityStatus.DRAFT, term.getEntityStatus());
     java.lang.Thread.sleep(10000L);
     GlossaryTerm glossaryTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
     // Auto approval after the workflow is triggered
-    assertSame(Status.APPROVED, glossaryTerm.getStatus());
+    assertSame(EntityStatus.APPROVED, glossaryTerm.getEntityStatus());
     LOG.info(
-        "Team reviewer update test - term created successfully with status: {}", term.getStatus());
+        "Team reviewer update test - term created successfully with status: {}",
+        term.getEntityStatus());
   }
 
   // Test 7: Custom jsonLogic filter test - using existing isOwner filter

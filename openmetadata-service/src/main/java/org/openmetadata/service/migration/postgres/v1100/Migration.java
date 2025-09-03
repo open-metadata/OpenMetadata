@@ -5,6 +5,7 @@ import static org.openmetadata.service.migration.utils.v1100.MigrationUtil.updat
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v1100.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -15,6 +16,8 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
+    migrationUtil.migrateEntityStatusForExistingEntities(handle);
     // Initialize WorkflowHandler before attempting to update workflows
     // This ensures that Flowable engine is ready for validation
     initializeWorkflowHandler();

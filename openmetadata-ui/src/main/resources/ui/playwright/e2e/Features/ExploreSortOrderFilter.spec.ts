@@ -67,12 +67,19 @@ test.describe('Explore Sort Order Filter', () => {
 
       await page.waitForLoadState('networkidle');
 
-      await page.getByRole('button', { name: 'Data Assets' }).click();
+      await page.getByTestId('search-dropdown-Data Assets').click();
 
       await page.waitForSelector(
-        'data-testid="drop-down-menu" data-testid="loader"',
+        '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
           state: 'detached',
+        }
+      );
+
+      await page.waitForSelector(
+        '[data-testid="drop-down-menu"] [role="menu"]',
+        {
+          state: 'visible',
         }
       );
 
@@ -85,12 +92,19 @@ test.describe('Explore Sort Order Filter', () => {
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
 
-      await page.getByRole('button', { name: 'Data Assets' }).click();
+      await page.getByTestId('search-dropdown-Data Assets').click();
 
       await page.waitForSelector(
-        'data-testid="drop-down-menu" data-testid="loader"',
+        '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
           state: 'detached',
+        }
+      );
+
+      await page.waitForSelector(
+        '[data-testid="drop-down-menu"] [role="menu"]',
+        {
+          state: 'visible',
         }
       );
 
