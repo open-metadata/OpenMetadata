@@ -2538,13 +2538,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
 
     // Term should be in DRAFT status initially
-    assertEquals(Status.DRAFT, term.getStatus());
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
 
     // Wait for workflow to process and task to be created
     waitForTaskToBeCreated(term.getFullyQualifiedName());
 
     // After workflow processing, term should be IN_REVIEW
-    assertEquals(Status.IN_REVIEW, getEntity(term.getId(), ADMIN_AUTH_HEADERS).getStatus());
+    assertEquals(
+        EntityStatus.IN_REVIEW, getEntity(term.getId(), ADMIN_AUTH_HEADERS).getEntityStatus());
 
     // Get the task
     String entityLink =
@@ -2557,13 +2558,13 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     int taskId = task.getTask().getId();
 
     // First reviewer approves
-    ResolveTask resolveTask = new ResolveTask().withNewValue(Status.APPROVED.value());
+    ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
     taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer1.getName()));
 
     // After first approval, term should still be IN_REVIEW
     java.lang.Thread.sleep(2000); // Wait for async processing
     GlossaryTerm termAfterFirstApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.IN_REVIEW, termAfterFirstApproval.getStatus());
+    assertEquals(EntityStatus.IN_REVIEW, termAfterFirstApproval.getEntityStatus());
 
     // Second reviewer approves
     taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer2.getName()));
@@ -2571,7 +2572,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // After second approval, term should be APPROVED
     java.lang.Thread.sleep(2000); // Wait for async processing
     GlossaryTerm termAfterSecondApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.APPROVED, termAfterSecondApproval.getStatus());
+    assertEquals(EntityStatus.APPROVED, termAfterSecondApproval.getEntityStatus());
 
     // Reset workflow back to threshold of 1
     patchOp = "[{\"op\":\"replace\",\"path\":\"/nodes/12/config/approvalThreshold\",\"value\":1}]";
@@ -2608,12 +2609,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Thread task = threads.getData().getFirst();
     int taskId = task.getTask().getId();
 
-    ResolveTask approveTask = new ResolveTask().withNewValue(Status.APPROVED.value());
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
     taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
 
     java.lang.Thread.sleep(2000);
     GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.APPROVED, approvedTerm.getStatus());
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
     double version1 = approvedTerm.getVersion();
 
     // Update term with non-reviewer (should trigger workflow)
@@ -2637,7 +2638,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     int updateTaskId = updateTask.getTask().getId();
 
     // Reject the changes
-    ResolveTask rejectTask = new ResolveTask().withNewValue(Status.REJECTED.value());
+    ResolveTask rejectTask = new ResolveTask().withNewValue(EntityStatus.REJECTED.value());
     taskTest.resolveTask(updateTaskId, rejectTask, authHeaders(reviewer.getName()));
 
     java.lang.Thread.sleep(2000);
@@ -2645,7 +2646,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Verify rollback: description should be back to initial, status should be approved
     assertEquals(initialDescription, rolledBackTerm.getDescription());
-    assertEquals(Status.APPROVED, rolledBackTerm.getStatus());
+    assertEquals(EntityStatus.APPROVED, rolledBackTerm.getEntityStatus());
     // Version should be bumped for audit trail
     assertTrue(
         rolledBackTerm.getVersion() > version1, "Version should be incremented for audit trail");
@@ -2684,12 +2685,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     int taskId = task.getTask().getId();
 
     // Approve initially
-    ResolveTask approveTask = new ResolveTask().withNewValue(Status.APPROVED.value());
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
     taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
 
     java.lang.Thread.sleep(2000);
     GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.APPROVED, approvedTerm.getStatus());
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
 
     // Update term to trigger a new approval workflow
     String updateDescription = "Updated description for review";
@@ -2722,7 +2723,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm finalTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
 
     // Verify the term has the suggested description and is approved
-    assertEquals(Status.APPROVED, finalTerm.getStatus());
+    assertEquals(EntityStatus.APPROVED, finalTerm.getEntityStatus());
     assertTrue(
         finalTerm.getDescription().contains(suggestedDescription),
         "Term should have the reviewer's suggested description");

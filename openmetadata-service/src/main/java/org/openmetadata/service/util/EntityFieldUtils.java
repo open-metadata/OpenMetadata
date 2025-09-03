@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -471,8 +472,8 @@ public class EntityFieldUtils {
         GlossaryTerm glossaryTerm = (GlossaryTerm) entity;
         try {
           // Try to parse as GlossaryTerm.Status enum
-          GlossaryTerm.Status status = GlossaryTerm.Status.fromValue(statusValue);
-          glossaryTerm.setStatus(status);
+          EntityStatus status = EntityStatus.fromValue(statusValue);
+          glossaryTerm.setEntityStatus(status);
           return;
         } catch (Exception e) {
           LOG.warn(

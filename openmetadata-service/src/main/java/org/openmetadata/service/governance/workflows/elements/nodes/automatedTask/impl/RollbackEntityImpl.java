@@ -160,7 +160,7 @@ public class RollbackEntityImpl implements JavaDelegate {
             LOG.debug(
                 "[RollbackEntity] Checking version {} - Status: {}",
                 versionNumber,
-                term.getStatus() != null ? term.getStatus().value() : "null");
+                term.getEntityStatus() != null ? term.getEntityStatus().value() : "null");
           }
 
           // Check if it's approved or rejected (for GlossaryTerm, check status field)
@@ -199,14 +199,14 @@ public class RollbackEntityImpl implements JavaDelegate {
     // For GlossaryTerm, check if the status is "Approved" or "Rejected"
     if (entity instanceof GlossaryTerm) {
       GlossaryTerm glossaryTerm = (GlossaryTerm) entity;
-      if (glossaryTerm.getStatus() == null) {
+      if (glossaryTerm.getEntityStatus() == null) {
         LOG.warn(
             "[RollbackEntity] Status is null for GlossaryTerm version {}",
             glossaryTerm.getVersion());
         return null;
       }
 
-      String status = glossaryTerm.getStatus().value();
+      String status = glossaryTerm.getEntityStatus().value();
       LOG.debug(
           "[RollbackEntity] Checking status: '{}' for version {}",
           status,

@@ -867,9 +867,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               try {
                 GlossaryTerm checkTerm =
                     glossaryTermTest.getEntity(glossaryTerm.getId(), "", ADMIN_AUTH_HEADERS);
-                LOG.debug("Checking glossary term status: {}", checkTerm.getStatus());
-                return checkTerm.getStatus() != null
-                    && "Deprecated".equals(checkTerm.getStatus().toString());
+                LOG.debug("Checking glossary term status: {}", checkTerm.getEntityStatus());
+                return checkTerm.getEntityStatus() != null
+                    && "Deprecated".equals(checkTerm.getEntityStatus().toString());
               } catch (Exception e) {
                 LOG.warn("Error checking glossary term status: {}", e.getMessage());
                 return false;
@@ -880,12 +880,12 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     GlossaryTerm updatedTerm =
         glossaryTermTest.getEntity(glossaryTerm.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(updatedTerm);
-    assertNotNull(updatedTerm.getStatus());
-    assertEquals("Deprecated", updatedTerm.getStatus().toString());
+    assertNotNull(updatedTerm.getEntityStatus());
+    assertEquals("Deprecated", updatedTerm.getEntityStatus().toString());
     LOG.debug(
         "Glossary term {} status successfully updated to: {}",
         updatedTerm.getName(),
-        updatedTerm.getStatus());
+        updatedTerm.getEntityStatus());
 
     LOG.info("test_DeprecateStaleGlossaryTerms completed successfully");
   }
