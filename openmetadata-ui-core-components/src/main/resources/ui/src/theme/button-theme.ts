@@ -15,7 +15,7 @@ import {
   buttonConstants,
   createIconButtonColorVariant,
   createIconButtonSizeVariant,
-} from './buttonConstants';
+} from '../utils/buttonConstants';
 
 export const buttonTheme = (
   colors: any

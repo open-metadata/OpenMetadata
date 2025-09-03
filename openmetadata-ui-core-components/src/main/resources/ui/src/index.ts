@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-// Main entry point for the dynamic MUI theme system
-export { buttonConstants } from './buttonConstants';
-export * from './colorValidation';
-export { createMuiTheme } from './createMuiTheme';
-export {
-  generateAllMuiPalettes,
-  generateMaterialPalette,
-  generateMuiPalette,
-} from './generateMuiPalettes';
-export * from './icon-utils';
-export { shadows } from './shadows';
+// Main entry point for OpenMetadata UI Core Components
+// Re-export everything from organized modules
+
+// Theme system
+export * from './theme';
+
+// Color system  
+export * from './colors';
+
+// Components
+export * from './components';
+
+// Utilities
+export * from './utils';
+
+// Types (kept at root for convenience)
 export * from './types';

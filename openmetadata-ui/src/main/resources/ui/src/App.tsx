@@ -36,7 +36,7 @@ import {
 import { getBasePath } from './utils/HistoryUtils';
 
 import { ThemeProvider } from '@mui/material/styles';
-import { createMuiTheme } from '@openmetadata/theme';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DEFAULT_THEME } from './constants/Appearance.constants';

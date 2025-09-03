@@ -15,12 +15,12 @@ import type { Shadows } from '@mui/material/styles';
 import { createTheme } from '@mui/material/styles';
 import { buttonTheme } from './button-theme';
 import { dataDisplayTheme } from './data-display-theme';
-import { defaultColors } from './defaultColors';
+import { defaultColors } from '../colors/defaultColors';
 import { formTheme } from './form-theme';
-import { generateAllMuiPalettes } from './generateMuiPalettes';
+import { generateAllMuiPalettes } from '../colors/generateMuiPalettes';
 import { navigationTheme } from './navigation-theme';
 import { shadows } from './shadows';
-import type { CustomColors, ThemeColors } from './types';
+import type { CustomColors, ThemeColors } from '../types';
 
 // Extend MUI palette to include allShades
 declare module '@mui/material/styles' {

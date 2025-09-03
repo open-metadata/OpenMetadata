@@ -22,7 +22,7 @@ import type {
   CustomColors,
   DynamicPalettes,
   ThemeColors,
-} from './types';
+} from '../types';
 
 // No conversion needed - return hex directly
 function normalizeHex(hex: string): string {

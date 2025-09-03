@@ -16,7 +16,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
-    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd theme-module && yarn install",
+    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install",
     "pre-commit": "lint-staged --concurrent false",
     "test": "jest --passWithNoTests",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
@@ -40,7 +40,7 @@
     "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
-    "@openmetadata/theme": "link:../../../../../theme-module",
+    "@openmetadata/ui-core-components": "link:../../../../../openmetadata-ui-core-components/src/main/resources/ui",
     "@analytics/session-utils": "^0.1.17",
     "@ant-design/icons": "^4.8.3",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",

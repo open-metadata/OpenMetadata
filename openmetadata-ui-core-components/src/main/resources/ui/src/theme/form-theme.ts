@@ -14,7 +14,7 @@ import {
   checkboxBlankIcon,
   checkboxCheckedIcon,
   checkboxIndeterminateIcon,
-} from './checkbox-icons';
+} from '../components/checkbox-icons';
 
 export const formTheme = (colors: any) => ({
   MuiTextField: {

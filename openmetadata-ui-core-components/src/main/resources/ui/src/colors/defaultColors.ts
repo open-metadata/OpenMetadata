@@ -28,7 +28,7 @@
  * defaultColors.brand[600]
  */
 
-import type { ThemeColors } from './types';
+import type { ThemeColors } from '../types';
 
 /**
  * Default static colors for theme system
