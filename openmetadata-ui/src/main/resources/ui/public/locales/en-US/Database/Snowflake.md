@@ -165,6 +165,21 @@ Optional Configuration to keep the session active in case the ingestion job runs
 $$
 
 $$section
+### Cost of Credit $(id="creditCost")
+
+This value is used to calculate the Total Cost shown in the "Most Expensive Queries" section under Insights, by multiplying:
+`Credits Consumed by the Query × Cost of Credit`
+$$
+
+$$section
+### Snowflake Source Host $(id="snowflakeSourceHost")
+
+Set the Snowflake host name to be used while forming entity source URL. Entity source URLs are used in `View on Snowflake` button to open any entity in Snowflake.
+
+Default snowflake host is `app.snowflake.com`. It only needs to be updated if you are using PrivateLink or any other custom host for Snowflake.
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
