@@ -127,6 +127,11 @@
       },
       "default": null
     },
+    "termsOfUse": {
+      "description": "Terms of use for the data contract for both human and AI agents consumption.",
+      "$ref": "../../type/basic.json#/definitions/markdown",
+      "default": null
+    },
     "qualityExpectations": {
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
