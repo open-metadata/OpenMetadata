@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -52,57 +51,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         assignees.addAll(getEntityLinkStringFromEntityReference(entity.getReviewers()));
       }
 
-      // 1.3 Explicit USERS array -------------------------------------------------------------
-      Optional.ofNullable((List<String>) assigneesConfig.get("users"))
-          .ifPresent(
-              users ->
-                  users.forEach(
-                      userName ->
-                          assignees.add(
-                              new MessageParser.EntityLink(Entity.USER, userName)
-                                  .getLinkString())));
-
-      // 1.4 Explicit TEAMS array -------------------------------------------------------------
-      Optional.ofNullable((List<String>) assigneesConfig.get("teams"))
-          .ifPresent(
-              teams ->
-                  teams.forEach(
-                      teamName ->
-                          assignees.add(
-                              new MessageParser.EntityLink(Entity.TEAM, teamName)
-                                  .getLinkString())));
-
-      // 1.5 extraAssignees (object with optional users/teams arrays) ------------------------
-      Object extraAssigneesObj = assigneesConfig.get("extraAssignees");
-      if (extraAssigneesObj instanceof Map) {
-        Map<String, Object> extraAssignees = (Map<String, Object>) extraAssigneesObj;
-
-        // Extra users
-        Optional.ofNullable((List<String>) extraAssignees.get("users"))
-            .ifPresent(
-                users ->
-                    users.forEach(
-                        userName ->
-                            assignees.add(
-                                new MessageParser.EntityLink(Entity.USER, userName)
-                                    .getLinkString())));
-
-        // Extra teams
-        Optional.ofNullable((List<String>) extraAssignees.get("teams"))
-            .ifPresent(
-                teams ->
-                    teams.forEach(
-                        teamName ->
-                            assignees.add(
-                                new MessageParser.EntityLink(Entity.TEAM, teamName)
-                                    .getLinkString())));
-      }
-
-      /*
-       * ---------------------------------------------------------------------
-       * 2️⃣  Persist the list as JSON array so TaskListener can read it
-       * ---------------------------------------------------------------------
-       */
+      // Persist the list as JSON array so TaskListener can read it
       execution.setVariableLocal(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
     } catch (Exception exc) {
