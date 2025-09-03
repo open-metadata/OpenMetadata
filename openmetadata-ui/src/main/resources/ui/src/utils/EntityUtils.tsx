@@ -1935,12 +1935,15 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   ];
 };
 
-export const getBreadcrumbForContainer = (data: {
-  entity: Container;
+export function getBreadcrumbForEntityWithParent<
+  T extends Container | Directory
+>(data: {
+  entity: T;
+  entityType: EntityType;
   includeCurrent?: boolean;
   parents?: Container[] | EntityReference[];
-}) => {
-  const { entity, includeCurrent = false, parents = [] } = data;
+}) {
+  const { entity, entityType, includeCurrent = false, parents = [] } = data;
   const { service } = entity;
 
   return [
@@ -1960,7 +1963,7 @@ export const getBreadcrumbForContainer = (data: {
           name: getEntityName(parent),
           url: getEntityLinkFromType(
             parent?.fullyQualifiedName ?? '',
-            EntityType.CONTAINER
+            entityType
           ),
         }))
       : []),
@@ -1976,7 +1979,7 @@ export const getBreadcrumbForContainer = (data: {
         ]
       : []),
   ];
-};
+}
 
 export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   {
@@ -2305,8 +2308,20 @@ export const getEntityBreadcrumbs = (
     case EntityType.CONTAINER: {
       const data = entity as Container;
 
-      return getBreadcrumbForContainer({
+      return getBreadcrumbForEntityWithParent({
         entity: data,
+        entityType: EntityType.CONTAINER,
+        includeCurrent: true,
+        parents: isUndefined(data.parent) ? [] : [data.parent],
+      });
+    }
+
+    case EntityType.DIRECTORY: {
+      const data = entity as Directory;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY,
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { Directory } from '../../generated/entity/data/directory';
-import { DataAssetWithDomains } from '../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../Database/TableQueries/TableQueries.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Directory } from '../../../generated/entity/data/directory';
+import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface DirectoryDetailsProps {
   directoryDetails: Directory;

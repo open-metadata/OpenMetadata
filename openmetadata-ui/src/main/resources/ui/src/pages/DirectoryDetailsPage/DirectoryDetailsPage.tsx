@@ -22,7 +22,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import DirectoryDetails from '../../components/Directory/DirectoryDetails';
+import DirectoryDetails from '../../components/DriveService/Directory/DirectoryDetails';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -47,6 +47,7 @@ import {
   addToRecentViewed,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
+import { defaultFields } from '../../utils/DirectoryDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -124,19 +125,7 @@ const DirectoryDetailsPage = () => {
   const fetchDirectoryDetails = async (directoryFQN: string) => {
     setLoading(true);
     try {
-      const res = await getDirectoryByFqn(
-        directoryFQN,
-        [
-          TabSpecificField.OWNERS,
-          TabSpecificField.CHILDREN,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.DATA_PRODUCTS,
-          TabSpecificField.VOTES,
-          TabSpecificField.EXTENSION,
-        ].join(',')
-      );
+      const res = await getDirectoryByFqn(directoryFQN, defaultFields);
       const { id, fullyQualifiedName, serviceType } = res;
 
       setDirectoryDetails(res);

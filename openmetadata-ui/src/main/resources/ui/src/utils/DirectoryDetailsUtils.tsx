@@ -14,12 +14,27 @@
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import DirectoryChildrenTable from '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DirectoryDetailPageTabProps } from './DirectoryClassBase';
-import i18n, { t } from './i18next/LocalUtil';
+import i18n from './i18next/LocalUtil';
+
+export const defaultFields = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.CHILDREN,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.VOTES,
+  TabSpecificField.EXTENSION,
+  TabSpecificField.DIRECTORY_TYPE,
+  TabSpecificField.NUMBER_OF_FILES,
+  TabSpecificField.NUMBER_OF_SUB_DIRECTORIES,
+].join(',');
 
 export const getDirectoryDetailsPageTabs = ({
   childrenCount,
@@ -76,7 +91,7 @@ export const getDirectoryDetailsPageTabs = ({
 
 export const getDirectoryWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DIRECTORY_CHILDREN)) {
-    return <div>{t('label.directory children')}</div>;
+    return <DirectoryChildrenTable />;
   } else {
     return (
       <CommonWidgets

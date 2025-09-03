@@ -61,8 +61,8 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import {
-  getBreadcrumbForContainer,
   getBreadcrumbForEntitiesWithServiceOnly,
+  getBreadcrumbForEntityWithParent,
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
@@ -421,8 +421,9 @@ export const getDataAssetsHeaderInfo = (
         </>
       );
 
-      returnData.breadcrumbs = getBreadcrumbForContainer({
+      returnData.breadcrumbs = getBreadcrumbForEntityWithParent({
         entity: containerDetails,
+        entityType: EntityType.CONTAINER,
         parents: parentContainers,
       });
 
@@ -718,8 +719,11 @@ export const getDataAssetsHeaderInfo = (
     case EntityType.DIRECTORY: {
       const directory = dataAsset as Directory;
 
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(directory);
+      returnData.breadcrumbs = getBreadcrumbForEntityWithParent({
+        entity: directory,
+        entityType: EntityType.DIRECTORY,
+        parents: isUndefined(directory.parent) ? [] : [directory.parent],
+      });
 
       returnData.extraInfo = (
         <>
