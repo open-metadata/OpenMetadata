@@ -26,6 +26,8 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
   ContractExecutionStatus,
@@ -34,7 +36,8 @@ import {
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
-import i18n from '../i18next/LocalUtil';
+import i18n, { t } from '../i18next/LocalUtil';
+import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 
 export const getConstraintStatus = (
   latestContractResults: DataContractResult
@@ -221,4 +224,77 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.all]: i18n.t('label.all'),
   [TestCaseType.table]: i18n.t('label.table'),
   [TestCaseType.column]: i18n.t('label.column'),
+};
+
+export const getSematicRuleFields = () => {
+  const allFields = jsonLogicSearchClassBase.getCommonConfig();
+
+  const tagField = {
+    label: t('label.tag-plural'),
+    type: '!group',
+    mode: 'some',
+    defaultField: 'tagFQN',
+    subfields: {
+      tagFQN: {
+        label: 'Tags',
+        type: 'select',
+        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
+            searchIndex: SearchIndex.TAG,
+            fieldName: 'fullyQualifiedName',
+            fieldLabel: 'name',
+            queryFilter:
+              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+          }),
+          useAsyncSearch: true,
+        },
+      },
+    },
+  };
+
+  const glossaryTermField = {
+    label: t('label.glossary-term'),
+    type: '!group',
+    mode: 'some',
+    fieldName: 'tags',
+    defaultField: 'tagFQN',
+    subfields: {
+      tagFQN: {
+        label: 'Tags',
+        type: 'select',
+        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
+            searchIndex: SearchIndex.GLOSSARY_TERM,
+            fieldName: 'fullyQualifiedName',
+            fieldLabel: 'name',
+          }),
+          useAsyncSearch: true,
+        },
+      },
+    },
+  };
+
+  const tierField = {
+    label: t('label.tier'),
+    type: 'select',
+    fieldName: 'tags',
+    mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+    operators: jsonLogicSearchClassBase.defaultSelectOperators,
+    fieldSettings: {
+      asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
+      useAsyncSearch: true,
+    },
+  };
+
+  delete allFields[EntityReferenceFields.EXTENSION];
+
+  allFields[EntityReferenceFields.TAG] = tagField;
+  allFields[EntityReferenceFields.GLOSSARY_TERM] = glossaryTermField;
+  allFields[EntityReferenceFields.TIER] = tierField;
+
+  return allFields;
 };

@@ -183,6 +183,11 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Spreadsheet.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name"],
