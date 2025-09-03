@@ -27,7 +27,7 @@ from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
 )
 
-mock_file_path = Path(__file__).parent / "resources/datasets/databricks_dataset.json"
+mock_file_path = Path(__file__).parent / "../resources/datasets/databricks_dataset.json"
 with open(mock_file_path, encoding="utf-8") as file:
     mock_data: dict = json.load(file)
 

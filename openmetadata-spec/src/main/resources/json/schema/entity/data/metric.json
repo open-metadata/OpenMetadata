@@ -207,6 +207,11 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Metric.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name"],
