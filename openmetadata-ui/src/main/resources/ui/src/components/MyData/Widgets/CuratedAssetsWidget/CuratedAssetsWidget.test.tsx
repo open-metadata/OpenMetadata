@@ -37,7 +37,9 @@ jest.mock('react-router-dom', () => ({
 
 // Mock utility functions
 jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
-  getExploreURLWithFilters: jest.fn().mockReturnValue('/explore?filter=test'),
+  getExploreURLForAdvancedFilter: jest
+    .fn()
+    .mockReturnValue('/explore?filter=test'),
   getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
   getTotalResourceCount: jest.fn().mockReturnValue(15),
 }));
@@ -154,6 +156,7 @@ jest.mock('../../../common/CertificationTag/CertificationTag', () =>
 
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
+const mockHandleSaveLayout = jest.fn();
 
 const mockEntityData = [
   {
@@ -190,6 +193,7 @@ const defaultProps = {
   handleRemoveWidget: mockHandleRemoveWidget,
   widgetKey: 'test-widget',
   handleLayoutUpdate: mockHandleLayoutUpdate,
+  handleSaveLayout: mockHandleSaveLayout,
   currentLayout: [
     {
       i: 'test-widget',
@@ -320,32 +324,48 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
-  it('calls handleLayoutUpdate with correct data when saving new widget', () => {
+  it('calls handleLayoutUpdate and handleSaveLayout when saving new widget', async () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
     fireEvent.click(screen.getByText('label.create'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
-    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
-      {
-        i: 'test-widget',
-        config: { title: 'Test Widget' },
-      },
-    ]);
+    await waitFor(() => {
+      expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+        {
+          i: 'test-widget',
+          config: { title: 'Test Widget' },
+        },
+      ]);
+      expect(mockHandleSaveLayout).toHaveBeenCalledWith([
+        {
+          i: 'test-widget',
+          config: { title: 'Test Widget' },
+        },
+      ]);
+    });
   });
 
-  it('calls handleLayoutUpdate with updated config when editing existing widget', () => {
+  it('calls handleLayoutUpdate and handleSaveLayout when editing existing widget', async () => {
     render(<CuratedAssetsWidget {...defaultProps} isEditView />);
     fireEvent.click(screen.getByTestId('edit-widget-button'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
-    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
-      {
-        ...defaultProps.currentLayout[0],
-        config: { title: 'Test Widget' },
-      },
-    ]);
+    await waitFor(() => {
+      expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+        {
+          ...defaultProps.currentLayout[0],
+          config: { title: 'Test Widget' },
+        },
+      ]);
+      expect(mockHandleSaveLayout).toHaveBeenCalledWith([
+        {
+          ...defaultProps.currentLayout[0],
+          config: { title: 'Test Widget' },
+        },
+      ]);
+    });
   });
 
   it('closes modal and resets data when cancel is clicked', () => {

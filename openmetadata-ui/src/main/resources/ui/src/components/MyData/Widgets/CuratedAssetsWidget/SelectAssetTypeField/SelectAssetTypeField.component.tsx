@@ -21,7 +21,7 @@ import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/Al
 import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
-  getExploreURLWithFilters,
+  getSimpleExploreURLForAssetTypes,
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -41,7 +41,7 @@ export const SelectAssetTypeField = ({
   const { t } = useTranslation();
   const form = Form.useFormInstance<CuratedAssetsConfig>();
 
-  const { config, onChangeSearchIndex } = useAdvanceSearch();
+  const { onChangeSearchIndex } = useAdvanceSearch();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
 
   const selectedResource: Array<string> =
@@ -100,13 +100,8 @@ export const SelectAssetTypeField = ({
   }, [fetchEntityCount, selectedResource]);
 
   const queryURL = useMemo(
-    () =>
-      getExploreURLWithFilters({
-        queryFilter: '{}',
-        selectedResource,
-        config,
-      }),
-    [config, selectedResource]
+    () => getSimpleExploreURLForAssetTypes(selectedResource),
+    [selectedResource]
   );
 
   const showFilteredResourceCount = useMemo(
@@ -179,6 +174,7 @@ export const SelectAssetTypeField = ({
           <AlertMessage
             assetCount={selectedAssetsInfo?.resourceCount}
             href={queryURL}
+            target="_blank"
           />
         </Col>
       )}

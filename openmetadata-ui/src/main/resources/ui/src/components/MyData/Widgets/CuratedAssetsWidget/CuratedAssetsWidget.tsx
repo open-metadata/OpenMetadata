@@ -46,7 +46,7 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import {
-  getExploreURLWithFilters,
+  getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsUtils';
@@ -75,6 +75,7 @@ const CuratedAssetsWidget = ({
   handleRemoveWidget,
   widgetKey,
   handleLayoutUpdate,
+  handleSaveLayout,
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
@@ -129,6 +130,14 @@ const CuratedAssetsWidget = ({
     selectedResource?.length === 1 ? selectedResource?.[0] : ''
   );
 
+  const queryURL = useMemo(() => {
+    return getExploreURLForAdvancedFilter({
+      queryFilter,
+      selectedResource,
+      config,
+    });
+  }, [queryFilter, config, selectedResource]);
+
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {
     if (resources.includes(EntityType.ALL)) {
@@ -154,6 +163,13 @@ const CuratedAssetsWidget = ({
           ? SearchIndex.ALL
           : (selectedResource as SearchIndex[]);
 
+        // Create the modified query filter with selected assets
+        const parsedQueryFilter = JSON.parse(queryFilter || '{}');
+        const modifiedQueryFilter = getModifiedQueryFilterWithSelectedAssets(
+          parsedQueryFilter,
+          expandedResources
+        );
+
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
@@ -162,10 +178,7 @@ const CuratedAssetsWidget = ({
           includeDeleted: false,
           trackTotalHits: false,
           fetchSource: true,
-          queryFilter: getModifiedQueryFilterWithSelectedAssets(
-            JSON.parse(queryFilter),
-            expandedResources
-          ),
+          queryFilter: modifiedQueryFilter as Record<string, unknown>,
           sortField,
           sortOrder,
         });
@@ -201,10 +214,10 @@ const CuratedAssetsWidget = ({
   ]);
 
   const handleTitleClick = useCallback(() => {
-    navigate(ROUTES.EXPLORE);
-  }, [navigate]);
+    navigate(queryFilter?.length > 0 ? queryURL : ROUTES.EXPLORE);
+  }, [navigate, queryFilter, queryURL]);
 
-  const handleSave = (value: WidgetConfig['config']) => {
+  const handleSave = async (value: WidgetConfig['config']) => {
     const hasCurrentCuratedAssets = currentLayout?.find(
       (layout: WidgetConfig) => layout.i === widgetKey
     );
@@ -224,6 +237,11 @@ const CuratedAssetsWidget = ({
 
     // Update layout if handleLayoutUpdate is provided
     handleLayoutUpdate && handleLayoutUpdate(updatedLayout as Layout[]);
+
+    // Automatically save layout after updating
+    if (handleSaveLayout) {
+      await handleSaveLayout(updatedLayout as WidgetConfig[]);
+    }
 
     setCreateCuratedAssetsModalOpen(false);
   };
@@ -286,16 +304,6 @@ const CuratedAssetsWidget = ({
     prepareData,
     selectedSortBy,
   ]);
-
-  const queryURL = useMemo(
-    () =>
-      getExploreURLWithFilters({
-        queryFilter,
-        selectedResource,
-        config,
-      }),
-    [queryFilter, config, selectedResource]
-  );
 
   const noDataState = useMemo(
     () => (
@@ -472,7 +480,7 @@ const CuratedAssetsWidget = ({
       </div>
 
       <WidgetFooter
-        moreButtonLink={queryURL}
+        moreButtonLink={queryFilter?.length > 0 ? queryURL : ROUTES.EXPLORE}
         moreButtonText={t('label.view-more-count', {
           countValue: viewMoreCount,
         })}

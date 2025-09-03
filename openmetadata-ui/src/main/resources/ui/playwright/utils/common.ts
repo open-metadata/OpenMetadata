@@ -77,13 +77,16 @@ export const removeLandingBanner = async (page: Page) => {
         timeout: 5000,
       })
       .catch(() => {
+        // Do nothing if the welcome banner does not exist
         return;
       });
 
+    // Close the welcome banner if it exists
     if (welcomePageCloseButton?.isVisible()) {
       await welcomePageCloseButton.click();
     }
   } catch {
+    // Do nothing if the welcome banner does not exist
     return;
   }
 };
