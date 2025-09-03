@@ -38,13 +38,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 mock_multi_tenant_file_path = (
-    Path(__file__).parent / "resources/datasets/pgspider_multi_tenant_tables.json"
+    Path(__file__).parent / "../resources/datasets/pgspider_multi_tenant_tables.json"
 )
 with open(mock_multi_tenant_file_path, encoding="utf-8") as file:
     mock_multi_tenant_data: dict = json.load(file)
 
 mock_child_file_path = (
-    Path(__file__).parent / "resources/datasets/pgspider_child_tables.json"
+    Path(__file__).parent / "../resources/datasets/pgspider_child_tables.json"
 )
 with open(mock_child_file_path, encoding="utf-8") as file:
     mock_child_data = json.load(file)
@@ -611,11 +611,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = mock_multi_tenant_data
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_1
 
@@ -649,11 +652,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = mock_multi_tenant_data
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_2
 
@@ -687,11 +693,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = mock_multi_tenant_data
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_3
 
@@ -724,11 +733,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = []
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.return_value = mock_child_data
             source_entities.return_value = []
 
@@ -759,11 +771,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = mock_multi_tenant_data
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.return_value = []
 
             requests = []
@@ -793,11 +808,14 @@ class PGSpiderLineageUnitTests(TestCase):
         """
         multi_tenant_tables.return_value = mock_multi_tenant_data
 
-        with patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
-        ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
-        ) as child_tables:
+        with (
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
+            ) as source_entities,
+            patch(
+                "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
+            ) as child_tables,
+        ):
             child_tables.side_effect = mock_child_data
             source_entities.return_value = []
 

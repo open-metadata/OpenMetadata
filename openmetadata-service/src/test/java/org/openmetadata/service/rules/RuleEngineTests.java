@@ -34,7 +34,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.ContractStatus;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -284,7 +284,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName() + "_validate", table)
-            .withStatus(ContractStatus.Active)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()
@@ -343,7 +343,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName(), tableWithContract)
-            .withStatus(ContractStatus.Active)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()
