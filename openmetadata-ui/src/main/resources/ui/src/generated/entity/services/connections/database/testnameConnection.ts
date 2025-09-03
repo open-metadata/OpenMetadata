@@ -13,7 +13,7 @@
 /**
  * ServiceNow Connection Config
  */
-export interface ServiceNowConnection {
+export interface TestnameConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**

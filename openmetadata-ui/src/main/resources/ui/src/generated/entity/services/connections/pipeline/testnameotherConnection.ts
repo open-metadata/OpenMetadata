@@ -13,7 +13,7 @@
 /**
  * Snowplow Pipeline Connection Config
  */
-export interface Snowplowconnection {
+export interface TestnameotherConnection {
     /**
      * API Key for Snowplow Console API
      */
