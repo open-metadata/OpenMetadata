@@ -181,6 +181,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -5291,6 +5292,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } else if (fieldName.equals(
         "domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
+    } else if (fieldName.equals("entityStatus")) {
+      assertEquals(expected, EntityStatus.fromValue(actual.toString()));
     } else if (fieldName.equals("style")) {
       Style expectedStyle =
           expected instanceof Style

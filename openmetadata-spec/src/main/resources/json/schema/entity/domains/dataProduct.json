@@ -150,6 +150,10 @@
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
+    "reviewers": {
+      "description": "User references of the reviewers for this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "domains": {
       "description": "Domains or sub-domains to which this Data Product belongs to.",
       "$ref": "../../type/entityReferenceList.json"
@@ -215,6 +219,11 @@
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Data Product.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "description"],

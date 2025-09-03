@@ -510,6 +510,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "entityStatus": {
+      "description": "Status of the Pipeline.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

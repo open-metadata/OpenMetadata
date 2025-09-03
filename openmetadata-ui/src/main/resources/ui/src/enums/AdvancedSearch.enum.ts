@@ -68,7 +68,7 @@ export enum EntityFields {
   API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
-  GLOSSARY_TERM_STATUS = 'status',
+  GLOSSARY_TERM_STATUS = 'entityStatus',
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
   SERVICE_NAME = 'service.name.keyword',
