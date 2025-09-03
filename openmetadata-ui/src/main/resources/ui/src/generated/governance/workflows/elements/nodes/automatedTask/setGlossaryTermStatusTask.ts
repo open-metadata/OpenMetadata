@@ -38,13 +38,16 @@ export interface NodeConfiguration {
     /**
      * Choose which Status to apply to the Glossary Term
      */
-    glossaryTermStatus: Status;
+    glossaryTermStatus: EntityStatus;
 }
 
 /**
  * Choose which Status to apply to the Glossary Term
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export enum Status {
+export enum EntityStatus {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",

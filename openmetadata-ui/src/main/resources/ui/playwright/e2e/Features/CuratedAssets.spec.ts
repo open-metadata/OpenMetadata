@@ -197,6 +197,7 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await removeLandingBanner(page);
 
     await page.getByTestId('sidebar-toggle').click();
+
     await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 

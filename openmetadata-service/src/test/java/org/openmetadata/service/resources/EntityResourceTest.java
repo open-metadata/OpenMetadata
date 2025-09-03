@@ -181,6 +181,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -292,9 +293,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static final String ENTITY_LINK_MATCH_ERROR =
       "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
-  public static final String MULTIDOMAIN_RULE_ERROR =
-      "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: "
-          + "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
@@ -681,6 +679,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException;
 
   public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -691,7 +699,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getEntitySemantics()
         .forEach(
             rule -> {
-              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+              if (ruleName.equals(rule.getName())) {
                 rule.setEnabled(enable);
               }
             });
@@ -859,6 +867,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Domain testDomain2 =
         domainResourceTest.createEntity(
             domainResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
+
+    // Create DataProduct for testing if supported
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    DataProduct testDataProduct = null;
+    if (supportsDataProducts && supportsDomains) {
+      CreateDataProduct createDataProduct =
+          dataProductResourceTest
+              .createRequest(test, 5)
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      testDataProduct = dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+    }
+
     final String testName = "000_" + getEntityName(test);
     final K createRequest =
         createRequest(testName, "Test entity for field fetching", testName, null);
@@ -902,6 +922,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
                     .withName(testDomain1.getName()));
         entity.setDomains(domains);
         entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+
+        // Add DataProducts if supported
+        if (supportsDataProducts && testDataProduct != null) {
+          entity.setDataProducts(List.of(testDataProduct.getEntityReference()));
+          entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        }
       }
 
       Map<String, String> params = new HashMap<>();
@@ -919,12 +946,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       if (supportsOwners) fieldCombinationsList.add("owners");
       if (supportsTags) fieldCombinationsList.add("tags");
       if (supportsFollowers) fieldCombinationsList.add("followers");
-      if (supportsDomains)
-        fieldCombinationsList.add("domains"); // Always test fetching domains if supported
+      if (supportsDomains) fieldCombinationsList.add("domains");
+      if (supportsDataProducts) fieldCombinationsList.add("dataProducts");
+      if (supportsExperts) fieldCombinationsList.add("experts");
+      if (supportsReviewers) fieldCombinationsList.add("reviewers");
+      if (supportsVotes) fieldCombinationsList.add("votes");
+
+      // Test combinations
       if (supportsOwners && supportsTags) fieldCombinationsList.add("owners,tags");
       if (supportsFollowers && supportsOwners) fieldCombinationsList.add("followers,owners");
-      if (supportsDomains && supportsTags)
-        fieldCombinationsList.add("domains,tags"); // Always test fetching domains if supported
+      if (supportsDomains && supportsTags) fieldCombinationsList.add("domains,tags");
+      if (supportsDataProducts && supportsDomains)
+        fieldCombinationsList.add("dataProducts,domains");
+
+      // Always test with all allowed fields
       fieldCombinationsList.add(getAllowedFields());
 
       for (String fields : fieldCombinationsList) {
@@ -1004,7 +1039,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           assertFalse(indivDomains.isEmpty(), "Individual domains should not be empty");
 
           final UUID domain1Id = testDomain1.getId();
-          final UUID domain2Id = testDomain2.getId();
 
           assertTrue(
               batchDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
@@ -1014,12 +1048,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               "Should find test domain 1 in individual domains");
         }
 
+        if (fields.contains("dataProducts") && supportsDataProducts && testDataProduct != null) {
+          List<EntityReference> batchDataProducts = listOrEmpty(batchEntityFound.getDataProducts());
+          List<EntityReference> indivDataProducts = listOrEmpty(individualEntity.getDataProducts());
+
+          assertEquals(
+              indivDataProducts.size(),
+              batchDataProducts.size(),
+              "DataProducts count mismatch between batch and individual fetch - This is the bug!");
+
+          if (!indivDataProducts.isEmpty()) {
+            assertFalse(
+                batchDataProducts.isEmpty(),
+                "Batch DataProducts empty when individual has them - This is the exact bug!");
+
+            final UUID dataProductId = testDataProduct.getId();
+            assertTrue(
+                batchDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in batch DataProducts");
+            assertTrue(
+                indivDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in individual DataProducts");
+          }
+        }
+
         LOG.info("Successfully verified field combination: {}", fields);
       }
 
     } finally {
       if (supportsOwners) userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
       if (supportsTags) tagResourceTest.deleteEntity(testTag.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsDataProducts && testDataProduct != null) {
+        dataProductResourceTest.deleteEntity(testDataProduct.getId(), ADMIN_AUTH_HEADERS);
+      }
       if (supportsDomains) {
         domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
         domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
@@ -1203,8 +1264,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test
@@ -5231,6 +5292,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } else if (fieldName.equals(
         "domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
+    } else if (fieldName.equals("entityStatus")) {
+      assertEquals(expected, EntityStatus.fromValue(actual.toString()));
     } else if (fieldName.equals("style")) {
       Style expectedStyle =
           expected instanceof Style

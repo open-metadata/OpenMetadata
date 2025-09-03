@@ -17,6 +17,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -293,6 +294,7 @@ export const addCuratedAssetPlaceholder = async ({
   });
 
   await openAddCustomizeWidgetModal(page);
+
   await page.waitForLoadState('networkidle');
 
   await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
