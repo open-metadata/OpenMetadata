@@ -544,7 +544,7 @@ test(
 
     await test.step('Validate patch request for edit test case', async () => {
       await page.fill(
-        '#tableTestForm_displayName',
+        '[id="root\\/displayName"]',
         'Table test case display name'
       );
 
@@ -665,12 +665,12 @@ test(
           page.getByTestId('edit-test-case-drawer-title')
         ).toBeVisible();
 
-        await expect(page.locator('#tableTestForm_displayName')).toHaveValue(
+        await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
         );
 
-        await page.locator('#tableTestForm_displayName').clear();
-        await page.fill('#tableTestForm_displayName', 'Updated display name');
+        await page.locator('[id="root\\/displayName"]').clear();
+        await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
         await page.getByTestId('update-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
