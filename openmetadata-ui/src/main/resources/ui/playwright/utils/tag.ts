@@ -64,8 +64,10 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 
