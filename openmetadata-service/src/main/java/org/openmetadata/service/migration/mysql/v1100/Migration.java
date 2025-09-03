@@ -1,9 +1,9 @@
-package org.openmetadata.service.migration.postgres.v195;
+package org.openmetadata.service.migration.mysql.v1100;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v195.MigrationUtil;
+import org.openmetadata.service.migration.utils.v1100.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -14,8 +14,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    // Automator
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
-    migrationUtil.migrateAutomatorTagsAndTerms(handle);
+    migrationUtil.migrateEntityStatusForExistingEntities(handle);
   }
 }

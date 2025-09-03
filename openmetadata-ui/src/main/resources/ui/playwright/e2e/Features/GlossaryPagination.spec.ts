@@ -11,61 +11,183 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { sidebarClick } from '../../utils/sidebar';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { createNewPage } from '../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
 test.describe('Glossary tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+  const glossary = new Glossary();
+  const glossaryTerms: GlossaryTerm[] = [];
+  let parentTerm: GlossaryTerm;
+  const childTerms: GlossaryTerm[] = [];
+  const siblingTerms: GlossaryTerm[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    for (let i = 1; i <= 15; i++) {
+      const term = new GlossaryTerm(glossary, undefined, `SearchTestTerm${i}`);
+      await term.create(apiContext);
+      glossaryTerms.push(term);
+    }
+
+    // Create parent term
+    parentTerm = new GlossaryTerm(glossary, undefined, 'ParentSearchTerm');
+    await parentTerm.create(apiContext);
+
+    // Create child terms under parent
+
+    for (let i = 1; i <= 5; i++) {
+      const childTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `ChildSearchTerm${i}`
+      );
+
+      await childTerm.create(apiContext);
+      childTerms.push(childTerm);
+    }
+
+    // Create sibling terms at glossary level
+    for (let i = 1; i <= 3; i++) {
+      const siblingTerm = new GlossaryTerm(
+        glossary,
+        undefined,
+        `SiblingTerm${i}`
+      );
+
+      await siblingTerm.create(apiContext);
+      siblingTerms.push(siblingTerm);
+    }
+
+    await afterAction();
   });
 
-  test('should check for glossary term pagination', async ({ page }) => {
+  test.afterAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    for (const term of childTerms.reverse()) {
+      await term.delete(apiContext);
+    }
+    for (const term of siblingTerms.reverse()) {
+      await term.delete(apiContext);
+    }
+    // Clean up all terms and glossary
+    for (const term of glossaryTerms.reverse()) {
+      await term.delete(apiContext);
+    }
+    await glossary.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('should check for glossary term search', async ({ page }) => {
     test.slow(true);
 
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossaries = [];
-    for (let i = 0; i < 60; i++) {
-      const glossary = new Glossary(`Z_PW_GLOSSARY_TEST_${i + 1}`);
-      await glossary.create(apiContext);
-      glossaries.push(glossary);
-    }
+    glossary.visitEntityPage(page);
 
-    try {
-      const glossaryRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?*directChildrenOf=*'
-      );
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
 
-      const glossaryAfterRes = page.waitForResponse(
-        '/api/v1/glossaries?*after=*'
-      );
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
+    // Test 1: Search for specific term
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+    await searchInput.fill('SearchTestTerm5');
 
-      await page
-        .getByTestId('glossary-left-panel-scroller')
-        .scrollIntoViewIfNeeded();
+    // Wait for search API call with new endpoint
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const filteredTerms = await page.locator('tbody .ant-table-row').count();
 
-      const res = await glossaryAfterRes;
-      const json = await res.json();
+    expect(filteredTerms).toBe(1);
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
 
-      const firstGlossaryName = json.data[0].displayName;
+    await expect(
+      page.getByText('SearchTestTerm4', { exact: true })
+    ).not.toBeVisible();
 
-      await expect(
-        page
-          .getByTestId('glossary-left-panel')
-          .getByRole('menuitem', { name: firstGlossaryName })
-      ).toBeVisible();
-    } finally {
-      for (const glossary of glossaries) {
-        await glossary.delete(apiContext);
-      }
-      await afterAction();
-    }
+    // Test 2: Partial search
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    await searchInput.fill('TestTerm');
+
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    const partialFilteredTerms = await page
+      .locator('tbody .ant-table-row')
+      .count();
+
+    expect(partialFilteredTerms).toBeGreaterThan(0);
+
+    // Test 3: Clear search and verify all terms are shown
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    // Verify terms are visible again
+    await expect(
+      page.locator('[data-testid="glossary-terms-table"]')
+    ).toBeVisible();
+  });
+
+  test('should check for nested glossary term search', async ({ page }) => {
+    test.slow(true);
+
+    // Navigate to glossary
+
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Navigate to parent term
+    await page.click(
+      `[data-testid="glossary-terms-table"] >> text="${parentTerm.responseData.displayName}"`
+    );
+
+    // Click on Terms tab to see child terms
+    await page.click('[data-testid="terms"]');
+
+    // Test 1: Search within parent term for child terms
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+    await searchInput.fill('ChildSearchTerm');
+
+    // Wait for search API call with parent filter
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const filteredTerms = await page.locator('tbody .ant-table-row').count();
+
+    expect(filteredTerms).toBe(5);
+
+    // Verify UI shows only child terms, not sibling terms
+    await expect(
+      page.locator(
+        '[data-testid="glossary-terms-table"] >> text="ChildSearchTerm1"'
+      )
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        '[data-testid="glossary-terms-table"] >> text="SiblingTerm1"'
+      )
+    ).not.toBeVisible();
+
+    // Test 2: Search for specific child term
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await searchInput.fill('ChildSearchTerm3');
+
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    await expect(
+      page.getByText('ChildSearchTerm3', { exact: true })
+    ).toBeVisible();
+
+    // Clear search
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
   });
 });

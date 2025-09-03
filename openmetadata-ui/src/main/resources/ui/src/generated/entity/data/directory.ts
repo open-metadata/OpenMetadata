@@ -46,6 +46,10 @@ export interface Directory {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Directory.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -389,6 +393,20 @@ export enum DirectoryType {
     SharePointSite = "SharePointSite",
     SharedDrive = "SharedDrive",
     TeamDrive = "TeamDrive",
+}
+
+/**
+ * Status of the Directory.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

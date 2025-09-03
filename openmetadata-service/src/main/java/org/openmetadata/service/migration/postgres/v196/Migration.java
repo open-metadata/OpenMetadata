@@ -1,9 +1,9 @@
-package org.openmetadata.service.migration.mysql.v195;
+package org.openmetadata.service.migration.postgres.v196;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v195.MigrationUtil;
+import org.openmetadata.service.migration.utils.v196.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
