@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from metadata.data_quality.validations import utils
 from metadata.generated.schema.tests.basic import (
+    DimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -33,6 +34,9 @@ from metadata.profiler.processor.runner import QueryRunner
 
 if TYPE_CHECKING:
     from pandas import DataFrame
+
+    # Import DimensionResult for type checking
+    from metadata.generated.schema.tests.basic import DimensionResult
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
@@ -55,12 +59,68 @@ class BaseTestValidator(ABC):
         self.test_case = test_case
         self.execution_date = execution_date
 
-    @abstractmethod
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def is_dimensional_test(self) -> bool:
+        """Check if test case has dimension columns configured for dimensional analysis
 
         Returns:
-            TestCaseResult:
+            bool: True if this test should be executed with dimensional grouping
+        """
+        return (
+            hasattr(self.test_case, "dimensionColumns")
+            and self.test_case.dimensionColumns is not None
+            and len(self.test_case.dimensionColumns) > 0
+        )
+
+    def run_validation(self) -> TestCaseResult:
+        """Template method defining the validation flow with optional dimensional analysis
+
+        This method orchestrates the overall validation process:
+        1. Execute the main validation logic (overall results)
+        2. Add dimensional results if configured
+
+        Child classes can override this method to provide custom validation logic.
+        If not overridden, this template method provides the default dimensional behavior.
+
+        Returns:
+            TestCaseResult: The test case result with optional dimensional results
+        """
+        # Execute the main validation logic (overall results)
+        test_result = self._run_validation()
+
+        # Add dimensional results if configured
+        if self.is_dimensional_test():
+            try:
+                dimension_results = self._run_dimensional_validation()
+                test_result.dimensionResults = dimension_results
+            except NotImplementedError:
+                # Fallback: dimensional validation not implemented yet
+                # This allows gradual migration of validators
+                pass
+
+        return test_result
+
+    @abstractmethod
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method should contain the core validation logic that was previously
+        in the run_validation method of child classes.
+
+        Returns:
+            TestCaseResult: The test case result for the overall validation
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _run_dimensional_validation(self) -> List["DimensionResult"]:
+        """Execute dimensional validation for this test
+
+        This method should implement the dimensional logic specific to each test type.
+        It will be called automatically by the template method when dimensionColumns
+        are configured in the test case.
+
+        Returns:
+            List[DimensionResult]: List of dimension-specific test results
         """
         raise NotImplementedError
 
@@ -124,6 +184,55 @@ class BaseTestValidator(ABC):
             test_case_result.failedRowsPercentage = float(failed_rows / row_count) * 100  # type: ignore
 
         return test_case_result
+
+    def get_dimension_result_object(
+        self,
+        dimension_values: dict,
+        test_case_status: TestCaseStatus,
+        result: str,
+        test_result_value: List[TestResultValue],
+        total_rows: int,
+        passed_rows: int,
+        failed_rows: Optional[int] = None,
+    ) -> "DimensionResult":
+        """Returns a DimensionResult object with automatic percentage calculations
+
+        Args:
+            dimension_values: Dictionary mapping dimension column names to their values
+            test_case_status: Status of the test for this dimension combination
+            result: Details of test case results for this dimension combination
+            test_result_value: List of test result values
+            total_rows: Total number of rows in this dimension
+            passed_rows: Number of rows that passed for this dimension
+            failed_rows: Number of rows that failed for this dimension (auto-calculated if None)
+
+        Returns:
+            DimensionResult: Dimension result object with calculated percentages
+        """
+        # Auto-calculate failed rows if not provided
+        if failed_rows is None:
+            failed_rows = total_rows - passed_rows
+
+        # Calculate percentages
+        passed_rows_percentage = (
+            (passed_rows / total_rows * 100) if total_rows > 0 else 0
+        )
+        failed_rows_percentage = (
+            (failed_rows / total_rows * 100) if total_rows > 0 else 0
+        )
+
+        dimension_result = DimensionResult(
+            dimensionValues=dimension_values,
+            testCaseStatus=test_case_status,
+            result=result,
+            testResultValue=test_result_value,
+            passedRows=passed_rows,
+            failedRows=failed_rows,
+            passedRowsPercentage=passed_rows_percentage,
+            failedRowsPercentage=failed_rows_percentage,
+        )
+
+        return dimension_result
 
     def format_column_list(self, status: TestCaseStatus, cols: List):
         """Format column list based on the test status

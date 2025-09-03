@@ -13,7 +13,8 @@
 Validator for column values to be unique test case
 """
 
-from typing import Optional
+import logging
+from typing import List, Optional
 
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
@@ -21,8 +22,11 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
+from metadata.generated.schema.tests.basic import DimensionResult, TestResultValue
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
+
+logger = logging.getLogger(__name__)
 
 
 class ColumnValuesToBeUniqueValidator(
@@ -30,16 +34,30 @@ class ColumnValuesToBeUniqueValidator(
 ):
     """Validator for column values to be unique test case"""
 
-    def _get_column_name(self) -> SQALikeColumn:
+    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
         """Get column name from the test case entity link
+
+        If column_name is None, returns the main column being validated.
+        If column_name is provided, returns the column object for that specific column.
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
 
         Returns:
             SQALikeColumn: column
         """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            self.runner,
-        )
+        if column_name is None:
+            # Get the main column being validated (original behavior)
+            return self.get_column_name(
+                self.test_case.entityLink.root,
+                self.runner,
+            )
+        else:
+            # Get a specific column by name (for dimension columns)
+            return self.get_column_name(
+                column_name,
+                self.runner,
+            )
 
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
@@ -55,3 +73,70 @@ class ColumnValuesToBeUniqueValidator(
     ) -> Optional[int]:
         """Get unique count of values"""
         return self._run_results(metric, column)
+
+    def _execute_dimensional_query(
+        self,
+        column: SQALikeColumn,
+        dimension_cols: List[SQALikeColumn],
+        metrics_to_compute: dict,
+    ) -> List[DimensionResult]:
+        """Execute dimensional query for column values to be unique using Pandas
+
+        This method now uses the pandas mixin's dimensional results method,
+        following the same pattern as _run_results for consistency and reusability.
+
+        Args:
+            column: The column being validated
+            dimension_cols: List of SQALikeColumn objects corresponding to dimension columns
+            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+
+        Returns:
+            List[DimensionResult]: List of dimension-specific test results
+        """
+        dimension_results = []
+
+        try:
+            # Extract dimension column names from the SQALikeColumn objects
+            dimension_columns = [col.name for col in dimension_cols]
+
+            # Use the mixin's dimensional results method - same pattern as _run_results
+            dimensional_data = self.run_dataframe_dimensional_results(
+                runner=self.runner,
+                metrics_to_compute=metrics_to_compute,
+                column=column,
+                dimension_columns=dimension_columns,
+            )
+
+            # Process results - each item contains dimension_values and metrics
+            for item in dimensional_data:
+                dimension_values = item["dimension_values"]
+                metrics = item["metrics"]
+
+                # Extract the specific metrics we need for uniqueness test
+                total_count = metrics.get("count", 0)
+                unique_count = metrics.get("unique_count", 0)
+
+                # Create dimension result using the helper method
+                dimension_result = self.get_dimension_result_object(
+                    dimension_values=dimension_values,
+                    test_case_status=self.get_test_case_status(
+                        total_count == unique_count
+                    ),
+                    result=f"Dimension {dimension_values}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
+                    test_result_value=[
+                        TestResultValue(name="valuesCount", value=str(total_count)),
+                        TestResultValue(name="uniqueCount", value=str(unique_count)),
+                    ],
+                    total_rows=total_count,
+                    passed_rows=unique_count,
+                    # failed_rows will be auto-calculated as (total_count - unique_count)
+                )
+
+                dimension_results.append(dimension_result)
+
+        except Exception as exc:
+            # Use the same error handling pattern as _run_results
+            logger.warning(f"Error executing dimensional query: {exc}")
+            # Return empty list on error (test continues without dimensions)
+
+        return dimension_results

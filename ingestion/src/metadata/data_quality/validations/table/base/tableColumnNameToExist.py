@@ -15,9 +15,11 @@ Validator for table column nanme to exist test case
 
 import traceback
 from abc import abstractmethod
+from typing import List
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
+    DimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -32,11 +34,14 @@ COLUMN_NAMES_EXISTS = "columnNameExits"
 class BaseTableColumnNameToExistValidator(BaseTestValidator):
     """Validator for table column nanme to exist test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         try:
             names = self._run_results()
@@ -64,6 +69,19 @@ class BaseTableColumnNameToExistValidator(BaseTestValidator):
             f"{name_to_exist} column expected vs {self.format_column_list(status, names)}",
             [TestResultValue(name=COLUMN_NAMES_EXISTS, value=str(result_value))],
         )
+
+    def _run_dimensional_validation(self) -> List[DimensionResult]:
+        """Execute dimensional validation for this test
+
+        This method should implement the dimensional logic specific to each test type.
+        It will be called automatically by the template method when dimensionColumns
+        are configured in the test case.
+
+        Returns:
+            List[DimensionResult]: List of dimension-specific test results
+        """
+        # Default implementation returns empty list
+        return []
 
     @abstractmethod
     def _run_results(self):

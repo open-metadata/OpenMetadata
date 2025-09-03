@@ -13,7 +13,8 @@
 Validator for column values to be unique test case
 """
 
-from typing import Optional
+import logging
+from typing import List, Optional
 
 from sqlalchemy import Column, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
@@ -24,8 +25,11 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.tests.basic import DimensionResult, TestResultValue
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
+
+logger = logging.getLogger(__name__)
 
 
 class ColumnValuesToBeUniqueValidator(
@@ -33,16 +37,30 @@ class ColumnValuesToBeUniqueValidator(
 ):
     """Validator for column values to be unique test case"""
 
-    def _get_column_name(self) -> Column:
-        """Get column name from the test case entity link
+    def _get_column_name(self, column_name: Optional[str] = None) -> Column:
+        """Get column object for the given column name
+
+        If column_name is None, returns the main column being validated.
+        If column_name is provided, returns the column object for that specific column.
+
+        Args:
+            column_name: Optional column name. If None, returns the main validation column.
 
         Returns:
-            Column: column
+            Column: Column object
         """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            inspect(self.runner.dataset).c,
-        )
+        if column_name is None:
+            # Get the main column being validated (original behavior)
+            return self.get_column_name(
+                self.test_case.entityLink.root,
+                inspect(self.runner.dataset).c,
+            )
+        else:
+            # Get a specific column by name (for dimension columns)
+            return self.get_column_name(
+                column_name,
+                inspect(self.runner.dataset).c,
+            )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
         """compute result of the test case
@@ -88,3 +106,83 @@ class ColumnValuesToBeUniqueValidator(
         """Get unique count of values"""
 
         return self.value.get(metric.name)
+
+    def _execute_dimensional_query(
+        self, column: Column, dimension_cols: List[Column], metrics_to_compute: dict
+    ) -> List[DimensionResult]:
+        """Execute dimensional query for column values to be unique using SQLAlchemy
+
+        This method follows the same pattern as _run_results but executes a GROUP BY query
+        that returns results for each dimension combination.
+
+        Args:
+            column: The column being validated
+            dimension_cols: List of Column objects corresponding to dimension columns
+            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+
+        Returns:
+            List[DimensionResult]: List of dimension-specific test results
+        """
+        dimension_results = []
+
+        try:
+            # Extract dimension column names from the Column objects
+            dimension_columns = [col.name for col in dimension_cols]
+
+            # Build the SELECT clause with dimension columns and metrics
+            # Following the same pattern as _run_results but with GROUP BY
+            select_entities = []
+
+            # Add dimension columns first (already Column objects)
+            select_entities.extend(dimension_cols)
+
+            # Add metrics - iterate through the metrics passed from the parent
+            # This keeps the flexibility while being driven by the base class
+            for metric_name, metric in metrics_to_compute.items():
+                select_entities.append(metric.value(column).fn().label(metric_name))
+
+            # Execute the dimensional query using GROUP BY
+            # This follows the same pattern as _run_results but uses select_all_from_sample
+            # with query_group_by_ parameter for GROUP BY functionality
+            dimensional_data = self.runner.select_all_from_sample(
+                *select_entities,
+                query_group_by_=dimension_cols,  # This enables GROUP BY on dimension columns
+            )
+
+            # Process results - each row represents a dimension combination
+            for row in dimensional_data:
+                # Extract dimension values (first N columns are the dimension values)
+                dimension_values = {}
+                for i, dim_name in enumerate(dimension_columns):
+                    dimension_values[dim_name] = str(row[i])
+
+                # Extract metric results - we know the exact order:
+                # [dim1, dim2, ..., count, unique_count]
+                metric_start_index = len(dimension_cols)
+                total_count = row[metric_start_index]  # count column
+                unique_count = row[metric_start_index + 1]  # unique_count column
+
+                # Create dimension result using the helper method (similar to get_test_case_result_object)
+                dimension_result = self.get_dimension_result_object(
+                    dimension_values=dimension_values,
+                    test_case_status=self.get_test_case_status(
+                        total_count == unique_count
+                    ),
+                    result=f"Dimension {dimension_values}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
+                    test_result_value=[
+                        TestResultValue(name="valuesCount", value=str(total_count)),
+                        TestResultValue(name="uniqueCount", value=str(unique_count)),
+                    ],
+                    total_rows=total_count,
+                    passed_rows=unique_count,
+                    # failed_rows will be auto-calculated as (total_count - unique_count)
+                )
+
+                dimension_results.append(dimension_result)
+
+        except Exception as exc:
+            # Use the same error handling pattern as _run_results
+            logger.warning(f"Error executing dimensional query: {exc}")
+            # Return empty list on error (test continues without dimensions)
+
+        return dimension_results
