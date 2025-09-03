@@ -203,6 +203,10 @@
       "entityType": {
         "type": "keyword"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "owners": {
         "properties": {
           "id": {

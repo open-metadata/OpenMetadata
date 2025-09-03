@@ -5,7 +5,7 @@
       "name": "dim_customer_schema_contract",
       "displayName": "Customer Dimension Schema Contract",
       "description": "Data contract ensuring the customer dimension table maintains its required schema structure",
-      "status": "Active",
+      "entityStatus": "Approved",
       "schema": [
         {
           "name": "customer_id",
@@ -35,7 +35,7 @@
       "name": "dim_location_semantics_contract",
       "displayName": "Location Dimension Semantics Contract",
       "description": "Contract defining semantic rules for the location dimension table to ensure data quality and business logic compliance",
-      "status": "Active",
+      "entityStatus": "Approved",
       "schema": [
         {
           "name": "location_id",
@@ -81,7 +81,7 @@
       "name": "dim_address_comprehensive_contract",
       "displayName": "Address Dimension Comprehensive Contract",
       "description": "Complete data contract covering schema validation, semantic rules, and data quality expectations for the address dimension table",
-      "status": "Active",
+      "entityStatus": "Approved",
       "schema": [
         {
           "name": "address_id",
