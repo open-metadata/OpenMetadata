@@ -479,7 +479,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         (double) totalTime / (operationCount * 2));
 
     // Performance should be reasonable (increased threshold for CI/test environments)
-      assertTrue(totalTime < operationCount * 100, "Tag cache operations should be reasonably fast");
+    assertTrue(totalTime < operationCount * 100, "Tag cache operations should be reasonably fast");
 
     LOG.info("Tag cache performance test passed");
   }
