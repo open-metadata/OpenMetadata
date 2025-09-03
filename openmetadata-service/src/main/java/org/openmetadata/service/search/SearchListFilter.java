@@ -348,14 +348,15 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (testCaseFqn != null) {
       conditions.add(
           String.format(
-              "{\"term\": {\"testCase.fullyQualifiedName\": \"%s\"}}",
+              "{\"term\": {\"testCase.fullyQualifiedName.keyword\": \"%s\"}}",
               escapeDoubleQuotes(testCaseFqn)));
     }
 
     if (originEntityFQN != null) {
       conditions.add(
           String.format(
-              "{\"term\": {\"testCase.entityFQN\": \"%s\"}}", escapeDoubleQuotes(originEntityFQN)));
+              "{\"term\": {\"testCase.entityFQN.keyword\": \"%s\"}}",
+              escapeDoubleQuotes(originEntityFQN)));
     }
 
     return addCondition(conditions);
