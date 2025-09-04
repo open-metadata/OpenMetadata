@@ -60,7 +60,7 @@ import {
 } from '../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../utils/AuthProvider.util';
 import { transformErrors } from '../../utils/formUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
@@ -910,31 +910,42 @@ const SSOConfigurationFormRJSF = ({
         return;
       }
 
-      // Reload authentication configuration to get the updated SSO settings
-      try {
-        const [newAuthConfig, newAuthorizerConfig] = await Promise.all([
-          fetchAuthenticationConfig(),
-          fetchAuthorizerConfig(),
-        ]);
+      // Only do logout process for new configurations, not existing ones
+      if (!hasExistingConfig) {
+        // Reload authentication configuration to get the updated SSO settings
+        try {
+          const [newAuthConfig, newAuthorizerConfig] = await Promise.all([
+            fetchAuthenticationConfig(),
+            fetchAuthorizerConfig(),
+          ]);
 
-        // Update the authentication configuration in the store
-        const configWithScope = getAuthConfig(newAuthConfig);
-        setAuthConfig(configWithScope);
-        setAuthorizerConfig(newAuthorizerConfig);
+          // Update the authentication configuration in the store
+          const configWithScope = getAuthConfig(newAuthConfig);
+          setAuthConfig(configWithScope);
+          setAuthorizerConfig(newAuthorizerConfig);
 
-        // Update saved data with the new configuration
+          // Update saved data with the new configuration
+          setSavedData(cleanedFormData);
+          setHasExistingConfig(true);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+
+        localStorage.removeItem('om-session');
+
+        setIsLoading(false);
+        setIsEditMode(false);
+
+        navigate('/signin');
+      } else {
+        // For existing configs, just update the saved data and stay in edit mode
         setSavedData(cleanedFormData);
-        setHasExistingConfig(true);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+        setIsLoading(false);
+        // Keep edit mode enabled so user can continue editing
+
+        // Show success toast for existing config save
+        showSuccessToast(t('message.configuration-save-success'));
       }
-
-      localStorage.removeItem('om-session');
-
-      setIsLoading(false);
-      setIsEditMode(false);
-
-      navigate('/signin');
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -974,7 +985,18 @@ const SSOConfigurationFormRJSF = ({
       if (internalData) {
         await handleSave();
       }
-      // Then proceed with the exit logic
+
+      // Close the modal first
+      setShowCancelModal(false);
+
+      // If existing config is present, just save and do nothing (stay on form)
+      if (hasExistingConfig) {
+        // For existing config, just close modal and stay on form - no logout process
+        return;
+      }
+
+      // If fresh/new form, proceed with logout process and redirect
+      // This will trigger the logout and sign-in redirect process
       handleCancelConfirm();
     } catch (error) {
       // If save fails, don't exit - let user fix the issues
