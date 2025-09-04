@@ -71,6 +71,7 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -108,6 +109,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.apis.APIEndpointResourceTest;
+import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
@@ -138,6 +140,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
   private static TestSuiteResourceTest testSuiteResourceTest;
+  private static ChartResourceTest chartResourceTest;
   private static DashboardResourceTest dashboardResourceTest;
   private static APIEndpointResourceTest apiEndpointResourceTest;
   private static DashboardDataModelResourceTest dashboardDataModelResourceTest;
@@ -160,6 +163,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     testCaseResourceTest = new TestCaseResourceTest();
     testSuiteResourceTest = new TestSuiteResourceTest();
+    chartResourceTest = new ChartResourceTest();
     dashboardResourceTest = new DashboardResourceTest();
     apiEndpointResourceTest = new APIEndpointResourceTest();
     dashboardDataModelResourceTest = new DashboardDataModelResourceTest();
@@ -3634,6 +3638,97 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Since this is a Dashboard entity, the semantics validation may pass or fail depending on
     // actual data
     // But we verify that the validation process was executed
+    assertTrue(validationResult.getSemanticsValidation().getTotal() > 0);
+
+    // Verify no schema or quality validation was performed (semantics only)
+    assertNull(validationResult.getSchemaValidation());
+    assertNull(validationResult.getQualityValidation());
+
+    // Retrieve the contract and verify the latest result is stored
+    DataContract retrievedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(retrievedContract.getLatestResult());
+    assertEquals(validationResult.getId(), retrievedContract.getLatestResult().getResultId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractWithChartAndSemanticsOnly(TestInfo test) throws IOException {
+    // Create a chart entity to use for the data contract
+    Chart chart =
+        chartResourceTest.createEntity(
+            chartResourceTest.createRequest(test.getDisplayName()), ADMIN_AUTH_HEADERS);
+
+    // Test 1: Chart with schema validation should fail (charts don't support schema validation)
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("testField")
+                .withDescription("Test field")
+                .withDataType(ColumnDataType.STRING));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", chart)
+            .withSchema(columns);
+
+    assertResponseContains(
+        () -> createDataContract(createWithSchema),
+        BAD_REQUEST,
+        "Schema validation is not supported for chart entities. Only table, topic, apiEndpoint, and dashboardDataModel entities support schema validation");
+
+    // Test 2: Chart with semantics validation only should succeed
+    // Create semantics rules only (no quality expectations or schema)
+    List<SemanticsRule> semanticsRules =
+        List.of(
+            new SemanticsRule()
+                .withName("Chart Display Name Check")
+                .withDescription("Ensures chart has a valid display name")
+                .withRule("{ \"!!\": { \"var\": \"displayName\" } }"),
+            new SemanticsRule()
+                .withName("Chart Type Check")
+                .withDescription("Ensures chart has a valid chart type")
+                .withRule("{ \"!!\": { \"var\": \"chartType\" } }"));
+
+    // Create data contract for the chart with semantics rules only
+    CreateDataContract create =
+        createDataContractRequestForEntity(test.getDisplayName(), chart)
+            .withDescription("Data contract for chart with semantics validation")
+            .withSemantics(semanticsRules)
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the data contract was created successfully
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getId());
+    assertEquals(create.getName(), dataContract.getName());
+    assertEquals(create.getEntityStatus(), dataContract.getEntityStatus());
+    assertEquals(chart.getId(), dataContract.getEntity().getId());
+    assertEquals("chart", dataContract.getEntity().getType());
+
+    // Verify semantics rules are properly set
+    assertNotNull(dataContract.getSemantics());
+    assertEquals(2, dataContract.getSemantics().size());
+    assertSemantics(create.getSemantics(), dataContract.getSemantics());
+
+    // Verify no quality expectations or schema are set (semantics only)
+    assertNull(dataContract.getQualityExpectations());
+    assertNull(dataContract.getSchema());
+
+    // Verify FQN follows expected pattern
+    String expectedFQN = chart.getFullyQualifiedName() + ".dataContract_" + create.getName();
+    assertEquals(expectedFQN, dataContract.getFullyQualifiedName());
+
+    // Test the validate method and verify contract status
+    DataContractResult validationResult = runValidate(dataContract);
+
+    // Verify the validation result
+    assertNotNull(validationResult);
+    assertNotNull(validationResult.getContractExecutionStatus());
+
+    // Verify semantics validation was performed
+    assertNotNull(validationResult.getSemanticsValidation());
+    assertEquals(2, validationResult.getSemanticsValidation().getTotal().intValue());
+
     assertTrue(validationResult.getSemanticsValidation().getTotal() > 0);
 
     // Verify no schema or quality validation was performed (semantics only)
