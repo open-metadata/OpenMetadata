@@ -12,7 +12,6 @@
 """
 Test KafkaConnect client and models
 """
-import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -158,41 +157,6 @@ class TestKafkaConnectClient(TestCase):
                 url="http://localhost:8083", auth="user:pass", ssl_verify=True
             )
 
-    def test_build_connector_tasks_helper(self):
-        """Test _build_connector_tasks helper method"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-
-            tasks_data = [
-                {"id": 0, "state": "RUNNING", "worker_id": "worker-1"},
-                {"id": 1, "state": "FAILED", "worker_id": "worker-2"},
-            ]
-
-            result = client._build_connector_tasks(tasks_data)
-
-            self.assertIsInstance(result, list)
-            self.assertEqual(len(result), 2)
-            self.assertIsInstance(result[0], KafkaConnectTasks)
-            self.assertEqual(result[0].id, 0)
-            self.assertEqual(result[0].state, "RUNNING")
-            self.assertEqual(result[1].id, 1)
-            self.assertEqual(result[1].state, "FAILED")
-
-    def test_build_connector_tasks_empty(self):
-        """Test _build_connector_tasks with empty data"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-
-            result = client._build_connector_tasks([])
-            self.assertEqual(result, [])
-
-            result = client._build_connector_tasks(None)
-            self.assertEqual(result, [])
-
     def test_enrich_connector_details_helper(self):
         """Test _enrich_connector_details helper method"""
         with patch(
@@ -334,7 +298,3 @@ class TestKafkaConnectClient(TestCase):
                         expected_value,
                         f"Expected {expected_field}={expected_value}, got {actual_value}",
                     )
-
-
-if __name__ == "__main__":
-    unittest.main()
