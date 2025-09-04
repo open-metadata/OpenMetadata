@@ -17,7 +17,6 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -193,6 +192,7 @@ export const setUserDefaultPersona = async (
   ).toBeVisible();
 
   await page.locator('[data-testid="persona-select-list"]').click();
+  await page.waitForLoadState('networkidle');
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 

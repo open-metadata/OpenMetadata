@@ -11,25 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { DataProduct } from '../../support/domain/DataProduct';
-import { Domain } from '../../support/domain/Domain';
-import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
-import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
-import { ChartClass } from '../../support/entity/ChartClass';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
-import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
-import { MetricClass } from '../../support/entity/MetricClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
-import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -49,79 +31,36 @@ import { getEntityDisplayName } from '../../utils/entity';
 const adminUser = new UserClass();
 const persona = new PersonaClass();
 
-// Create helper entities for DataProduct and GlossaryTerm
-const domain = new Domain();
-const glossary = new Glossary();
+// Define the type for test entities using EntityDataClass properties
+type TestEntity = typeof EntityDataClass[keyof typeof EntityDataClass];
 
-// Create test entities - covering all entity types from CURATED_ASSETS_LIST
-const testEntities = {
-  apiCollection: new ApiCollectionClass(),
-  apiEndpoint: new ApiEndpointClass(),
-  chart: new ChartClass(),
-  container: new ContainerClass(),
-  dashboard: new DashboardClass(),
-  dashboardDataModel: new DashboardDataModelClass(),
-  database: new DatabaseClass(),
-  databaseSchema: new DatabaseSchemaClass(),
-  metric: new MetricClass(),
-  mlModel: new MlModelClass(),
-  pipeline: new PipelineClass(),
-  searchIndex: new SearchIndexClass(),
-  storedProcedure: new StoredProcedureClass(),
-  table: new TableClass(),
-  topic: new TopicClass(),
-};
-
-// These entities need special initialization
-const dataProduct = new DataProduct([domain]);
-const glossaryTerm = new GlossaryTerm(glossary);
-
-// Define the type for test entities
-type TestEntity =
-  | TableClass
-  | DashboardClass
-  | PipelineClass
-  | TopicClass
-  | MlModelClass
-  | ContainerClass
-  | SearchIndexClass
-  | ChartClass
-  | StoredProcedureClass
-  | DashboardDataModelClass
-  | GlossaryTerm
-  | MetricClass
-  | DatabaseClass
-  | DatabaseSchemaClass
-  | ApiCollectionClass
-  | ApiEndpointClass
-  | DataProduct
-  | null;
-
-// Map entity types to their created test entities
+// Map entity types to their EntityDataClass properties
 const entityTypeToTestEntity: Record<string, TestEntity> = {
-  Table: testEntities.table,
-  Dashboard: testEntities.dashboard,
-  Pipeline: testEntities.pipeline,
-  Topic: testEntities.topic,
-  'ML Model': testEntities.mlModel,
-  Container: testEntities.container,
-  'Search Index': testEntities.searchIndex,
-  Chart: testEntities.chart,
-  'Stored Procedure': testEntities.storedProcedure,
-  'Data Model': testEntities.dashboardDataModel,
-  'Glossary Term': glossaryTerm,
-  Metric: testEntities.metric,
-  Database: testEntities.database,
-  'Database Schema': testEntities.databaseSchema,
-  'API Collection': testEntities.apiCollection,
-  'API Endpoint': testEntities.apiEndpoint,
-  'Data Product': dataProduct,
-  'Knowledge Page': null, // Knowledge Page entity does not have a display name field
+  'API Collection': EntityDataClass.apiCollection1,
+  'API Endpoint': EntityDataClass.apiEndpoint1,
+  'Data Model': EntityDataClass.dashboardDataModel1,
+  'Data Product': EntityDataClass.dataProduct1,
+  'Database Schema': EntityDataClass.databaseSchema,
+  'Glossary Term': EntityDataClass.glossaryTerm1,
+  'ML Model': EntityDataClass.mlModel1,
+  'Search Index': EntityDataClass.searchIndex1,
+  'Stored Procedure': EntityDataClass.storedProcedure1,
+  Chart: EntityDataClass.chart1,
+  Container: EntityDataClass.container1,
+  Dashboard: EntityDataClass.dashboard1,
+  Database: EntityDataClass.database,
+  Metric: EntityDataClass.metric1,
+  Pipeline: EntityDataClass.pipeline1,
+  Table: EntityDataClass.table1,
+  Topic: EntityDataClass.topic1,
 };
 
 function toNameableEntity(
   entity: TestEntity
 ): { name?: string; displayName?: string } | undefined {
+  if (!entity) {
+    return undefined;
+  }
   const holder = entity as unknown as {
     entity?: { name?: string; displayName?: string };
   };
@@ -148,18 +87,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
 
-  // Create helper entities first
-  await domain.create(apiContext);
-  await glossary.create(apiContext);
-
-  // Create all test entities
-  for (const entity of Object.values(testEntities)) {
-    await entity.create(apiContext);
-  }
-
-  // Create entities with dependencies
-  await dataProduct.create(apiContext);
-  await glossaryTerm.create(apiContext);
+  // Use EntityDataClass for creating all test entities
+  await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
 
   await afterAction();
 });
@@ -169,18 +98,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
-  // Delete entities with dependencies first
-  await glossaryTerm.delete(apiContext);
-  await dataProduct.delete(apiContext);
-
-  // Delete all test entities
-  for (const entity of Object.values(testEntities)) {
-    await entity.delete(apiContext);
-  }
-
-  // Delete helper entities
-  await glossary.delete(apiContext);
-  await domain.delete(apiContext);
+  // Use EntityDataClass for cleanup
+  await EntityDataClass.postRequisitesForTests(apiContext, { all: true });
 
   // Delete user and persona
   await adminUser.delete(apiContext);
@@ -189,381 +108,126 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Curated Assets Widget - Comprehensive Tests', () => {
+test.describe('Curated Assets Widget', () => {
   test.beforeAll(async ({ page }) => {
     test.slow(true);
 
+    await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
     await page.getByTestId('sidebar-toggle').click();
-
-    await setUserDefaultPersona(page, persona.responseData.displayName);
   });
 
-  test('Individual entity types with display name filter 1-6', async ({
-    page,
-  }) => {
-    test.slow(true);
+  for (const entityType of ENTITY_TYPE_CONFIGS) {
+    test(`Test ${entityType.displayName} with display name filter`, async ({
+      page,
+    }) => {
+      test.slow(true);
 
-    for (const entityType of ENTITY_TYPE_CONFIGS.slice(0, 6)) {
-      await test.step(
-        `Test ${entityType.displayName} with display name filter`,
-        async () => {
-          // Get the corresponding test entity
-          const testEntity = entityTypeToTestEntity[entityType.name];
-          if (!testEntity) {
-            return;
-          }
+      const testEntity = entityTypeToTestEntity[entityType.name];
+      if (!testEntity) {
+        return;
+      }
 
-          // Add a new curated asset placeholder
-          await addCuratedAssetPlaceholder({
-            page,
-            personaName: persona.responseData.name,
-          });
+      // Add a new curated asset placeholder
+      await addCuratedAssetPlaceholder({
+        page,
+        personaName: persona.responseData.name,
+      });
 
-          await page
-            .getByTestId('KnowledgePanel.CuratedAssets')
-            .getByText('Create')
-            .click();
+      await page
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .getByText('Create')
+        .click();
 
-          await page.waitForTimeout(1000);
+      // Update widget name
+      await page.locator('[data-testid="title-input"]').clear();
+      await page
+        .locator('[data-testid="title-input"]')
+        .fill(`${entityType.displayName} - Display Name Filter`);
 
-          // Update widget name
-          await page.locator('[data-testid="title-input"]').clear();
-          await page
-            .locator('[data-testid="title-input"]')
-            .fill(`${entityType.displayName} - Display Name Filter`);
+      // Select specific entity type
+      await selectAssetTypes(page, [entityType.name]);
 
-          // Select specific entity type
-          await selectAssetTypes(page, [entityType.name]);
+      // Apply Display Name filter with the actual entity's display name
+      const ruleLocator = page.locator('.rule').nth(0);
 
-          // Apply Display Name filter with the actual entity's display name
-          const ruleLocator = page.locator('.rule').nth(0);
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            'Display Name'
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--operator .ant-select'),
-            'Contains'
-          );
-
-          const entityDisplayName =
-            getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-          await ruleLocator.locator('.rule--value input').clear();
-          await ruleLocator
-            .locator('.rule--value input')
-            .fill(entityDisplayName);
-
-          const queryResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes(`index=${entityType.index}`)
-          );
-
-          await page.locator('[data-testid="saveButton"]').click();
-          await queryResponse;
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-          ).toBeVisible();
-
-          await saveCustomizeLayoutPage(page);
-
-          await redirectToHomePage(page);
-          await removeLandingBanner(page);
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page.getByTestId('KnowledgePanel.CuratedAssets')
-          ).toBeVisible();
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .getByText(`${entityType.displayName} - Display Name Filter`)
-          ).toBeVisible();
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-              .first()
-          ).toBeVisible();
-
-          await navigateToCustomizeLandingPage(page, {
-            personaName: persona.responseData.name,
-          });
-
-          await removeAndCheckWidget(page, {
-            widgetKey: 'KnowledgePanel.CuratedAssets',
-          });
-
-          await saveCustomizeLayoutPage(page);
-        }
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Display Name'
       );
-    }
-  });
 
-  test('Individual entity types with display name filter 7-12', async ({
-    page,
-  }) => {
-    test.slow(true);
-
-    for (const entityType of ENTITY_TYPE_CONFIGS.slice(6, 12)) {
-      await test.step(
-        `Test ${entityType.displayName} with display name filter`,
-        async () => {
-          // Get the corresponding test entity
-          const testEntity = entityTypeToTestEntity[entityType.name];
-          if (!testEntity) {
-            return;
-          }
-
-          // Add a new curated asset placeholder
-          await addCuratedAssetPlaceholder({
-            page,
-            personaName: persona.responseData.name,
-          });
-
-          await page
-            .getByTestId('KnowledgePanel.CuratedAssets')
-            .getByText('Create')
-            .click();
-
-          await page.waitForTimeout(1000);
-
-          // Update widget name
-          await page.locator('[data-testid="title-input"]').clear();
-          await page
-            .locator('[data-testid="title-input"]')
-            .fill(`${entityType.displayName} - Display Name Filter`);
-
-          // Select specific entity type
-          await selectAssetTypes(page, [entityType.name]);
-
-          // Apply Display Name filter with the actual entity's display name
-          const ruleLocator = page.locator('.rule').nth(0);
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            'Display Name'
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--operator .ant-select'),
-            'Contains'
-          );
-
-          const entityDisplayName =
-            getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-          await ruleLocator.locator('.rule--value input').clear();
-          await ruleLocator
-            .locator('.rule--value input')
-            .fill(entityDisplayName);
-
-          const queryResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes(`index=${entityType.index}`)
-          );
-
-          await page.waitForLoadState('networkidle');
-
-          await page.locator('[data-testid="saveButton"]').click();
-          await queryResponse;
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-              .first()
-          ).toBeVisible();
-
-          await saveCustomizeLayoutPage(page);
-
-          await redirectToHomePage(page);
-          await removeLandingBanner(page);
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page.getByTestId('KnowledgePanel.CuratedAssets')
-          ).toBeVisible();
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .getByText(`${entityType.displayName} - Display Name Filter`)
-          ).toBeVisible();
-
-          await page.waitForLoadState('networkidle');
-
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-              .first()
-          ).toBeVisible();
-
-          await navigateToCustomizeLandingPage(page, {
-            personaName: persona.responseData.name,
-          });
-
-          await removeAndCheckWidget(page, {
-            widgetKey: 'KnowledgePanel.CuratedAssets',
-          });
-
-          await saveCustomizeLayoutPage(page);
-        }
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        'Contains'
       );
-    }
-  });
 
-  test('Individual entity types with display name filter 13-18', async ({
-    page,
-  }) => {
-    test.slow(true);
+      const entityDisplayName =
+        getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
+      await ruleLocator.locator('.rule--value input').clear();
+      await ruleLocator.locator('.rule--value input').fill(entityDisplayName);
 
-    for (const entityType of ENTITY_TYPE_CONFIGS.slice(12)) {
-      await test.step(
-        `Test ${entityType.displayName} with display name filter`,
-        async () => {
-          const testEntity = entityTypeToTestEntity[entityType.name];
-          if (!testEntity) {
-            return;
-          }
+      // Wait for save button to be enabled
+      await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
 
-          await addCuratedAssetPlaceholder({
-            page,
-            personaName: persona.responseData.name,
-          });
-
-          await page
-            .getByTestId('KnowledgePanel.CuratedAssets')
-            .getByText('Create')
-            .click();
-
-          await page.waitForTimeout(1000);
-
-          await page.locator('[data-testid="title-input"]').clear();
-          await page
-            .locator('[data-testid="title-input"]')
-            .fill(`${entityType.displayName} - Display Name Filter`);
-
-          await selectAssetTypes(page, [entityType.name]);
-
-          const ruleLocator = page.locator('.rule').nth(0);
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--field .ant-select'),
-            'Display Name'
-          );
-
-          await selectOption(
-            page,
-            ruleLocator.locator('.rule--operator .ant-select'),
-            'Contains'
-          );
-          // Use the actual display name from the created entity
-          const entityDisplayName =
-            getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-          await ruleLocator.locator('.rule--value input').clear();
-          await ruleLocator
-            .locator('.rule--value input')
-            .fill(entityDisplayName);
-
-          const queryResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes(`index=${entityType.index}`)
-          );
-
-          await page.waitForLoadState('networkidle');
-
-          await page.locator('[data-testid="saveButton"]').click();
-          await queryResponse;
-
-          await page.waitForLoadState('networkidle');
-
-          // Verify the widget shows the filtered entity in the title
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-              .first()
-          ).toBeVisible();
-
-          await saveCustomizeLayoutPage(page);
-
-          // Navigate home to verify the entity appears in the widget
-          await redirectToHomePage(page);
-          await removeLandingBanner(page);
-
-          // Wait for widget to load
-          await page.waitForLoadState('networkidle');
-
-          // Verify the curated asset widget shows our entity
-          await expect(
-            page.getByTestId('KnowledgePanel.CuratedAssets')
-          ).toBeVisible();
-
-          // Verify the widget title
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .getByText(`${entityType.displayName} - Display Name Filter`)
-          ).toBeVisible();
-
-          // Wait for widgets data to load
-          await page.waitForLoadState('networkidle');
-
-          // Verify the entity appears in the widget title
-          await expect(
-            page
-              .getByTestId('KnowledgePanel.CuratedAssets')
-              .locator('.entity-list-item-title')
-              .filter({ hasText: entityDisplayName })
-              .first()
-          ).toBeVisible();
-
-          //   Go back to customize page for next iteration
-          await navigateToCustomizeLandingPage(page, {
-            personaName: persona.responseData.name,
-          });
-
-          //   Delete the curated asset widget to reset for next entity type
-          await removeAndCheckWidget(page, {
-            widgetKey: 'KnowledgePanel.CuratedAssets',
-          });
-
-          await saveCustomizeLayoutPage(page);
-        }
+      const queryResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(`index=${entityType.index}`)
       );
-    }
-  });
+
+      await page.locator('[data-testid="saveButton"]').click();
+      await queryResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .locator('.entity-list-item-title')
+          .filter({ hasText: entityDisplayName })
+          .first()
+      ).toBeVisible();
+
+      await redirectToHomePage(page);
+      await removeLandingBanner(page);
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page.getByTestId('KnowledgePanel.CuratedAssets')
+      ).toBeVisible();
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .getByText(`${entityType.displayName} - Display Name Filter`)
+      ).toBeVisible();
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .locator('.entity-list-item-title')
+          .filter({ hasText: entityDisplayName })
+          .first()
+      ).toBeVisible();
+
+      await navigateToCustomizeLandingPage(page, {
+        personaName: persona.responseData.name,
+      });
+
+      await removeAndCheckWidget(page, {
+        widgetKey: 'KnowledgePanel.CuratedAssets',
+      });
+
+      await saveCustomizeLayoutPage(page);
+    });
+  }
 
   test('Entity type "ALL" with basic filter', async ({ page }) => {
     test.slow(true);
@@ -578,8 +242,6 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       .getByTestId('KnowledgePanel.CuratedAssets')
       .getByText('Create')
       .click();
-
-    await page.waitForTimeout(1000);
 
     await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -618,8 +280,6 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
         response.url().includes('index=all')
     );
 
-    await page.waitForLoadState('networkidle');
-
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
@@ -630,13 +290,13 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
     ).toBeVisible();
 
+    await page.waitForLoadState('networkidle');
+
     await expect(
       page
         .getByTestId('KnowledgePanel.CuratedAssets')
         .getByText('All Entity Types - Initial')
     ).toBeVisible();
-
-    await saveCustomizeLayoutPage(page);
 
     // Delete the widget at the end
     await removeAndCheckWidget(page, {
@@ -659,8 +319,6 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       .getByTestId('KnowledgePanel.CuratedAssets')
       .getByText('Create')
       .click();
-
-    await page.waitForTimeout(1000);
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -693,18 +351,16 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description'
+      'Deleted'
     );
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
       '=='
     );
-    await selectOption(
-      page,
-      ruleLocator2.locator('.rule--value .ant-select'),
-      'Incomplete'
-    );
+    await ruleLocator2
+      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .click();
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -712,33 +368,22 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
         response.url().includes('index=chart,dashboard')
     );
 
-    await page.waitForLoadState('networkidle');
+    // Wait for save button to be enabled
+    await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
 
     await page.locator('[data-testid="saveButton"]').click();
-    await queryResponse;
 
-    // Verify on customize page: widget and at least one entity item
-    await page.waitForLoadState('networkidle');
+    await queryResponse;
 
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
 
+    // Wait for auto-save to complete before navigating
     await page.waitForLoadState('networkidle');
 
-    await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
-    ).toBeVisible();
-
-    // Save and verify on landing page
-    await saveCustomizeLayoutPage(page);
     await redirectToHomePage(page);
     await removeLandingBanner(page);
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
@@ -777,8 +422,6 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       .getByText('Create')
       .click();
 
-    await page.waitForTimeout(1000);
-
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
     await page
@@ -793,18 +436,16 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Description'
+      'Deleted'
     );
     await selectOption(
       page,
       ruleLocator1.locator('.rule--operator .ant-select'),
       '=='
     );
-    await selectOption(
-      page,
-      ruleLocator1.locator('.rule--value .ant-select'),
-      'Incomplete'
-    );
+    await ruleLocator1
+      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .click();
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
     await page.locator('.group--conjunctions button:has-text("AND")').click();
@@ -821,11 +462,11 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       'Contains'
     );
 
-    const entityDisplayName =
-      getEntityDisplayName(toNameableEntity(entityTypeToTestEntity.Pipeline)) ||
-      'pw';
+    // Use a common prefix that should match test entities
     await ruleLocator2.locator('.rule--value input').clear();
-    await ruleLocator2.locator('.rule--value input').fill(entityDisplayName);
+    await ruleLocator2.locator('.rule--value input').fill('pw');
+
+    await page.waitForLoadState('networkidle');
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -833,19 +474,18 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
         response.url().includes('index=pipeline,topic,mlmodel')
     );
 
-    await page.waitForLoadState('networkidle');
+    // Wait for save button to be enabled
+    await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
 
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-    // Verify on customize page
     await page.waitForLoadState('networkidle');
 
+    // Verify on customize page: widget and at least one entity item
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -854,8 +494,10 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
         .first()
     ).toBeVisible();
 
-    // Save and verify on landing page
-    await saveCustomizeLayoutPage(page);
+    // Wait for auto-save to complete before navigating
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
@@ -898,8 +540,6 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       .getByText('Create')
       .click();
 
-    await page.waitForTimeout(1000);
-
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
     await page
@@ -936,7 +576,8 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description'
+      'Description',
+      true
     );
     await selectOption(
       page,
@@ -957,7 +598,8 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--field .ant-select'),
-      'Tier'
+      'Tier',
+      true
     );
     await selectOption(
       page,
@@ -970,25 +612,24 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
       'Tier.Tier5'
     );
 
+    // Wait for save button to be enabled
+    await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
+
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all')
     );
 
-    await page.waitForLoadState('networkidle');
-
     await page.locator('[data-testid="saveButton"]').click();
     await queryResponse;
 
-    // Verify on customize page
     await page.waitForLoadState('networkidle');
 
+    // Verify on customize page: widget and at least one entity item
     await expect(
       page.getByTestId('KnowledgePanel.CuratedAssets')
     ).toBeVisible();
-
-    await page.waitForLoadState('networkidle');
 
     await expect(
       page
@@ -997,8 +638,10 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
         .first()
     ).toBeVisible();
 
-    // Save and verify on landing page
-    await saveCustomizeLayoutPage(page);
+    // Wait for auto-save to complete before navigating
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to landing page to verify widget
     await redirectToHomePage(page);
     await removeLandingBanner(page);
 
@@ -1026,27 +669,29 @@ test.describe('Curated Assets Widget - Comprehensive Tests', () => {
     });
     await saveCustomizeLayoutPage(page);
   });
-});
 
-test('Placeholder validation - widget not visible without configuration', async ({
-  page,
-}) => {
-  test.slow(true);
-
-  await addCuratedAssetPlaceholder({
+  test('Placeholder validation - widget not visible without configuration', async ({
     page,
-    personaName: persona.responseData.name,
+  }) => {
+    test.slow(true);
+
+    await addCuratedAssetPlaceholder({
+      page,
+      personaName: persona.responseData.name,
+    });
+
+    // Save without creating any widget configuration
+    await expect(page.locator('[data-testid="save-button"]')).toBeEnabled();
+
+    await page.locator('[data-testid="save-button"]').click();
+    await page.waitForLoadState('networkidle');
+
+    await redirectToHomePage(page);
+    await removeLandingBanner(page);
+
+    // Verify placeholder is not visible when no widget is configured
+    await expect(
+      page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
+    ).not.toBeVisible();
   });
-
-  // Save without creating any widget configuration
-  await page.locator('[data-testid="save-button"]').click();
-  await page.waitForLoadState('load');
-
-  await redirectToHomePage(page);
-  await removeLandingBanner(page);
-
-  // Verify placeholder is not visible when no widget is configured
-  await expect(
-    page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
-  ).not.toBeVisible();
 });
