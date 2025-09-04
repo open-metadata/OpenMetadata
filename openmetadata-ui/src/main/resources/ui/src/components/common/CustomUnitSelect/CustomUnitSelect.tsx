@@ -14,7 +14,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Divider, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { FC, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
@@ -48,40 +48,64 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
   const [newCustomUnit, setNewCustomUnit] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Memoized computed values
+  const { allCustomUnits, allOptions } = useMemo(() => {
+    // Combine custom units with deduplication
+    const combinedCustomUnits = [
+      ...new Set([...customUnits, ...userAddedUnits]),
+    ];
+
+    // Standard unit options
+    const standardOptions = Object.values(UnitOfMeasurement)
+      .filter((unit) => unit !== UnitOfMeasurement.Other)
+      .map((unit) => ({
+        label: startCase(unit.toLowerCase()),
+        value: unit,
+      }));
+
+    // Custom options from combined units
+    const customOptions = combinedCustomUnits.map((unit) => ({
+      label: unit,
+      value: unit,
+    }));
+
+    // Combined options - standard units first, then custom units
+    const combinedOptions = [...standardOptions, ...customOptions];
+
+    return {
+      allCustomUnits: combinedCustomUnits,
+      allOptions: combinedOptions,
+    };
+  }, [customUnits, userAddedUnits]);
+
+  const fetchCustomUnits = useCallback(async () => {
+    try {
+      setLoading(true);
+      const units = await getCustomUnitsOfMeasurement();
+      setCustomUnits(units || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Fetch custom units from backend on component mount
   useEffect(() => {
-    const fetchCustomUnits = async () => {
-      try {
-        setLoading(true);
-        const units = await getCustomUnitsOfMeasurement();
-        setCustomUnits(units || []);
-      } catch (error) {
-        // If endpoint fails, continue without pre-loaded custom units
-        showErrorToast(error as AxiosError);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCustomUnits();
   }, []);
 
   // Initialize with current custom value if it exists
   useEffect(() => {
-    if (
-      customValue &&
-      !customUnits.includes(customValue) &&
-      !userAddedUnits.includes(customValue)
-    ) {
+    if (customValue && !allCustomUnits.includes(customValue)) {
       setUserAddedUnits([customValue]);
     }
-  }, [customValue]);
+  }, [customValue, allCustomUnits]);
 
   const handleAddCustomUnit = () => {
     const trimmedUnit = newCustomUnit.trim();
     if (trimmedUnit) {
       // Check if it already exists in either list
-      const allCustomUnits = [...customUnits, ...userAddedUnits];
       if (!allCustomUnits.includes(trimmedUnit)) {
         setUserAddedUnits([...userAddedUnits, trimmedUnit]);
       }
@@ -93,7 +117,6 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
 
   const handleChange = (selectedValue: string) => {
     // Check if it's a custom unit (from backend or user-added)
-    const allCustomUnits = [...customUnits, ...userAddedUnits];
     const isCustomUnit = allCustomUnits.includes(selectedValue);
 
     if (isCustomUnit) {
@@ -108,24 +131,6 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewCustomUnit(e.target.value);
   };
-
-  // Standard unit options
-  const standardOptions = Object.values(UnitOfMeasurement)
-    .filter((unit) => unit !== UnitOfMeasurement.Other)
-    .map((unit) => ({
-      label: startCase(unit.toLowerCase()),
-      value: unit,
-    }));
-
-  // Combine backend custom units and user-added units
-  const allCustomUnits = [...new Set([...customUnits, ...userAddedUnits])];
-  const customOptions = allCustomUnits.map((unit) => ({
-    label: unit,
-    value: unit,
-  }));
-
-  // Combine all options - standard units first, then custom units
-  const allOptions = [...standardOptions, ...customOptions];
 
   // Determine display value
   const displayValue = value === UnitOfMeasurement.Other ? customValue : value;

@@ -15,7 +15,7 @@ import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
@@ -30,6 +30,7 @@ import {
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import './unit-of-measurement-header.less';
 
 interface UnitOfMeasurementInfoItemProps {
   label: string;
@@ -51,19 +52,26 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
 
   const modiFiedLabel = label.toLowerCase().replace(/\s+/g, '-');
 
-  // Fetch custom units from backend on component mount
-  useEffect(() => {
-    const fetchCustomUnits = async () => {
-      try {
-        const units = await getCustomUnitsOfMeasurement();
-        setCustomUnits(units || []);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    };
+  const fetchCustomUnits = useCallback(async () => {
+    try {
+      const units = await getCustomUnitsOfMeasurement();
+      setCustomUnits(units || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchCustomUnits();
   }, []);
+
+  const currentValue = useMemo(() => {
+    if (metricDetails.unitOfMeasurement === UnitOfMeasurement.Other) {
+      return metricDetails.customUnitOfMeasurement;
+    }
+
+    return metricDetails.unitOfMeasurement;
+  }, [metricDetails.unitOfMeasurement, metricDetails.customUnitOfMeasurement]);
 
   const allOptions = useMemo(() => {
     // Standard unit options (excluding 'Other' as it's handled via custom units)
@@ -82,21 +90,12 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
       value: unit,
     }));
 
-    const currentValue =
-      metricDetails.unitOfMeasurement === UnitOfMeasurement.Other
-        ? metricDetails.customUnitOfMeasurement
-        : metricDetails.unitOfMeasurement;
-
     return getSortedOptions(
       [...standardOptions, ...customOptions],
       currentValue,
       'unitOfMeasurement'
     );
-  }, [
-    customUnits,
-    metricDetails.unitOfMeasurement,
-    metricDetails.customUnitOfMeasurement,
-  ]);
+  }, [customUnits, currentValue]);
 
   const handleUpdate = async (value: string | undefined) => {
     try {
@@ -126,20 +125,12 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
     }
   };
 
-  const getCurrentValue = () => {
-    if (metricDetails.unitOfMeasurement === UnitOfMeasurement.Other) {
-      return metricDetails.customUnitOfMeasurement;
-    }
-
-    return metricDetails.unitOfMeasurement;
-  };
-
   const list = (
     <List
+      className="unit-of-measurement-header"
       dataSource={allOptions}
       itemLayout="vertical"
       renderItem={(item) => {
-        const currentValue = getCurrentValue();
         const isActive = currentValue === item.value;
 
         return (
@@ -177,10 +168,6 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
         );
       }}
       size="small"
-      style={{
-        maxHeight: '250px',
-        overflowY: 'auto',
-      }}
     />
   );
 
@@ -221,7 +208,7 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
             )}
           </div>
           <div className={classNames('font-medium extra-info-value')}>
-            {getCurrentValue() ?? NO_DATA_PLACEHOLDER}
+            {currentValue ?? NO_DATA_PLACEHOLDER}
           </div>
         </Typography.Text>
       </div>
