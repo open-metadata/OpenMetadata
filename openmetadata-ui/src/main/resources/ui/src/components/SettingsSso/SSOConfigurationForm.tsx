@@ -66,6 +66,7 @@ import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../common/Loader/Loader';
 import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import ProviderSelector from './ProviderSelector';
 import './SSOConfigurationForm.less';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
@@ -122,6 +123,7 @@ const SSOConfigurationFormRJSF = ({
   const [hasExistingConfig, setHasExistingConfig] = useState<boolean>(false);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -945,6 +947,27 @@ const SSOConfigurationFormRJSF = ({
     }
   };
 
+  const handleCancelConfirm = () => {
+    setShowCancelModal(false);
+    // Reset to provider selection
+    setShowProviderSelector(true);
+    setShowForm(false);
+    setIsEditMode(false);
+    setCurrentProvider(undefined);
+    setInternalData(undefined);
+    setSavedData(undefined);
+    setHasExistingConfig(false);
+
+    // Notify parent component about change
+    if (onChangeProvider) {
+      onChangeProvider();
+    }
+  };
+
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
+  };
+
   const handleProviderSelect = (provider: AuthProvider) => {
     // If selecting a new provider when one already exists, don't overwrite the saved data
     setCurrentProvider(provider);
@@ -1080,6 +1103,14 @@ const SSOConfigurationFormRJSF = ({
               {isEditMode && (
                 <div className="form-actions-bottom">
                   <Button
+                    className="cancel-sso-configuration text-md"
+                    data-testid="cancel-sso-configuration"
+                    type="link"
+                    onClick={() => setShowCancelModal(true)}>
+                    {t('label.cancel-lowercase')}
+                  </Button>
+                  <Button
+                    className="save-sso-configuration text-md"
                     data-testid="save-sso-configuration"
                     disabled={isLoading}
                     loading={isLoading}
@@ -1147,40 +1178,60 @@ const SSOConfigurationFormRJSF = ({
   );
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        children: (
-          <>
-            {wrappedFormContent}
-            {isEditMode && (
-              <div className="form-actions-bottom">
-                <Button
-                  data-testid="save-sso-configuration"
-                  disabled={isLoading}
-                  loading={isLoading}
-                  type="primary"
-                  onClick={handleSave}>
-                  {t('label.save')}
-                </Button>
-              </div>
-            )}
-          </>
-        ),
-        minWidth: 700,
-        flex: 0.7,
-        className: 'content-resizable-panel-container',
-      }}
-      secondPanel={{
-        children: (
-          <SSODocPanel
-            activeField={activeField}
-            serviceName={currentProvider || 'general'}
-          />
-        ),
-        minWidth: 400,
-      }}
-    />
+    <>
+      <ConfirmationModal
+        bodyText={t('message.unsaved-changes-warning')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={t('message.are-you-sure')}
+        visible={showCancelModal}
+        onCancel={handleCancelModalClose}
+        onConfirm={handleCancelConfirm}
+      />
+
+      <ResizablePanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          children: (
+            <>
+              {wrappedFormContent}
+              {isEditMode && (
+                <div className="form-actions-bottom">
+                  <Button
+                    className="cancel-sso-configuration text-md"
+                    data-testid="cancel-sso-configuration"
+                    type="link"
+                    onClick={() => setShowCancelModal(true)}>
+                    {t('label.cancel-lowercase')}
+                  </Button>
+                  <Button
+                    className="save-sso-configuration text-md"
+                    data-testid="save-sso-configuration"
+                    disabled={isLoading}
+                    loading={isLoading}
+                    type="primary"
+                    onClick={handleSave}>
+                    {t('label.save')}
+                  </Button>
+                </div>
+              )}
+            </>
+          ),
+          minWidth: 700,
+          flex: 0.7,
+          className: 'content-resizable-panel-container',
+        }}
+        secondPanel={{
+          children: (
+            <SSODocPanel
+              activeField={activeField}
+              serviceName={currentProvider || 'general'}
+            />
+          ),
+          minWidth: 400,
+        }}
+      />
+    </>
   );
 };
 
