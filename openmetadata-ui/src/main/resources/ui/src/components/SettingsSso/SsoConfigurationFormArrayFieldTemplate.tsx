@@ -68,6 +68,15 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     return undefined;
   };
 
+  const getPlaceholderText = () => {
+    const uiSchemaPlaceholder = props.uiSchema?.['ui:placeholder'];
+    if (uiSchemaPlaceholder) {
+      return uiSchemaPlaceholder;
+    }
+
+    return t('label.enter-each-value-and-press-enter');
+  };
+
   const id = props.idSchema.$id;
   const value = props.formData ?? [];
   const options = generateOptions();
@@ -129,7 +138,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           mode={options ? 'multiple' : 'tags'}
           open={options ? undefined : false}
           options={options}
-          placeholder={t('label.enter-each-value-and-press-enter')}
+          placeholder={getPlaceholderText()}
           tagRender={SsoCustomTagRenderer}
           value={value}
           onBlur={() => props.onBlur(id, value)}

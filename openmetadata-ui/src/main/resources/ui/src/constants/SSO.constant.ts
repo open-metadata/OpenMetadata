@@ -43,12 +43,31 @@ export const AUTHORIZER_HIDDEN_FIELDS = {
 export const LDAP_UI_SCHEMA = {
   ldapConfiguration: {
     'ui:title': 'LDAP Configuration',
-    host: { 'ui:title': 'LDAP Host' },
-    port: { 'ui:title': 'LDAP Port' },
-    dnAdminPrincipal: { 'ui:title': 'Admin Principal DN' },
-    dnAdminPassword: { 'ui:title': 'Admin Password', 'ui:widget': 'password' },
-    userBaseDN: { 'ui:title': 'User Base DN' },
-    groupBaseDN: { 'ui:title': 'Group Base DN' },
+    host: {
+      'ui:title': 'LDAP Host',
+      'ui:placeholder': 'e.g. ldap.example.com',
+    },
+    port: {
+      'ui:title': 'LDAP Port',
+      'ui:placeholder': 'e.g. 389 or 636',
+    },
+    dnAdminPrincipal: {
+      'ui:title': 'Admin Principal DN',
+      'ui:placeholder': 'e.g. cn=admin,dc=example,dc=com',
+    },
+    dnAdminPassword: {
+      'ui:title': 'Admin Password',
+      'ui:widget': 'password',
+      'ui:placeholder': 'Enter LDAP admin password',
+    },
+    userBaseDN: {
+      'ui:title': 'User Base DN',
+      'ui:placeholder': 'e.g. ou=users,dc=example,dc=com',
+    },
+    groupBaseDN: {
+      'ui:title': 'Group Base DN',
+      'ui:placeholder': 'e.g. ou=groups,dc=example,dc=com',
+    },
     sslEnabled: { 'ui:title': 'Enable SSL' },
     maxPoolSize: { 'ui:title': 'Max Pool Size' },
     isFullDn: { 'ui:title': 'Full DN Required' },
@@ -59,8 +78,14 @@ export const LDAP_UI_SCHEMA = {
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
-    authRolesMapping: { 'ui:title': 'Auth Roles Mapping' },
-    authReassignRoles: { 'ui:title': 'Auth Reassign Roles' },
+    authRolesMapping: {
+      'ui:title': 'Auth Roles Mapping',
+      'ui:placeholder': 'Enter JSON string for role mappings',
+    },
+    authReassignRoles: {
+      'ui:title': 'Auth Reassign Roles',
+      'ui:placeholder': 'Enter value (e.g. Admin, DataSteward) and press ENTER',
+    },
     // Hide trustStore fields as they are not commonly used
     truststoreConfigType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     trustStoreConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -138,10 +163,24 @@ export const OIDC_UI_SCHEMA = {
   oidcConfiguration: {
     'ui:title': 'OIDC Configuration',
     type: { 'ui:title': 'OIDC IDP Type' },
-    id: { 'ui:title': 'OIDC Client ID' },
-    secret: { 'ui:title': 'OIDC Client Secret', 'ui:widget': 'password' },
-    scope: { 'ui:title': 'OIDC Request Scopes' },
-    discoveryUri: { 'ui:title': 'OIDC Discovery URI' },
+    id: {
+      'ui:title': 'OIDC Client ID',
+      'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
+    },
+    secret: {
+      'ui:title': 'OIDC Client Secret',
+      'ui:widget': 'password',
+      'ui:placeholder': 'Enter your OIDC client secret',
+    },
+    scope: {
+      'ui:title': 'OIDC Request Scopes',
+      'ui:placeholder': 'e.g. openid email profile',
+    },
+    discoveryUri: {
+      'ui:title': 'OIDC Discovery URI',
+      'ui:placeholder':
+        'e.g. https://accounts.google.com/.well-known/openid_configuration',
+    },
     useNonce: { 'ui:title': 'OIDC Use Nonce' },
     preferredJwsAlgorithm: { 'ui:title': 'OIDC Preferred JWS Algorithm' },
     responseType: { 'ui:title': 'OIDC Response Type' },
@@ -152,9 +191,18 @@ export const OIDC_UI_SCHEMA = {
     },
     tokenValidity: { 'ui:title': 'OIDC Token Validity' },
     customParams: { 'ui:title': 'OIDC Custom Parameters' },
-    tenant: { 'ui:title': 'OIDC Tenant' },
-    serverUrl: { 'ui:title': 'OIDC Server URL' },
-    callbackUrl: { 'ui:title': 'OIDC Callback URL' },
+    tenant: {
+      'ui:title': 'OIDC Tenant',
+      'ui:placeholder': 'e.g. your-tenant-id',
+    },
+    serverUrl: {
+      'ui:title': 'OIDC Server URL',
+      'ui:placeholder': 'e.g. https://your-domain.auth0.com',
+    },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    },
     maxAge: { 'ui:title': 'OIDC Max Age' },
     prompt: { 'ui:title': 'OIDC Prompt' },
     sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
@@ -171,10 +219,24 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   oidcConfiguration: {
     'ui:title': 'OIDC Configuration',
     type: { 'ui:title': 'OIDC IDP Type' },
-    id: { 'ui:title': 'OIDC Client ID' },
-    secret: { 'ui:title': 'OIDC Client Secret', 'ui:widget': 'password' },
-    scope: { 'ui:title': 'OIDC Request Scopes' },
-    discoveryUri: { 'ui:title': 'OIDC Discovery URI' },
+    id: {
+      'ui:title': 'OIDC Client ID',
+      'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
+    },
+    secret: {
+      'ui:title': 'OIDC Client Secret',
+      'ui:widget': 'password',
+      'ui:placeholder': 'Enter your OIDC client secret',
+    },
+    scope: {
+      'ui:title': 'OIDC Request Scopes',
+      'ui:placeholder': 'e.g. openid email profile',
+    },
+    discoveryUri: {
+      'ui:title': 'OIDC Discovery URI',
+      'ui:placeholder':
+        'e.g. https://accounts.google.com/.well-known/openid_configuration',
+    },
     useNonce: { 'ui:title': 'OIDC Use Nonce' },
     preferredJwsAlgorithm: { 'ui:title': 'OIDC Preferred JWS Algorithm' },
     responseType: { 'ui:title': 'OIDC Response Type' },
@@ -185,9 +247,18 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     },
     tokenValidity: { 'ui:title': 'OIDC Token Validity' },
     customParams: { 'ui:title': 'OIDC Custom Parameters' },
-    tenant: { 'ui:title': 'OIDC Tenant' },
-    serverUrl: { 'ui:title': 'OIDC Server URL' },
-    callbackUrl: { 'ui:title': 'OIDC Callback URL' },
+    tenant: {
+      'ui:title': 'OIDC Tenant',
+      'ui:placeholder': 'e.g. your-tenant-id',
+    },
+    serverUrl: {
+      'ui:title': 'OIDC Server URL',
+      'ui:placeholder': 'e.g. https://your-domain.auth0.com',
+    },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    },
     maxAge: { 'ui:title': 'OIDC Max Age' },
     prompt: { 'ui:title': 'OIDC Prompt' },
     sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
@@ -200,13 +271,32 @@ export const COMMON_FIELD_TITLES = {
     'ui:title': 'Provider',
     'ui:options': { 'data-testid': 'sso-provider-field' },
   },
-  providerName: { 'ui:title': 'Provider Name' },
-  authority: { 'ui:title': 'Authority' },
-  clientId: { 'ui:title': 'Client ID' },
-  callbackUrl: { 'ui:title': 'Callback URL' },
-  publicKeyUrls: { 'ui:title': 'Public Key URLs' },
+  providerName: {
+    'ui:title': 'Provider Name',
+    'ui:placeholder': 'e.g. My Company SSO',
+  },
+  authority: {
+    'ui:title': 'Authority',
+    'ui:placeholder': 'e.g. https://accounts.google.com',
+  },
+  clientId: {
+    'ui:title': 'Client ID',
+    'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
+  },
+  callbackUrl: {
+    'ui:title': 'Callback URL',
+    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+  },
+  publicKeyUrls: {
+    'ui:title': 'Public Key URLs',
+    'ui:placeholder':
+      'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
+  },
   tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
-  jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
+  jwtPrincipalClaims: {
+    'ui:title': 'JWT Principal Claims',
+    'ui:placeholder': 'Enter value (e.g. email, sub, name) and press ENTER',
+  },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   clientType: {
     'ui:title': 'Client Type',
@@ -215,16 +305,31 @@ export const COMMON_FIELD_TITLES = {
       inline: true,
     },
   },
-  secret: { 'ui:title': 'Client Secret', 'ui:widget': 'password' },
+  secret: {
+    'ui:title': 'Client Secret',
+    'ui:widget': 'password',
+    'ui:placeholder': 'Enter your client secret',
+  },
 };
 
 // Authorizer field titles
 export const AUTHORIZER_FIELD_TITLES = {
   className: { 'ui:widget': 'hidden', 'ui:hideError': true },
   containerRequestFilter: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  adminPrincipals: { 'ui:title': 'Admin Principals' },
-  botPrincipals: { 'ui:title': 'Bot Principals' },
-  principalDomain: { 'ui:title': 'Principal Domain' },
+  adminPrincipals: {
+    'ui:title': 'Admin Principals',
+    'ui:placeholder':
+      'Enter value (e.g. admin@example.com, security@example.com) and press ENTER',
+  },
+  botPrincipals: {
+    'ui:title': 'Bot Principals',
+    'ui:placeholder':
+      'Enter value (e.g. ingestion-bot@example.com) and press ENTER',
+  },
+  principalDomain: {
+    'ui:title': 'Principal Domain',
+    'ui:placeholder': 'e.g. https://accounts.google.com',
+  },
   enforcePrincipalDomain: { 'ui:title': 'Enforce Principal Domain' },
   enableSecureSocketConnection: {
     'ui:title': 'Enable Secure Socket Connection',
