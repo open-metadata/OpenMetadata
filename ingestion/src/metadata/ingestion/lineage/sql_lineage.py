@@ -320,6 +320,9 @@ def __process_udf_es_results(
     es_result_entities: List[StoredProcedure],
     procedure: Optional[StoredProcedure] = None,
 ):
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     for entity in es_result_entities:
         if (
             entity.storedProcedureType == StoredProcedureType.UDF
@@ -365,6 +368,9 @@ def __process_udf_table_names(
     column_lineage: dict,
     procedure: Optional[StoredProcedure] = None,
 ):
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     database_query, schema_query, table = get_table_fqn_from_query_name(
         str(source_table)
     )
@@ -408,6 +414,9 @@ def get_source_table_names(
     """
     Get source table names from DataFunction
     """
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     try:
         if not isinstance(source_table, DataFunction):
             yield (
@@ -609,6 +618,9 @@ def _create_lineage_by_table_name(
     """
     This method is to create a lineage between two tables
     """
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     try:
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
