@@ -6,9 +6,9 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
 @Slf4j
@@ -50,14 +50,16 @@ public class CachedEntityDao {
 
   private String fetchEntityFromDatabase(UUID entityId, String entityType) {
     try {
-      // Get the repository for this entity type
+      // Directly fetch the raw JSON from database - this will have null relationship fields
+      // just like how it's stored in the database
       EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      if (repository != null) {
-        // Fetch the entity
-        Object entity = repository.get(null, entityId, repository.getFields("*"));
-        if (entity != null) {
-          // Convert to JSON
-          return JsonUtils.pojoToJson(entity);
+      if (repository != null && repository.getDao() != null) {
+        EntityDAO<?> entityDao = repository.getDao();
+        String tableName = entityDao.getTableName();
+        String entityJson = entityDao.findById(tableName, entityId, "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          LOG.debug("Fetched raw entity JSON from database: {} -> {}", entityType, entityId);
+          return entityJson;
         }
       }
     } catch (Exception e) {
@@ -71,15 +73,23 @@ public class CachedEntityDao {
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
+      LOG.warn(
+          "CACHE: Skipping cache write for empty entity JSON - Type: {}, ID: {}",
+          entityType,
+          entityId);
       return;
     }
 
     String cacheKey = keys.entity(entityType, entityId);
+    LOG.info(
+        "CACHE: Writing entity to Redis - Key: {}, JSON length: {}", cacheKey, entityJson.length());
     try {
       cache.hset(cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
-      LOG.debug("Write-through cached entity: {} -> {}", entityType, entityId);
+      LOG.info(
+          "CACHE: Successfully wrote entity to Redis - Type: {} -> ID: {}", entityType, entityId);
     } catch (Exception e) {
-      LOG.warn("Failed to write-through cache entity: {} -> {}", entityType, entityId, e);
+      LOG.error(
+          "CACHE: Failed to write entity to Redis - Type: {} -> ID: {}", entityType, entityId, e);
     }
   }
 
@@ -88,15 +98,30 @@ public class CachedEntityDao {
    */
   public void putByName(String entityType, String fqn, String entityJson) {
     if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
+      LOG.warn(
+          "CACHE: Skipping cache write by name for empty entity JSON - Type: {}, FQN: {}",
+          entityType,
+          fqn);
       return;
     }
 
     String cacheKey = keys.entityByName(entityType, fqn);
+    LOG.info(
+        "CACHE: Writing entity by name to Redis - Key: {}, JSON length: {}",
+        cacheKey,
+        entityJson.length());
     try {
       cache.set(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds));
-      LOG.debug("Write-through cached entity by name: {} -> {}", entityType, fqn);
+      LOG.info(
+          "CACHE: Successfully wrote entity by name to Redis - Type: {} -> FQN: {}",
+          entityType,
+          fqn);
     } catch (Exception e) {
-      LOG.warn("Failed to write-through cache entity by name: {} -> {}", entityType, fqn, e);
+      LOG.error(
+          "CACHE: Failed to write entity by name to Redis - Type: {} -> FQN: {}",
+          entityType,
+          fqn,
+          e);
     }
   }
 

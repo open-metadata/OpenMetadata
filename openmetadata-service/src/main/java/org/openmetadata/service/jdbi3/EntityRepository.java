@@ -1468,7 +1468,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      LOG.debug(
+      LOG.info(
           "CACHE: Writing entity to cache - Type: {}, ID: {}, FQN: {}, Update: {}",
           entityType,
           entity.getId(),
@@ -1478,19 +1478,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Update Guava LoadingCache for local caching
       CACHE_WITH_ID.put(new ImmutablePair<>(entityType, entity.getId()), entity);
       CACHE_WITH_NAME.put(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()), entity);
-      LOG.debug("CACHE: Updated Guava LoadingCache for {}", entity.getId());
+      LOG.info("CACHE: Updated Guava LoadingCache for {}", entity.getId());
 
       // Update Redis cache for distributed caching
       var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      if (cachedEntityDao != null) {
-        // Store entity in cache after DB write
-        String entityJson = JsonUtils.pojoToJson(entity);
-        cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-        LOG.debug("CACHE: Stored entity in Redis by ID - {}", entity.getId());
+      LOG.info("CACHE: CachedEntityDao check - available: {}", cachedEntityDao != null);
+      if (cachedEntityDao != null && entity.getId() != null) {
+        // IMPORTANT: Fetch the raw JSON from database instead of serializing the entity
+        // This ensures we cache the JSON with null relationship fields, just like it's stored in DB
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        LOG.info(
+            "CACHE: Fetched entity JSON from DB, length: {}",
+            entityJson != null ? entityJson.length() : 0);
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          LOG.info("CACHE: Stored raw entity JSON in Redis by ID - {}", entity.getId());
 
-        // Also store by name for fast lookups
-        cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
-        LOG.debug("CACHE: Stored entity in Redis by name - {}", entity.getFullyQualifiedName());
+          // Also store by name for fast lookups
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+            LOG.info(
+                "CACHE: Stored raw entity JSON in Redis by name - {}",
+                entity.getFullyQualifiedName());
+          }
+        } else {
+          LOG.warn(
+              "CACHE: Could not fetch entity JSON from database for caching - Type: {}, ID: {}",
+              entityType,
+              entity.getId());
+        }
 
         // Store relationships if present
         var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
@@ -2914,7 +2930,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<TagLabel> getTags(T entity) {
-    return !supportsTags ? null : getTags(entity.getFullyQualifiedName());
+    if (!supportsTags) {
+      return null;
+    }
+
+    // Try to get from cache first
+    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    if (cachedTagUsageDao != null) {
+      List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<TagLabel> tags = getTags(entity.getFullyQualifiedName());
+
+    // Cache the result for next time
+    if (cachedTagUsageDao != null && tags != null) {
+      String tagsJson = JsonUtils.pojoToJson(tags);
+      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+    }
+
+    return tags;
   }
 
   protected List<TagLabel> getTags(String fqn) {
@@ -2923,7 +2962,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Populate Glossary Tags on Read
-    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+    List<TagLabel> tags = addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+
+    // Try to cache the result if we have an entity ID
+    // Note: This method is also called from other contexts, so we need to be careful
+    // For now, caching happens in the getTags(T entity) method above
+
+    return tags;
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
@@ -3374,9 +3419,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
-    return supportsOwners
-        ? findFrom(entity.getId(), entityType, Relationship.OWNS, null)
-        : Collections.emptyList();
+    if (!supportsOwners) {
+      return Collections.emptyList();
+    }
+
+    // Try to get from cache first
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    if (cachedRelationshipDao != null) {
+      List<EntityReference> cached = cachedRelationshipDao.getOwners(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved owners from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<EntityReference> owners = findFrom(entity.getId(), entityType, Relationship.OWNS, null);
+
+    // Cache the result for next time
+    if (cachedRelationshipDao != null && owners != null) {
+      String ownersJson = JsonUtils.pojoToJson(owners);
+      cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
+    }
+
+    return owners;
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
@@ -3394,7 +3460,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entity);
       return null;
     }
-    return getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
+
+    // Try to get from cache first
+    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    if (cachedRelationshipDao != null) {
+      List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
+      if (cached != null) {
+        LOG.debug("CACHE HIT: Retrieved domains from cache for {} {}", entityType, entity.getId());
+        return cached;
+      }
+    }
+
+    // Fall back to database
+    List<EntityReference> domains = getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
+
+    // Cache the result for next time
+    if (cachedRelationshipDao != null && domains != null) {
+      String domainsJson = JsonUtils.pojoToJson(domains);
+      cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
+    }
+
+    return domains;
   }
 
   private List<EntityReference> getDataProducts(T entity) {

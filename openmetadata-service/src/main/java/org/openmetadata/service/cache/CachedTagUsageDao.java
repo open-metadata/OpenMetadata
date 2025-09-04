@@ -53,6 +53,22 @@ public class CachedTagUsageDao {
   }
 
   /**
+   * Get cached tags for an entity
+   */
+  public List<TagLabel> getTags(String entityType, UUID entityId) {
+    String cacheKey = keys.entity(entityType, entityId);
+    try {
+      Optional<String> cached = cache.hget(cacheKey, "tags");
+      if (cached.isPresent()) {
+        return JsonUtils.readValue(cached.get(), TAG_LIST_TYPE);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get cached tags: {} -> {}", entityType, entityId, e);
+    }
+    return null;
+  }
+
+  /**
    * Write-through cache: Store tags for entity
    */
   public void putTags(String entityType, UUID entityId, String tagsJson) {

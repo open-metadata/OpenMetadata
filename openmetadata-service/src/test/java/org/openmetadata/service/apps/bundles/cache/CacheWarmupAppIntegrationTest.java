@@ -4,14 +4,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.simulateWork;
 
+import io.dropwizard.testing.ConfigOverride;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
 import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -56,9 +65,9 @@ import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.cache.CacheTestBase;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -72,14 +81,25 @@ import org.quartz.Scheduler;
 import org.quartz.Trigger;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.triggers.SimpleTriggerImpl;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class CacheWarmupAppIntegrationTest extends CacheTestBase {
+public class CacheWarmupAppIntegrationTest extends OpenMetadataApplicationTest {
 
   private CacheWarmupApp cacheWarmupApp;
   private CollectionDAO collectionDAO;
   private SearchRepository searchRepository;
+
+  // Redis container and connection
+  private static GenericContainer<?> REDIS_CONTAINER;
+  private static String REDIS_URL;
+  private static String REDIS_HOST;
+  private static int REDIS_PORT;
+  private static RedisClient redisClient;
+  private static StatefulRedisConnection<String, String> redisConnection;
+  private static RedisCommands<String, String> redisCommands;
 
   // Services
   private DatabaseService databaseService;
@@ -95,6 +115,57 @@ public class CacheWarmupAppIntegrationTest extends CacheTestBase {
   private final List<Topic> topics = new ArrayList<>();
   private final List<Pipeline> pipelines = new ArrayList<>();
 
+  @BeforeAll
+  @Override
+  public void createApplication() throws Exception {
+    // Start Redis container first
+    startRedisContainer();
+
+    // Configure application to use Redis
+    configOverrides.add(ConfigOverride.config("cache.provider", "redis"));
+    configOverrides.add(ConfigOverride.config("cache.redis.url", REDIS_HOST + ":" + REDIS_PORT));
+    configOverrides.add(ConfigOverride.config("cache.redis.keyspace", "om:test"));
+    configOverrides.add(ConfigOverride.config("cache.redis.authType", "PASSWORD"));
+    configOverrides.add(ConfigOverride.config("cache.redis.passwordRef", "test-password"));
+    configOverrides.add(ConfigOverride.config("cache.redis.database", "0"));
+    configOverrides.add(ConfigOverride.config("cache.entityTtlSeconds", "900"));
+    configOverrides.add(ConfigOverride.config("cache.relationshipTtlSeconds", "172800"));
+
+    // Call parent to create application with our config
+    super.createApplication();
+
+    // Connect Redis client for verification
+    RedisURI uri =
+        RedisURI.builder()
+            .withHost(REDIS_HOST)
+            .withPort(REDIS_PORT)
+            .withPassword("test-password".toCharArray())
+            .withDatabase(0)
+            .withTimeout(Duration.ofSeconds(5))
+            .build();
+    redisClient = RedisClient.create(uri);
+    redisConnection = redisClient.connect();
+    redisCommands = redisConnection.sync();
+  }
+
+  private void startRedisContainer() {
+    LOG.info("Starting Redis container for cache warmup integration tests");
+
+    REDIS_CONTAINER =
+        new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(6379)
+            .withCommand("redis-server", "--requirepass", "test-password")
+            .withStartupTimeout(Duration.ofMinutes(2));
+
+    REDIS_CONTAINER.start();
+
+    REDIS_HOST = REDIS_CONTAINER.getHost();
+    REDIS_PORT = REDIS_CONTAINER.getFirstMappedPort();
+    REDIS_URL = String.format("redis://:test-password@%s:%d", REDIS_HOST, REDIS_PORT);
+
+    LOG.info("Redis container started at: {}", REDIS_URL);
+  }
+
   @BeforeEach
   public void setup() {
     // Clear any existing data
@@ -102,6 +173,26 @@ public class CacheWarmupAppIntegrationTest extends CacheTestBase {
     dashboards.clear();
     topics.clear();
     pipelines.clear();
+  }
+
+  @AfterAll
+  @Override
+  public void stopApplication() throws Exception {
+    // Close Redis connections
+    if (redisConnection != null) {
+      redisConnection.close();
+    }
+    if (redisClient != null) {
+      redisClient.shutdown();
+    }
+
+    // Stop Redis container
+    if (REDIS_CONTAINER != null) {
+      REDIS_CONTAINER.stop();
+    }
+
+    // Call parent cleanup
+    super.stopApplication();
   }
 
   private void initializeComponentsIfNeeded() {
@@ -164,7 +255,7 @@ public class CacheWarmupAppIntegrationTest extends CacheTestBase {
     cacheWarmupApp.execute(context);
 
     // Wait for completion
-    Thread.sleep(5000);
+    simulateWork(5000);
 
     // Stop the app
     cacheWarmupApp.stop();
@@ -211,7 +302,7 @@ public class CacheWarmupAppIntegrationTest extends CacheTestBase {
     cacheWarmupApp.execute(context);
 
     // Wait for completion
-    Thread.sleep(5000);
+    simulateWork(5000);
 
     // Stop the app
     cacheWarmupApp.stop();
@@ -266,7 +357,7 @@ public class CacheWarmupAppIntegrationTest extends CacheTestBase {
     thread1.start();
 
     // Give first instance time to acquire lock
-    Thread.sleep(500);
+    simulateWork(500);
 
     // Try to start second instance
     LOG.info("Attempting to start second cache warmup instance");
