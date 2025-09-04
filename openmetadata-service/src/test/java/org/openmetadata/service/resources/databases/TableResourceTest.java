@@ -5298,7 +5298,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertNotNull(restoredTable);
     assertFalse(restoredTable.getDeleted());
 
-    // Get the fully restored table with all fields
     Table fullyRestoredTable = getEntity(table.getId(), "domains,dataProducts", ADMIN_AUTH_HEADERS);
 
     // Verify domain is still present (inherited from schema)
