@@ -191,7 +191,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../hooks/useCustomPages', () => ({
-  useCustomPages: jest.fn(),
+  useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
