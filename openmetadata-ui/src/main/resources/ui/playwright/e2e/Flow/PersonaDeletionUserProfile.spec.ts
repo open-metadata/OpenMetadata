@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
@@ -24,11 +24,7 @@ import {
 import { validateFormNameFieldInput } from '../../utils/form';
 import { setPersonaAsDefault } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
-
-// use the admin user to login
-test.use({
-  storageState: 'playwright/.auth/admin.json',
-});
+import { test } from '../fixtures/pages';
 
 const PERSONA_DETAILS = {
   name: `test-persona-${uuid()}`,
@@ -118,8 +114,12 @@ test.describe.serial('User profile works after persona deletion', () => {
     // Step 2: Navigate directly to user profile and verify persona is shown
     await test.step('Verify persona appears on user profile', async () => {
       // Go directly to user profile URL
-      await page.goto(`http://localhost:8585/users/${user.responseData.name}`);
+      await page.goto(`/users/${user.responseData.name}`);
       await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Check if persona appears on the user profile
       const personaCard = page.getByTestId('persona-details-card');
