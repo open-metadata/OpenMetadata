@@ -534,6 +534,8 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Request
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +576,14 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
 }
 
 /**
@@ -4621,6 +4631,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Response
  */
 export interface TestConnectionResult {
     /**
@@ -4629,6 +4641,8 @@ export interface TestConnectionResult {
     lastUpdatedAt?: number;
     /**
      * Test Connection Result computation status.
+     *
+     * Status of the query execution
      */
     status?: StatusType;
     /**
@@ -4641,8 +4655,10 @@ export interface TestConnectionResult {
     message?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * Results of the query execution
      */
-    results?: ReverseIngestionOperationResult[];
+    results?: ReverseIngestionOperationResult[] | TableData;
     /**
      * The id of the service to be modified
      */
@@ -4652,6 +4668,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
+     * Detailed error log in case of failure
+     */
+    errorLog?: string;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4671,9 +4695,29 @@ export interface ReverseIngestionOperationResult {
 }
 
 /**
+ * Results of the query execution
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Test Connection Result computation status.
  *
  * Enum defining possible Test Connection Result status
+ *
+ * Status of the query execution
+ *
+ * Enum defining possible Query Runner status
  */
 export enum StatusType {
     Failed = "Failed",
@@ -4727,6 +4771,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
 }
