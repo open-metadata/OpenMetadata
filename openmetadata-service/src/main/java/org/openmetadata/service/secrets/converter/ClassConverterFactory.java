@@ -17,6 +17,7 @@ import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
@@ -93,17 +94,19 @@ public final class ClassConverterFactory {
             Map.entry(
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
+            Map.entry(
+                TestSparkEngineConnectionRequest.class,
+                new TestSparkEngineConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()),
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
-            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-            Map.entry(RangerConnection.class, new RangerConnectionClassConverter()));
-    Map.entry(Workflow.class, new WorkflowClassConverter());
-    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
-    Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
+            Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
+            Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
+            Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
+            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
