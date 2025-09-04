@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -1080,6 +1081,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          if (service instanceof MetadataService) {
+            ((MetadataService) service).setIngestionRunner(app.getIngestionRunner());
+          }
+        }
+
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         return Response.status(response.getCode()).entity(response).build();
@@ -1165,6 +1173,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          if (service instanceof MetadataService) {
+            ((MetadataService) service).setIngestionRunner(app.getIngestionRunner());
+          }
+        }
+
         PipelineServiceClientResponse status =
             pipelineServiceClient.deployPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
