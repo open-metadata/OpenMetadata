@@ -28,6 +28,7 @@ from metadata.generated.schema.api.tests.createCustomMetric import (
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
+    PipelineObservability,
     SystemProfile,
     Table,
     TableData,
@@ -181,6 +182,21 @@ class OMetaTableMixin:
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.root}/dataModel",
             data=data_model.model_dump_json(),
+        )
+        return Table(**resp)
+
+    def ingest_table_pipeline_observability(
+        self, table: Table, pipeline_observability: PipelineObservability
+    ) -> Table:
+        """
+        PUT pipeline observability for a table
+
+        :param table: Table Entity to update
+        :param pipeline_observability: Pipeline Observability to add
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/{table.id.root}/pipeline_observability",
+            data=pipeline_observability.model_dump_json(),
         )
         return Table(**resp)
 
