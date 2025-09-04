@@ -160,7 +160,7 @@ class KafkaconnectSource(PipelineServiceSource):
                                 metadata=self.metadata,
                                 entity_type=dataset_details.dataset_type,
                                 container_name=dataset_details.container_name,
-                                service_name="s3_storage_sample",
+                                service_name=storageservicename,
                                 parent_container=None,
                             ),
                         )
