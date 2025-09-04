@@ -248,7 +248,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel1.entity.project,
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
-      status: ['Approved', 'In Review'],
+      entityStatus: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
