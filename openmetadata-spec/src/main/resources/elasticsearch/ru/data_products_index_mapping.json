@@ -4,27 +4,43 @@
       "max_ngram_diff": 17
     },
     "analysis": {
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
       "analyzer": {
         "om_analyzer": {
-          "tokenizer": "letter",
+          "tokenizer": "standard",
           "filter": [
+            "word_delimiter_filter",
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "russian_stop",
+            "russian_snowball",
+            "english_stop",
+            "om_kstem"
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -32,16 +48,16 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
       },
       "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "english"
+        "word_delimiter_filter": {
+          "type": "word_delimiter",
+          "preserve_original": true
         },
         "compound_word_delimiter_graph": {
           "type": "word_delimiter_graph",
@@ -54,6 +70,24 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "russian_snowball": {
+          "name": "russian",
+          "type": "stemmer"
+        },
+        "om_kstem": {
+          "type": "kstem"
+        },
+        "asciifolding": {
+          "type": "asciifolding"
         }
       }
     }
@@ -71,8 +105,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -98,8 +131,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -122,9 +154,12 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
-        "similarity": "boolean"
+        "analyzer": "om_analyzer",
+        "similarity": "boolean",
+        "term_vector": "with_positions_offsets"
+      },
+      "entityType": {
+        "type": "keyword"
       },
       "version": {
         "type": "float"
@@ -138,9 +173,6 @@
       },
       "href": {
         "type": "text"
-      },
-      "entityType": {
-        "type": "keyword"
       },
       "owners": {
         "properties": {
@@ -186,6 +218,57 @@
           },
           "href": {
             "type": "text"
+          }
+        }
+      },
+      "tags": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
@@ -276,60 +359,12 @@
       "extension": {
         "type": "object"
       },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "text": {
-                "type": "text",
-                "analyzer": "om_analyzer"
-              }
-            }
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword",
-            "fields": {
-              "text": {
-                "type": "text",
-                "analyzer": "om_analyzer"
-              }
-            }
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
       "totalVotes": {
         "type": "long",
         "null_value": 0
+      },
+      "votes": {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

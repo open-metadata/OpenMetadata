@@ -1,27 +1,43 @@
 {
   "settings": {
     "analysis": {
+      "tokenizer": {
+        "edge_ngram_tokenizer": {
+          "type": "edge_ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
       "analyzer": {
         "om_analyzer": {
-          "tokenizer": "letter",
+          "tokenizer": "standard",
           "filter": [
+            "word_delimiter_filter",
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "russian_stop",
+            "russian_snowball",
+            "english_stop",
+            "om_kstem"
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "type": "custom",
+          "tokenizer": "edge_ngram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -29,16 +45,16 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
       },
       "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "english"
+        "word_delimiter_filter": {
+          "type": "word_delimiter",
+          "preserve_original": true
         },
         "compound_word_delimiter_graph": {
           "type": "word_delimiter_graph",
@@ -51,6 +67,24 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "russian_snowball": {
+          "name": "russian",
+          "type": "stemmer"
+        },
+        "om_kstem": {
+          "type": "kstem"
+        },
+        "asciifolding": {
+          "type": "asciifolding"
         }
       }
     }
@@ -154,15 +188,11 @@
               },
               "testCaseFailureComment": {
                 "type": "text",
-                "analyzer": "ik_max_word",
+                "analyzer": "om_analyzer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
                     "normalizer": "lowercase_normalizer"
-                  },
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
                   }
                 }
               },
@@ -330,17 +360,14 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "ik_max_word",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer"
-              },
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
               }
-            }
+            },
+            "term_vector": "with_positions_offsets"
           },
           "deleted": {
             "type": "boolean"
@@ -426,7 +453,7 @@
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -533,6 +560,53 @@
           },
           "fullyQualifiedName": {
             "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "domains": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
           },
           "description": {
             "type": "text"

@@ -1,27 +1,43 @@
 {
   "settings": {
     "analysis": {
+      "tokenizer": {
+        "edge_ngram_tokenizer": {
+          "type": "edge_ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
       "analyzer": {
         "om_analyzer": {
-          "tokenizer": "letter",
+          "tokenizer": "standard",
           "filter": [
+            "word_delimiter_filter",
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "russian_stop",
+            "russian_snowball",
+            "english_stop",
+            "om_kstem"
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 3,
-          "max_gram": 10,
+          "type": "custom",
+          "tokenizer": "edge_ngram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -29,16 +45,16 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
       },
       "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "english"
+        "word_delimiter_filter": {
+          "type": "word_delimiter",
+          "preserve_original": true
         },
         "compound_word_delimiter_graph": {
           "type": "word_delimiter_graph",
@@ -51,6 +67,24 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "russian_snowball": {
+          "name": "russian",
+          "type": "stemmer"
+        },
+        "om_kstem": {
+          "type": "kstem"
+        },
+        "asciifolding": {
+          "type": "asciifolding"
         }
       }
     }
@@ -92,11 +126,12 @@
       "testCase": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "ignore_above": 256
           },
           "name": {
             "type": "text",
-            "analyzer": "ik_max_word",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -110,18 +145,12 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer"
-              }
-            }
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "displayName": {
             "type": "text",
-            "analyzer": "ik_max_word",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -135,7 +164,8 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "ik_max_word"
+            "analyzer": "om_analyzer",
+            "term_vector": "with_positions_offsets"
           },
           "testPlatforms": {
             "type": "keyword",
@@ -158,7 +188,7 @@
             "properties": {
               "name": {
                 "type": "text",
-                "analyzer": "ik_max_word",
+                "analyzer": "om_analyzer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
@@ -170,15 +200,6 @@
                 "type": "text"
               }
             }
-          },
-          "testCaseType": {
-            "type": "keyword"
-          },
-          "entityType": {
-            "type": "keyword"
-          },
-          "dataQualityDimension": {
-            "type": "keyword"
           },
           "owners": {
             "properties": {
@@ -327,11 +348,12 @@
       "testDefinition": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "ignore_above": 256
           },
           "name": {
             "type": "text",
-            "analyzer": "ik_max_word",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -345,7 +367,7 @@
           },
           "displayName": {
             "type": "text",
-            "analyzer": "ik_max_word",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -356,7 +378,10 @@
           "description": {
             "type": "text"
           },
-          "type": {
+          "entityType": {
+            "type": "keyword"
+          },
+          "dataQualityDimension": {
             "type": "keyword"
           }
         }
@@ -365,12 +390,7 @@
         "properties": {
           "id": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
+            "ignore_above": 256
           },
           "name": {
             "type": "keyword",
@@ -413,12 +433,7 @@
         "properties": {
           "id": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
+            "ignore_above": 256
           },
           "name": {
             "type": "keyword",
@@ -453,6 +468,48 @@
           },
           "executable": {
             "type": "text"
+          }
+        }
+      },
+      "table": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "service": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "displayName": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
+      },
+      "databaseSchema": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "database": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
           }
         }
       }
