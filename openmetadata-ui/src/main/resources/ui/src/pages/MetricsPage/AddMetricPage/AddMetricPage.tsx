@@ -294,7 +294,6 @@ const AddMetricPage = () => {
                       placeholder={t('label.select-field', {
                         field: t('label.unit-of-measurement'),
                       })}
-                      value={form.getFieldValue('unitOfMeasurement')}
                       onChange={handleUnitOfMeasurementChange}
                     />
                   </Form.Item>
