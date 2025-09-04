@@ -27,7 +27,6 @@ import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
-import { isDev } from '../../utils/EnvironmentUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -275,10 +274,6 @@ const AddMetricPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
   )
-);
-
-const MuiComponentsExample = withSuspenseFallback(
-  React.lazy(() => import('../../theme/mui-components-examples/mui-example'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -726,11 +721,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.ADD_METRIC}
       />
-
-      {/* Development-only MUI Components Example */}
-      {isDev() && (
-        <Route element={<MuiComponentsExample />} path="/components-example" />
-      )}
 
       <Route
         element={<EntityRouter />}
