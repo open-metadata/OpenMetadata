@@ -270,7 +270,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       } else if (node.isLeaf) {
         const filterField = [
           getQuickFilterObject(
-            EntityFields.ENTITY_TYPE_KEYWORD,
+            EntityFields.ENTITY_TYPE,
             node.data?.entityType ?? ''
           ),
         ];
@@ -278,7 +278,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       } else if (node.data?.childEntities) {
         onFieldValueSelect([
           getQuickFilterObjectForEntities(
-            EntityFields.ENTITY_TYPE_KEYWORD,
+            EntityFields.ENTITY_TYPE,
             node.data?.childEntities as EntityType[]
           ),
         ]);
