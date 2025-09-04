@@ -74,8 +74,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             TestCaseResult.class);
-    return new ResultList<>(
-        testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+    return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
   }
 
   public Response addTestCaseResult(
