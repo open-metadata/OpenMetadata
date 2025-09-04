@@ -288,14 +288,9 @@ describe('AddDataContract', () => {
         fireEvent.click(saveButton);
       });
 
-      expect(updateContract).toHaveBeenCalledWith(
-        expect.objectContaining({
-          semantics: [
-            { name: 'Valid Semantic', rule: 'valid rule' },
-            { name: 'Another Valid', rule: 'another rule' },
-          ],
-        })
-      );
+      expect(updateContract).toHaveBeenCalledWith('contract-1', [
+        { op: 'add', path: '/displayName', value: 'Test Contract' },
+      ]);
     });
   });
 

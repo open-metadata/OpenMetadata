@@ -88,6 +88,10 @@ const AddDataContract: React.FC<{
           displayName: formValues.name,
         });
 
+        if (isEmpty(jsonPatch)) {
+          return;
+        }
+
         await updateContract(contract?.id, jsonPatch);
       } else {
         await createContract({

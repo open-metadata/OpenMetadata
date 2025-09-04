@@ -38,7 +38,7 @@ import {
   validateDataContractInsideBundleTestSuites,
   waitForDataContractExecution,
 } from '../../utils/dataContracts';
-import { addOwner } from '../../utils/entity';
+import { addOwner, addOwnerWithoutValidation } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -529,15 +529,11 @@ test.describe('Data Contracts', () => {
       await page.keyboard.press('Control+A');
       await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
 
-      await addOwner({
+      await addOwnerWithoutValidation({
         page,
         owner: 'admin',
         type: 'Users',
-        endpoint: EntityTypeEndpoint.Table,
         initiatorId: 'select-owners',
-        dataTestId: 'user-tag',
-        callSaveAPICall: false,
-        validateOwnerAdded: false,
       });
 
       await expect(
