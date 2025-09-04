@@ -217,8 +217,8 @@ class KafkaConnectClient:
                         "state", "UNASSIGNED"
                     )
                     self._enrich_connector_details(connector_details, connector_name)
-                if connector_details:
-                    yield connector_details
+                    if connector_details:
+                        yield connector_details
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connector information {exc}")
