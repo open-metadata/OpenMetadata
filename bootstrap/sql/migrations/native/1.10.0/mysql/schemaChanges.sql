@@ -27,3 +27,20 @@ CREATE INDEX idx_metric_custom_unit ON metric_entity(customUnitOfMeasurement);
 
 -- Fetch updated searchSettings
 DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
+
+-- Create notification_template_entity table following OpenMetadata patterns
+CREATE TABLE IF NOT EXISTS notification_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) VIRTUAL NOT NULL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) VIRTUAL,
+    provider VARCHAR(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.provider'))) VIRTUAL,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY fqnHash (fqnHash),
+    INDEX idx_notification_template_name (name),
+    INDEX idx_notification_template_provider (provider)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
