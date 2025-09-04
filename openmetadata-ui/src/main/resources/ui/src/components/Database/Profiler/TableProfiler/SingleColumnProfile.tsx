@@ -239,7 +239,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                 <Typography.Title
                   data-testid="cardinality-distribution-title"
                   level={5}>
-                  {t('label.cardinality-data-distribution')}
+                  {t('label.cardinality')}
                 </Typography.Title>
               </Col>
               <Col span={24}>
