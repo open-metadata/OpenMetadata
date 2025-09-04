@@ -177,7 +177,7 @@
               "$ref": "./connections/pipeline/stitchConnection.json"
             },
             {
-              "$ref": "./connections/pipeline/snowplowconnection.json"
+              "$ref": "./connections/pipeline/snowplowConnection.json"
             }
           ]
         }
