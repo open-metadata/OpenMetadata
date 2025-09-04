@@ -65,6 +65,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             session=self.session,
             runner=runner,
             usage_location=self.service_connection_config.usageLocation,
+            billing_project_id=self.service_connection_config.billingProjectId,
         )
         return instance.get_system_metrics()
 
