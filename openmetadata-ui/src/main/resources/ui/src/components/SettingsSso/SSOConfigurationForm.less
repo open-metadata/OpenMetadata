@@ -156,6 +156,39 @@
     .ant-card-body {
       padding: 0px !important;
     }
+    .rjsf .form-control {
+      padding: @padding-sm - 2px @padding-sm + 2px !important;
+    }
+
+    // Apply select styling to configure tab form
+    .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+      border-radius: @border-rad-xs;
+      border: 1px solid @grey-200;
+      background-color: @background-color;
+      height: auto;
+      padding: @padding-sm - 2px @padding-sm + 2px;
+
+      &:hover {
+        border-color: @primary-6;
+      }
+
+      &:focus {
+        border-color: @primary-color;
+        box-shadow: 0 0 0 @size-xxs @primary-1;
+      }
+      .ant-select-selection-item {
+        font-weight: @font-regular;
+      }
+    }
+
+    .ant-select-focused .ant-select-selector {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 @size-xxs @primary-1;
+    }
+
+    .ant-select:hover .ant-select-selector {
+      border-color: @primary-6;
+    }
   }
 }
 
@@ -404,5 +437,37 @@
     margin: 0;
     padding: 0;
     height: 0;
+  }
+}
+
+// Apply same select styling to provider selection card
+.sso-provider-selection {
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-200;
+    background-color: @background-color;
+    height: auto;
+    padding: @padding-sm - 2px @padding-sm + 2px;
+
+    &:hover {
+      border-color: @primary-6;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 @size-xxs @primary-1;
+    }
+    .ant-select-selection-item {
+      font-weight: @font-regular;
+    }
+  }
+
+  .ant-select-focused .ant-select-selector {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 @size-xxs @primary-1;
+  }
+
+  .ant-select:hover .ant-select-selector {
+    border-color: @primary-6;
   }
 }

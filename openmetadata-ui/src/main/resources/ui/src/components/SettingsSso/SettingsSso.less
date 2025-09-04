@@ -30,11 +30,11 @@
     margin-bottom: @size-md;
   }
   .card-description {
-    font-weight: 400;
+    font-weight: @font-regular;
     color: @grey-700;
   }
   .read-docs-link {
-    color: @blue-12 !important;
+    color: @blue-12;
     margin-left: @size-xs;
   }
   .token-label {
@@ -95,7 +95,7 @@
   }
 
   .scim-modal-delete-desc {
-    font-weight: 400;
+    font-weight: @font-regular;
     color: @grey-600;
   }
   .ant-modal-footer {
@@ -158,7 +158,7 @@
   }
   .enable-self-signup-desc {
     color: @grey-600;
-    font-weight: 400;
+    font-weight: @font-regular;
   }
 
   .enable-self-signup-text {
@@ -253,7 +253,7 @@
       a.link-title {
         color: @navigation-text-color;
         font-size: @font-size-base;
-        font-weight: 400;
+        font-weight: @font-regular;
         line-height: @size-mlg;
         text-decoration: none;
 
@@ -269,20 +269,25 @@
         color: @blue-41 !important;
 
         font-size: @font-size-base;
-        font-weight: 400;
+        font-weight: @font-regular;
         line-height: @size-mlg;
 
         &.font-medium {
-          font-weight: 400;
+          font-weight: @font-regular;
           color: @blue-41;
         }
+      }
+
+      span.text-sm.font-regular.p-x-xs.text-grey-muted {
+        font-size: 12px;
+        line-height: 18px;
       }
 
       span.text-grey-muted {
         color: @navigation-text-color;
 
         font-size: @font-size-base;
-        font-weight: 400;
+        font-weight: @font-regular;
         line-height: @size-mlg;
         margin: 0 @size-xs;
         padding: 0;
