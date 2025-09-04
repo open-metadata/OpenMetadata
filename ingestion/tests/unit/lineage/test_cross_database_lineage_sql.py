@@ -651,3 +651,80 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 # The actual lineage generation depends on the mocked dependencies
                 # but we can verify that the method executes without errors
                 self.assertIsInstance(result, list)
+
+    def test_build_es_fqn_search_string_kwargs(self):
+        """
+        Test that build_es_fqn_search_string is called with keyword arguments
+        and handles service_names list correctly via get_source_table_names
+        """
+        from unittest.mock import MagicMock, patch
+
+        from collate_sqllineage.core.models import DataFunction
+
+        from metadata.ingestion.lineage.sql_lineage import get_source_table_names
+
+        mock_metadata = MagicMock()
+        mock_metadata.es_search_from_fqn.return_value = None
+
+        # Test with a DataFunction to trigger the UDF processing
+        source_table = DataFunction("test_function")
+
+        # Mock build_es_fqn_search_string to capture how it's called
+        with patch(
+            "metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string"
+        ) as mock_build:
+            mock_build.return_value = "test.fqn.string"
+
+            # Test with list of service names - this is the bug scenario
+            service_names = ["service1", "service2"]
+            list(
+                get_source_table_names(
+                    metadata=mock_metadata,
+                    dialect=Dialect.ANSI,
+                    source_table=source_table,
+                    database_name="test_db",
+                    schema_name="test_schema",
+                    service_names=service_names,
+                    timeout_seconds=30,
+                    column_lineage={},
+                    procedure=None,
+                )
+            )
+
+            # Verify build_es_fqn_search_string was called with keyword arguments
+            # and the first service name from the list
+            mock_build.assert_called_with(
+                database_name="test_db",
+                schema_name="test_schema",
+                service_name="service1",  # Should use first service from list
+                table_name="test_function",
+            )
+
+        # Test with single service name
+        with patch(
+            "metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string"
+        ) as mock_build:
+            mock_build.return_value = "test.fqn.string"
+
+            service_names = "single_service"
+            list(
+                get_source_table_names(
+                    metadata=mock_metadata,
+                    dialect=Dialect.ANSI,
+                    source_table=source_table,
+                    database_name="test_db",
+                    schema_name="test_schema",
+                    service_names=service_names,
+                    timeout_seconds=30,
+                    column_lineage={},
+                    procedure=None,
+                )
+            )
+
+            # Should handle string service name correctly
+            mock_build.assert_called_with(
+                database_name="test_db",
+                schema_name="test_schema",
+                service_name="single_service",
+                table_name="test_function",
+            )
