@@ -36,8 +36,8 @@ import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import CopyIcon from '../../../../assets/svg/icon-copy.svg';
 import {
-  markdownTextAndIdRegex,
   MARKDOWN_MATCH_ID,
+  markdownTextAndIdRegex,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
