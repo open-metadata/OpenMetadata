@@ -196,7 +196,12 @@ export const setUserDefaultPersona = async (
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
-  await page.getByTitle(personaName).click();
+  // Click on the persona option by text within the dropdown
+  await page
+    .locator('.ant-select-dropdown')
+    .locator(`text="${personaName}"`)
+    .click();
+
   await page.locator('[data-testid="user-profile-persona-edit-save"]').click();
 
   await setDefaultPersona;
@@ -301,7 +306,7 @@ export const addCuratedAssetPlaceholder = async ({
 
   await page.locator('[data-testid="apply-btn"]').click();
 
-  await page.waitForTimeout(1000);
+  await page.waitForLoadState('networkidle');
 
   await expect(
     page
