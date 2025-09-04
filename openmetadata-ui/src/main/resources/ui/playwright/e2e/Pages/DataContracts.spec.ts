@@ -331,7 +331,7 @@ test.describe('Data Contracts', () => {
           NEW_TABLE_TEST_CASE.name
         );
 
-        await page.locator('#testCaseFormV1_testTypeId').click();
+        await page.locator('[id="root\\/testType"]').click();
 
         const dropdown = page.locator('.rc-virtual-list-holder-inner');
 

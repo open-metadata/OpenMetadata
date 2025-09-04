@@ -19,17 +19,23 @@ import { test } from '../../fixtures/pages';
 test.describe('Add TestCase New Flow', () => {
   // Helper function to select table
   const selectTable = async (page: Page, table: TableClass) => {
-    await page.click('#testCaseFormV1_selectedTable');
+    await page.click('[id="root\\/table"]');
     const tableResponse = page.waitForResponse(
       '/api/v1/search/query?*index=table_search_index*'
     );
-    await page.fill('#testCaseFormV1_selectedTable', table.entity.name);
+    await page.fill('[id="root\\/table"]', table.entity.name);
     await tableResponse;
     await page
       .locator(
         `.ant-select-dropdown [title="${table.entityResponseData.fullyQualifiedName}"]`
       )
       .click();
+
+    await page.waitForSelector(`[data-id="selected-entity"]`, {
+      state: 'visible',
+    });
+
+    await expect(page.locator('[data-id="selected-entity"]')).toBeVisible();
   };
 
   // Helper function to create test case
@@ -47,10 +53,25 @@ test.describe('Add TestCase New Flow', () => {
       paramsValue,
       expectSchedulerCard = true,
     } = data;
+    await page.getByTestId('test-case-name').click();
+    await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
+
+    await expect(page.locator('[data-id="name"]')).toBeVisible();
+
     await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
-    await page.click('#testCaseFormV1_testTypeId');
-    await page.fill('#testCaseFormV1_testTypeId', testType);
+    await page.click('[id="root\\/testType"]');
+    await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
+
+    await expect(page.locator('[data-id="testType"]')).toBeVisible();
+
+    await page.fill('[id="root\\/testType"]', testType);
     await page.getByTestId(testTypeId).click();
+
+    await page.waitForSelector(`[data-id="${testTypeId}"]`, {
+      state: 'visible',
+    });
+
+    await expect(page.locator(`[data-id="${testTypeId}"]`)).toBeVisible();
 
     if (paramsValue) {
       await page.fill('#testCaseFormV1_params_value', paramsValue);
@@ -104,10 +125,14 @@ test.describe('Add TestCase New Flow', () => {
 
   // Helper function to open test case form
   const openTestCaseForm = async (page: Page) => {
+    const testCaseDoc = page.waitForResponse(
+      '/locales/en-US/OpenMetadata/TestCaseForm.md'
+    );
     await page.getByTestId('add-test-case-btn').click();
     await page.waitForSelector('[data-testid="test-case-form-v1"]', {
       state: 'visible',
     });
+    await testCaseDoc;
     await page.waitForLoadState('networkidle');
   };
 
@@ -192,7 +217,7 @@ test.describe('Add TestCase New Flow', () => {
         .click();
       await selectTable(page, table);
 
-      await page.click('#testCaseFormV1_selectedColumn');
+      await page.click('[id="root\\/column"]');
       // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
       await page.waitForTimeout(2000);
       await page.waitForSelector(
