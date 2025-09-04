@@ -252,7 +252,7 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
 
       filter.value?.forEach((filterValue) => {
         const term = {
-          [queryFieldKey]: filterValue.key,
+          [queryFieldKey]: filterValue.key.toLowerCase(),
         };
 
         if (filterValue.key === NULL_OPTION_KEY) {
