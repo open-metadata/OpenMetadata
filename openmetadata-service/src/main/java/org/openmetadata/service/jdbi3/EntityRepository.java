@@ -2578,6 +2578,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       T original = find(id, DELETED);
       setFieldsInternal(original, putFields);
+      setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
