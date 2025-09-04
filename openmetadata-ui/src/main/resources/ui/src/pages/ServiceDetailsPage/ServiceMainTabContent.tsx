@@ -281,28 +281,14 @@ function ServiceMainTabContent({
     ]
   );
 
-  useEffect(() => {
-    setPageData(data);
-  }, [data]);
-
   const onServiceSearch = (value: string) => {
-    const currentParams = QueryString.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-    );
-
     navigate({
       search: QueryString.stringify({
-        ...currentParams,
-        serviceSearch: isEmpty(value) ? undefined : value,
-        currentPage: undefined, // Reset to first page when searching
+        service: isEmpty(value) ? undefined : value,
       }),
     });
-    if (value && value.trim()) {
-      searchServiceData(value);
-    } else {
-      setPageData(data);
+    if (!value || !value.trim()) {
+      pagingHandler({ currentPage: 1, cursorType: undefined });
     }
   };
 
@@ -362,7 +348,12 @@ function ServiceMainTabContent({
     [searchValue, pagingHandler, searchServiceData]
   );
 
-  // Handle search when URL parameter changes
+  useEffect(() => {
+    if (!searchValue || !searchValue.trim()) {
+      setPageData(data);
+    }
+  }, [data, searchValue]);
+
   useEffect(() => {
     if (searchValue && searchValue.trim()) {
       searchServiceData(searchValue);
@@ -399,19 +390,6 @@ function ServiceMainTabContent({
     }),
     [servicePermission, serviceDetails]
   );
-
-  useEffect(() => {
-    // Only update pageData with original data if we're not searching
-    if (!searchValue) {
-      setPageData(data);
-    }
-  }, [data, searchValue]);
-
-  useEffect(() => {
-    if (searchValue && searchValue.trim()) {
-      searchServiceData(searchValue);
-    }
-  }, [searchValue, showDeleted, searchServiceData]);
 
   return (
     <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
