@@ -928,6 +928,76 @@
         }
       ]
     },
+    "associatedModel": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.AssociatedModel",
+      "description": "Model associated with the data processing pipeline.",
+      "properties": {
+        "entityReference": {
+          "description": "Reference to the associated model entity.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "name": {
+          "description": "Name of the associated model.",
+          "type": "string"
+        },
+        "runTime": {
+          "description": "Runtime execution time of the associated model.",
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "pipelineObservability": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PipelineObservability",
+      "description": "Pipeline observability information for data models.",
+      "properties": {
+        "pipeline": {
+          "description": "Reference to the pipeline that processes this table/model.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
+        },
+        "associatedModels": {
+          "description": "Models associated with this pipeline execution.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/associatedModel"
+          },
+          "default": null
+        },
+        "schedule": {
+          "description": "Schedule configuration for the pipeline.",
+          "type": "object",
+          "properties": {
+            "scheduleInterval": {
+              "description": "Scheduler interval for the pipeline in cron format.",
+              "type": "string",
+              "default": null
+            },
+            "startDate": {
+              "description": "Start date of the pipeline schedule.",
+              "$ref": "../../type/basic.json#/definitions/dateTime",
+              "default": null
+            },
+            "endDate": {
+              "description": "End date of the pipeline schedule.",
+              "$ref": "../../type/basic.json#/definitions/dateTime",
+              "default": null
+            }
+          },
+          "additionalProperties": false,
+          "default": null
+        },
+        "lastRunTime": {
+          "description": "Timestamp of the last pipeline execution.",
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT and DDL model is supported.",
       "type": "object",
@@ -982,6 +1052,11 @@
           "items": {
             "$ref": "#/definitions/column"
           },
+          "default": null
+        },
+        "pipelineObservability":{
+          "description": "Pipeline observability information for the model.",
+          "$ref": "#/definitions/pipelineObservability",
           "default": null
         },
         "generatedAt": {
