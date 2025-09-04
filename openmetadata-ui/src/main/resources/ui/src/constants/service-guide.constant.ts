@@ -153,3 +153,4 @@ export const OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY =
   'OpenMetadataUrlConfiguration';
 export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
 export const OPEN_METADATA = 'OpenMetadata';
+export const TEST_CASE_FORM = 'TestCaseForm';
