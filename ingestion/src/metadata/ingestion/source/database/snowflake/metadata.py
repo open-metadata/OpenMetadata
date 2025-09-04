@@ -512,13 +512,8 @@ class SnowflakeSource(
                         )
                     )
                 except Exception as inner_exc:
-                    yield Either(
-                        left=StackTraceError(
-                            name="Tags and Classifications",
-                            error=f"Failed to fetch tags due to [{inner_exc}]",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Failed to fetch tags due to [{inner_exc}]")
 
             for res in result:
                 row = list(res)
@@ -677,7 +672,7 @@ class SnowflakeSource(
         self, database_name: Optional[str] = None, schema_name: Optional[str] = None
     ) -> str:
         url = (
-            f"https://app.snowflake.com/{self.org_name.lower()}"
+            f"https://{self.service_connection.snowflakeSourceHost}/{self.org_name.lower()}"
             f"/{self.account.lower()}/#/data/databases/{database_name}"
         )
         if schema_name:

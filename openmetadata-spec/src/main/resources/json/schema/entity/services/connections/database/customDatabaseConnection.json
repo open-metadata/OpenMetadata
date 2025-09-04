@@ -50,6 +50,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": ["type"]
 }
