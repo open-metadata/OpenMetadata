@@ -40,7 +40,10 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def create_session(self):
         connection_config = deepcopy(self.service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if hasattr(connection_config.credentials.gcpConfig, "projectId"):
+        if (
+            hasattr(connection_config.credentials.gcpConfig, "projectId")
+            and self.table_entity.database
+        ):
             connection_config.credentials.gcpConfig.projectId = SingleProjectId(
                 root=self.table_entity.database.name
             )

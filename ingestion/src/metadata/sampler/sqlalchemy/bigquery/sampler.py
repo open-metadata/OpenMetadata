@@ -80,7 +80,10 @@ class BigQuerySampler(SQASampler):
 
         connection_config = deepcopy(service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if hasattr(connection_config.credentials.gcpConfig, "projectId"):
+        if (
+            hasattr(connection_config.credentials.gcpConfig, "projectId")
+            and self.entity.database
+        ):
             connection_config.credentials.gcpConfig.projectId = SingleProjectId(
                 root=self.entity.database.name
             )
