@@ -353,10 +353,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     if (originEntityFQN != null) {
-      conditions.add(
-          String.format(
-              "{\"term\": {\"testCase.entityFQN.keyword\": \"%s\"}}",
-              escapeDoubleQuotes(originEntityFQN)));
+      conditions.add(getTestCaseForEntityCondition(originEntityFQN, "testCase.entityFQN.keyword"));
     }
 
     return addCondition(conditions);
