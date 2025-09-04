@@ -62,10 +62,7 @@
     },
     "dimensionResults": {
       "description": "Test results grouped by dimensional values. Only populated when the test case has dimensionColumns specified.",
-      "type": "array",
-      "items": {
-        "$ref": "../../tests/basic.json#/definitions/dimensionResult"
-      }
+      "$ref": "../../tests/basic.json#/definitions/dimensionResultsMap"
     }
   },
   "required": ["timestamp", "testCaseStatus", "testResultValue"],

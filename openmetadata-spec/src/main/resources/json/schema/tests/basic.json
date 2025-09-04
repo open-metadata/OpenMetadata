@@ -180,58 +180,10 @@
         },
         "dimensionResults": {
           "description": "Test results grouped by dimensional values. Only populated when the test case has dimensionColumns specified.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/dimensionResult"
-          }
+          "$ref": "#/definitions/dimensionResultsMap"
         }
       },
       "required": ["timestamp"]
-    },
-    "dimensionResult": {
-      "description": "Test case result for a specific combination of dimension values",
-      "javaType": "org.openmetadata.schema.tests.type.DimensionResult",
-      "type": "object",
-      "properties": {
-        "dimensionValues": {
-          "description": "Map of dimension column names to their values for this result",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "testCaseStatus": {
-          "description": "Status of the test for this dimension combination",
-          "$ref": "#/definitions/testCaseStatus"
-        },
-        "result": {
-          "description": "Details of test case results for this dimension combination",
-          "type": "string"
-        },
-        "testResultValue": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/testResultValue"
-          }
-        },
-        "passedRows": {
-          "description": "Number of rows that passed for this dimension",
-          "type": "integer"
-        },
-        "failedRows": {
-          "description": "Number of rows that failed for this dimension",
-          "type": "integer"
-        },
-        "passedRowsPercentage": {
-          "description": "Percentage of rows that passed for this dimension",
-          "type": "number"
-        },
-        "failedRowsPercentage": {
-          "description": "Percentage of rows that failed for this dimension",
-          "type": "number"
-        }
-      },
-      "required": ["dimensionValues", "testCaseStatus"]
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
@@ -249,6 +201,11 @@
           "name": "Weekly"
         }
       ]
+    },
+    "dimensionResultsMap": {
+      "description": "Test results grouped by dimensional values. Structure: Map<dimensionName, Map<dimensionValue, DimensionResult>>",
+      "existingJavaType": "java.util.Map<String, java.util.Map<String, org.openmetadata.schema.tests.type.DimensionResult>>",
+      "type": "object"
     }
   }
 }

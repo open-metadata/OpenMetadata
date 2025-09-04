@@ -1,16 +1,15 @@
 from ast import literal_eval
 from datetime import datetime
-from typing import List
 from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
-from metadata.generated.schema.tests.basic import (
-    DimensionResult,
-    TestCaseResult,
-    TestCaseStatus,
+from metadata.data_quality.validations.base_test_handler import (
+    BaseTestValidator,
+    DimensionResultsDict,
 )
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.utils.logger import test_suite_logger
 
@@ -53,10 +52,10 @@ class MockTestValidator(BaseTestValidator):
         # Create a mock TestCaseResult to avoid complex schema validation issues
         mock_result = MagicMock(spec=TestCaseResult)
         mock_result.testCaseStatus = TestCaseStatus.Success
-        mock_result.dimensionResults = []
+        mock_result.dimensionResults = {}
         return mock_result
 
-    def _run_dimensional_validation(self) -> List["DimensionResult"]:
+    def _run_dimensional_validation(self) -> DimensionResultsDict:
         """Execute dimensional validation for this test
 
         This method should implement the dimensional logic specific to each test type.
@@ -64,10 +63,10 @@ class MockTestValidator(BaseTestValidator):
         are configured in the test case.
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            DimensionResultsDict: Dictionary structure with results per dimension
         """
-        # Default implementation returns empty list
-        return []
+        # Default implementation returns empty dict
+        return {}
 
     def _get_column_name(self):
         """Mock implementation of _get_column_name"""

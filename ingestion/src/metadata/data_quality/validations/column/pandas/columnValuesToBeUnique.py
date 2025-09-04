@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional
+from typing import Dict, Optional
 
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
@@ -22,7 +22,8 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
-from metadata.generated.schema.tests.basic import DimensionResult, TestResultValue
+from metadata.generated.schema.tests.basic import TestResultValue
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -77,52 +78,46 @@ class ColumnValuesToBeUniqueValidator(
     def _execute_dimensional_query(
         self,
         column: SQALikeColumn,
-        dimension_cols: List[SQALikeColumn],
+        dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-    ) -> List[DimensionResult]:
+    ) -> Dict[str, DimensionResult]:
         """Execute dimensional query for column values to be unique using Pandas
 
-        This method now uses the pandas mixin's dimensional results method,
+        This method now uses the pandas mixin's dimensional results method for a single dimension,
         following the same pattern as _run_results for consistency and reusability.
 
         Args:
             column: The column being validated
-            dimension_cols: List of SQALikeColumn objects corresponding to dimension columns
+            dimension_col: Single SQALikeColumn object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
         """
-        dimension_results = []
+        dimension_results = {}
 
         try:
-            # Extract dimension column names from the SQALikeColumn objects
-            dimension_columns = [col.name for col in dimension_cols]
-
-            # Use the mixin's dimensional results method - same pattern as _run_results
-            dimensional_data = self.run_dataframe_dimensional_results(
+            # Use the mixin's dimensional results method for a single dimension
+            dimensional_data = self.run_dataframe_single_dimensional_results(
                 runner=self.runner,
                 metrics_to_compute=metrics_to_compute,
                 column=column,
-                dimension_columns=dimension_columns,
+                dimension_column=dimension_col.name,
             )
 
-            # Process results - each item contains dimension_values and metrics
-            for item in dimensional_data:
-                dimension_values = item["dimension_values"]
-                metrics = item["metrics"]
-
+            # Process results - each item contains dimension_value and metrics for single dimension
+            for dimension_value, metrics in dimensional_data.items():
                 # Extract the specific metrics we need for uniqueness test
                 total_count = metrics.get("count", 0)
                 unique_count = metrics.get("unique_count", 0)
 
                 # Create dimension result using the helper method
                 dimension_result = self.get_dimension_result_object(
-                    dimension_values=dimension_values,
+                    dimension_values={dimension_col.name: dimension_value},
                     test_case_status=self.get_test_case_status(
                         total_count == unique_count
                     ),
-                    result=f"Dimension {dimension_values}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
+                    result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
                     test_result_value=[
                         TestResultValue(name="valuesCount", value=str(total_count)),
                         TestResultValue(name="uniqueCount", value=str(unique_count)),
@@ -132,11 +127,12 @@ class ColumnValuesToBeUniqueValidator(
                     # failed_rows will be auto-calculated as (total_count - unique_count)
                 )
 
-                dimension_results.append(dimension_result)
+                # Add to results dictionary with dimension value as key
+                dimension_results[dimension_value] = dimension_result
 
         except Exception as exc:
             # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
-            # Return empty list on error (test continues without dimensions)
+            # Return empty dict on error (test continues without dimensions)
 
         return dimension_results

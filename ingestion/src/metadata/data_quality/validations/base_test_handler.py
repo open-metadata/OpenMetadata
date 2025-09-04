@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import reprlib
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -36,11 +36,14 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
     # Import DimensionResult for type checking
-    from metadata.generated.schema.tests.basic import DimensionResult
+    from metadata.generated.schema.tests.dimensionResult import DimensionResult
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 S = TypeVar("S", bound=BaseModel)
+
+# Type alias for dimensional results structure
+DimensionResultsDict = Dict[str, Dict[str, "DimensionResult"]]
 
 
 class BaseTestValidator(ABC):
@@ -112,15 +115,25 @@ class BaseTestValidator(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_dimensional_validation(self) -> List["DimensionResult"]:
+    def _run_dimensional_validation(self) -> DimensionResultsDict:
         """Execute dimensional validation for this test
 
         This method should implement the dimensional logic specific to each test type.
         It will be called automatically by the template method when dimensionColumns
         are configured in the test case.
 
+        The new approach runs separate queries for each dimension column instead of
+        combining them with GROUP BY. For example, if dimensionColumns = ["country", "age"],
+        this method will:
+        1. Run one query: GROUP BY country -> {"Spain": result1, "Argentina": result2}
+        2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
+
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            DimensionResultsDict: Dictionary structure:
+            {
+                "country": {"Spain": DimensionResult(...), "Argentina": DimensionResult(...)},
+                "age": {"10": DimensionResult(...), "12": DimensionResult(...)}
+            }
         """
         raise NotImplementedError
 

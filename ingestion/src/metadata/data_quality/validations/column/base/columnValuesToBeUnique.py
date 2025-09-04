@@ -15,11 +15,14 @@ Validator for column values to be unique test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from sqlalchemy import Column
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import (
+    BaseTestValidator,
+    DimensionResultsDict,
+)
 from metadata.generated.schema.tests.basic import (
     DimensionResult,
     TestCaseResult,
@@ -79,50 +82,54 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             passed_rows=unique_count,
         )
 
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
+    def _run_dimensional_validation(self) -> DimensionResultsDict:
         """Execute dimensional validation for column values to be unique
 
-        This method implements the dimensional logic following the same pattern as _run_validation:
-        1. Get the column to validate
-        2. Get dimension column objects using the generic _get_column_name method
-        3. Execute dimensional query (engine-specific implementation with GROUP BY)
-        4. Process results (same logic, but for each dimension group)
+        The new approach runs separate queries for each dimension column instead of
+        combining them with GROUP BY. For example, if dimensionColumns = ["country", "age"],
+        this method will:
+        1. Run one query: GROUP BY country -> {"Spain": result1, "Argentina": result2}
+        2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            DimensionResultsDict: Dictionary structure with results per dimension
         """
         try:
             # Get dimension columns from test case
             dimension_columns = self.test_case.dimensionColumns or []
             if not dimension_columns:
-                return []
+                return {}
 
             # Get the column to validate (same as _run_validation)
             column: Union[SQALikeColumn, Column] = self._get_column_name()
 
-            # Get dimension column objects using the generic _get_column_name method
-            # This reuses the same logic for getting column objects
-            dimension_cols = [self._get_column_name(dim) for dim in dimension_columns]
-
             # Define the metrics to compute (same as _run_validation)
-            # These are the same metrics but will be grouped by dimensions
             metrics_to_compute = {
                 "count": Metrics.COUNT,
                 "unique_count": Metrics.UNIQUE_COUNT,
             }
 
-            # Execute dimensional query using the defined metrics and dimension columns
-            # This will return multiple rows: one per dimension combination
-            # Each row contains: dim1, dim2, count, unique_count
-            dimension_results = self._execute_dimensional_query(
-                column, dimension_cols, metrics_to_compute
-            )
+            # Execute separate queries for each dimension column
+            dimension_results = {}
+            for dimension_column in dimension_columns:
+                # Get dimension column object
+                dimension_col = self._get_column_name(dimension_column)
+
+                # Execute dimensional query for this single dimension
+                # This will return results grouped by this dimension only
+                single_dimension_results = self._execute_dimensional_query(
+                    column, dimension_col, metrics_to_compute
+                )
+
+                # Add to overall results dictionary
+                dimension_results[dimension_column] = single_dimension_results
+
             return dimension_results
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional validation: {exc}")
-            # Return empty list on error (test continues without dimensions)
-            return []
+            # Return empty dict on error (test continues without dimensions)
+            return {}
 
     @abstractmethod
     def _get_column_name(self, column_name: Optional[str] = None):
@@ -164,16 +171,16 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
     def _execute_dimensional_query(
         self,
         column: Union[SQALikeColumn, Column],
-        dimension_cols: List[Union[SQALikeColumn, Column]],
+        dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
-    ) -> List[DimensionResult]:
-        """Execute dimensional query for this specific test and engine
+    ) -> Dict[str, DimensionResult]:
+        """Execute dimensional query for a single dimension
 
         This method should implement the engine-specific logic for executing
-        dimensional queries using the metrics defined by the base class.
+        dimensional queries for a single dimension column using GROUP BY.
 
-        The method is metric-agnostic - it receives a dictionary of metrics to compute
-        and should execute a GROUP BY query that returns multiple rows (one per dimension combination).
+        The method executes a single GROUP BY query for one dimension column,
+        returning results for each distinct value of that dimension.
 
         For the uniqueness test, metrics_to_compute might be:
         {'count': Metrics.COUNT, 'unique_count': Metrics.UNIQUE_COUNT}
@@ -183,18 +190,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         {'count_in_set': Metrics.COUNT_IN_SET}
         {'null_count': Metrics.NULL_MISSING_COUNT}
 
-        The key differences from _run_results:
-        1. Uses GROUP BY to group by dimension columns
-        2. Returns multiple rows (one per dimension combination)
-        3. Each row contains dimension values + metric results
-        4. Metric-agnostic - works with any set of metrics
-
         Args:
             column: The column being validated (same as used in _run_validation)
-            dimension_cols: List of Column objects corresponding to dimension columns
+            dimension_col: Single Column object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
+            Example: {"Spain": DimensionResult(...), "Argentina": DimensionResult(...)}
         """
         raise NotImplementedError

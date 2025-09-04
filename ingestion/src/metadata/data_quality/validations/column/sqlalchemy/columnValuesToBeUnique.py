@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional
+from typing import Dict, Optional
 
 from sqlalchemy import Column, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,7 +25,8 @@ from metadata.data_quality.validations.column.base.columnValuesToBeUnique import
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
-from metadata.generated.schema.tests.basic import DimensionResult, TestResultValue
+from metadata.generated.schema.tests.basic import TestResultValue
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 
@@ -108,33 +109,31 @@ class ColumnValuesToBeUniqueValidator(
         return self.value.get(metric.name)
 
     def _execute_dimensional_query(
-        self, column: Column, dimension_cols: List[Column], metrics_to_compute: dict
-    ) -> List[DimensionResult]:
+        self, column: Column, dimension_col: Column, metrics_to_compute: dict
+    ) -> Dict[str, DimensionResult]:
         """Execute dimensional query for column values to be unique using SQLAlchemy
 
         This method follows the same pattern as _run_results but executes a GROUP BY query
-        that returns results for each dimension combination.
+        for a single dimension column.
 
         Args:
             column: The column being validated
-            dimension_cols: List of Column objects corresponding to dimension columns
+            dimension_col: Single Column object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
         """
-        dimension_results = []
+        dimension_results = {}
 
         try:
-            # Extract dimension column names from the Column objects
-            dimension_columns = [col.name for col in dimension_cols]
 
-            # Build the SELECT clause with dimension columns and metrics
+            # Build the SELECT clause with dimension column and metrics
             # Following the same pattern as _run_results but with GROUP BY
             select_entities = []
 
-            # Add dimension columns first (already Column objects)
-            select_entities.extend(dimension_cols)
+            # Add dimension column first (single Column object)
+            select_entities.append(dimension_col)
 
             # Add metrics - iterate through the metrics passed from the parent
             # Handle different metric types appropriately (StaticMetric vs QueryMetric)
@@ -182,29 +181,28 @@ class ColumnValuesToBeUniqueValidator(
             # with query_group_by_ parameter for GROUP BY functionality
             dimensional_data = self.runner.select_all_from_sample(
                 *select_entities,
-                query_group_by_=dimension_cols,  # This enables GROUP BY on dimension columns
+                query_group_by_=[
+                    dimension_col
+                ],  # This enables GROUP BY on single dimension column
             )
 
-            # Process results - each row represents a dimension combination
+            # Process results - each row represents a different value of the dimension
             for row in dimensional_data:
-                # Extract dimension values (first N columns are the dimension values)
-                dimension_values = {}
-                for i, dim_name in enumerate(dimension_columns):
-                    dimension_values[dim_name] = str(row[i])
+                # Extract dimension value (first column is the dimension value)
+                dimension_value = str(row[0])
 
                 # Extract metric results - we know the exact order:
-                # [dim1, dim2, ..., count, unique_count]
-                metric_start_index = len(dimension_cols)
-                total_count = row[metric_start_index]  # count column
-                unique_count = row[metric_start_index + 1]  # unique_count column
+                # [dimension_value, count, unique_count]
+                total_count = row[1]  # count column
+                unique_count = row[2]  # unique_count column
 
                 # Create dimension result using the helper method (similar to get_test_case_result_object)
                 dimension_result = self.get_dimension_result_object(
-                    dimension_values=dimension_values,
+                    dimension_values={dimension_col.name: dimension_value},
                     test_case_status=self.get_test_case_status(
                         total_count == unique_count
                     ),
-                    result=f"Dimension {dimension_values}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
+                    result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
                     test_result_value=[
                         TestResultValue(name="valuesCount", value=str(total_count)),
                         TestResultValue(name="uniqueCount", value=str(unique_count)),
@@ -214,11 +212,12 @@ class ColumnValuesToBeUniqueValidator(
                     # failed_rows will be auto-calculated as (total_count - unique_count)
                 )
 
-                dimension_results.append(dimension_result)
+                # Add to results dictionary with dimension value as key
+                dimension_results[dimension_value] = dimension_result
 
         except Exception as exc:
             # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
-            # Return empty list on error (test continues without dimensions)
+            # Return empty dict on error (test continues without dimensions)
 
         return dimension_results
