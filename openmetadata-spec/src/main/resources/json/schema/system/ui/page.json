@@ -30,7 +30,10 @@
         "Metric",
         "MlModel",
         "Chart",
-        "Directory"
+        "Directory",
+        "File",
+        "Spreadsheet",
+        "Worksheet"
       ]
     }
   },
