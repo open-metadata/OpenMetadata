@@ -19,6 +19,10 @@ export interface ApplicationPipeline {
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
+     * Fully Qualified Name (FQN) of the application
+     */
+    applicationFqn?: string;
+    /**
      * Application private configuration
      */
     appPrivateConfig?: CollateAIAppPrivateConfig | string;
