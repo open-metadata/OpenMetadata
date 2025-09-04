@@ -107,7 +107,7 @@ public class WebSocketManager {
             userSocketConnections =
                 activityFeedEndpoints.containsKey(id)
                     ? activityFeedEndpoints.get(id)
-                    : new HashMap<>();
+                    : new ConcurrentHashMap<>();
             userSocketConnections.put(socket.getId(), socket);
             activityFeedEndpoints.put(id, userSocketConnections);
           }
