@@ -13,6 +13,10 @@
     }
   },
   "properties": {
+    "applicationFqn": {
+      "description": "Fully Qualified Name (FQN) of the application",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "type": {
       "description": "Pipeline type",
       "$ref": "#/definitions/applicationConfigType",

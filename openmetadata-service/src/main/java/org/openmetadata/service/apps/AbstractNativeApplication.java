@@ -91,7 +91,7 @@ public class AbstractNativeApplication implements NativeApplication {
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
-      scheduleExternal(installedBy);
+      scheduleExternal(app, installedBy);
     }
   }
 
@@ -141,7 +141,7 @@ public class AbstractNativeApplication implements NativeApplication {
     AppScheduler.getInstance().scheduleApplication(app);
   }
 
-  public void scheduleExternal(String updatedBy) {
+  public void scheduleExternal(App app, String updatedBy) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -153,7 +153,7 @@ public class AbstractNativeApplication implements NativeApplication {
           updatedBy);
     } catch (EntityNotFoundException ex) {
       Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
-      createAndBindIngestionPipeline(ingestionPipelineRepository, config);
+      createAndBindIngestionPipeline(app, ingestionPipelineRepository, config);
     }
   }
 
@@ -202,7 +202,9 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void createAndBindIngestionPipeline(
-      IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
+      App app,
+      IngestionPipelineRepository ingestionPipelineRepository,
+      Map<String, Object> config) {
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -233,6 +235,7 @@ public class AbstractNativeApplication implements NativeApplication {
                 new SourceConfig()
                     .withConfig(
                         new ApplicationPipeline()
+                            .withApplicationFqn(app.getFullyQualifiedName())
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
                             .withAppConfig(config)
                             .withAppPrivateConfig(privateConfig)))
