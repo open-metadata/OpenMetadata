@@ -31,6 +31,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import type { ThemeColors } from '@openmetadata/ui-core-components';
 import {
   ArrowLeft,
   ArrowRight,
@@ -206,12 +207,14 @@ export function TableExample() {
                         width: 40,
                         height: 40,
                         backgroundColor:
-                          theme.palette.allShades[domain.iconColor]?.[200] ||
-                          theme.palette.allShades.gray[200],
+                          theme.palette.allShades[
+                            domain.iconColor as keyof ThemeColors
+                          ]?.[200] || theme.palette.allShades.gray[200],
                         color: 'white',
                         border: `1px solid ${
-                          theme.palette.allShades[domain.iconColor]?.[300] ||
-                          theme.palette.allShades.gray[300]
+                          theme.palette.allShades[
+                            domain.iconColor as keyof ThemeColors
+                          ]?.[300] || theme.palette.allShades.gray[300]
                         }90`,
                       }}>
                       <domain.icon size={20} />
