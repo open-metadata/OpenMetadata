@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     gap: @padding-xs;
-    margin-bottom: 10px;
+    margin-bottom: @size-sm - 2px;
 
     .sso-provider-icon {
       display: flex;
@@ -53,7 +53,7 @@
         background: @primary-50;
         border-left: @size-xxs solid @primary-6;
 
-        box-shadow: 0 2px 8px rgba(21, 112, 239, 0.15);
+        box-shadow: @box-shadow-highlight-light;
         animation: highlightPulse 0.6s ease-in-out;
 
         margin: 0;
@@ -130,7 +130,7 @@
 
       li {
         margin-bottom: @padding-xs;
-        line-height: 1.4;
+        line-height: @size-sm + 2px;
         font-size: @font-size-base;
         font-weight: 400;
         color: @grey-800;
@@ -207,7 +207,7 @@
 
     .highlight-section {
       background: @primary-50;
-      border-left: 4px solid @primary-6;
+      border-left: @size-xxs solid @primary-6;
       padding: @padding-md;
       border-radius: 0 @border-rad-sm @border-rad-sm 0;
       margin-bottom: @padding-md;
@@ -236,12 +236,12 @@
   }
   50% {
     transform: translateX(0);
-    box-shadow: 0 2px 12px rgba(21, 112, 239, 0.25);
+    box-shadow: @box-shadow-highlight-medium;
     border-left-width: @border-rad-xs - @size-xxs;
   }
   100% {
     transform: translateX(0);
-    box-shadow: 0 2px 8px rgba(21, 112, 239, 0.15);
+    box-shadow: @box-shadow-highlight-light;
     border-left-width: @size-xxs;
   }
 }

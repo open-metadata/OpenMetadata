@@ -16,7 +16,7 @@
   height: calc(100vh - (@om-navbar-height + 50px));
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: @size-sm;
+  border-radius: @border-rad-sm;
   margin-top: @size-xs;
 
   .ant-card-body {
@@ -33,17 +33,17 @@
       margin-bottom: @padding-lg;
 
       h5 {
-        font-size: 18px;
-        font-weight: 600;
+        font-size: @font-size-base + 4px;
+        font-weight: @font-semibold;
         color: @grey-700;
         margin: 0;
       }
     }
 
     .provider-selection-container {
-      gap: 32px;
+      gap: @size-2xl - @size-md;
       flex: 1;
-      padding: 4px; // Add padding to prevent outline from being cut off
+      padding: @size-xxs;
     }
 
     .provider-item {
@@ -56,7 +56,7 @@
       width: 340px;
       border-radius: @border-rad-sm;
       cursor: pointer;
-      box-shadow: 0px 1px 2px 0px #0a0d120d;
+      box-shadow: @box-shadow-card-subtle;
 
       &.selected {
         outline: 2px solid @primary-color;
@@ -77,8 +77,8 @@
       height: 56px;
       flex-shrink: 0;
       background: @white;
-      border-radius: 14px;
-      border: 1px solid #d5d7da;
+      border-radius: @size-sm + 2px;
+      border: 1px solid @grey-300;
 
       .provider-icon-inner {
         display: flex;
@@ -87,10 +87,9 @@
         width: 48px;
         height: 48px;
         background: @white;
-        border-radius: 10px;
+        border-radius: @size-sm - 2px;
         border: 1px solid @grey-300;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05),
-          0 4px 8px rgba(16, 24, 40, 0.1), 0 8px 16px rgba(16, 24, 40, 0.1);
+        box-shadow: @box-shadow-elevated-multi;
       }
     }
 
@@ -130,10 +129,9 @@
       height: 64px;
       flex-shrink: 0;
       background: @white;
-      border-radius: 16px;
-      border: 1px solid #d5d7da;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05),
-        0 4px 8px rgba(16, 24, 40, 0.1), 0 8px 16px rgba(16, 24, 40, 0.1);
+      border-radius: @size-md;
+      border: 1px solid @grey-300;
+      box-shadow: @box-shadow-elevated-multi;
       padding: 6px;
 
       .cta-icon-inner {
@@ -143,11 +141,11 @@
         width: 52px;
         height: 52px;
         background: @white;
-        border-radius: 12px;
-        border: 1px solid #e9eaeb;
+        border-radius: @border-rad-sm;
+        border: 1px solid @grey-200;
 
         .anticon {
-          font-size: 32px;
+          font-size: @size-2xl - @size-md;
           color: @grey-500;
         }
       }

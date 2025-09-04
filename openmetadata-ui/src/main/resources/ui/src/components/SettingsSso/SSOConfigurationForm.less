@@ -42,6 +42,8 @@
     border-radius: @border-rad-xs;
     border: 1px solid @grey-200;
     background-color: @background-color;
+    padding: @padding-sm - 2px @padding-sm + 2px;
+    color: @grey-700;
 
     &:hover {
       border-color: @primary-6;
@@ -50,12 +52,17 @@
     &:focus {
       border-color: @primary-color;
       box-shadow: 0 0 0 @size-xxs @primary-1;
+    }
+    .rjsf span {
+      font-weight: @font-regular;
     }
   }
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     border-radius: @border-rad-xs;
     border: 1px solid @grey-200;
     background-color: @background-color;
+    height: auto;
+    padding: @padding-sm - 2px @padding-sm + 2px;
 
     &:hover {
       border-color: @primary-6;
@@ -64,6 +71,9 @@
     &:focus {
       border-color: @primary-color;
       box-shadow: 0 0 0 @size-xxs @primary-1;
+    }
+    .ant-select-selection-item {
+      font-weight: @font-regular;
     }
   }
 
@@ -133,7 +143,7 @@
     padding: @size-md @size-lg;
     border-top: 1px solid @grey-200;
     background-color: @white;
-    box-shadow: 0px -13px 16px -4px #0a0d1214;
+    box-shadow: @box-shadow-sticky-reverse;
     box-sizing: border-box;
   }
 
