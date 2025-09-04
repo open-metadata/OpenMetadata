@@ -42,6 +42,7 @@ import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
 import grafana from '../assets/img/service-icon-grafana.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
+import hex from '../assets/img/service-icon-hex.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import iceberge from '../assets/img/service-icon-iceberg.png';
@@ -130,6 +131,7 @@ export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const BIGTABLE = bigtable;
+export const HEX = hex;
 export const HIVE = hive;
 export const IMPALA = impala;
 export const POSTGRES = postgres;
@@ -448,6 +450,7 @@ export const BETA_SERVICES = [
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
+  DashboardServiceType.Hex,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

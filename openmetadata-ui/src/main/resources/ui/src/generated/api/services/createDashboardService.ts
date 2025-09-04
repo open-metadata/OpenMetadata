@@ -94,6 +94,8 @@ export interface DashboardConnection {
  * ThoughtSpot Connection Config
  *
  * Grafana Connection Config
+ *
+ * Hex Connection Config
  */
 export interface Connection {
     /**
@@ -161,6 +163,8 @@ export interface Connection {
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * URL to the Grafana instance.
+     *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      */
     hostPort?: string;
     /**
@@ -373,6 +377,8 @@ export interface Connection {
     spaceTypes?: SpaceType[];
     /**
      * token to connect to Qlik Cloud.
+     *
+     * Hex API token for authentication. Can be personal or workspace token.
      */
     token?: string;
     /**
@@ -388,6 +394,14 @@ export interface Connection {
      * Page size for pagination in API requests. Default is 100.
      */
     pageSize?: number;
+    /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     */
+    includeCategories?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
     [property: string]: any;
 }
 
@@ -1161,6 +1175,14 @@ export enum SpaceType {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * Service Type
  *
  * Looker service type
@@ -1199,6 +1221,8 @@ export enum SpaceType {
  *
  * Grafana service type
  *
+ * Service type.
+ *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
  * or Lightdash
  */
@@ -1206,6 +1230,7 @@ export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
     Grafana = "Grafana",
+    Hex = "Hex",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",
