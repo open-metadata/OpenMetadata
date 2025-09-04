@@ -1054,11 +1054,6 @@
           },
           "default": null
         },
-        "pipelineObservability":{
-          "description": "Pipeline observability information for the model.",
-          "$ref": "#/definitions/pipelineObservability",
-          "default": null
-        },
         "generatedAt": {
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
@@ -1218,6 +1213,10 @@
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "$ref": "#/definitions/dataModel"
+    },
+    "pipelineObservability":{
+      "description": "Pipeline observability information for the table.",
+      "$ref": "#/definitions/pipelineObservability"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
