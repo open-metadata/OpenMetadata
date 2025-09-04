@@ -9,7 +9,7 @@ export default defineConfig({
     dts({ 
       include: ['src'], 
       outDir: 'dist/types',
-      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.stories.ts', '**/*.stories.tsx']
+      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.stories.ts', '**/*.stories.tsx', '**/vite.config.ts']
     })
   ],
   build: {
