@@ -250,9 +250,15 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
           ? EntityFields.ENTITY_TYPE_KEYWORD
           : filter.key;
 
+      const shouldLowerCase = filter.key === EntityFields.ENTITY_TYPE;
+
       filter.value?.forEach((filterValue) => {
+        const termValue = shouldLowerCase
+          ? filterValue.key.toLowerCase()
+          : filterValue.key;
+
         const term = {
-          [queryFieldKey]: filterValue.key.toLowerCase(),
+          [queryFieldKey]: termValue,
         };
 
         if (filterValue.key === NULL_OPTION_KEY) {
