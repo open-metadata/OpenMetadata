@@ -137,9 +137,45 @@ class ColumnValuesToBeUniqueValidator(
             select_entities.extend(dimension_cols)
 
             # Add metrics - iterate through the metrics passed from the parent
-            # This keeps the flexibility while being driven by the base class
+            # Handle different metric types appropriately (StaticMetric vs QueryMetric)
             for metric_name, metric in metrics_to_compute.items():
-                select_entities.append(metric.value(column).fn().label(metric_name))
+                metric_instance = metric.value(column)
+
+                # Check if metric has fn method (StaticMetric) or query method (QueryMetric)
+                if hasattr(metric_instance, "fn"):
+                    # StaticMetric - use fn() method (works correctly with GROUP BY)
+                    select_entities.append(metric_instance.fn().label(metric_name))
+                elif hasattr(metric_instance, "query"):
+                    # QueryMetric - for dimensional queries, we need to use the aggregate function
+                    # instead of subqueries to ensure metrics are calculated per group
+                    if metric_name == "unique_count":
+                        # For UNIQUE_COUNT in dimensional context, use COUNT(DISTINCT column)
+                        # This ensures we get unique count within each dimension group
+                        from sqlalchemy import func
+
+                        select_entities.append(
+                            func.count(func.distinct(column)).label(metric_name)
+                        )
+                    else:
+                        # For other QueryMetrics, use the subquery approach
+                        query_result = metric_instance.query(
+                            sample=self.runner.dataset,
+                            session=self.runner._session,  # pylint: disable=protected-access
+                        )
+                        if query_result:
+                            select_entities.append(
+                                query_result.scalar_subquery().label(metric_name)
+                            )
+                        else:
+                            # Handle case where query returns None
+                            logger.warning(
+                                f"Query for metric {metric_name} returned None"
+                            )
+                            continue
+                else:
+                    # Unknown metric type - log warning and skip
+                    logger.warning(f"Unknown metric type for {metric_name}, skipping")
+                    continue
 
             # Execute the dimensional query using GROUP BY
             # This follows the same pattern as _run_results but uses select_all_from_sample
