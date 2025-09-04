@@ -13,7 +13,7 @@ Snowflake lineage module
 """
 
 import traceback
-from typing import Dict, Iterator, List
+from typing import Iterator
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -25,7 +25,6 @@ from metadata.ingestion.source.database.snowflake.query_parser import (
     SnowflakeQueryParserSource,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
     StoredProcedureLineageMixin,
 )
 from metadata.utils.helpers import get_start_and_end
@@ -55,21 +54,17 @@ class SnowflakeLineageSource(
 
     stored_procedure_query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES
 
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
             account_usage=self.service_connection.accountUsageSchema,
         )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
 
-        return queries_dict
+        return query
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
