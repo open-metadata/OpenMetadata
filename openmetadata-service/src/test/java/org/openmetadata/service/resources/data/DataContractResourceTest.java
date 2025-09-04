@@ -3863,8 +3863,20 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void testTopicEntityConstraints(TestInfo test) throws IOException {
+    // Define message schema fields that match the data contract columns
+    List<Field> messageSchemaFields =
+        List.of(
+            new Field()
+                .withName("messageId")
+                .withDisplayName("Message ID")
+                .withDataType(FieldDataType.STRING),
+            new Field()
+                .withName("eventType")
+                .withDisplayName("Event Type")
+                .withDataType(FieldDataType.STRING));
+
     // Test 1: Topic with schema should succeed (topics support schema validation)
-    Topic schemaTopic = createUniqueTopic(test.getDisplayName() + "_schema");
+    Topic schemaTopic = createUniqueTopic(test.getDisplayName() + "_schema", messageSchemaFields);
 
     List<Column> columns =
         List.of(
@@ -3926,7 +3938,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(semanticsValidationResult.getSemanticsValidation());
 
     // Test 3: Topic with both schema and semantics should succeed
-    Topic bothTopic = createUniqueTopic(test.getDisplayName() + "_both");
+    Topic bothTopic = createUniqueTopic(test.getDisplayName() + "_both", messageSchemaFields);
 
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothTopic)
@@ -4148,7 +4160,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(semanticsValidationResult.getSemanticsValidation());
 
     // Test 3: API Endpoint with both schema and semantics should succeed
-    APIEndpoint bothApiEndpoint = createUniqueApiEndpoint(test.getDisplayName() + "_both");
+    APIEndpoint bothApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_both", requestSchemaFields, responseSchemaFields);
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothApiEndpoint)
             .withSchema(columns)
@@ -4367,7 +4381,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Test 3: Dashboard Data Model with both schema and semantics should succeed
     DashboardDataModel bothDataModel =
-        createUniqueDashboardDataModel(test.getDisplayName() + "_both");
+        createUniqueDashboardDataModel(test.getDisplayName() + "_both", dataModelColumns);
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothDataModel)
             .withSchema(columns)

@@ -421,6 +421,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.DATABASE,
             Entity.DATABASE_SCHEMA,
             Entity.DASHBOARD,
+            Entity.CHART,
             Entity.DASHBOARD_DATA_MODEL,
             Entity.PIPELINE,
             Entity.TOPIC,
