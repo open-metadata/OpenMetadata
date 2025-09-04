@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt Çalıştırma Sonuçları Dosya Yolu",
     "dbt-run-result-http-path": "dbt Çalıştırma Sonuçları HTTP Yolu",
     "dbt-source": "dbt Kaynağı",
+    "dbt-source-project": "dbt Kaynak Projesi",
     "deactivated": "Devre Dışı Bırakıldı",
     "december": "Aralık",
     "decision": "Decision",

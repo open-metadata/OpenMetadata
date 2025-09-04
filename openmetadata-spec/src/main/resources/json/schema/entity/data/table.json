@@ -940,6 +940,11 @@
           "description": "Resource Type of the model.",
           "type": "string"
         },
+        "dbtSourceProject": {
+          "description": "The DBT project name that served as the source for ingesting this table's metadata and lineage information.",
+          "type": "string",
+          "default": null
+        },
         "description": {
           "description": "Description of the Table from the model.",
           "$ref": "../../type/basic.json#/definitions/markdown"
