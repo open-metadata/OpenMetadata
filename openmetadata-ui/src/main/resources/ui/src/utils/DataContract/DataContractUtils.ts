@@ -280,13 +280,25 @@ export const getSematicRuleFields = () => {
 
   const tierField = {
     label: t('label.tier'),
-    type: 'select',
+    type: '!group',
+    mode: 'some',
     fieldName: 'tags',
-    mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-    operators: jsonLogicSearchClassBase.defaultSelectOperators,
-    fieldSettings: {
-      asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
-      useAsyncSearch: true,
+    defaultField: 'tagFQN',
+    subfields: {
+      tagFQN: {
+        label: 'Tags',
+        type: 'multiselect',
+        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+        operators: [
+          ...jsonLogicSearchClassBase.defaultSelectOperators,
+          'array_contains',
+        ],
+        fieldSettings: {
+          asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
+          useAsyncSearch: true,
+          listValues: jsonLogicSearchClassBase.autoCompleteTier,
+        },
+      },
     },
   };
 
