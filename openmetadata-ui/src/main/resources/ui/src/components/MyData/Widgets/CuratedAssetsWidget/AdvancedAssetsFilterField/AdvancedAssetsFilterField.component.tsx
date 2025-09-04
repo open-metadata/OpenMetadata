@@ -199,9 +199,6 @@ export const AdvancedAssetsFilterField = ({
                 <Builder {...props} />
               </div>
             )}
-            settings={{
-              ...config.settings,
-            }}
             value={treeInternal}
             onChange={handleChange}
           />

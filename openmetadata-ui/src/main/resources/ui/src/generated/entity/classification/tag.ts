@@ -58,6 +58,10 @@ export interface Tag {
      */
     domains?: EntityReference[];
     /**
+     * Status of the tag.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Unique name of the tag of format `Classification.tag1.tag2`.
      */
     fullyQualifiedName?: string;
@@ -95,7 +99,11 @@ export interface Tag {
      */
     parent?:   EntityReference;
     provider?: ProviderType;
-    style?:    Style;
+    /**
+     * User references of the reviewers for this tag.
+     */
+    reviewers?: EntityReference[];
+    style?:     Style;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -238,6 +246,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the tag.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
