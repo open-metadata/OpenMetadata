@@ -177,7 +177,7 @@ test.describe('Curated Assets Widget', () => {
         (response) =>
           response.url().includes('/api/v1/search/query') &&
           response.url().includes('index=dataAsset') &&
-          response.url().includes(`entityType%22:%22${entityType.name}`)
+          response.url().includes(`entityType%22:%22${entityType.index}`)
       );
 
       await page.locator('[data-testid="saveButton"]').click();
