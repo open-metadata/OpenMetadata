@@ -161,7 +161,7 @@ const CuratedAssetsWidget = ({
         // Use SearchIndex.ALL when 'all' is selected, otherwise use all the selected resource
         const searchIndex = selectedResource.includes(EntityType.ALL)
           ? SearchIndex.ALL
-          : (selectedResource as SearchIndex[]);
+          : SearchIndex.DATA_ASSET;
 
         // Create the modified query filter with selected assets
         const parsedQueryFilter = JSON.parse(queryFilter || '{}');
