@@ -408,6 +408,15 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
+    // Check if semantic search is enabled and override the query
+    if (Boolean.TRUE.equals(request.getSemanticSearch())) {
+      SemanticSearchQueryBuilder semanticBuilder = new SemanticSearchQueryBuilder();
+      QueryBuilder semanticQuery = semanticBuilder.buildSemanticQuery(request);
+      if (semanticQuery != null) {
+        searchSourceBuilder.query(semanticQuery);
+      }
+    }
+
     // Add Query Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
@@ -647,7 +656,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
           .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-          .must(QueryBuilders.matchQuery("status", "Approved"));
+          .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
@@ -682,7 +691,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
         parentTermQueryBuilder
             .minimumShouldMatch(1)
-            .must(QueryBuilders.matchQuery("status", "Approved"));
+            .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
       } else {
         parentTermQueryBuilder.minimumShouldMatch(1);
       }

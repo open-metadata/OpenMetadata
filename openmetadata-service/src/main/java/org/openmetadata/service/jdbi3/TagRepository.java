@@ -90,12 +90,14 @@ public class TagRepository extends EntityRepository<Tag> {
 
     try {
       Classification parent =
-          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners,domains", ALL);
+          Entity.getEntity(
+              CLASSIFICATION, tag.getClassification().getId(), "owners,domains,reviewers", ALL);
       if (parent.getDisabled() != null && parent.getDisabled()) {
         tag.setDisabled(true);
       }
       inheritOwners(tag, fields, parent);
       inheritDomains(tag, fields, parent);
+      inheritReviewers(tag, fields, parent);
     } catch (Exception e) {
       LOG.debug(
           "Failed to get classification {} for tag {}: {}",
@@ -131,7 +133,7 @@ public class TagRepository extends EntityRepository<Tag> {
             .findEntitiesByIds(new ArrayList<>(classificationIds), ALL);
 
     classificationRepository.setFieldsInBulk(
-        new Fields(Set.of("owners", "domains")), classifications);
+        new Fields(Set.of("owners", "domains", "reviewers")), classifications);
 
     Map<UUID, Classification> classificationMap =
         classifications.stream().collect(Collectors.toMap(Classification::getId, c -> c));
@@ -145,6 +147,7 @@ public class TagRepository extends EntityRepository<Tag> {
           }
           inheritOwners(tag, fields, classification);
           inheritDomains(tag, fields, classification);
+          inheritReviewers(tag, fields, classification);
         }
       }
     }
@@ -315,7 +318,8 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  protected void postDelete(Tag entity) {
+  protected void postDelete(Tag entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this tag
     daoCollection
         .tagUsageDAO()

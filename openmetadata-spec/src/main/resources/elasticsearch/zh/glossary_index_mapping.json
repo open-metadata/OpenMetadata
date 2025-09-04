@@ -288,8 +288,9 @@
       "deleted": {
         "type": "boolean"
       },
-      "status": {
-        "type": "text"
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

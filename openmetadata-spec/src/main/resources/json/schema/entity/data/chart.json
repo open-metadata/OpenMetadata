@@ -22,6 +22,12 @@
         "Scatter",
         "Text",
         "BoxPlot",
+        "SanKey",
+        "Gauge",
+        "Map",
+        "Graph",
+        "Heatmap",
+        "Timeline",
         "Other"
       ],
       "javaEnums": [
@@ -51,6 +57,24 @@
         },
         {
           "name": "BoxPlot"
+        },
+        {
+          "name": "SanKey"
+        },
+        {
+          "name": "Gauge"
+        },
+        {
+          "name": "Map"
+        },
+        {
+          "name": "Graph"
+        },
+        {
+          "name": "Heatmap"
+        },
+        {
+          "name": "Timeline"
         },
         {
           "name": "Other"
@@ -177,6 +201,11 @@
       "description": "All the dashboards containing this chart.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Chart.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

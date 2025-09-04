@@ -47,6 +47,14 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Approval status of the data contract.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
@@ -87,14 +95,25 @@ export interface DataContract {
      */
     schema?: Column[];
     /**
+     * Security and access policy expectations defined in the data contract.
+     */
+    security?: ContractSecurity;
+    /**
      * Semantics rules defined in the data contract.
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations defined in the data contract.
+     */
+    sla?: ContractSLA;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
+    /**
+     * Terms of use for the data contract for both human and AI agents consumption.
+     */
+    termsOfUse?: string;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -261,6 +280,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Approval status of the data contract.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
@@ -746,6 +779,23 @@ export interface Style {
 }
 
 /**
+ * Security and access policy expectations defined in the data contract.
+ *
+ * Security and access policy expectations
+ */
+export interface ContractSecurity {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * Expected data classification (e.g. Confidential, PII, etc.)
+     */
+    dataClassification?: string;
+    [property: string]: any;
+}
+
+/**
  * Semantics rule defined in the data contract.
  */
 export interface SemanticsRule {
@@ -765,6 +815,10 @@ export interface SemanticsRule {
      * List of entities to ignore for this semantics rule.
      */
     ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
     /**
      * Name of the semantics rule.
      */
@@ -789,10 +843,74 @@ export enum ProviderType {
 }
 
 /**
- * Status of the data contract.
+ * Service Level Agreement expectations defined in the data contract.
+ *
+ * Service Level Agreement expectations (timeliness, availability, etc.)
  */
-export enum ContractStatus {
-    Active = "Active",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
+export interface ContractSLA {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaximumLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: DataRetentionPeriod;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaximumLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface DataRetentionPeriod {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Month = "month",
+    Week = "week",
+    Year = "year",
 }

@@ -16,6 +16,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
+import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -40,10 +41,7 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';
 
 export const getToken = async (page: Page) => {
-  return page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.oidcIdToken ?? ''
-  );
+  return await getTokenFromStorage(page);
 };
 
 export const getAuthContext = async (token: string) => {
@@ -80,7 +78,7 @@ export const createNewPage = async (browser: Browser) => {
   const page = await browser.newPage();
   await redirectToHomePage(page);
 
-  // get the token from localStorage
+  // get the token
   const token = await getToken(page);
 
   // create a new context with the token
@@ -170,22 +168,31 @@ export const assignDomain = async (
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
+
   await page
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
+
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -221,13 +228,20 @@ export const updateDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
+  await expect(page.getByTestId('header-domain-container')).toContainText('+1');
+
+  await page.getByTestId('header-domain-container').getByText('+1').hover();
+
+  await expect(
+    page.getByRole('menuitem', { name: domain.displayName })
+  ).toBeVisible();
 };
 
 export const removeDomain = async (
@@ -243,7 +257,10 @@ export const removeDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -277,9 +294,21 @@ export const assignDataProduct = async (
   await searchDataProduct;
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
 
   await expect(
     page
@@ -303,15 +332,29 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await page
     .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
     .getByTestId('remove-tags')
     .locator('svg')
     .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
 
   await expect(
     page

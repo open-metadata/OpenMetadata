@@ -357,12 +357,11 @@ export const getDomainDetailTabs = ({
   domain,
   isVersionsView,
   domainPermission,
-  subDomains,
+  subDomainsCount,
   dataProductsCount,
   assetCount,
   activeTab,
   onAddDataProduct,
-  isSubDomainsLoading,
   queryFilter,
   assetTabRef,
   dataProductsTabRef,
@@ -389,7 +388,7 @@ export const getDomainDetailTabs = ({
           {
             label: (
               <TabsLabel
-                count={subDomains.length ?? 0}
+                count={subDomainsCount ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
                 name={t('label.sub-domain-plural')}
@@ -398,9 +397,8 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.SUBDOMAINS,
             children: (
               <SubDomainsTable
-                isLoading={isSubDomainsLoading}
+                domainFqn={domain.fullyQualifiedName ?? ''}
                 permissions={domainPermission}
-                subDomains={subDomains}
                 onAddSubDomain={() => setShowAddSubDomainModal(true)}
               />
             ),

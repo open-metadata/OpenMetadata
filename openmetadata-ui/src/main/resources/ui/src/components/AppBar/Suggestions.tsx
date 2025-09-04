@@ -53,6 +53,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 
@@ -288,10 +289,11 @@ const Suggestions = ({
       setIsLoading(true);
 
       const res = await searchQuery({
-        query: searchText,
+        query: escapeESReservedCharacters(searchText),
         searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
+        includeDeleted: false,
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
