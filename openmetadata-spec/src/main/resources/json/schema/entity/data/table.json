@@ -928,27 +928,6 @@
         }
       ]
     },
-    "associatedModel": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.AssociatedModel",
-      "description": "Model associated with the data processing pipeline.",
-      "properties": {
-        "entityReference": {
-          "description": "Reference to the associated model entity.",
-          "$ref": "../../type/entityReference.json"
-        },
-        "name": {
-          "description": "Name of the associated model.",
-          "type": "string"
-        },
-        "runTime": {
-          "description": "Runtime execution time of the associated model.",
-          "$ref": "../../type/basic.json#/definitions/timestamp",
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
     "pipelineObservability": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.PipelineObservability",
@@ -957,14 +936,6 @@
         "pipeline": {
           "description": "Reference to the pipeline that processes this table/model.",
           "$ref": "../../type/entityReference.json",
-          "default": null
-        },
-        "associatedModels": {
-          "description": "Models associated with this pipeline execution.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/associatedModel"
-          },
           "default": null
         },
         "schedule": {
@@ -976,12 +947,12 @@
               "type": "string",
               "default": null
             },
-            "startDate": {
+            "startTime": {
               "description": "Start date of the pipeline schedule.",
               "$ref": "../../type/basic.json#/definitions/dateTime",
               "default": null
             },
-            "endDate": {
+            "endTime": {
               "description": "End date of the pipeline schedule.",
               "$ref": "../../type/basic.json#/definitions/dateTime",
               "default": null
@@ -993,6 +964,12 @@
         "lastRunTime": {
           "description": "Timestamp of the last pipeline execution.",
           "$ref": "../../type/basic.json#/definitions/timestamp",
+          "default": null
+        },
+        "lastRunStatus": {
+          "description": "Status of the last pipeline execution.",
+          "type": "string",
+          "enum": ["Successful", "Failed", "Pending", "Skipped", "Running"],
           "default": null
         }
       },
