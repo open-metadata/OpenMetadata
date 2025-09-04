@@ -1,0 +1,123 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.unsaved-changes-modal-container {
+  .ant-modal-content {
+    .ant-modal-close {
+      top: 24px;
+      right: 24px;
+
+      .ant-modal-close-x {
+        margin: 0;
+        width: 24px;
+        height: 24px;
+        font-size: 24px;
+        line-height: 24px;
+      }
+    }
+    border-radius: 16px;
+    position: relative;
+    overflow: visible;
+  }
+}
+
+.unsaved-changes-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: @size-md;
+}
+
+.unsaved-changes-modal-icon {
+  width: @size-2xl;
+  height: @size-2xl;
+  border-radius: 50%;
+  background-color: #fef0c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .anticon {
+    font-size: @size-lg;
+    color: #dc6803;
+  }
+}
+
+.unsaved-changes-modal-content {
+  flex: 1;
+  position: relative;
+  z-index: 10;
+}
+
+.unsaved-changes-modal-title {
+  margin-bottom: 0 !important;
+  color: #181d27 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  line-height: 24px !important;
+  letter-spacing: 0% !important;
+}
+
+.unsaved-changes-modal-description {
+  color: #535862 !important;
+  font-weight: 400 !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  letter-spacing: 0% !important;
+}
+
+.unsaved-changes-modal-actions {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: @size-sm;
+  position: relative;
+  z-index: 10;
+
+  .ant-btn {
+    padding: 6px 12px !important;
+    height: 44px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    line-height: 24px !important;
+    color: #414651 !important;
+    flex: 1;
+
+    &.ant-btn-sm {
+      padding: 6px 12px !important;
+      height: 44px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      font-size: 16px !important;
+      line-height: 24px !important;
+      color: #414651 !important;
+    }
+
+    &.ant-btn-primary {
+      color: white !important;
+    }
+
+    &.unsaved-changes-modal-discard {
+      &:hover,
+      &:focus {
+        border-color: #d1d5db !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+    }
+  }
+}

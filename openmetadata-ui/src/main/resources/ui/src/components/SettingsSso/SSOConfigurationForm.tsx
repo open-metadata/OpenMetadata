@@ -66,7 +66,7 @@ import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../common/Loader/Loader';
 import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { UnsavedChangesModal } from '../Modals/UnsavedChangesModal/UnsavedChangesModal';
 import ProviderSelector from './ProviderSelector';
 import './SSOConfigurationForm.less';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
@@ -968,6 +968,20 @@ const SSOConfigurationFormRJSF = ({
     setShowCancelModal(false);
   };
 
+  const handleSaveAndExit = async () => {
+    try {
+      // Save the current form data first
+      if (internalData) {
+        await handleSave();
+      }
+      // Then proceed with the exit logic
+      handleCancelConfirm();
+    } catch (error) {
+      // If save fails, don't exit - let user fix the issues
+      setShowCancelModal(false);
+    }
+  };
+
   const handleProviderSelect = (provider: AuthProvider) => {
     // If selecting a new provider when one already exists, don't overwrite the saved data
     setCurrentProvider(provider);
@@ -1179,14 +1193,11 @@ const SSOConfigurationFormRJSF = ({
 
   return (
     <>
-      <ConfirmationModal
-        bodyText={t('message.unsaved-changes-warning')}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
-        header={t('message.are-you-sure')}
-        visible={showCancelModal}
+      <UnsavedChangesModal
+        open={showCancelModal}
         onCancel={handleCancelModalClose}
-        onConfirm={handleCancelConfirm}
+        onDiscard={handleCancelConfirm}
+        onSave={handleSaveAndExit}
       />
 
       <ResizablePanels
