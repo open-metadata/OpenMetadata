@@ -116,6 +116,7 @@ import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceT
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -592,6 +593,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique topic for testing data contracts
    */
   private Topic createUniqueTopic(String testName) throws IOException {
+    return createUniqueTopic(testName, null);
+  }
+
+  /**
+   * Creates a unique topic for testing data contracts with specific schema fields
+   */
+  private Topic createUniqueTopic(String testName, List<Field> customFields) throws IOException {
     // Ensure we have a messaging service to work with
     String messagingServiceName = ensureMessagingService();
 
@@ -614,24 +622,27 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             + uniqueId.substring(0, 8);
 
     // Create message schema for the topic
-    List<Field> fields =
-        List.of(
-            new Field()
-                .withName("messageId")
-                .withDisplayName("Message ID")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("eventType")
-                .withDisplayName("Event Type")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("payload")
-                .withDisplayName("Payload")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("timestamp")
-                .withDisplayName("Timestamp")
-                .withDataType(FieldDataType.TIMESTAMP));
+    List<Field> fields = customFields;
+    if (fields == null) {
+      fields =
+          List.of(
+              new Field()
+                  .withName("messageId")
+                  .withDisplayName("Message ID")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("eventType")
+                  .withDisplayName("Event Type")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("payload")
+                  .withDisplayName("Payload")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("timestamp")
+                  .withDisplayName("Timestamp")
+                  .withDataType(FieldDataType.TIMESTAMP));
+    }
 
     MessageSchema messageSchema =
         new MessageSchema()
@@ -661,6 +672,17 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique API endpoint for testing data contracts
    */
   private APIEndpoint createUniqueApiEndpoint(String testName) throws IOException {
+    return createUniqueApiEndpoint(testName, null, null);
+  }
+
+  /**
+   * Creates a unique API endpoint for testing data contracts with specific schema fields
+   */
+  private APIEndpoint createUniqueApiEndpoint(
+      String testName,
+      List<org.openmetadata.schema.type.Field> requestFields,
+      List<org.openmetadata.schema.type.Field> responseFields)
+      throws IOException {
     // Use multiple entropy sources for absolute uniqueness
     long counter = tableCounter.incrementAndGet();
     long timestamp = System.nanoTime();
@@ -679,6 +701,19 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             + uniqueId;
 
     CreateAPIEndpoint createApiEndpoint = apiEndpointResourceTest.createRequest(apiEndpointName);
+
+    if (requestFields != null && !requestFields.isEmpty()) {
+      org.openmetadata.schema.type.APISchema requestSchema =
+          new org.openmetadata.schema.type.APISchema().withSchemaFields(requestFields);
+      createApiEndpoint.withRequestSchema(requestSchema);
+    }
+
+    if (responseFields != null && !responseFields.isEmpty()) {
+      org.openmetadata.schema.type.APISchema responseSchema =
+          new org.openmetadata.schema.type.APISchema().withSchemaFields(responseFields);
+      createApiEndpoint.withResponseSchema(responseSchema);
+    }
+
     WebTarget target = APP.client().target(getApiEndpointUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createApiEndpoint));
@@ -692,6 +727,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique dashboard data model for testing data contracts
    */
   private DashboardDataModel createUniqueDashboardDataModel(String testName) throws IOException {
+    return createUniqueDashboardDataModel(testName, null);
+  }
+
+  /**
+   * Creates a unique dashboard data model for testing data contracts with specific columns
+   */
+  private DashboardDataModel createUniqueDashboardDataModel(
+      String testName, List<org.openmetadata.schema.type.Column> columns) throws IOException {
     // Use multiple entropy sources for absolute uniqueness
     long counter = tableCounter.incrementAndGet();
     long timestamp = System.nanoTime();
@@ -711,6 +754,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     CreateDashboardDataModel createDataModel =
         dashboardDataModelResourceTest.createRequest(dataModelName);
+
+    if (columns != null && !columns.isEmpty()) {
+      createDataModel.withColumns(columns);
+    }
+
     WebTarget target = APP.client().target(getDashboardDataModelUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createDataModel));
@@ -3843,10 +3891,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals("messageId", schemaContract.getSchema().get(0).getName());
     assertEquals("eventType", schemaContract.getSchema().get(1).getName());
 
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: Topic with semantics should succeed
     Topic semanticsTopic = createUniqueTopic(test.getDisplayName() + "_semantics");
@@ -3923,9 +3976,124 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testTopicSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create topic message schema fields that match what the data contract will expect initially
+    List<Field> messageSchemaFields =
+        List.of(
+            new Field()
+                .withName("messageId")
+                .withDisplayName("Message ID")
+                .withDataType(FieldDataType.STRING),
+            new Field()
+                .withName("eventType")
+                .withDisplayName("Event Type")
+                .withDataType(FieldDataType.STRING));
+
+    Topic schemaTopic =
+        createUniqueTopic(test.getDisplayName() + "_schema_fail", messageSchemaFields);
+
+    // Create data contract with schema fields that match the topic's message schema
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("messageId")
+                .withDescription("Message ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("eventType")
+                .withDescription("Event Type")
+                .withDataType(ColumnDataType.STRING));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema_fail", schemaTopic)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the topic's message schema
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the topic by removing one of the fields that the contract expects
+    // We'll simulate this by updating the topic's message schema to have fewer fields
+    String originalTopicJson = JsonUtils.pojoToJson(schemaTopic);
+
+    // Remove the "eventType" field from the topic's message schema
+    List<Field> updatedFields = new ArrayList<>();
+    for (Field field : schemaTopic.getMessageSchema().getSchemaFields()) {
+      if (!"eventType".equals(field.getName())) {
+        updatedFields.add(field);
+      }
+    }
+    MessageSchema updatedMessageSchema =
+        schemaTopic.getMessageSchema().withSchemaFields(updatedFields);
+    schemaTopic.setMessageSchema(updatedMessageSchema);
+
+    // Patch the topic to remove the eventType field using TopicResourceTest
+    TopicResourceTest topicResourceTest = new TopicResourceTest();
+    Topic patchedTopic =
+        topicResourceTest.patchEntity(
+            schemaTopic.getId(), originalTopicJson, schemaTopic, ADMIN_AUTH_HEADERS);
+
+    // Verify the eventType field was removed from message schema
+    assertEquals(1, patchedTopic.getMessageSchema().getSchemaFields().size());
+    assertNull(
+        patchedTopic.getMessageSchema().getSchemaFields().stream()
+            .filter(field -> "eventType".equals(field.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (eventType)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (messageId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the eventType field
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("eventType", result.getSchemaValidation().getFailedFields().get(0));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testApiEndpointEntityConstraints(TestInfo test) throws IOException {
     // Test 1: API Endpoint with schema should succeed (apiEndpoint supports schema validation)
-    APIEndpoint schemaApiEndpoint = createUniqueApiEndpoint(test.getDisplayName() + "_schema");
+    // Create schema fields for the API endpoint that match what the data contract expects
+    List<Field> requestSchemaFields =
+        List.of(
+            new Field()
+                .withName("requestId")
+                .withDataType(FieldDataType.STRING)
+                .withDescription("Request ID"));
+    List<Field> responseSchemaFields =
+        List.of(
+            new Field()
+                .withName("responseCode")
+                .withDataType(FieldDataType.INT)
+                .withDescription("Response Code"));
+
+    APIEndpoint schemaApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_schema", requestSchemaFields, responseSchemaFields);
+
     List<Column> columns =
         List.of(
             new Column()
@@ -3947,10 +4115,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the schema fields match what we provided
     assertEquals("requestId", schemaContract.getSchema().get(0).getName());
     assertEquals("responseCode", schemaContract.getSchema().get(1).getName());
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: API Endpoint with semantics should succeed
     APIEndpoint semanticsApiEndpoint =
@@ -4019,11 +4192,123 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testApiEndpointSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create schema fields for the API endpoint that match what the data contract expects initially
+    List<Field> requestSchemaFields =
+        List.of(
+            new Field()
+                .withName("requestId")
+                .withDataType(FieldDataType.STRING)
+                .withDescription("Request ID"));
+    List<Field> responseSchemaFields =
+        List.of(
+            new Field()
+                .withName("responseCode")
+                .withDataType(FieldDataType.INT)
+                .withDescription("Response Code"));
+
+    APIEndpoint schemaApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_schema", requestSchemaFields, responseSchemaFields);
+
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("requestId")
+                .withDescription("Request ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("responseCode")
+                .withDescription("Response Code")
+                .withDataType(ColumnDataType.INT));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaApiEndpoint)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the API endpoint
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the API endpoint by removing one of the fields that the contract expects
+    // We'll simulate this by updating the API endpoint to have fewer response fields
+    String originalApiEndpointJson = JsonUtils.pojoToJson(schemaApiEndpoint);
+
+    // Remove the "responseCode" field from the response schema
+    List<Field> updatedResponseFields = new ArrayList<>();
+    for (Field field : schemaApiEndpoint.getResponseSchema().getSchemaFields()) {
+      if (!"responseCode".equals(field.getName())) {
+        updatedResponseFields.add(field);
+      }
+    }
+    schemaApiEndpoint.getResponseSchema().setSchemaFields(updatedResponseFields);
+
+    // Patch the API endpoint to remove the responseCode field using APIEndpointResourceTest
+    APIEndpointResourceTest apiEndpointResourceTest = new APIEndpointResourceTest();
+    APIEndpoint patchedApiEndpoint =
+        apiEndpointResourceTest.patchEntity(
+            schemaApiEndpoint.getId(),
+            originalApiEndpointJson,
+            schemaApiEndpoint,
+            ADMIN_AUTH_HEADERS);
+
+    // Verify the responseCode field was removed from response schema
+    assertEquals(0, patchedApiEndpoint.getResponseSchema().getSchemaFields().size());
+    assertNull(
+        patchedApiEndpoint.getResponseSchema().getSchemaFields().stream()
+            .filter(field -> "responseCode".equals(field.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (responseCode)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (requestId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the responseCode field
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("responseCode", result.getSchemaValidation().getFailedFields().get(0));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testDashboardDataModelEntityConstraints(TestInfo test) throws IOException {
     // Test 1: Dashboard Data Model with schema should succeed (dashboardDataModel supports schema
     // validation)
-    DashboardDataModel schemaDataModel =
-        createUniqueDashboardDataModel(test.getDisplayName() + "_schema");
+    // Create columns that match what the data contract will expect
+    List<org.openmetadata.schema.type.Column> dataModelColumns =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
+            new org.openmetadata.schema.type.Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.DOUBLE));
+
+    // Create corresponding data contract columns
     List<Column> columns =
         List.of(
             new Column()
@@ -4034,6 +4319,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 .withName("metricValue")
                 .withDescription("Metric Value")
                 .withDataType(ColumnDataType.DOUBLE));
+
+    DashboardDataModel schemaDataModel =
+        createUniqueDashboardDataModel(test.getDisplayName() + "_schema", dataModelColumns);
+
     CreateDataContract createWithSchema =
         createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaDataModel)
             .withSchema(columns);
@@ -4045,10 +4334,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the schema fields match what we provided
     assertEquals("metricId", schemaContract.getSchema().get(0).getName());
     assertEquals("metricValue", schemaContract.getSchema().get(1).getName());
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: Dashboard Data Model with semantics should succeed
     DashboardDataModel semanticsDataModel =
@@ -4114,6 +4408,102 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(schemaDataModel.getId(), schemaContract.getEntity().getId());
     assertEquals("dashboardDataModel", schemaContract.getEntity().getType());
     assertEquals(schemaDataModel.getName(), schemaContract.getEntity().getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDashboardDataModelSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create columns that match what the data contract will expect initially
+    List<org.openmetadata.schema.type.Column> dataModelColumns =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
+            new org.openmetadata.schema.type.Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.DOUBLE));
+
+    // Create corresponding data contract columns
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(ColumnDataType.DOUBLE));
+
+    DashboardDataModel schemaDataModel =
+        createUniqueDashboardDataModel(test.getDisplayName() + "_schema", dataModelColumns);
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaDataModel)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the data model
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the data model by removing one of the columns that the contract expects
+    // We'll simulate this by updating the data model to have fewer columns
+    String originalDataModelJson = JsonUtils.pojoToJson(schemaDataModel);
+
+    // Remove the "metricValue" column from the data model columns
+    List<org.openmetadata.schema.type.Column> updatedColumns = new ArrayList<>();
+    for (org.openmetadata.schema.type.Column col : schemaDataModel.getColumns()) {
+      if (!"metricValue".equals(col.getName())) {
+        updatedColumns.add(col);
+      }
+    }
+    schemaDataModel.setColumns(updatedColumns);
+
+    // Patch the data model to remove the metricValue column using DashboardDataModelResourceTest
+    DashboardDataModelResourceTest dataModelResourceTest = new DashboardDataModelResourceTest();
+    DashboardDataModel patchedDataModel =
+        dataModelResourceTest.patchEntity(
+            schemaDataModel.getId(), originalDataModelJson, schemaDataModel, ADMIN_AUTH_HEADERS);
+
+    // Verify the metricValue column was removed
+    assertEquals(1, patchedDataModel.getColumns().size());
+    assertNull(
+        patchedDataModel.getColumns().stream()
+            .filter(col -> "metricValue".equals(col.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (metricValue)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (metricId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the metricValue column
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("metricValue", result.getSchemaValidation().getFailedFields().get(0));
   }
 
   @Test
