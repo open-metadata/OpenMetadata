@@ -4361,10 +4361,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_sdkCRUDOperations(TestInfo test) throws Exception {
+    // Initialize SDK client with admin auth headers
+    initializeSDKClient(ADMIN_AUTH_HEADERS);
+    
     // Skip if SDK client is not initialized or entity doesn't support SDK operations
     if (sdkClient == null) {
       return;
     }
+    
+    // Set default client for all entity types
+    org.openmetadata.sdk.entities.Table.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.Database.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.DatabaseSchema.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.User.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.Team.setDefaultClient(sdkClient);
 
     // Test SDK CREATE operation
     K createRequest = createRequest(getEntityName(test) + "_sdk", "", "", null);
@@ -4529,10 +4539,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_sdkAsyncOperations(TestInfo test) throws Exception {
+    // Initialize SDK client with admin auth headers
+    initializeSDKClient(ADMIN_AUTH_HEADERS);
+    
     // Skip if SDK client is not initialized
     if (sdkClient == null) {
       return;
     }
+    
+    // Set default client for entity types that support async
+    org.openmetadata.sdk.entities.Table.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.User.setDefaultClient(sdkClient);
 
     // Test async operations for supported entity types
     K createRequest = createRequest(getEntityName(test) + "_async", "", "", null);
@@ -4612,10 +4629,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_sdkListOperations(TestInfo test) throws Exception {
+    // Initialize SDK client with admin auth headers
+    initializeSDKClient(ADMIN_AUTH_HEADERS);
+    
     // Skip if SDK client is not initialized
     if (sdkClient == null) {
       return;
     }
+    
+    // Set default client for entities that support list
+    org.openmetadata.sdk.entities.Table.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.Database.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.User.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.Team.setDefaultClient(sdkClient);
 
     // Create a few entities for list testing
     List<T> createdEntities = new ArrayList<>();
@@ -4670,10 +4696,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_sdkDeleteWithOptions(TestInfo test) throws Exception {
+    // Initialize SDK client with admin auth headers
+    initializeSDKClient(ADMIN_AUTH_HEADERS);
+    
     // Skip if SDK client is not initialized
     if (sdkClient == null) {
       return;
     }
+    
+    // Set default client for entities that support delete options
+    org.openmetadata.sdk.entities.Table.setDefaultClient(sdkClient);
+    org.openmetadata.sdk.entities.Database.setDefaultClient(sdkClient);
 
     // Test delete with recursive and hard delete options
     K createRequest = createRequest(getEntityName(test) + "_delete_options", "", "", null);
@@ -5090,7 +5123,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private void initializeSDKClient(Map<String, String> authHeaders) {
     int port = APP.getLocalPort();
     String serverUrl = String.format("http://localhost:%d/api", port);
-    String authToken = authHeaders != null ? authHeaders.get("Authorization") : null;
+    String authHeader = authHeaders != null ? authHeaders.get("Authorization") : null;
+    String authToken = null;
+    
+    // Extract the token from the "Bearer TOKEN" format
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+      authToken = authHeader.substring(7);
+    } else if (authHeader != null) {
+      authToken = authHeader;
+    }
 
     this.sdkClient =
         new OpenMetadataClient(
