@@ -17,10 +17,12 @@ import { swTokenStorage } from './SwTokenStorage';
 const APP_STATE_KEY = 'app_state';
 const OIDC_TOKEN_KEY = 'primary';
 const REFRESH_TOKEN_KEY = 'secondary';
+const ACCESS_TOKEN_KEY = 'api_access'; // For API access (e.g., BigQuery)
 
 interface AppState {
   [OIDC_TOKEN_KEY]?: string;
   [REFRESH_TOKEN_KEY]?: string;
+  [ACCESS_TOKEN_KEY]?: string;
 }
 
 export const isServiceWorkerAvailable = (): boolean => {
@@ -103,6 +105,28 @@ export const setRefreshToken = async (token: string): Promise<void> => {
   try {
     const state = await getAppState();
     state[REFRESH_TOKEN_KEY] = token;
+    await setAppState(state);
+  } catch {
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
+  }
+};
+
+export const getAccessToken = async (): Promise<string> => {
+  try {
+    const state = await getAppState();
+
+    return state[ACCESS_TOKEN_KEY] || '';
+  } catch {
+    return '';
+  }
+};
+
+export const setAccessToken = async (token: string): Promise<void> => {
+  try {
+    const state = await getAppState();
+    state[ACCESS_TOKEN_KEY] = token;
     await setAppState(state);
   } catch {
     // Storage failures are intentionally ignored to prevent auth flows from breaking.

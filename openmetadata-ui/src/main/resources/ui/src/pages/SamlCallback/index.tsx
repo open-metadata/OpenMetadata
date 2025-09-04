@@ -19,7 +19,11 @@ import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.inter
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
+import {
+  setAccessToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -32,6 +36,7 @@ const SamlCallback = () => {
     // get #id_token from hash params in the URL
     const params = new URLSearchParams(location.search);
     const idToken = params.get('id_token');
+    const accessToken = params.get('access_token'); // Extract access token for API access
     const name = params.get('name');
     const email = params.get('email');
 
@@ -41,6 +46,11 @@ const SamlCallback = () => {
 
     try {
       await setOidcToken(idToken);
+
+      // Store access token if available (for API access to services like BigQuery)
+      if (accessToken) {
+        await setAccessToken(accessToken);
+      }
 
       const oidcUser: OidcUser = {
         id_token: idToken,

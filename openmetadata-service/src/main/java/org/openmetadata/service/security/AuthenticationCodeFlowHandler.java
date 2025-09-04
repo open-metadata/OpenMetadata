@@ -685,10 +685,15 @@ public class AuthenticationCodeFlowHandler {
       User user = JsonUtils.readValue(storedUserStr, User.class);
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     }
+    // Include access token if available for API access (e.g., BigQuery)
+    String accessTokenParam = "";
+    if (credentials.getAccessToken() != null) {
+      accessTokenParam = "&access_token=" + credentials.getAccessToken().getValue();
+    }
     String url =
         String.format(
-            "%s?id_token=%s&email=%s&name=%s",
-            redirectUri, credentials.getIdToken().getParsedString(), email, userName);
+            "%s?id_token=%s&email=%s&name=%s%s",
+            redirectUri, credentials.getIdToken().getParsedString(), email, userName, accessTokenParam);
     response.sendRedirect(url);
   }
 
