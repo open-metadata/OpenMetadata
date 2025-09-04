@@ -187,6 +187,9 @@ export type DataAssetsHeaderProps = {
   | DataAssetMetric
   | DataAssetChart
   | DataAssetDirectory
+  | DataAssetFile
+  | DataAssetSpreadsheet
+  | DataAssetWorksheet
 );
 
 export interface DataAssetTable {
@@ -314,6 +317,25 @@ export interface DataAssetDirectory {
   entityType: EntityType.DIRECTORY;
 }
 
+export interface DataAssetDirectory {
+  dataAsset: Directory;
+  entityType: EntityType.DIRECTORY;
+}
+
+export interface DataAssetFile {
+  dataAsset: File;
+  entityType: EntityType.FILE;
+}
+
+export interface DataAssetSpreadsheet {
+  dataAsset: Spreadsheet;
+  entityType: EntityType.SPREADSHEET;
+}
+
+export interface DataAssetWorksheet {
+  dataAsset: Worksheet;
+  entityType: EntityType.WORKSHEET;
+}
 export interface DataAssetHeaderInfo {
   extraInfo: ReactNode;
   breadcrumbs: TitleBreadcrumbProps['titleLinks'];

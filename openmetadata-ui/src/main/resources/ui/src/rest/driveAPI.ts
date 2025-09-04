@@ -14,12 +14,14 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { EntityType } from '../enums/entity.enum';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityReference } from '../generated/type/entityReference';
 import {
+  DriveAssetEntityTypes,
   GetDirectoriesParams,
   GetFilesParams,
   GetSpreadsheetParams,
@@ -28,6 +30,13 @@ import {
 import APIClient from './index';
 
 const BASE_URL = '/drives';
+
+const APIByEntityType = {
+  [EntityType.FILE]: '/files',
+  [EntityType.DIRECTORY]: '/directories',
+  [EntityType.SPREADSHEET]: '/spreadsheets',
+  [EntityType.WORKSHEET]: '/worksheets',
+};
 
 export const getFiles = async (params: GetFilesParams) => {
   const { paging, ...restParams } = params;
@@ -89,14 +98,18 @@ export const getWorksheets = async (params: GetWorksheetsParams) => {
   return response.data;
 };
 
-export const getDirectoryByFqn = async (
+export const getDriveAssetByFqn = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
   fqn: string,
+  entityType: DriveAssetEntityTypes,
   fields?: string | string[],
   include?: string
 ) => {
+  const API = APIByEntityType[entityType];
   const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields;
-  const response = await APIClient.get<Directory>(
-    `${BASE_URL}/directories/name/${encodeURIComponent(fqn)}`,
+  const response = await APIClient.get<T>(
+    `${BASE_URL}${API}/name/${encodeURIComponent(fqn)}`,
     {
       params: {
         ...(fieldsStr && { fields: fieldsStr }),
@@ -108,29 +121,46 @@ export const getDirectoryByFqn = async (
   return response.data;
 };
 
-export const patchDirectoryDetails = async (id: string, data: Operation[]) => {
-  const response = await APIClient.patch<Operation[], AxiosResponse<Directory>>(
-    `${BASE_URL}/directories/${id}`,
+export const patchDriveAssetDetails = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
+  id: string,
+  data: Operation[],
+  entityType: DriveAssetEntityTypes
+) => {
+  const API = APIByEntityType[entityType];
+  const response = await APIClient.patch<Operation[], AxiosResponse<T>>(
+    `${BASE_URL}${API}/${id}`,
     data
   );
 
   return response.data;
 };
 
-export const addFollower = async (id: string, userId: string) => {
+export const addDriveAssetFollower = async (
+  id: string,
+  userId: string,
+  entityType: DriveAssetEntityTypes
+) => {
+  const API = APIByEntityType[entityType];
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/directories/${id}/followers`, userId, {
+  >(`${BASE_URL}${API}/${id}/followers`, userId, {
     headers: { 'Content-Type': 'application/json' },
   });
 
   return response.data;
 };
 
-export const removeFollower = async (id: string, userId: string) => {
+export const removeDriveAssetFollower = async (
+  id: string,
+  userId: string,
+  entityType: DriveAssetEntityTypes
+) => {
+  const API = APIByEntityType[entityType];
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
@@ -138,25 +168,36 @@ export const removeFollower = async (id: string, userId: string) => {
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`${BASE_URL}/directories/${id}/followers/${userId}`, {
+  >(`${BASE_URL}${API}/${id}/followers/${userId}`, {
     headers: { 'Content-Type': 'application/json' },
   });
 
   return response.data;
 };
 
-export const restoreDirectory = async (id: string) => {
-  const response = await APIClient.put<
-    RestoreRequestType,
-    AxiosResponse<Directory>
-  >(`${BASE_URL}/restore`, { id });
+export const restoreDriveAsset = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
+  id: string
+) => {
+  const response = await APIClient.put<RestoreRequestType, AxiosResponse<T>>(
+    `${BASE_URL}/restore`,
+    { id }
+  );
 
   return response.data;
 };
 
-export const updateDirectoryVotes = async (id: string, data: QueryVote) => {
-  const response = await APIClient.put<QueryVote, AxiosResponse<Directory>>(
-    `${BASE_URL}/directories/${id}/vote`,
+export const updateDriveAssetVotes = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
+  id: string,
+  data: QueryVote,
+  entityType: DriveAssetEntityTypes
+) => {
+  const API = APIByEntityType[entityType];
+  const response = await APIClient.put<QueryVote, AxiosResponse<T>>(
+    `${BASE_URL}${API}/${id}/vote`,
     data
   );
 

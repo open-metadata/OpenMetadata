@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
@@ -22,7 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import DirectoryDetails from '../../components/DriveService/Directory/DirectoryDetails';
+import FileDetails from '../../components/DriveService/File/FileDetails';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -32,7 +31,7 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { Directory } from '../../generated/entity/data/directory';
+import { File } from '../../generated/entity/data/file';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -47,8 +46,8 @@ import {
   addToRecentViewed,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
-import { defaultFields } from '../../utils/DirectoryDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { fileDefaultFields } from '../../utils/FileDetailsUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -56,46 +55,35 @@ import {
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const DirectoryDetailsPage = () => {
+function FileDetailsPage() {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: directoryFQN } = useFqn();
-  const [directoryDetails, setDirectoryDetails] = useState<Directory>(
-    {} as Directory
-  );
+  const { fqn: fileFQN } = useFqn();
+  const [fileDetails, setFileDetails] = useState<File>({} as File);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [directoryPermissions, setDirectoryPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [filePermissions, setFilePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
-  const { id: directoryId, version: currentVersion } = directoryDetails;
+  const { id: fileId, version: currentVersion } = fileDetails;
 
-  const saveUpdatedDirectoryData = (updatedData: Directory) => {
-    const jsonPatch = compare(
-      omitBy(directoryDetails, isUndefined),
-      updatedData
-    );
+  const saveUpdatedFileData = (updatedData: File) => {
+    const jsonPatch = compare(omitBy(fileDetails, isUndefined), updatedData);
 
-    return patchDriveAssetDetails<Directory>(
-      directoryId,
-      jsonPatch,
-      EntityType.DIRECTORY
-    );
+    return patchDriveAssetDetails<File>(fileId, jsonPatch, EntityType.FILE);
   };
 
-  const onDirectoryUpdate = async (
-    updatedData: Directory,
-    key?: keyof Directory
-  ) => {
+  const onFileUpdate = async (updatedData: File, key?: keyof File) => {
     try {
-      const res = await saveUpdatedDirectoryData(updatedData);
+      const res = await saveUpdatedFileData(updatedData);
 
-      setDirectoryDetails((previous) => {
+      setFileDetails((previous) => {
         return {
           ...previous,
           ...res,
@@ -111,10 +99,10 @@ const DirectoryDetailsPage = () => {
     setLoading(true);
     try {
       const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.DIRECTORY,
+        ResourceEntity.FILE,
         entityFqn
       );
-      setDirectoryPermissions(permissions);
+      setFilePermissions(permissions);
     } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -126,21 +114,21 @@ const DirectoryDetailsPage = () => {
     }
   };
 
-  const fetchDirectoryDetails = async (directoryFQN: string) => {
+  const fetchFileDetails = async (fileFQN: string) => {
     setLoading(true);
     try {
-      const res = await getDriveAssetByFqn<Directory>(
-        directoryFQN,
-        EntityType.DIRECTORY,
-        defaultFields
+      const res = await getDriveAssetByFqn<File>(
+        fileFQN,
+        EntityType.FILE,
+        fileDefaultFields
       );
       const { id, fullyQualifiedName, serviceType } = res;
 
-      setDirectoryDetails(res);
+      setFileDetails(res);
 
       addToRecentViewed({
         displayName: getEntityName(res),
-        entityType: EntityType.DIRECTORY,
+        entityType: EntityType.FILE,
         fqn: fullyQualifiedName ?? '',
         serviceType: serviceType,
         timestamp: 0,
@@ -158,7 +146,7 @@ const DirectoryDetailsPage = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: directoryFQN,
+            entityName: fileFQN,
           })
         );
       }
@@ -167,15 +155,11 @@ const DirectoryDetailsPage = () => {
     }
   };
 
-  const followDirectory = async () => {
+  const followFile = async () => {
     try {
-      const res = await addDriveAssetFollower(
-        directoryId,
-        USERId,
-        EntityType.DIRECTORY
-      );
+      const res = await addDriveAssetFollower(fileId, USERId, EntityType.FILE);
       const { newValue } = res.changeDescription?.fieldsAdded?.[0];
-      setDirectoryDetails((prev) => ({
+      setFileDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
@@ -183,21 +167,21 @@ const DirectoryDetailsPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(directoryDetails),
+          entity: getEntityName(fileDetails),
         })
       );
     }
   };
 
-  const unFollowDirectory = async () => {
+  const unFollowFile = async () => {
     try {
       const res = await removeDriveAssetFollower(
-        directoryId,
+        fileId,
         USERId,
-        EntityType.DIRECTORY
+        EntityType.FILE
       );
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setDirectoryDetails((prev) => ({
+      setFileDetails((prev) => ({
         ...prev,
         followers: (prev?.followers ?? []).filter(
           (follower) => follower.id !== oldValue[0].id
@@ -207,7 +191,7 @@ const DirectoryDetailsPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(directoryDetails),
+          entity: getEntityName(fileDetails),
         })
       );
     }
@@ -216,16 +200,12 @@ const DirectoryDetailsPage = () => {
   const versionHandler = () => {
     currentVersion &&
       navigate(
-        getVersionPath(
-          EntityType.DIRECTORY,
-          directoryFQN,
-          toString(currentVersion)
-        )
+        getVersionPath(EntityType.FILE, fileFQN, toString(currentVersion))
       );
   };
 
   const handleToggleDelete = (version?: number) => {
-    setDirectoryDetails((prev) => {
+    setFileDetails((prev) => {
       if (!prev) {
         return prev;
       }
@@ -240,10 +220,10 @@ const DirectoryDetailsPage = () => {
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
-      await updateDriveAssetVotes<Directory>(id, data, EntityType.DIRECTORY);
-      const details = await getDriveAssetByFqn<Directory>(
-        directoryFQN,
-        EntityType.DIRECTORY,
+      await updateDriveAssetVotes<File>(id, data, EntityType.FILE);
+      const details = await getDriveAssetByFqn<File>(
+        fileFQN,
+        EntityType.FILE,
         [
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
@@ -251,38 +231,35 @@ const DirectoryDetailsPage = () => {
           TabSpecificField.VOTES,
         ].join(',')
       );
-      setDirectoryDetails(details);
+      setFileDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const updateDirectoryDetailsState = useCallback(
-    (data: DataAssetWithDomains) => {
-      const updatedData = data as Directory;
+  const updateFileDetailsState = useCallback((data: DataAssetWithDomains) => {
+    const updatedData = data as File;
 
-      setDirectoryDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-    },
-    []
-  );
+    setFileDetails((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
-    fetchResourcePermission(directoryFQN);
-  }, [directoryFQN]);
+    fetchResourcePermission(fileFQN);
+  }, [fileFQN]);
 
   useEffect(() => {
     if (
       getPrioritizedViewPermission(
-        directoryPermissions,
+        filePermissions,
         PermissionOperation.ViewBasic
       )
     ) {
-      fetchDirectoryDetails(directoryFQN);
+      fetchFileDetails(fileFQN);
     }
-  }, [directoryPermissions, directoryFQN]);
+  }, [filePermissions, fileFQN]);
 
   if (isLoading) {
     return <Loader />;
@@ -290,16 +267,16 @@ const DirectoryDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('directory', directoryFQN)}
+        {getEntityMissingError('file', fileFQN)}
       </ErrorPlaceHolder>
     );
   }
-  if (!directoryPermissions.ViewAll && !directoryPermissions.ViewBasic) {
+  if (!filePermissions.ViewAll && !filePermissions.ViewBasic) {
     return (
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.directory'),
+          entity: t('label.file'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -307,19 +284,19 @@ const DirectoryDetailsPage = () => {
   }
 
   return (
-    <DirectoryDetails
-      directoryDetails={directoryDetails}
-      directoryPermissions={directoryPermissions}
-      fetchDirectory={() => fetchDirectoryDetails(directoryFQN)}
-      followDirectoryHandler={followDirectory}
+    <FileDetails
+      fetchFile={() => fetchFileDetails(fileFQN)}
+      fileDetails={fileDetails}
+      filePermissions={filePermissions}
+      followFileHandler={followFile}
       handleToggleDelete={handleToggleDelete}
-      unFollowDirectoryHandler={unFollowDirectory}
-      updateDirectoryDetailsState={updateDirectoryDetailsState}
+      unFollowFileHandler={unFollowFile}
+      updateFileDetailsState={updateFileDetailsState}
       versionHandler={versionHandler}
-      onDirectoryUpdate={onDirectoryUpdate}
+      onFileUpdate={onFileUpdate}
       onUpdateVote={updateVote}
     />
   );
-};
+}
 
-export default withActivityFeed(DirectoryDetailsPage);
+export default withActivityFeed(FileDetailsPage);

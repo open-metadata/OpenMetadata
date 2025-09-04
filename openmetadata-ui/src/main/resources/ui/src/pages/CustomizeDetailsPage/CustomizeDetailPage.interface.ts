@@ -34,4 +34,7 @@ export const PageTypeToEntityTypeMap = {
   [PageType.LandingPage]: EntityType.ALL,
   [PageType.Chart]: EntityType.CHART,
   [PageType.Directory]: EntityType.DIRECTORY,
+  [PageType.File]: EntityType.FILE,
+  [PageType.Spreadsheet]: EntityType.SPREADSHEET,
+  [PageType.Worksheet]: EntityType.WORKSHEET,
 };

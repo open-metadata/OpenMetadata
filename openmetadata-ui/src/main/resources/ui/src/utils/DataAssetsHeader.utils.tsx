@@ -39,6 +39,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -719,11 +720,10 @@ export const getDataAssetsHeaderInfo = (
     case EntityType.DIRECTORY: {
       const directory = dataAsset as Directory;
 
-      returnData.breadcrumbs = getBreadcrumbForEntityWithParent({
-        entity: directory,
-        entityType: EntityType.DIRECTORY,
-        parents: isUndefined(directory.parent) ? [] : [directory.parent],
-      });
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        directory,
+        EntityType.DIRECTORY
+      );
 
       returnData.extraInfo = (
         <>
@@ -760,6 +760,50 @@ export const getDataAssetsHeaderInfo = (
               <ExtraInfoLabel
                 label={t('label.subdirectory-plural')}
                 value={directory.numberOfSubDirectories}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+    case EntityType.FILE: {
+      const file = dataAsset as File;
+      returnData.breadcrumbs = getEntityBreadcrumbs(file, EntityType.FILE);
+
+      returnData.extraInfo = (
+        <>
+          {file.fileType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
+            </>
+          )}
+          {file.fileExtension !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.extension')}
+                value={file.fileExtension}
+              />
+            </>
+          )}
+          {file.fileVersion !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.version')}
+                value={file.fileVersion}
               />
             </>
           )}

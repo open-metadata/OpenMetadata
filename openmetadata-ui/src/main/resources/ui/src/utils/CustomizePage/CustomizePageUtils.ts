@@ -33,6 +33,7 @@ import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
+import fileClassBase from '../FileClassBase';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
 import mlModelClassBase from '../MlModel/MlModelClassBase';
@@ -161,6 +162,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return chartDetailsClassBase.getChartDetailPageTabsIds();
     case PageType.Directory:
       return directoryClassBase.getDirectoryDetailPageTabsIds();
+    case PageType.File:
+      return fileClassBase.getFileDetailPageTabsIds();
     default:
       return [
         {
@@ -215,6 +218,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return chartDetailsClassBase.getDefaultLayout(tab);
     case PageType.Directory:
       return directoryClassBase.getDefaultLayout(tab);
+    case PageType.File:
+      return fileClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -286,6 +291,8 @@ export const getCustomizableWidgetByPage = (
       return chartDetailsClassBase.getCommonWidgetList();
     case PageType.Directory:
       return directoryClassBase.getCommonWidgetList();
+    case PageType.File:
+      return fileClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -328,6 +335,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return chartDetailsClassBase.getDummyData();
     case PageType.Directory:
       return directoryClassBase.getDummyData();
+    case PageType.File:
+      return fileClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -377,6 +386,8 @@ export const getWidgetsFromKey = (
       return chartDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Directory:
       return directoryClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.File:
+      return fileClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -423,6 +434,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return chartDetailsClassBase.getWidgetHeight(widgetName);
     case PageType.Directory:
       return directoryClassBase.getWidgetHeight(widgetName);
+    case PageType.File:
+      return fileClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }

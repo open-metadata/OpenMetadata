@@ -1691,6 +1691,7 @@ export const getEntityLinkFromType = (
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
     case EntityType.DIRECTORY:
+    case EntityType.FILE:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
@@ -1936,7 +1937,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export function getBreadcrumbForEntityWithParent<
-  T extends Container | Directory
+  T extends Container | Directory | File
 >(data: {
   entity: T;
   entityType: EntityType;
@@ -2322,8 +2323,19 @@ export const getEntityBreadcrumbs = (
       return getBreadcrumbForEntityWithParent({
         entity: data,
         entityType: EntityType.DIRECTORY,
-        includeCurrent: true,
+        includeCurrent,
         parents: isUndefined(data.parent) ? [] : [data.parent],
+      });
+    }
+
+    case EntityType.FILE: {
+      const data = entity as File;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY,
+        includeCurrent,
+        parents: isUndefined(data.directory) ? [] : [data.directory],
       });
     }
 

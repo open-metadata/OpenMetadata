@@ -80,7 +80,10 @@ export type CustomizeEntityType =
   | EntityType.CONTAINER
   | EntityType.METRIC
   | EntityType.CHART
-  | EntityType.DIRECTORY;
+  | EntityType.DIRECTORY
+  | EntityType.FILE
+  | EntityType.SPREADSHEET
+  | EntityType.WORKSHEET;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -102,4 +105,7 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.METRIC]: PageType.Metric,
   [EntityType.CHART]: PageType.Chart,
   [EntityType.DIRECTORY]: PageType.Directory,
+  [EntityType.FILE]: PageType.File,
+  [EntityType.SPREADSHEET]: PageType.Spreadsheet,
+  [EntityType.WORKSHEET]: PageType.Worksheet,
 };

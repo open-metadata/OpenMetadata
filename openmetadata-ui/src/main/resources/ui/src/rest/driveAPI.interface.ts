@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../enums/entity.enum';
 import { FileType } from '../generated/entity/data/file';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -46,3 +47,9 @@ export interface GetWorksheetsParams {
   include?: Include;
   paging?: Omit<Paging, 'total'>;
 }
+
+export type DriveAssetEntityTypes =
+  | EntityType.FILE
+  | EntityType.DIRECTORY
+  | EntityType.SPREADSHEET
+  | EntityType.WORKSHEET;

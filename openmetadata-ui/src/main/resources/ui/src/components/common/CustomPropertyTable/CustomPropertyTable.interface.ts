@@ -21,14 +21,17 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -54,6 +57,9 @@ export type ExtentionEntities = {
   [EntityType.DOMAIN]: Domain;
   [EntityType.CHART]: Chart;
   [EntityType.DIRECTORY]: Directory;
+  [EntityType.FILE]: File;
+  [EntityType.SPREADSHEET]: Spreadsheet;
+  [EntityType.WORKSHEET]: Worksheet;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;

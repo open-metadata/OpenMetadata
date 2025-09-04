@@ -14,6 +14,9 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
+import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
+import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';
+import sharePointConnection from '../jsons/connectionSchemas/connections/drive/sharePointConnection.json';
 
 export const getDriveConfig = (type: DriveServiceType) => {
   let schema = {};
@@ -21,17 +24,17 @@ export const getDriveConfig = (type: DriveServiceType) => {
 
   switch (type) {
     case DriveServiceType.CustomDrive: {
-      schema = require('../jsons/connectionSchemas/connections/drive/customDriveConnection.json');
+      schema = customDriveConnection;
 
       break;
     }
     case DriveServiceType.GoogleDrive: {
-      schema = require('../jsons/connectionSchemas/connections/drive/googleDriveConnection.json');
+      schema = googleDriveConnection;
 
       break;
     }
     case DriveServiceType.SharePoint: {
-      schema = require('../jsons/connectionSchemas/connections/drive/sharePointConnection.json');
+      schema = sharePointConnection;
 
       break;
     }

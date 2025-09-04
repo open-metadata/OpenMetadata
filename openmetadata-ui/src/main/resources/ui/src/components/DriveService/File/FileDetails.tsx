@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
@@ -21,10 +20,10 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { PageType } from '../../../generated/system/ui/uiCustomization';
+import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -38,11 +37,11 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import directoryClassBase from '../../../utils/DirectoryClassBase';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import fileClassBase from '../../../utils/FileClassBase';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -55,7 +54,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -65,27 +63,27 @@ import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { DirectoryDetailsProps } from './DirectoryDetails.interface';
+import { FileDetailsProps } from './FileDetails.interface';
 
-function DirectoryDetails({
-  directoryDetails,
-  directoryPermissions,
-  fetchDirectory,
-  followDirectoryHandler,
+function FileDetails({
+  fileDetails,
+  filePermissions,
+  fetchFile,
+  followFileHandler,
   handleToggleDelete,
-  unFollowDirectoryHandler,
-  updateDirectoryDetailsState,
+  unFollowFileHandler,
+  updateFileDetailsState,
   versionHandler,
-  onDirectoryUpdate,
+  onFileUpdate,
   onUpdateVote,
-}: DirectoryDetailsProps) {
+}: FileDetailsProps) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.CHILDREN } =
+  const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDirectoryFQN } = useFqn();
+  const { fqn: decodedFileFQN } = useFqn();
   const navigate = useNavigate();
-  const { customizedPage, isLoading } = useCustomPages(PageType.Directory);
+  const { customizedPage, isLoading } = useCustomPages(PageType.File);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -98,16 +96,16 @@ function DirectoryDetails({
     description,
     followers = [],
     entityName,
-    directoryTags,
+    fileTags,
     tier,
   } = useMemo(
     () => ({
-      ...directoryDetails,
-      tier: getTierTags(directoryDetails.tags ?? []),
-      directoryTags: getTagsWithoutTier(directoryDetails.tags ?? []),
-      entityName: getEntityName(directoryDetails),
+      ...fileDetails,
+      tier: getTierTags(fileDetails.tags ?? []),
+      fileTags: getTagsWithoutTier(fileDetails.tags ?? []),
+      entityName: getEntityName(fileDetails),
     }),
-    [directoryDetails]
+    [fileDetails]
   );
 
   const { isFollowing } = useMemo(
@@ -118,49 +116,31 @@ function DirectoryDetails({
     [followers, currentUser]
   );
 
-  const followDirectory = async () =>
-    isFollowing
-      ? await unFollowDirectoryHandler()
-      : await followDirectoryHandler();
+  const followFile = async () =>
+    isFollowing ? await unFollowFileHandler() : await followFileHandler();
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     const updatedData = {
-      ...directoryDetails,
+      ...fileDetails,
       displayName: data.displayName,
     };
-    await onDirectoryUpdate(updatedData, 'displayName');
+    await onFileUpdate(updatedData, 'displayName');
   };
-  const onExtensionUpdate = async (updatedData: Directory) => {
-    await onDirectoryUpdate(
-      { ...directoryDetails, extension: updatedData.extension },
+  const onExtensionUpdate = async (updatedData: File) => {
+    await onFileUpdate(
+      { ...fileDetails, extension: updatedData.extension },
       'extension'
     );
   };
 
-  const handleChildrenFieldUpdate = async (
-    updatedChildren: Directory['children']
-  ) => {
+  const handleRestoreFile = async () => {
     try {
-      await onDirectoryUpdate(
-        {
-          ...directoryDetails,
-          children: updatedChildren,
-        },
-        'children'
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleRestoreDirectory = async () => {
-    try {
-      const { version: newVersion } = await restoreDriveAsset<Directory>(
-        directoryDetails.id
+      const { version: newVersion } = await restoreDriveAsset<File>(
+        fileDetails.id
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.directory'),
+          entity: t('label.file'),
         })
       );
       handleToggleDelete(newVersion);
@@ -168,7 +148,7 @@ function DirectoryDetails({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.directory'),
+          entity: t('label.file'),
         })
       );
     }
@@ -177,11 +157,7 @@ function DirectoryDetails({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        getEntityDetailsPath(
-          EntityType.DIRECTORY,
-          decodedDirectoryFQN,
-          activeKey
-        ),
+        getEntityDetailsPath(EntityType.FILE, decodedFileFQN, activeKey),
         { replace: true }
       );
     }
@@ -189,45 +165,45 @@ function DirectoryDetails({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedDirectoryDetails = {
-        ...directoryDetails,
+      const updatedfileDetails = {
+        ...fileDetails,
         description: updatedHTML,
       };
       try {
-        await onDirectoryUpdate(updatedDirectoryDetails, 'description');
+        await onFileUpdate(updatedfileDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     }
   };
   const onOwnerUpdate = useCallback(
-    async (newOwners?: Directory['owners']) => {
-      const updatedDirectoryDetails = {
-        ...directoryDetails,
+    async (newOwners?: File['owners']) => {
+      const updatedfileDetails = {
+        ...fileDetails,
         owners: newOwners,
       };
-      await onDirectoryUpdate(updatedDirectoryDetails, 'owners');
+      await onFileUpdate(updatedfileDetails, 'owners');
     },
     [owners]
   );
 
   const onTierUpdate = (newTier?: Tag) => {
-    const tierTag = updateTierTag(directoryDetails?.tags ?? [], newTier);
-    const updatedDirectoryDetails = {
-      ...directoryDetails,
+    const tierTag = updateTierTag(fileDetails?.tags ?? [], newTier);
+    const updatedfileDetails = {
+      ...fileDetails,
       tags: tierTag,
     };
 
-    return onDirectoryUpdate(updatedDirectoryDetails, 'tags');
+    return onFileUpdate(updatedfileDetails, 'tags');
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
-    if (updatedTags && directoryDetails) {
+    if (updatedTags && fileDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedDirectory = { ...directoryDetails, tags: updatedTags };
-      await onDirectoryUpdate(updatedDirectory, 'tags');
+      const updatedFile = { ...fileDetails, tags: updatedTags };
+      await onFileUpdate(updatedFile, 'tags');
     }
   };
 
@@ -236,12 +212,12 @@ function DirectoryDetails({
       return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
     });
 
-    const updatedDirectoryDetails = {
-      ...directoryDetails,
+    const updatedfileDetails = {
+      ...fileDetails,
       dataProducts: dataProductsEntity,
     };
 
-    await onDirectoryUpdate(updatedDirectoryDetails, 'dataProducts');
+    await onFileUpdate(updatedfileDetails, 'dataProducts');
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -249,7 +225,7 @@ function DirectoryDetails({
   }, []);
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
+    getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
@@ -267,70 +243,65 @@ function DirectoryDetails({
   } = useMemo(
     () => ({
       editTagsPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditTags
-        ) && !deleted,
+        getPrioritizedEditPermission(filePermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
         getPrioritizedEditPermission(
-          directoryPermissions,
+          filePermissions,
           Operation.EditGlossaryTerms
         ) && !deleted,
       editDescriptionPermission:
         getPrioritizedEditPermission(
-          directoryPermissions,
+          filePermissions,
           Operation.EditDescription
         ) && !deleted,
       editCustomAttributePermission:
         getPrioritizedEditPermission(
-          directoryPermissions,
+          filePermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: directoryPermissions.EditAll && !deleted,
+      editAllPermission: filePermissions.EditAll && !deleted,
       editLineagePermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewAllPermission: directoryPermissions.ViewAll,
+        getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
+        !deleted,
+      viewAllPermission: filePermissions.ViewAll,
     }),
-    [directoryPermissions, deleted]
+    [filePermissions, deleted]
   );
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [directoryPermissions, decodedDirectoryFQN]);
+  }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-    const tabs = directoryClassBase.getDirectoryDetailPageTabs({
-      childrenCount: directoryDetails.children?.length ?? 0,
+    const tabs = fileClassBase.getFileDetailPageTabs({
       activityFeedTab: (
         <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
-          entityType={EntityType.DIRECTORY}
+          entityType={EntityType.FILE}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={fetchDirectory}
+          onUpdateEntityDetails={fetchFile}
           onUpdateFeedCount={handleFeedCount}
         />
       ),
       lineageTab: (
         <LineageProvider>
           <Lineage
-            deleted={directoryDetails.deleted}
-            entity={directoryDetails as SourceType}
-            entityType={EntityType.DIRECTORY}
+            deleted={fileDetails.deleted}
+            entity={fileDetails as SourceType}
+            entityType={EntityType.FILE}
             hasEditAccess={editLineagePermission}
           />
         </LineageProvider>
       ),
-      customPropertiesTab: directoryDetails && (
-        <CustomPropertyTable<EntityType.DIRECTORY>
-          entityType={EntityType.DIRECTORY}
+      customPropertiesTab: fileDetails && (
+        <CustomPropertyTable<EntityType.FILE>
+          entityType={EntityType.FILE}
           hasEditAccess={editCustomAttributePermission}
           hasPermission={viewAllPermission}
         />
@@ -348,18 +319,17 @@ function DirectoryDetails({
   }, [
     activeTab,
     feedCount.totalCount,
-    directoryTags,
+    fileTags,
     entityName,
-    directoryDetails,
-    decodedDirectoryFQN,
-    fetchDirectory,
+    fileDetails,
+    decodedFileFQN,
+    fetchFile,
     deleted,
     handleFeedCount,
     onExtensionUpdate,
     handleTagSelection,
     onDescriptionUpdate,
     onDataProductsUpdate,
-    handleChildrenFieldUpdate,
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
@@ -370,18 +340,18 @@ function DirectoryDetails({
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
-      if (directoryDetails) {
-        const certificationTag: Directory['certification'] =
+      if (fileDetails) {
+        const certificationTag: File['certification'] =
           updateCertificationTag(newCertification);
-        const updatedDirectoryDetails = {
-          ...directoryDetails,
+        const updatedFileDetails = {
+          ...fileDetails,
           certification: certificationTag,
         };
 
-        await onDirectoryUpdate(updatedDirectoryDetails, 'certification');
+        await onFileUpdate(updatedFileDetails, 'certification');
       }
     },
-    [directoryDetails, onDirectoryUpdate]
+    [fileDetails, onFileUpdate]
   );
 
   const toggleTabExpanded = () => {
@@ -389,7 +359,7 @@ function DirectoryDetails({
   };
 
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Directory),
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.File),
     [tabs[0], activeTab]
   );
   if (isLoading) {
@@ -399,7 +369,7 @@ function DirectoryDetails({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.directory'),
+        entity: t('label.file'),
       })}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
@@ -407,28 +377,28 @@ function DirectoryDetails({
             isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
-            afterDomainUpdateAction={updateDirectoryDetailsState}
-            dataAsset={directoryDetails}
-            entityType={EntityType.DIRECTORY}
+            afterDomainUpdateAction={updateFileDetailsState}
+            dataAsset={fileDetails}
+            entityType={EntityType.FILE}
             openTaskCount={feedCount.openTaskCount}
-            permissions={directoryPermissions}
+            permissions={filePermissions}
             onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
-            onFollowClick={followDirectory}
+            onFollowClick={followFile}
             onOwnerUpdate={onOwnerUpdate}
-            onRestoreDataAsset={handleRestoreDirectory}
+            onRestoreDataAsset={handleRestoreFile}
             onTierUpdate={onTierUpdate}
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>
-        <GenericProvider<Directory>
+        <GenericProvider<File>
           customizedPage={customizedPage}
-          data={directoryDetails}
+          data={fileDetails}
           isTabExpanded={isTabExpanded}
-          permissions={directoryPermissions}
-          type={EntityType.DIRECTORY}
-          onUpdate={onDirectoryUpdate}>
+          permissions={filePermissions}
+          type={EntityType.FILE}
+          onUpdate={onFileUpdate}>
           <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
@@ -451,11 +421,11 @@ function DirectoryDetails({
           </Col>
         </GenericProvider>
       </Row>
-      <LimitWrapper resource="directory">
+      <LimitWrapper resource="file">
         <></>
       </LimitWrapper>
     </PageLayoutV1>
   );
 }
 
-export default withActivityFeed<DirectoryDetailsProps>(DirectoryDetails);
+export default FileDetails;

@@ -136,7 +136,6 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
-import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
@@ -175,7 +174,6 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
-    DriveServiceType.GoogleDrive,
     PipelineServiceType.Snowplow,
   ];
 

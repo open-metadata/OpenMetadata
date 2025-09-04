@@ -37,6 +37,7 @@ import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSch
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
 import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
@@ -413,6 +414,8 @@ class EntityUtilClassBase {
         return MetricDetailsPage;
       case EntityType.DIRECTORY:
         return DirectoryDetailsPage;
+      case EntityType.FILE:
+        return FileDetailsPage;
 
       default:
         return null;
@@ -474,6 +477,9 @@ class EntityUtilClassBase {
       }
       case EntityType.DIRECTORY: {
         return ResourceEntity.DRIVE_SERVICE;
+      }
+      case EntityType.FILE: {
+        return ResourceEntity.FILE;
       }
 
       default: {

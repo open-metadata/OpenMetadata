@@ -86,6 +86,9 @@ export enum ResourceEntity {
   INGESTION_RUNNER = 'ingestionRunner',
   DRIVE_SERVICE = 'driveService',
   DIRECTORY = 'directory',
+  FILE = 'file',
+  SPREADSHEET = 'spreadsheet',
+  WORKSHEET = 'worksheet',
 }
 
 export interface PermissionContextType {
