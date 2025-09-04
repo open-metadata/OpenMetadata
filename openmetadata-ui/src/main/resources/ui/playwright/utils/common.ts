@@ -170,22 +170,31 @@ export const assignDomain = async (
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
+
   await page
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
+
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -221,7 +230,10 @@ export const updateDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -247,7 +259,10 @@ export const removeDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -281,13 +296,20 @@ export const assignDataProduct = async (
   await searchDataProduct;
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
 
   await expect(
@@ -320,13 +342,20 @@ export const removeDataProduct = async (
     .locator('svg')
     .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
 
   await expect(
