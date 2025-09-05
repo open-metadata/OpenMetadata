@@ -331,34 +331,53 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
   }
 
   @Test
-  @DisplayName("Test cache performance under load")
-  public void testCachePerformance() {
+  @DisplayName("Test cache operations under load")
+  public void testCacheOperationsUnderLoad() {
     int operationCount = 100;
-    String baseEntityId = "performance-test-";
-    long startTime = System.currentTimeMillis();
+    String baseEntityId = "load-test-";
 
     for (int i = 0; i < operationCount; i++) {
       String entityId = baseEntityId + i;
       Map<String, Object> data = new HashMap<>();
       data.put("iteration", i);
       data.put("timestamp", System.currentTimeMillis());
+
+      // Test put operation
       RelationshipCache.put(entityId, data);
+
+      // Test get operation and verify data integrity
       Map<String, Object> retrieved = RelationshipCache.get(entityId);
       assertNotNull(retrieved, "Data should be retrievable from cache");
+      assertEquals(i, retrieved.get("iteration"), "Retrieved data should match what was stored");
+      assertNotNull(retrieved.get("timestamp"), "Timestamp should be present");
+
+      // Test eviction on every 10th iteration
       if (i % 10 == 0) {
         RelationshipCache.evict(entityId);
+        // Verify eviction worked
+        Map<String, Object> afterEvict = RelationshipCache.get(entityId);
+        assertNull(afterEvict, "Data should be null after eviction");
       }
     }
 
-    long endTime = System.currentTimeMillis();
-    long totalTime = endTime - startTime;
+    // Verify cache consistency after operations
+    for (int i = 0; i < operationCount; i++) {
+      String entityId = baseEntityId + i;
+      Map<String, Object> cached = RelationshipCache.get(entityId);
+
+      // Items that were evicted (every 10th) should be null
+      if (i % 10 == 0) {
+        assertNull(cached, "Evicted items should remain null");
+      } else {
+        // Non-evicted items should still be in cache
+        assertNotNull(cached, "Non-evicted items should still be in cache");
+        assertEquals(i, cached.get("iteration"), "Cached data should remain intact");
+      }
+    }
+
     LOG.info(
-        "Performed {} cache operations in {} ms (avg: {} ms per operation)",
-        operationCount * 2,
-        totalTime,
-        (double) totalTime / (operationCount * 2));
-    assertTrue(totalTime < operationCount * 10, "Cache operations should be reasonably fast");
-    LOG.info("Cache performance test passed");
+        "Successfully performed {} cache operations with data integrity verified",
+        operationCount * 2);
   }
 
   @AfterEach
