@@ -55,7 +55,7 @@ public class UserActivityFilter implements ContainerRequestFilter {
         return;
       }
       String path = requestContext.getUriInfo().getPath();
-      LOG.info("Tracking activity for user: {} on path: {}", userName, path);
+      LOG.debug("Tracking activity for user: {} on path: {}", userName, path);
       UserActivityTracker.getInstance().trackActivity(userName);
       LOG.debug("Successfully tracked activity for user: {}", userName);
     } catch (Exception e) {
