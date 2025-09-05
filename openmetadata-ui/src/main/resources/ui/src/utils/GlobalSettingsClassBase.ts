@@ -553,6 +553,42 @@ class GlobalSettingsClassBase {
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
                 icon: SearchIndexIcon,
               },
+              {
+                label: t('label.directory-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.directory-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DIRECTORIES}`,
+                icon: SearchIndexIcon,
+              },
+              {
+                label: t('label.file-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.file-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.FILES}`,
+                icon: SearchIndexIcon,
+              },
+              {
+                label: t('label.spreadsheet-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.spreadsheet-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SPREADSHEETS}`,
+                icon: SearchIndexIcon,
+              },
+              {
+                label: t('label.worksheet-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.worksheet-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
+                icon: SearchIndexIcon,
+              },
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
@@ -756,6 +792,42 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
+            icon: ChartIcon,
+          },
+          {
+            label: t('label.directory-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.directory-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
+            icon: ChartIcon,
+          },
+          {
+            label: t('label.file-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.file-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
+            icon: ChartIcon,
+          },
+          {
+            label: t('label.spreadsheet-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.spreadsheet-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
+            icon: ChartIcon,
+          },
+          {
+            label: t('label.worksheet-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.worksheet-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: ChartIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),

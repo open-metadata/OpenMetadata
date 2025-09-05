@@ -350,6 +350,9 @@ export const ENTITY_PATH = {
   domains: 'domain',
   charts: 'chart',
   directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
 };
 
 export const VALIDATION_MESSAGES = {

@@ -89,7 +89,7 @@ class FileClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

@@ -272,4 +272,28 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.lineage'),
     subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
   },
+  DIRECTORY_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.directory-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.directory-plural'),
+    }),
+  },
+  FILE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.file-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.file-plural'),
+    }),
+  },
+  SPREADSHEET_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.spreadsheet-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.spreadsheet-plural'),
+    }),
+  },
+  WORKSHEET_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.worksheet-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.worksheet-plural'),
+    }),
+  },
 };
