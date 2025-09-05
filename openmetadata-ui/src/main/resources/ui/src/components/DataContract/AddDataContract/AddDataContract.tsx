@@ -73,26 +73,37 @@ const AddDataContract: React.FC<{
     setActiveTab(key);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    setIsSubmitting(true);
-
+  const { validSemantics, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
-    try {
-      if (contract) {
-        const jsonPatch = compare(contract, {
+    return {
+      validSemantics,
+      isSaveDisabled: isEmpty(
+        compare(contract ?? {}, {
           ...contract,
           ...formValues,
-          displayName: formValues.name,
-        });
+          semantics: validSemantics,
+        })
+      ),
+    };
+  }, [contract, formValues]);
 
-        if (isEmpty(jsonPatch)) {
-          return;
-        }
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
 
-        await updateContract(contract?.id, jsonPatch);
+    try {
+      if (contract) {
+        await updateContract(
+          contract?.id,
+          compare(contract, {
+            ...contract,
+            ...formValues,
+            semantics: validSemantics,
+            displayName: formValues.name,
+          })
+        );
       } else {
         await createContract({
           ...formValues,
@@ -113,7 +124,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id]);
+  }, [contract, formValues, table?.id, validSemantics]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -239,6 +250,7 @@ const AddDataContract: React.FC<{
           <Button
             className="add-contract-save-button"
             data-testid="save-contract-btn"
+            disabled={isSaveDisabled}
             loading={isSubmitting}
             type="primary"
             onClick={handleSave}>
@@ -247,7 +259,14 @@ const AddDataContract: React.FC<{
         </div>
       </div>
     );
-  }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
+  }, [
+    mode,
+    isSubmitting,
+    isSaveDisabled,
+    handleModeChange,
+    onCancel,
+    handleSave,
+  ]);
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {

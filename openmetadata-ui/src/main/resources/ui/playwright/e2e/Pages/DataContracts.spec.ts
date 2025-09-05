@@ -521,6 +521,8 @@ test.describe('Data Contracts', () => {
     await test.step('Edit and Validate Contract data', async () => {
       await page.getByTestId('contract-edit-button').click();
 
+      await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
+
       // Change the Contract Details
       await page
         .getByTestId('contract-name')
@@ -562,6 +564,8 @@ test.describe('Data Contracts', () => {
       await expect(
         page.getByTestId('query-builder-form-field').getByText('Description')
       ).not.toBeVisible();
+
+      await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
       const saveContractResponse = page.waitForResponse(
         '/api/v1/dataContracts/*'
