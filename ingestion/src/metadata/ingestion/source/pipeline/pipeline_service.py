@@ -444,6 +444,24 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
+    def _get_pipeline_entity(self, pipeline_name: str) -> Optional[Pipeline]:
+        """
+        Get pipeline entity by name
+        """
+        try:
+            pipeline_fqn = fqn.build(
+                self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+
+            return self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+
+        except Exception as exc:
+            logger.debug(f"Failed to get pipeline entity {pipeline_name}: {exc}")
+            return None
+
     def get_storage_service_names(self) -> List[str]:
         """
         Get the list of storage service names
