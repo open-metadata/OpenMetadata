@@ -26,6 +26,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -225,11 +226,6 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.table]: i18n.t('label.table'),
   [TestCaseType.column]: i18n.t('label.column'),
 };
-
-const SEMANTIC_OPERATORS = [
-  ...jsonLogicSearchClassBase.defaultSelectOperators,
-  'array_contains',
-];
 
 export const getSematicRuleFields = () => {
   const allFields = jsonLogicSearchClassBase.getCommonConfig();
