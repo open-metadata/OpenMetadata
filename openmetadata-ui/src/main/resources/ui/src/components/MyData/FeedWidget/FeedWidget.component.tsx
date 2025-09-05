@@ -102,7 +102,7 @@ const MyFeedWidgetInternal = ({
         actionButtonText={t('label.explore-assets')}
         description={t('message.activity-feed-no-data-placeholder')}
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('label.no-recent-activity')}
       />

@@ -780,6 +780,266 @@ test.describe('Data Contracts', () => {
     );
   });
 
+  test('Pagination in Schema Tab with Selection Persistent', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const entityFQN = 'sample_data.ecommerce_db.shopify.performance_test_table';
+
+    try {
+      await test.step('Redirect to Home Page and visit entity', async () => {
+        await redirectToHomePage(page);
+        await page.goto(`/table/${entityFQN}`);
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+      });
+
+      await test.step(
+        'Open contract section and start adding contract',
+        async () => {
+          await page.click('[data-testid="contract"]');
+
+          await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+          await expect(page.getByTestId('add-contract-button')).toBeVisible();
+
+          await page.getByTestId('add-contract-button').click();
+
+          await expect(page.getByTestId('add-contract-card')).toBeVisible();
+        }
+      );
+
+      await test.step('Fill Contract Details form', async () => {
+        await page
+          .getByTestId('contract-name')
+          .fill(DATA_CONTRACT_DETAILS.name);
+      });
+
+      await test.step('Fill Contract Schema form', async () => {
+        const columnResponse = page.waitForResponse(
+          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+        );
+
+        await page.getByRole('button', { name: 'Schema' }).click();
+
+        await columnResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .check();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).toBeChecked();
+
+        // Move to 2nd Page and Select columns
+
+        const columnResponse2 = page.waitForResponse(
+          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+        );
+
+        await page.getByTestId('next').click();
+
+        await columnResponse2;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .check();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).toBeChecked();
+
+        // Move to 3nd Page and Select columns
+
+        const columnResponse3 = page.waitForResponse(
+          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+        );
+
+        await page.getByTestId('next').click();
+
+        await columnResponse3;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .check();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).toBeChecked();
+
+        // Now UnSelect the Selected Columns of 3rd Page
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .uncheck();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).not.toBeChecked();
+      });
+
+      await test.step('Save contract and validate for schema', async () => {
+        const saveContractResponse = page.waitForResponse(
+          '/api/v1/dataContracts'
+        );
+        await page.getByTestId('save-contract-btn').click();
+
+        await saveContractResponse;
+
+        // Check all schema from 1 to 50
+        for (let i = 1; i <= 50; i++) {
+          if (i < 10) {
+            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
+          } else {
+            await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+          }
+        }
+
+        // Schema from 51 to 75 Should not be visible
+        for (let i = 51; i <= 75; i++) {
+          await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+        }
+      });
+
+      await test.step('Update the Schema and Validate', async () => {
+        await page.getByTestId('contract-edit-button').click();
+
+        const columnResponse = page.waitForResponse(
+          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+        );
+
+        await page.getByRole('button', { name: 'Schema' }).click();
+
+        await columnResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page
+          .locator('input[type="checkbox"][aria-label="Select all"]')
+          .uncheck();
+
+        await expect(
+          page.getByRole('checkbox', { name: 'Select all' })
+        ).not.toBeChecked();
+
+        const saveContractResponse = page.waitForResponse(
+          '/api/v1/dataContracts'
+        );
+        await page.getByTestId('save-contract-btn').click();
+
+        await saveContractResponse;
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Check all schema from 26 to 50
+        for (let i = 26; i <= 50; i++) {
+          await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+        }
+      });
+
+      await test.step(
+        'Re-select some columns on page 1, save and validate',
+        async () => {
+          await page.getByTestId('contract-edit-button').click();
+
+          const columnResponse = page.waitForResponse(
+            'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+          );
+
+          await page.getByRole('button', { name: 'Schema' }).click();
+
+          await columnResponse;
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          for (let i = 1; i <= 5; i++) {
+            await page
+              .locator(
+                `[data-row-key="${entityFQN}.test_col_000${i}"] .ant-checkbox-input`
+              )
+              .click();
+          }
+
+          const saveContractResponse = page.waitForResponse(
+            '/api/v1/dataContracts'
+          );
+          await page.getByTestId('save-contract-btn').click();
+
+          await saveContractResponse;
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          // Check all schema from 1 to 5 and then, the one we didn't touch 26 to 50
+          for (let i = 1; i <= 5; i++) {
+            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
+          }
+
+          for (let i = 26; i <= 50; i++) {
+            await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+          }
+        }
+      );
+    } finally {
+      await test.step('Delete contract', async () => {
+        await redirectToHomePage(page);
+        await page.goto(`/table/${entityFQN}`);
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.click('[data-testid="contract"]');
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const deleteContractResponse = page.waitForResponse(
+          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
+        );
+
+        await page.getByTestId('delete-contract-button').click();
+
+        await expect(page.locator('.ant-modal-title')).toBeVisible();
+
+        await page.getByTestId('confirmation-text-input').click();
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+        await expect(page.getByTestId('confirm-button')).toBeEnabled();
+
+        await page.getByTestId('confirm-button').click();
+        await deleteContractResponse;
+
+        await toastNotification(page, '"Contract" deleted successfully!');
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+        await expect(page.getByTestId('add-contract-button')).toBeVisible();
+      });
+    }
+  });
+
   test('should allow adding a semantic with multiple rules', async ({
     page,
   }) => {
