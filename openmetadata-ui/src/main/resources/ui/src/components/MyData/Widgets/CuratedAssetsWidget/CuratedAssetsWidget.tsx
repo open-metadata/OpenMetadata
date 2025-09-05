@@ -45,6 +45,7 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import {
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
@@ -57,7 +58,6 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -377,12 +377,11 @@ const CuratedAssetsWidget = ({
                 )}
               </div>
               {description && (
-                <RichTextEditorPreviewerV1
-                  className="max-two-lines entity-list-item-description"
-                  enableSeeMoreVariant={false}
-                  markdown={description}
-                  showReadMoreBtn={false}
-                />
+                <Typography.Text
+                  className="max-two-lines entity-list-item-description text-grey-muted"
+                  ellipsis={{ tooltip: true }}>
+                  {getTextFromHtmlString(description)}
+                </Typography.Text>
               )}
             </div>
           </div>

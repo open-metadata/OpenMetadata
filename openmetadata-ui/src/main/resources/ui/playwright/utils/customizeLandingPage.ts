@@ -17,6 +17,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -197,10 +198,7 @@ export const setUserDefaultPersona = async (
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   // Click on the persona option by text within the dropdown
-  await page
-    .locator('.ant-select-dropdown')
-    .locator(`text="${personaName}"`)
-    .click();
+  await page.locator(`[data-testid="${personaName}-option"]`).click();
 
   await page.locator('[data-testid="user-profile-persona-edit-save"]').click();
 
@@ -271,7 +269,7 @@ export const addAndVerifyWidget = async (
   });
 
   await openAddCustomizeWidgetModal(page);
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 
   await page.locator(`[data-testid="${widgetKey}"]`).click();
 
@@ -299,14 +297,11 @@ export const addCuratedAssetPlaceholder = async ({
   });
 
   await openAddCustomizeWidgetModal(page);
-
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
 
   await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
 
   await page.locator('[data-testid="apply-btn"]').click();
-
-  await page.waitForLoadState('networkidle');
 
   await expect(
     page
@@ -337,10 +332,7 @@ export const selectAssetTypes = async (
 
   if (assetTypes === 'all') {
     // Select all asset types using the checkbox
-    await page
-      .locator('.ant-select-tree .ant-select-tree-checkbox')
-      .first()
-      .click();
+    await page.locator('[data-testid="all-option"]').click();
   } else {
     // Select specific asset types
     for (const assetType of assetTypes) {
@@ -349,14 +341,14 @@ export const selectAssetTypes = async (
         (c) => c.name === assetType || c.displayName === assetType
       );
       const searchTerm = config?.searchTerm || assetType;
+      const index = config?.index || assetType.toLowerCase();
 
       // Search for the asset type
       await page.keyboard.type(searchTerm);
       await page.waitForTimeout(500);
 
       // Try to click the filtered result
-      const entitySelector = `.ant-select-tree .ant-select-tree-title:has-text("${assetType}")`;
-      const filteredElement = page.locator(entitySelector).first();
+      const filteredElement = page.locator(`[data-testid="${index}-option"]`);
 
       if (await filteredElement.isVisible()) {
         await filteredElement.click();

@@ -218,11 +218,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <NavigationBlocker
-      cancelText="Leave"
-      confirmText="Save & Leave"
-      enabled={!disableSave}
-      onConfirm={handleSave}>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
       <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
         <PageLayoutV1
           className="p-box customise-my-data"
