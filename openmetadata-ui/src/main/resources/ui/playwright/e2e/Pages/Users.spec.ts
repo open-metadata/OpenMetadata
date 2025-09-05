@@ -588,7 +588,7 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and persona to appear
-      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForResponse('/api/v1/users/*');
       await adminPage.waitForSelector(
         '[data-testid="chip-container"] [data-testid="tag-chip"]'
       );
@@ -609,9 +609,8 @@ test.describe('User Profile Persona Interactions', () => {
         expect(personaText).toBeTruthy();
 
         // Wait for navigation response
-        const navigationResponse = adminPage.waitForResponse(
-          /\/api\/v1\/personas\/.*/
-        );
+        const navigationResponse =
+          adminPage.waitForResponse('/api/v1/personas/*');
         await personaLink.click();
         await navigationResponse;
 
@@ -648,7 +647,7 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForResponse('/api/v1/users/*');
 
       await expect(
         adminPage
@@ -701,7 +700,7 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
-      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForResponse('/api/v1/users/*');
     });
 
     // Test adding default persona
@@ -740,7 +739,7 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and default persona to appear
-      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForResponse('/api/v1/users/*');
       await adminPage.waitForSelector(
         '.default-persona-text [data-testid="tag-chip"]'
       );
@@ -761,9 +760,8 @@ test.describe('User Profile Persona Interactions', () => {
         expect(personaText).toBeTruthy();
 
         // Wait for navigation response
-        const navigationResponse = adminPage.waitForResponse(
-          /\/api\/v1\/personas\/.*/
-        );
+        const navigationResponse =
+          adminPage.waitForResponse('/api/v1/personas/*');
         await personaLink.click();
         await navigationResponse;
 
@@ -805,7 +803,7 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and verify no default persona is shown
-      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForResponse('api/v1/users/*');
 
       await expect(adminPage.getByText('No default persona')).toBeVisible();
     });
