@@ -85,7 +85,8 @@ public class OpenSearchSourceBuilderFactory
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
-            .tieBreaker(0.5f);
+            .tieBreaker(0.5f)
+            .lenient(true);
 
     MultiMatchQueryBuilder nonFuzzyQueryBuilder =
         QueryBuilders.multiMatchQuery(query)
@@ -93,7 +94,8 @@ public class OpenSearchSourceBuilderFactory
             .type(MOST_FIELDS)
             .operator(Operator.AND)
             .tieBreaker(0.5f)
-            .fuzziness(Fuzziness.ZERO);
+            .fuzziness(Fuzziness.ZERO)
+            .lenient(true);
 
     return QueryBuilders.boolQuery()
         .should(fuzzyQueryBuilder)
@@ -267,7 +269,8 @@ public class OpenSearchSourceBuilderFactory
         .fuzziness(Fuzziness.AUTO)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
-        .tieBreaker(DEFAULT_TIE_BREAKER);
+        .tieBreaker(DEFAULT_TIE_BREAKER)
+        .lenient(true);
   }
 
   private MultiMatchQueryBuilder createNonFuzzyQueryBuilder(
@@ -277,7 +280,8 @@ public class OpenSearchSourceBuilderFactory
         .type(MOST_FIELDS)
         .operator(Operator.AND)
         .tieBreaker(DEFAULT_TIE_BREAKER)
-        .fuzziness(Fuzziness.ZERO);
+        .fuzziness(Fuzziness.ZERO)
+        .lenient(true);
   }
 
   private QueryBuilder buildSimpleQuery(String query, AssetTypeConfiguration assetConfig) {
@@ -387,7 +391,8 @@ public class OpenSearchSourceBuilderFactory
               .maxExpansions(10)
               .prefixLength(1)
               .operator(Operator.AND)
-              .tieBreaker(DEFAULT_TIE_BREAKER);
+              .tieBreaker(DEFAULT_TIE_BREAKER)
+              .lenient(true);
       fields.forEach(fuzzyQueryBuilder::field);
       combinedQuery.should(fuzzyQueryBuilder.boost(multiplier));
     }
@@ -428,7 +433,8 @@ public class OpenSearchSourceBuilderFactory
         .prefixLength(1)
         .operator(Operator.OR)
         .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
-        .tieBreaker(DEFAULT_TIE_BREAKER);
+        .tieBreaker(DEFAULT_TIE_BREAKER)
+        .lenient(true);
   }
 
   private MultiMatchQueryBuilder createStandardNonFuzzyQuery(String query) {
@@ -436,7 +442,8 @@ public class OpenSearchSourceBuilderFactory
         .type(MOST_FIELDS)
         .operator(Operator.AND)
         .tieBreaker(DEFAULT_TIE_BREAKER)
-        .fuzziness(Fuzziness.ZERO);
+        .fuzziness(Fuzziness.ZERO)
+        .lenient(true);
   }
 
   private QueryBuilder applyFunctionScoring(
@@ -941,7 +948,8 @@ public class OpenSearchSourceBuilderFactory
             .analyzeWildcard(true)
             .allowLeadingWildcard(true)
             .fuzzyMaxExpansions(50)
-            .tieBreaker(0.5f);
+            .tieBreaker(0.5f)
+            .lenient(true);
 
     return QueryBuilders.boolQuery().must(queryStringBuilder);
   }

@@ -80,7 +80,8 @@ public class ElasticSearchSourceBuilderFactory
             .fuzziness(Fuzziness.AUTO)
             .fuzzyMaxExpansions(10)
             .fuzzyPrefixLength(3)
-            .tieBreaker(DEFAULT_TIE_BREAKER);
+            .tieBreaker(DEFAULT_TIE_BREAKER)
+            .lenient(true);
 
     MultiMatchQueryBuilder nonFuzzyQueryBuilder =
         QueryBuilders.multiMatchQuery(query)
@@ -88,7 +89,8 @@ public class ElasticSearchSourceBuilderFactory
             .type(MOST_FIELDS)
             .operator(Operator.AND)
             .tieBreaker(DEFAULT_TIE_BREAKER)
-            .fuzziness(Fuzziness.ZERO);
+            .fuzziness(Fuzziness.ZERO)
+            .lenient(true);
 
     return QueryBuilders.boolQuery()
         .should(fuzzyQueryBuilder)
@@ -262,7 +264,8 @@ public class ElasticSearchSourceBuilderFactory
         .fuzziness(Fuzziness.AUTO)
         .fuzzyMaxExpansions(10)
         .fuzzyPrefixLength(1)
-        .tieBreaker(DEFAULT_TIE_BREAKER);
+        .tieBreaker(DEFAULT_TIE_BREAKER)
+        .lenient(true);
   }
 
   private MultiMatchQueryBuilder createNonFuzzyQueryBuilder(
@@ -272,7 +275,8 @@ public class ElasticSearchSourceBuilderFactory
         .type(MOST_FIELDS)
         .operator(Operator.AND)
         .tieBreaker(DEFAULT_TIE_BREAKER)
-        .fuzziness(Fuzziness.ZERO);
+        .fuzziness(Fuzziness.ZERO)
+        .lenient(true);
   }
 
   private QueryBuilder buildSimpleQuery(String query, AssetTypeConfiguration assetConfig) {
@@ -381,7 +385,8 @@ public class ElasticSearchSourceBuilderFactory
               .prefixLength(1)
               .operator(Operator.OR)
               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
-              .tieBreaker(DEFAULT_TIE_BREAKER);
+              .tieBreaker(DEFAULT_TIE_BREAKER)
+              .lenient(true);
       fields.forEach(fuzzyQueryBuilder::field);
       combinedQuery.should(fuzzyQueryBuilder.boost(multiplier));
     }
@@ -422,7 +427,8 @@ public class ElasticSearchSourceBuilderFactory
         .prefixLength(1)
         .operator(Operator.OR)
         .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
-        .tieBreaker(DEFAULT_TIE_BREAKER);
+        .tieBreaker(DEFAULT_TIE_BREAKER)
+        .lenient(true);
   }
 
   private MultiMatchQueryBuilder createStandardNonFuzzyQuery(String query) {
@@ -431,7 +437,8 @@ public class ElasticSearchSourceBuilderFactory
         .operator(Operator.OR)
         .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
         .tieBreaker(DEFAULT_TIE_BREAKER)
-        .fuzziness(Fuzziness.ZERO);
+        .fuzziness(Fuzziness.ZERO)
+        .lenient(true);
   }
 
   private QueryBuilder applyFunctionScoring(
@@ -927,7 +934,8 @@ public class ElasticSearchSourceBuilderFactory
             .analyzeWildcard(true)
             .allowLeadingWildcard(true)
             .fuzzyMaxExpansions(50)
-            .tieBreaker(DEFAULT_TIE_BREAKER);
+            .tieBreaker(DEFAULT_TIE_BREAKER)
+            .lenient(true);
 
     return QueryBuilders.boolQuery().must(queryStringBuilder);
   }
