@@ -19,3 +19,5 @@ WHERE configtype = 'entityRulesSettings'
     FROM jsonb_array_elements(json->'entitySemantics') AS rule
     WHERE rule->>'name' = 'Data Product Domain Validation'
   );
+-- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
+ALTER TABLE ACT_RU_EVENT_SUBSCR ALTER COLUMN ACTIVITY_ID_ TYPE varchar(255);

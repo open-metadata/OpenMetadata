@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Sets the Entity Certification to the configured value.
+ * Sets any Entity attribute field to the configured value.
  */
-export interface SetEntityCertificationTask {
+export interface SetEntityAttributeTask {
     config?: NodeConfiguration;
     /**
      * Description of the Node.
@@ -29,6 +29,7 @@ export interface SetEntityCertificationTask {
      * Name that identifies this Node.
      */
     name?:    string;
+    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -36,19 +37,13 @@ export interface SetEntityCertificationTask {
 
 export interface NodeConfiguration {
     /**
-     * Choose which Certification to apply to the Data Asset
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
      */
-    certification: CertificationEnum;
-}
-
-/**
- * Choose which Certification to apply to the Data Asset
- */
-export enum CertificationEnum {
-    CertificationBronze = "Certification.Bronze",
-    CertificationGold = "Certification.Gold",
-    CertificationSilver = "Certification.Silver",
-    Empty = "",
+    fieldName: string;
+    /**
+     * Value to set for the field
+     */
+    fieldValue: string;
 }
 
 export interface InputNamespaceMap {

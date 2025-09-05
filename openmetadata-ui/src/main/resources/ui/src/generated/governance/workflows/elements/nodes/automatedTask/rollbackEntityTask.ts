@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Defines a Task for a given User to approve.
+ * Rolls back an entity to its previous approved version. Always rolls back to the most
+ * recent 'Approved' status.
  */
-export interface UserApprovalTask {
-    branches?: string[];
-    config?:   NodeConfiguration;
+export interface RollbackEntityTask {
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -29,41 +29,17 @@ export interface UserApprovalTask {
     /**
      * Name that identifies this Node.
      */
-    name?:    string;
-    output?:  string[];
-    subType?: string;
-    type?:    string;
-    [property: string]: any;
+    name:                string;
+    output?:             string[];
+    outputNamespaceMap?: { [key: string]: string };
+    subType?:            string;
+    type?:               string;
 }
 
 export interface NodeConfiguration {
-    /**
-     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
-     * single reviewer can approve).
-     */
-    approvalThreshold?: number;
-    /**
-     * People/Teams assigned to the Task.
-     */
-    assignees: Assignees;
-    /**
-     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
-     * single reviewer can reject). This allows for scenarios where you want multiple approvals
-     * but a single rejection can veto.
-     */
-    rejectionThreshold?: number;
-}
-
-/**
- * People/Teams assigned to the Task.
- */
-export interface Assignees {
-    /**
-     * Add the Reviewers to the assignees List.
-     */
-    addReviewers?: boolean;
 }
 
 export interface InputNamespaceMap {
     relatedEntity: string;
+    updatedBy?:    string;
 }
