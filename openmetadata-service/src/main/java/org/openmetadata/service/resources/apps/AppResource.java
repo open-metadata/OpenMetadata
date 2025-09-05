@@ -1083,9 +1083,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
 
         if (app.getSupportsIngestionRunner()) {
-          if (service instanceof MetadataService) {
-            ((MetadataService) service).setIngestionRunner(app.getIngestionRunner());
-          }
+            service.setIngestionRunner(app.getIngestionRunner());
         }
 
         PipelineServiceClientResponse response =
