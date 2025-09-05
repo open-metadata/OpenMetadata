@@ -94,6 +94,37 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: devServerTarget,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              // Intercept auth login responses
+              if (
+                req.url?.includes('/api/v1/auth/login') &&
+                proxyRes.statusCode === 302
+              ) {
+                const location = proxyRes.headers.location;
+                if (location && location.includes('/auth/callback')) {
+                  // Parse the token from the backend redirect
+                  const tokenMatch = location.match(/id_token=([^&]+)/);
+                  if (tokenMatch) {
+                    // Instead of redirecting, send back a 200 with the token
+                    proxyRes.statusCode = 200;
+                    proxyRes.headers['content-type'] = 'application/json';
+                    delete proxyRes.headers.location;
+
+                    // Write the token as JSON response
+                    const responseBody = JSON.stringify({
+                      redirectUrl: `/auth/callback?id_token=${tokenMatch[1]}`,
+                    });
+
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(responseBody);
+
+                    return;
+                  }
+                }
+              }
+            });
+          },
         },
       },
     },

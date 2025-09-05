@@ -37,12 +37,44 @@ export const basicAuthRegister = async (payload: RegistrationRequest) => {
 };
 
 export const basicAuthSignIn = async (payload: LoginRequest) => {
-  const response = await axiosClient.post<
-    LoginRequest,
-    AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/login`, payload);
+  const redirectUri = encodeURIComponent(window.location.origin);
 
-  return response.data;
+  const response = await axiosClient.post(
+    `/auth/login?redirectUri=${redirectUri}`,
+    {
+      email: payload.email,
+      password: payload.password,
+    },
+    {
+      validateStatus: () => true, // Accept any status
+    }
+  );
+
+  // Check if proxy intercepted and converted redirect to JSON (dev workaround)
+  if (response.status === 200 && response.data?.redirectUrl) {
+    window.location.href = response.data.redirectUrl;
+
+    return {} as AccessTokenResponse;
+  }
+
+  // This shouldn't happen with unified API - backend always returns redirect
+  if (response.status === 302 || response.status === 303) {
+    throw new Error(
+      'Authentication redirect blocked by CORS - please check proxy configuration'
+    );
+  }
+
+  // Error case
+  if (response.status >= 400) {
+    throw new Error(
+      response.data?.error || response.data?.message || 'Authentication failed'
+    );
+  }
+
+  // Unexpected response - fallback to callback
+  window.location.href = '/auth/callback';
+
+  return {} as AccessTokenResponse;
 };
 
 export const generatePasswordResetLink = async (email: string) => {
