@@ -22,7 +22,7 @@ public final class LineageGraphExplorer {
   }
 
   public Set<EntityReference> findUniqueEntitiesDownstream(UUID id, String type, Integer maxDepth) {
-    if (maxDepth != null && maxDepth == 0) {
+    if (maxDepth != null && maxDepth <= 0) {
       return Set.of();
     }
 
