@@ -18,7 +18,7 @@ import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
-import { isNull } from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
@@ -88,9 +88,9 @@ export const ContractSemanticFormTab: React.FC<{
   }, [queryBuilderAddRule]);
 
   useEffect(() => {
-    if (initialValues?.semantics) {
+    if (!isEmpty(initialValues?.semantics)) {
       form.setFieldsValue({
-        semantics: initialValues.semantics,
+        semantics: initialValues?.semantics,
       });
     } else {
       form.setFieldsValue({

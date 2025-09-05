@@ -15,6 +15,8 @@ import { uuid } from '../utils/common';
 export const DATA_CONTRACT_DETAILS = {
   name: `data_contract_${uuid()}`,
   description: 'new data contract description',
+  displayName: `Data Contract_${uuid()}`,
+  description2: 'Modified Data Contract Description',
 };
 
 export const DATA_CONTRACT_SEMANTICS1 = {
