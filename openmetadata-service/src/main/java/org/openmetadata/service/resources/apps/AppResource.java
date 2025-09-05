@@ -52,7 +52,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
-import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -1083,7 +1082,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
 
         if (app.getSupportsIngestionRunner()) {
-            service.setIngestionRunner(app.getIngestionRunner());
+          service.setIngestionRunner(app.getIngestionRunner());
         }
 
         PipelineServiceClientResponse response =
@@ -1173,9 +1172,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
 
         if (app.getSupportsIngestionRunner()) {
-          if (service instanceof MetadataService) {
-            ((MetadataService) service).setIngestionRunner(app.getIngestionRunner());
-          }
+          service.setIngestionRunner(app.getIngestionRunner());
         }
 
         PipelineServiceClientResponse status =
