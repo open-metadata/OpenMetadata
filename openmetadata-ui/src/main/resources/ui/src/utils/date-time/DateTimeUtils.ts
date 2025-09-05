@@ -57,9 +57,9 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
     return '';
   }
 
-  return DateTime.fromMillis(toNumber(timestamp), { locale: i18next.language }).toFormat(
-    format ?? DATE_TIME_WITH_OFFSET_FORMAT
-  );
+  return DateTime.fromMillis(toNumber(timestamp), {
+    locale: i18next.language,
+  }).toFormat(format ?? DATE_TIME_WITH_OFFSET_FORMAT);
 };
 
 /**
@@ -121,9 +121,9 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds);
   }
 
-  return DateTime.fromMillis(milliseconds, { locale: i18next.language }).toFormat(
-    format
-  );
+  return DateTime.fromMillis(milliseconds, {
+    locale: i18next.language,
+  }).toFormat(format);
 };
 
 /**
@@ -133,7 +133,9 @@ export const customFormatDateTime = (
  */
 export const getRelativeTime = (timeStamp?: number): string => {
   return !isNil(timeStamp)
-    ? DateTime.fromMillis(timeStamp, { locale: i18next.language }).toRelative() ?? ''
+    ? DateTime.fromMillis(timeStamp, {
+        locale: i18next.language,
+      }).toRelative() ?? ''
     : '';
 };
 
@@ -176,7 +178,9 @@ export const getRelativeCalendar = (
   baseTimeStamp?: number
 ): string => {
   return capitalize(
-    DateTime.fromMillis(timeStamp, { locale: i18next.language }).toRelativeCalendar({
+    DateTime.fromMillis(timeStamp, {
+      locale: i18next.language,
+    }).toRelativeCalendar({
       base: baseTimeStamp
         ? DateTime.fromMillis(baseTimeStamp, { locale: i18next.language })
         : DateTime.now(),
