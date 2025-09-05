@@ -178,6 +178,8 @@ export const CommonWidgets = ({
         return (data as unknown as Glossary).termCount === 0;
       case EntityType.DOMAIN:
       case EntityType.METRIC:
+      case EntityType.FILE:
+      case EntityType.WORKSHEET:
         return true;
       case EntityType.DIRECTORY:
         return isEmpty((data as unknown as Directory).children);

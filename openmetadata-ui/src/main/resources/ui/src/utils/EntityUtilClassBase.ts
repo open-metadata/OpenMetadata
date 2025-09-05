@@ -46,6 +46,7 @@ import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
@@ -419,6 +420,8 @@ class EntityUtilClassBase {
         return FileDetailsPage;
       case EntityType.SPREADSHEET:
         return SpreadsheetDetailsPage;
+      case EntityType.WORKSHEET:
+        return WorksheetDetailsPage;
 
       default:
         return null;

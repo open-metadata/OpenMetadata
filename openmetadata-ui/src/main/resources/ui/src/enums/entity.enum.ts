@@ -180,6 +180,7 @@ export enum TabSpecificField {
   MIME_TYPE = 'mimeType',
   MODIFIED_TIME = 'modifiedTime',
   CREATED_TIME = 'createdTime',
+  ROW_COUNT = 'rowCount',
 }
 
 export enum FqnPart {

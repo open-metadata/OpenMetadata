@@ -51,6 +51,7 @@ import {
 } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
@@ -769,6 +770,7 @@ export const getDataAssetsHeaderInfo = (
 
       break;
     }
+
     case EntityType.FILE: {
       const file = dataAsset as File;
       returnData.breadcrumbs = getEntityBreadcrumbs(file, EntityType.FILE);
@@ -857,6 +859,33 @@ export const getDataAssetsHeaderInfo = (
               <ExtraInfoLabel
                 label={t('label.modified-time')}
                 value={spreadsheet.modifiedTime}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+
+    case EntityType.WORKSHEET: {
+      const worksheet = dataAsset as Worksheet;
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        worksheet,
+        EntityType.WORKSHEET
+      );
+
+      returnData.extraInfo = (
+        <>
+          {worksheet.rowCount && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.row-count')}
+                value={worksheet.rowCount}
               />
             </>
           )}

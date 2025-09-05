@@ -43,6 +43,7 @@ import spreadsheetClassBase from '../SpreadsheetClassBase';
 import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
 import topicClassBase from '../TopicClassBase';
+import worksheetClassBase from '../WorksheetClassBase';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -167,6 +168,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return fileClassBase.getFileDetailPageTabsIds();
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getSpreadsheetDetailPageTabsIds();
+    case PageType.Worksheet:
+      return worksheetClassBase.getWorksheetDetailPageTabsIds();
     default:
       return [
         {
@@ -225,6 +228,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return fileClassBase.getDefaultLayout(tab);
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getDefaultLayout(tab);
+    case PageType.Worksheet:
+      return worksheetClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -300,6 +305,8 @@ export const getCustomizableWidgetByPage = (
       return fileClassBase.getCommonWidgetList();
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getCommonWidgetList();
+    case PageType.Worksheet:
+      return worksheetClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -346,6 +353,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return fileClassBase.getDummyData();
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getDummyData();
+    case PageType.Worksheet:
+      return worksheetClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -399,6 +408,8 @@ export const getWidgetsFromKey = (
       return fileClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Worksheet:
+      return worksheetClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -449,6 +460,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return fileClassBase.getWidgetHeight(widgetName);
     case PageType.Spreadsheet:
       return spreadsheetClassBase.getWidgetHeight(widgetName);
+    case PageType.Worksheet:
+      return worksheetClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }
@@ -710,6 +723,7 @@ export const checkIfExpandViewSupported = (
         activeTab === EntityTabs.CHILDREN
       );
     case PageType.File:
+    case PageType.Worksheet:
       return (
         (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
         activeTab === EntityTabs.OVERVIEW

@@ -2352,6 +2352,17 @@ export const getEntityBreadcrumbs = (
       });
     }
 
+    case EntityType.WORKSHEET: {
+      const data = entity as Worksheet;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.SPREADSHEET, // Since parent will be spreadsheet
+        includeCurrent,
+        parents: isUndefined(data.spreadsheet) ? [] : [data.spreadsheet],
+      });
+    }
+
     case EntityType.DOMAIN:
       return [
         {
