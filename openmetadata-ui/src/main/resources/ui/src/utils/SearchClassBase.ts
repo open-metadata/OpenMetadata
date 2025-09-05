@@ -292,8 +292,8 @@ class SearchClassBase {
         icon: IconAPIService,
       },
       {
-        title: t('label.file-plural'),
-        key: SearchIndex.FILE_SEARCH_INDEX,
+        title: t('label.drive-plural'),
+        key: SearchIndex.DIRECTORY_SEARCH_INDEX,
         data: {
           isRoot: true,
           childEntities: [
