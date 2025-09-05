@@ -55,6 +55,9 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -75,14 +78,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.CheckForNull;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -1333,8 +1339,43 @@ public class SearchRepository {
     return scriptTxt.toString();
   }
 
+  protected final LoadingCache<String, Response> searchRequestCache =
+      CacheBuilder.newBuilder()
+          .maximumSize(100)
+          .expireAfterWrite(30, TimeUnit.SECONDS)
+          .build(new SearchRequestLoader());
+
+  class SearchRequestLoader extends CacheLoader<String, Response> {
+    @Override
+    public @NotNull Response load(@CheckForNull String key) throws Exception {
+      throw new UnsupportedOperationException("Cache should use manual loading via searchClient");
+    }
+  }
+
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
-    return searchClient.search(request, subjectContext);
+    String cacheKey = generateCacheKey(request, subjectContext);
+
+    try {
+      return searchRequestCache.get(
+          cacheKey,
+          () -> {
+            try {
+              return searchClient.search(request, subjectContext);
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
+    } catch (Exception e) {
+      if (e.getCause() instanceof IOException) {
+        throw (IOException) e.getCause();
+      }
+      throw new IOException("Failed to retrieve search results", e);
+    }
+  }
+
+  protected String generateCacheKey(SearchRequest request, SubjectContext subjectContext) {
+    String key = request.toString() + subjectContext.user().getName();
+    return EntityUtil.hash(key);
   }
 
   public Response previewSearch(
