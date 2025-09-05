@@ -143,11 +143,11 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
   }
 
   @Test
-  @DisplayName("Test cache miss returns null")
+  @DisplayName("Test cache miss returns empty map")
   public void testCacheMiss() {
     String nonExistentEntityId = UUID.randomUUID().toString();
     Map<String, Object> cachedData = RelationshipCache.get(nonExistentEntityId);
-    assertTrue(cachedData.isEmpty(), "Cache miss should return null");
+    assertTrue(cachedData.isEmpty(), "Cache miss should return empty map");
   }
 
   @Test
@@ -356,7 +356,7 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
         RelationshipCache.evict(entityId);
         // Verify eviction worked
         Map<String, Object> afterEvict = RelationshipCache.get(entityId);
-        assertNull(afterEvict, "Data should be null after eviction");
+        assertTrue(afterEvict.isEmpty(), "Data should be empty after eviction");
       }
     }
 
@@ -365,12 +365,13 @@ public class RelationshipCacheTest extends CachedOpenMetadataApplicationResource
       String entityId = baseEntityId + i;
       Map<String, Object> cached = RelationshipCache.get(entityId);
 
-      // Items that were evicted (every 10th) should be null
+      // Items that were evicted (every 10th) should be empty
       if (i % 10 == 0) {
-        assertNull(cached, "Evicted items should remain null");
+        assertTrue(cached.isEmpty(), "Evicted items should remain empty");
       } else {
         // Non-evicted items should still be in cache
         assertNotNull(cached, "Non-evicted items should still be in cache");
+        assertFalse(cached.isEmpty(), "Non-evicted items should have data");
         assertEquals(i, cached.get("iteration"), "Cached data should remain intact");
       }
     }
