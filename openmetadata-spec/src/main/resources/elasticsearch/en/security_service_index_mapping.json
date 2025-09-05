@@ -275,6 +275,31 @@
                     }
                 }
             },
+            "tier": {
+                "properties": {
+                    "tagFQN": {
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text",
+                                "analyzer": "om_analyzer"
+                            }
+                        }
+                    },
+                    "labelType": {
+                        "type": "keyword"
+                    },
+                    "description": {
+                        "type": "text"
+                    },
+                    "source": {
+                        "type": "keyword"
+                    },
+                    "state": {
+                        "type": "keyword"
+                    }
+                }
+            },
             "serviceType": {
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer"

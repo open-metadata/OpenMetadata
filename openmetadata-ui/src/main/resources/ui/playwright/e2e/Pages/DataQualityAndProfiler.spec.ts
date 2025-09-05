@@ -135,7 +135,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   await test.step('Create', async () => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
-    await page.click('#testCaseFormV1_testTypeId');
+    await page.click('[id="root\\/testType"]');
     await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
     await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
     await page.fill(
@@ -285,7 +285,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
     );
-    await page.click('#testCaseFormV1_selectedColumn');
+    await page.click('[id="root\\/column"]');
     await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
     await testDefinitionResponse;
 
@@ -293,7 +293,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '[data-testid="test-case-name"]',
       NEW_COLUMN_TEST_CASE.name
     );
-    await page.click('#testCaseFormV1_testTypeId');
+    await page.click('[id="root\\/testType"]');
     await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#testCaseFormV1_params_minLength',
@@ -544,22 +544,22 @@ test(
 
     await test.step('Validate patch request for edit test case', async () => {
       await page.fill(
-        '#tableTestForm_displayName',
+        '[id="root\\/displayName"]',
         'Table test case display name'
       );
 
-      await expect(page.locator('#tableTestForm_table')).toHaveValue(
+      await expect(page.locator('[id="root\\/selected-entity"]')).toHaveValue(
         table2.entityResponseData?.['name']
       );
-      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+      await expect(page.locator('[id="root\\/column"]')).toHaveValue(
         table2.entity?.columns[3].name
       );
-      await expect(page.locator('#tableTestForm_name')).toHaveValue(
+      await expect(page.locator('[id="root\\/name"]')).toHaveValue(
         testCaseName
       );
-      await expect(page.locator('#tableTestForm_testDefinition')).toHaveValue(
-        'Column Values To Be In Set'
-      );
+      await expect(
+        page.locator('[id="root\\/columnValuesToBeInSet"]')
+      ).toHaveValue('Column Values To Be In Set');
 
       // Edit test case display name
       const updateTestCaseResponse = page.waitForResponse(
@@ -665,12 +665,12 @@ test(
           page.getByTestId('edit-test-case-drawer-title')
         ).toBeVisible();
 
-        await expect(page.locator('#tableTestForm_displayName')).toHaveValue(
+        await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
         );
 
-        await page.locator('#tableTestForm_displayName').clear();
-        await page.fill('#tableTestForm_displayName', 'Updated display name');
+        await page.locator('[id="root\\/displayName"]').clear();
+        await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
         await page.getByTestId('update-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
