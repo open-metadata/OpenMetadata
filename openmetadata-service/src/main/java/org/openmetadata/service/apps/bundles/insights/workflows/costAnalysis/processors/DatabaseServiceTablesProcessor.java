@@ -68,8 +68,11 @@ public class DatabaseServiceTablesProcessor
 
         EntityProfile entityProfile =
             profileJson != null ? JsonUtils.readValue(profileJson, EntityProfile.class) : null;
-          TableProfile tableProfile = entityProfile != null ? (TableProfile) EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData()
-                  : null;
+        TableProfile tableProfile =
+            entityProfile != null
+                ? (TableProfile)
+                    EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData()
+                : null;
         Optional<TableProfile> oTableProfile = Optional.ofNullable(tableProfile);
 
         if (oTableProfile.isPresent()) {
