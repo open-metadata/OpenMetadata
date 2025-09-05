@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -42,6 +42,7 @@ import {
 } from '../../utils/dataContracts';
 import {
   addOwner,
+  addOwnerWithoutValidation,
   assignGlossaryTerm,
   assignTag,
   assignTier,
@@ -321,7 +322,6 @@ test.describe('Data Contracts', () => {
       await page.reload();
 
       await page.waitForLoadState('networkidle');
-
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -527,6 +527,85 @@ test.describe('Data Contracts', () => {
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
       await download.saveAs('downloads/' + download.suggestedFilename());
+    });
+
+    await test.step('Edit and Validate Contract data', async () => {
+      await page.getByTestId('contract-edit-button').click();
+
+      await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
+
+      // Change the Contract Details
+      await page
+        .getByTestId('contract-name')
+        .fill(DATA_CONTRACT_DETAILS.displayName);
+      await page.click('.om-block-editor[contenteditable="true"]');
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
+
+      await addOwnerWithoutValidation({
+        page,
+        owner: 'admin',
+        type: 'Users',
+        initiatorId: 'select-owners',
+      });
+
+      await expect(
+        page.getByTestId('user-tag').getByText('admin')
+      ).toBeVisible();
+
+      // Move to Schema Tab
+      await page.getByRole('button', { name: 'Schema' }).click();
+
+      // TODO: will enable this once nested column is fixed
+      //   await page.waitForSelector('[data-testid="loader"]', {
+      //     state: 'detached',
+      //   });
+
+      //   await page.getByRole('checkbox', { name: 'Select all' }).click();
+
+      //   await expect(
+      //     page.getByRole('checkbox', { name: 'Select all' })
+      //   ).not.toBeChecked();
+
+      // Move to Semantic Tab
+      await page.getByRole('button', { name: 'Semantics' }).click();
+
+      await page.getByTestId('delete-condition-button').last().click();
+
+      await expect(
+        page.getByTestId('query-builder-form-field').getByText('Description')
+      ).not.toBeVisible();
+
+      await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Validate the Updated Values
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DATA_CONTRACT_DETAILS.displayName
+      );
+
+      await expect(
+        page.getByTestId('contract-owner-card').getByTestId('admin')
+      ).toBeVisible();
+
+      await expect(
+        page.locator(
+          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+        )
+      ).toContainText(DATA_CONTRACT_DETAILS.description2);
+
+      // TODO: will enable this once nested column is fixed
+      //   await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
 
     await test.step('Delete contract', async () => {
@@ -905,7 +984,7 @@ test.describe('Data Contracts', () => {
 
       await test.step('Save contract and validate for schema', async () => {
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -949,7 +1028,7 @@ test.describe('Data Contracts', () => {
         ).not.toBeChecked();
 
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -991,7 +1070,7 @@ test.describe('Data Contracts', () => {
           }
 
           const saveContractResponse = page.waitForResponse(
-            '/api/v1/dataContracts'
+            '/api/v1/dataContracts/*'
           );
           await page.getByTestId('save-contract-btn').click();
 
