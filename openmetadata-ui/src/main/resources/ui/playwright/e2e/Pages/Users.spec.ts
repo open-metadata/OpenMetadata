@@ -26,7 +26,7 @@ import {
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
-import { addOwner } from '../../utils/entity';
+import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import {
   addUser,
@@ -544,243 +544,270 @@ test.describe('User Profile Feed Interactions', () => {
       adminPage.locator('.user-profile-dropdown-overlay')
     ).not.toBeVisible();
   });
+});
 
-  test.describe('User Profile Persona Interactions', () => {
-    test('Should add, remove, and navigate to persona pages for Personas section', async ({
-      adminPage,
-    }) => {
-      await redirectToHomePage(adminPage);
-      await visitOwnProfilePage(adminPage);
+test.describe('User Profile Persona Interactions', () => {
+  test('Should add, remove, and navigate to persona pages for Personas section', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await visitOwnProfilePage(adminPage);
 
-      // Wait for the persona card to be visible
-      await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+    // Wait for the persona card to be visible
+    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
 
-      // Test adding personas
-      await test.step('Add personas to user profile', async () => {
-        // Click edit button for Personas section
-        await adminPage
-          .locator('[data-testid="edit-user-persona"]')
-          .first()
-          .click();
+    // Test adding personas
+    await test.step('Add personas to user profile', async () => {
+      // Click edit button for Personas section
+      await adminPage
+        .locator('[data-testid="edit-user-persona"]')
+        .first()
+        .click();
 
-        // Wait for persona popover to be visible
-        await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+      // Wait for persona popover to be visible
+      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
 
-        // Open the persona select dropdown
-        await adminPage.locator('[data-testid="persona-select-list"]').click();
+      // Open the persona select dropdown and wait for options to load
+      await adminPage.locator('[data-testid="persona-select-list"]').click();
 
-        // Select first available persona
-        const firstPersonaOption = adminPage
-          .locator('.ant-select-item-option')
-          .first();
-        await firstPersonaOption.click();
-
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-persona-edit-save"]')
-          .click();
-
-        // Wait for the API call to complete and persona to appear
-        await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
-        await adminPage.waitForSelector(
-          '[data-testid="chip-container"] [data-testid="tag-chip"]'
-        );
+      // Wait for dropdown to open and options to be visible
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
       });
 
-      // Test clicking on persona chip to navigate to persona page
-      await test.step(
-        'Navigate to persona page by clicking on persona chip',
-        async () => {
-          const personaChip = adminPage
-            .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
-            .first();
-          const personaLink = personaChip.locator('a').first();
-
-          // Get the persona name/link for verification
-          const personaText = await personaLink.textContent();
-
-          expect(personaText).toBeTruthy();
-
-          // Wait for navigation response
-          const navigationResponse = adminPage.waitForResponse(
-            /\/api\/v1\/personas\/.*/
-          );
-          await personaLink.click();
-          await navigationResponse;
-
-          // Verify we're on the persona page
-          await expect(adminPage.url()).toContain('/persona/');
-        }
+      // Select first available persona - try test ID first, fallback to role selector
+      const personaOptionTestId = adminPage.getByTestId(
+        `${persona1.data.name}-option`
       );
 
-      // Navigate back to user profile for removal test
-      await test.step('Navigate back to user profile', async () => {
-        await visitOwnProfilePage(adminPage);
-        await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-      });
+      await personaOptionTestId.click();
 
-      // Test removing personas
-      await test.step('Remove personas from user profile', async () => {
-        // Click edit button for Personas section
-        await adminPage
-          .locator('[data-testid="edit-user-persona"]')
-          .first()
-          .click();
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-persona-edit-save"]')
+        .click();
 
-        // Wait for persona popover to be visible
-        await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-
-        // Clear all selected personas
-        await adminPage
-          .locator('[data-testid="persona-select-list"] .ant-select-clear')
-          .click();
-
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-persona-edit-save"]')
-          .click();
-
-        // Wait for the API call to complete and verify no personas are shown
-        await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
-
-        await expect(
-          adminPage
-            .getByTestId('persona-details-card')
-            .getByText('No persona assigned')
-        ).toBeVisible();
-      });
+      // Wait for the API call to complete and persona to appear
+      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForSelector(
+        '[data-testid="chip-container"] [data-testid="tag-chip"]'
+      );
     });
 
-    test('Should add, remove, and navigate to persona pages for Default Persona section', async ({
-      adminPage,
-    }) => {
-      await redirectToHomePage(adminPage);
-      await visitOwnProfilePage(adminPage);
-
-      // Wait for the persona card to be visible
-      await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-
-      // First, add some personas to the user so we can select a default persona
-      await test.step('Add personas to user profile first', async () => {
-        // Click edit button for Personas section (regular personas, not default)
-        await adminPage
-          .locator('[data-testid="edit-user-persona"]')
-          .first()
-          .click();
-
-        // Wait for persona popover and select multiple personas
-        await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-        await adminPage.locator('[data-testid="persona-select-list"]').click();
-
-        // Select multiple personas
-        const personaOptions = adminPage.locator('.ant-select-item-option');
-        const optionCount = await personaOptions.count();
-        for (let i = 0; i < Math.min(2, optionCount); i++) {
-          await personaOptions.nth(i).click();
-        }
-
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-persona-edit-save"]')
-          .click();
-        await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
-      });
-
-      // Test adding default persona
-      await test.step('Add default persona to user profile', async () => {
-        // Click edit button for Default Persona section (should be the second edit button)
-        const editButtons = adminPage.locator(
-          '[data-testid="edit-user-persona"]'
-        );
-        await editButtons.nth(1).click();
-
-        // Wait for persona popover to be visible
-        await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-
-        // Open the persona select dropdown (single select for default)
-        await adminPage
-          .getByRole('tooltip', { name: 'Default Persona' })
-          .getByTestId('persona-select-list')
-          .click();
-
-        await adminPage.waitForLoadState('networkidle');
-
-        // Select first available persona
-        const firstPersonaOption = adminPage
-          .locator('.ant-select-item-option')
+    // Test clicking on persona chip to navigate to persona page
+    await test.step(
+      'Navigate to persona page by clicking on persona chip',
+      async () => {
+        const personaChip = adminPage
+          .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
           .first();
-        await firstPersonaOption.click();
+        const personaLink = personaChip.locator('a').first();
 
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-persona-edit-save"]')
-          .click();
+        // Get the persona name/link for verification
+        const personaText = await personaLink.textContent();
 
-        // Wait for the API call to complete and default persona to appear
-        await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
-        await adminPage.waitForSelector(
-          '.default-persona-text [data-testid="tag-chip"]'
+        expect(personaText).toBeTruthy();
+
+        // Wait for navigation response
+        const navigationResponse = adminPage.waitForResponse(
+          /\/api\/v1\/personas\/.*/
         );
+        await personaLink.click();
+        await navigationResponse;
+
+        // Verify we're on the persona page
+        await expect(adminPage.url()).toContain('/persona/');
+      }
+    );
+
+    // Navigate back to user profile for removal test
+    await test.step('Navigate back to user profile', async () => {
+      await visitOwnProfilePage(adminPage);
+      await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+    });
+
+    // Test removing personas
+    await test.step('Remove personas from user profile', async () => {
+      // Click edit button for Personas section
+      await adminPage
+        .locator('[data-testid="edit-user-persona"]')
+        .first()
+        .click();
+
+      // Wait for persona popover to be visible
+      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+
+      // Clear all selected personas
+      await adminPage
+        .locator('[data-testid="persona-select-list"] .ant-select-clear')
+        .click();
+
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-persona-edit-save"]')
+        .click();
+
+      // Wait for the API call to complete and verify no personas are shown
+      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+
+      await expect(
+        adminPage
+          .getByTestId('persona-details-card')
+          .getByText('No persona assigned')
+      ).toBeVisible();
+    });
+  });
+
+  test('Should add, remove, and navigate to persona pages for Default Persona section', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await visitOwnProfilePage(adminPage);
+
+    // Wait for the persona card to be visible
+    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+
+    // First, add some personas to the user so we can select a default persona
+    await test.step('Add personas to user profile first', async () => {
+      // Click edit button for Personas section (regular personas, not default)
+      await adminPage
+        .locator('[data-testid="edit-user-persona"]')
+        .first()
+        .click();
+
+      // Wait for persona popover and select multiple personas
+      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+      await adminPage.locator('[data-testid="persona-select-list"]').click();
+
+      // Wait for dropdown to open and options to be visible
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
       });
 
-      // Test clicking on default persona chip to navigate to persona page
-      await test.step(
-        'Navigate to persona page by clicking on default persona chip',
-        async () => {
-          const defaultPersonaChip = adminPage
-            .locator('.default-persona-text [data-testid="tag-chip"]')
-            .first();
-          const personaLink = defaultPersonaChip.locator('a').first();
-
-          // Get the persona name/link for verification
-          const personaText = await personaLink.textContent();
-
-          expect(personaText).toBeTruthy();
-
-          // Wait for navigation response
-          const navigationResponse = adminPage.waitForResponse(
-            /\/api\/v1\/personas\/.*/
-          );
-          await personaLink.click();
-          await navigationResponse;
-
-          // Verify we're on the persona page
-          await expect(adminPage.url()).toContain('/persona/');
-        }
+      // Select multiple personas - try test IDs first, fallback to role selectors
+      const persona1OptionTestId = adminPage.getByTestId(
+        `${persona1.data.name}-option`
       );
 
-      // Navigate back to user profile for removal test
-      await test.step('Navigate back to user profile', async () => {
-        await visitOwnProfilePage(adminPage);
-        await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-      });
+      await persona1OptionTestId.click();
 
-      // Test removing default persona
-      await test.step('Remove default persona from user profile', async () => {
-        // Click edit button for Default Persona section
-        const editButtons = adminPage.locator(
-          '[data-testid="edit-user-persona"]'
+      const persona2OptionTestId = adminPage.getByTestId(
+        `${persona2.data.name}-option`
+      );
+
+      await persona2OptionTestId.click();
+
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-persona-edit-save"]')
+        .click();
+      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+    });
+
+    // Test adding default persona
+    await test.step('Add default persona to user profile', async () => {
+      // Click edit button for Default Persona section using specific test ID
+      await adminPage
+        .locator('[data-testid="default-edit-user-persona"]')
+        .click();
+
+      // Wait for persona popover to be visible
+      await adminPage.waitForSelector(
+        '[data-testid="default-persona-select-list"]'
+      );
+
+      // Open the default persona select dropdown
+      await adminPage
+        .locator('[data-testid="default-persona-select-list"]')
+        .click();
+
+      // Wait for dropdown to open and options to load
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
+      });
+      await adminPage.waitForLoadState('networkidle');
+
+      // Select specific persona for default - try test ID first, fallback to role selector
+      const defaultPersonaOptionTestId = adminPage.getByTestId(
+        `${persona1.data.name}-option`
+      );
+
+      await defaultPersonaOptionTestId.click();
+
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-default-persona-edit-save"]')
+        .click();
+
+      // Wait for the API call to complete and default persona to appear
+      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await adminPage.waitForSelector(
+        '.default-persona-text [data-testid="tag-chip"]'
+      );
+    });
+
+    // Test clicking on default persona chip to navigate to persona page
+    await test.step(
+      'Navigate to persona page by clicking on default persona chip',
+      async () => {
+        const defaultPersonaChip = adminPage
+          .locator('.default-persona-text [data-testid="tag-chip"]')
+          .first();
+        const personaLink = defaultPersonaChip.locator('a').first();
+
+        // Get the persona name/link for verification
+        const personaText = await personaLink.textContent();
+
+        expect(personaText).toBeTruthy();
+
+        // Wait for navigation response
+        const navigationResponse = adminPage.waitForResponse(
+          /\/api\/v1\/personas\/.*/
         );
-        await editButtons.nth(1).click();
+        await personaLink.click();
+        await navigationResponse;
 
-        // Wait for persona popover to be visible
-        await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+        // Verify we're on the persona page
+        await expect(adminPage.url()).toContain('/persona/');
+      }
+    );
 
-        // Clear the selected default persona
-        await adminPage
-          .locator('[data-testid="persona-select-list"] .ant-select-clear')
-          .click();
+    // Navigate back to user profile for removal test
+    await test.step('Navigate back to user profile', async () => {
+      await visitOwnProfilePage(adminPage);
+      await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+    });
 
-        // Save the changes
-        await adminPage
-          .locator('[data-testid="user-profile-persona-edit-save"]')
-          .click();
+    // Test removing default persona
+    await test.step('Remove default persona from user profile', async () => {
+      // Click edit button for Default Persona section using specific test ID
+      await adminPage
+        .locator('[data-testid="default-edit-user-persona"]')
+        .click();
 
-        // Wait for the API call to complete and verify no default persona is shown
-        await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+      await waitForAllLoadersToDisappear(adminPage);
 
-        await expect(adminPage.getByText('No default persona')).toBeVisible();
-      });
+      // Wait for persona popover to be visible
+      await adminPage.waitForSelector(
+        '[data-testid="default-persona-select-list"]'
+      );
+
+      // Clear the selected default persona
+      await adminPage
+        .locator(
+          '[data-testid="default-persona-select-list"] .ant-select-clear'
+        )
+        .click();
+
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-default-persona-edit-save"]')
+        .click();
+
+      // Wait for the API call to complete and verify no default persona is shown
+      await adminPage.waitForResponse(/\/api\/v1\/users\/.*/);
+
+      await expect(adminPage.getByText('No default persona')).toBeVisible();
     });
   });
 });

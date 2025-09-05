@@ -86,7 +86,9 @@ const UserProfilePersonas = ({
             />
           </div>
         </div>
-        <div className="user-profile-card-body default-persona-text ml-8">
+        <div
+          className="user-profile-card-body default-persona-text ml-8"
+          data-testid="default-persona-chip">
           <Chip
             showNoDataPlaceholder
             data={defaultPersona ? [defaultPersona] : []}
