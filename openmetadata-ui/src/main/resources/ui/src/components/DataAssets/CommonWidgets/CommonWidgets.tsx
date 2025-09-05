@@ -28,6 +28,7 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
@@ -180,6 +181,8 @@ export const CommonWidgets = ({
         return true;
       case EntityType.DIRECTORY:
         return isEmpty((data as unknown as Directory).children);
+      case EntityType.SPREADSHEET:
+        return isEmpty((data as unknown as Spreadsheet).worksheets);
       default:
         return false;
     }

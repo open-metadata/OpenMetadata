@@ -44,6 +44,7 @@ import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -812,6 +813,59 @@ export const getDataAssetsHeaderInfo = (
 
       break;
     }
+
+    case EntityType.SPREADSHEET: {
+      const spreadsheet = dataAsset as Spreadsheet;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        spreadsheet,
+        EntityType.SPREADSHEET
+      );
+
+      returnData.extraInfo = (
+        <>
+          {spreadsheet.mimeType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.mime-type')}
+                value={spreadsheet.mimeType}
+              />
+            </>
+          )}
+          {spreadsheet.createdTime !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.created-time')}
+                value={spreadsheet.createdTime}
+              />
+            </>
+          )}
+          {spreadsheet.modifiedTime !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.modified-time')}
+                value={spreadsheet.modifiedTime}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+
     case EntityType.TABLE:
     default:
       const tableDetails = dataAsset as Table;

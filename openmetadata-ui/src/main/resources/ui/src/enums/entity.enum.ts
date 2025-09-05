@@ -176,6 +176,10 @@ export enum TabSpecificField {
   DIRECTORY_TYPE = 'directoryType',
   NUMBER_OF_FILES = 'numberOfFiles',
   NUMBER_OF_SUB_DIRECTORIES = 'numberOfSubDirectories',
+  WORKSHEETS = 'worksheets',
+  MIME_TYPE = 'mimeType',
+  MODIFIED_TIME = 'modifiedTime',
+  CREATED_TIME = 'createdTime',
 }
 
 export enum FqnPart {
@@ -237,6 +241,7 @@ export enum EntityTabs {
   SUBDOMAINS = 'subdomains',
   CONTRACT = 'contract',
   DIRECTORIES = 'directories',
+  WORKSHEETS = 'worksheets',
 }
 
 export enum EntityAction {

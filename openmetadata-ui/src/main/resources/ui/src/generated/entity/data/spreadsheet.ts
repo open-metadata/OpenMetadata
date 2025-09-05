@@ -116,7 +116,7 @@ export interface Spreadsheet {
     /**
      * Link to the drive service where this spreadsheet is hosted.
      */
-    service?: EntityReference;
+    service: EntityReference;
     /**
      * Service type where this spreadsheet is hosted.
      */

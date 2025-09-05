@@ -20,7 +20,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import { File } from '../../../generated/entity/data/file';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
@@ -41,9 +41,9 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import fileClassBase from '../../../utils/FileClassBase';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import spreadsheetClassBase from '../../../utils/SpreadsheetClassBase';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   createTagObject,
@@ -63,27 +63,27 @@ import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { FileDetailsProps } from './FileDetails.interface';
+import { SpreadsheetDetailsProps } from './SpreadsheetDetails.interface';
 
-function FileDetails({
-  fileDetails,
-  filePermissions,
-  fetchFile,
-  followFileHandler,
+function SpreadsheetDetails({
+  spreadsheetDetails,
+  spreadsheetPermissions,
+  fetchSpreadsheet,
+  followSpreadsheetHandler,
   handleToggleDelete,
-  unFollowFileHandler,
-  updateFileDetailsState,
+  unFollowSpreadsheetHandler,
+  updateSpreadsheetDetailsState,
   versionHandler,
-  onFileUpdate,
+  onSpreadsheetUpdate,
   onUpdateVote,
-}: FileDetailsProps) {
+}: SpreadsheetDetailsProps) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.OVERVIEW } =
+  const { tab: activeTab = EntityTabs.WORKSHEETS } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedFileFQN } = useFqn();
+  const { fqn: decodedSpreadsheetFQN } = useFqn();
   const navigate = useNavigate();
-  const { customizedPage, isLoading } = useCustomPages(PageType.File);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Spreadsheet);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -96,16 +96,16 @@ function FileDetails({
     description,
     followers = [],
     entityName,
-    fileTags,
+    spreadsheetTags,
     tier,
   } = useMemo(
     () => ({
-      ...fileDetails,
-      tier: getTierTags(fileDetails.tags ?? []),
-      fileTags: getTagsWithoutTier(fileDetails.tags ?? []),
-      entityName: getEntityName(fileDetails),
+      ...spreadsheetDetails,
+      tier: getTierTags(spreadsheetDetails.tags ?? []),
+      spreadsheetTags: getTagsWithoutTier(spreadsheetDetails.tags ?? []),
+      entityName: getEntityName(spreadsheetDetails),
     }),
-    [fileDetails]
+    [spreadsheetDetails]
   );
 
   const { isFollowing } = useMemo(
@@ -116,31 +116,33 @@ function FileDetails({
     [followers, currentUser]
   );
 
-  const followFile = async () =>
-    isFollowing ? await unFollowFileHandler() : await followFileHandler();
+  const followSpreadsheet = async () =>
+    isFollowing
+      ? await unFollowSpreadsheetHandler()
+      : await followSpreadsheetHandler();
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     const updatedData = {
-      ...fileDetails,
+      ...spreadsheetDetails,
       displayName: data.displayName,
     };
-    await onFileUpdate(updatedData, 'displayName');
+    await onSpreadsheetUpdate(updatedData, 'displayName');
   };
-  const onExtensionUpdate = async (updatedData: File) => {
-    await onFileUpdate(
-      { ...fileDetails, extension: updatedData.extension },
+  const onExtensionUpdate = async (updatedData: Spreadsheet) => {
+    await onSpreadsheetUpdate(
+      { ...spreadsheetDetails, extension: updatedData.extension },
       'extension'
     );
   };
 
-  const handleRestoreFile = async () => {
+  const handleRestoreSpreadsheet = async () => {
     try {
-      const { version: newVersion } = await restoreDriveAsset<File>(
-        fileDetails.id
+      const { version: newVersion } = await restoreDriveAsset<Spreadsheet>(
+        spreadsheetDetails.id
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.file'),
+          entity: t('label.spreadsheet'),
         })
       );
       handleToggleDelete(newVersion);
@@ -148,7 +150,7 @@ function FileDetails({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.file'),
+          entity: t('label.spreadsheet'),
         })
       );
     }
@@ -157,7 +159,11 @@ function FileDetails({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
-        getEntityDetailsPath(EntityType.FILE, decodedFileFQN, activeKey),
+        getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          decodedSpreadsheetFQN,
+          activeKey
+        ),
         { replace: true }
       );
     }
@@ -165,45 +171,45 @@ function FileDetails({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedFileDetails = {
-        ...fileDetails,
+      const updatedSpreadsheetDetails = {
+        ...spreadsheetDetails,
         description: updatedHTML,
       };
       try {
-        await onFileUpdate(updatedFileDetails, 'description');
+        await onSpreadsheetUpdate(updatedSpreadsheetDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     }
   };
   const onOwnerUpdate = useCallback(
-    async (newOwners?: File['owners']) => {
-      const updatedFileDetails = {
-        ...fileDetails,
+    async (newOwners?: Spreadsheet['owners']) => {
+      const updatedSpreadsheetDetails = {
+        ...spreadsheetDetails,
         owners: newOwners,
       };
-      await onFileUpdate(updatedFileDetails, 'owners');
+      await onSpreadsheetUpdate(updatedSpreadsheetDetails, 'owners');
     },
     [owners]
   );
 
   const onTierUpdate = (newTier?: Tag) => {
-    const tierTag = updateTierTag(fileDetails?.tags ?? [], newTier);
-    const updatedFileDetails = {
-      ...fileDetails,
+    const tierTag = updateTierTag(spreadsheetDetails?.tags ?? [], newTier);
+    const updatedSpreadsheetDetails = {
+      ...spreadsheetDetails,
       tags: tierTag,
     };
 
-    return onFileUpdate(updatedFileDetails, 'tags');
+    return onSpreadsheetUpdate(updatedSpreadsheetDetails, 'tags');
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
-    if (updatedTags && fileDetails) {
+    if (updatedTags && spreadsheetDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedFile = { ...fileDetails, tags: updatedTags };
-      await onFileUpdate(updatedFile, 'tags');
+      const updatedSpreadsheet = { ...spreadsheetDetails, tags: updatedTags };
+      await onSpreadsheetUpdate(updatedSpreadsheet, 'tags');
     }
   };
 
@@ -212,12 +218,12 @@ function FileDetails({
       return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
     });
 
-    const updatedFileDetails = {
-      ...fileDetails,
+    const updatedSpreadsheetDetails = {
+      ...spreadsheetDetails,
       dataProducts: dataProductsEntity,
     };
 
-    await onFileUpdate(updatedFileDetails, 'dataProducts');
+    await onSpreadsheetUpdate(updatedSpreadsheetDetails, 'dataProducts');
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -225,7 +231,11 @@ function FileDetails({
   }, []);
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
+    getFeedCounts(
+      EntityType.SPREADSHEET,
+      decodedSpreadsheetFQN,
+      handleFeedCount
+    );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
@@ -243,65 +253,70 @@ function FileDetails({
   } = useMemo(
     () => ({
       editTagsPermission:
-        getPrioritizedEditPermission(filePermissions, Operation.EditTags) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          spreadsheetPermissions,
+          Operation.EditTags
+        ) && !deleted,
       editGlossaryTermsPermission:
         getPrioritizedEditPermission(
-          filePermissions,
+          spreadsheetPermissions,
           Operation.EditGlossaryTerms
         ) && !deleted,
       editDescriptionPermission:
         getPrioritizedEditPermission(
-          filePermissions,
+          spreadsheetPermissions,
           Operation.EditDescription
         ) && !deleted,
       editCustomAttributePermission:
         getPrioritizedEditPermission(
-          filePermissions,
+          spreadsheetPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: filePermissions.EditAll && !deleted,
+      editAllPermission: spreadsheetPermissions.EditAll && !deleted,
       editLineagePermission:
-        getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
-        !deleted,
-      viewAllPermission: filePermissions.ViewAll,
+        getPrioritizedEditPermission(
+          spreadsheetPermissions,
+          Operation.EditLineage
+        ) && !deleted,
+      viewAllPermission: spreadsheetPermissions.ViewAll,
     }),
-    [filePermissions, deleted]
+    [spreadsheetPermissions, deleted]
   );
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [filePermissions, decodedFileFQN]);
+  }, [spreadsheetPermissions, decodedSpreadsheetFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-    const tabs = fileClassBase.getFileDetailPageTabs({
+    const tabs = spreadsheetClassBase.getSpreadsheetDetailPageTabs({
+      childrenCount: 0,
       activityFeedTab: (
         <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
-          entityType={EntityType.FILE}
+          entityType={EntityType.SPREADSHEET}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={fetchFile}
+          onUpdateEntityDetails={fetchSpreadsheet}
           onUpdateFeedCount={handleFeedCount}
         />
       ),
       lineageTab: (
         <LineageProvider>
           <Lineage
-            deleted={fileDetails.deleted}
-            entity={fileDetails as SourceType}
-            entityType={EntityType.FILE}
+            deleted={spreadsheetDetails.deleted}
+            entity={spreadsheetDetails as SourceType}
+            entityType={EntityType.SPREADSHEET}
             hasEditAccess={editLineagePermission}
           />
         </LineageProvider>
       ),
-      customPropertiesTab: fileDetails && (
-        <CustomPropertyTable<EntityType.FILE>
-          entityType={EntityType.FILE}
+      customPropertiesTab: spreadsheetDetails && (
+        <CustomPropertyTable<EntityType.SPREADSHEET>
+          entityType={EntityType.SPREADSHEET}
           hasEditAccess={editCustomAttributePermission}
           hasPermission={viewAllPermission}
         />
@@ -319,11 +334,11 @@ function FileDetails({
   }, [
     activeTab,
     feedCount.totalCount,
-    fileTags,
+    spreadsheetTags,
     entityName,
-    fileDetails,
-    decodedFileFQN,
-    fetchFile,
+    spreadsheetDetails,
+    decodedSpreadsheetFQN,
+    fetchSpreadsheet,
     deleted,
     handleFeedCount,
     onExtensionUpdate,
@@ -340,18 +355,18 @@ function FileDetails({
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
-      if (fileDetails) {
-        const certificationTag: File['certification'] =
+      if (spreadsheetDetails) {
+        const certificationTag: Spreadsheet['certification'] =
           updateCertificationTag(newCertification);
-        const updatedFileDetails = {
-          ...fileDetails,
+        const updatedSpreadsheetDetails = {
+          ...spreadsheetDetails,
           certification: certificationTag,
         };
 
-        await onFileUpdate(updatedFileDetails, 'certification');
+        await onSpreadsheetUpdate(updatedSpreadsheetDetails, 'certification');
       }
     },
-    [fileDetails, onFileUpdate]
+    [spreadsheetDetails, onSpreadsheetUpdate]
   );
 
   const toggleTabExpanded = () => {
@@ -359,7 +374,7 @@ function FileDetails({
   };
 
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.File),
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Spreadsheet),
     [tabs[0], activeTab]
   );
   if (isLoading) {
@@ -369,7 +384,7 @@ function FileDetails({
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.file'),
+        entity: t('label.spreadsheet'),
       })}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
@@ -377,28 +392,28 @@ function FileDetails({
             isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
-            afterDomainUpdateAction={updateFileDetailsState}
-            dataAsset={fileDetails}
-            entityType={EntityType.FILE}
+            afterDomainUpdateAction={updateSpreadsheetDetailsState}
+            dataAsset={spreadsheetDetails}
+            entityType={EntityType.SPREADSHEET}
             openTaskCount={feedCount.openTaskCount}
-            permissions={filePermissions}
+            permissions={spreadsheetPermissions}
             onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
-            onFollowClick={followFile}
+            onFollowClick={followSpreadsheet}
             onOwnerUpdate={onOwnerUpdate}
-            onRestoreDataAsset={handleRestoreFile}
+            onRestoreDataAsset={handleRestoreSpreadsheet}
             onTierUpdate={onTierUpdate}
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>
-        <GenericProvider<File>
+        <GenericProvider<Spreadsheet>
           customizedPage={customizedPage}
-          data={fileDetails}
+          data={spreadsheetDetails}
           isTabExpanded={isTabExpanded}
-          permissions={filePermissions}
-          type={EntityType.FILE}
-          onUpdate={onFileUpdate}>
+          permissions={spreadsheetPermissions}
+          type={EntityType.SPREADSHEET}
+          onUpdate={onSpreadsheetUpdate}>
           <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
@@ -421,11 +436,11 @@ function FileDetails({
           </Col>
         </GenericProvider>
       </Row>
-      <LimitWrapper resource="file">
+      <LimitWrapper resource="spreadsheet">
         <></>
       </LimitWrapper>
     </PageLayoutV1>
   );
 }
 
-export default FileDetails;
+export default SpreadsheetDetails;

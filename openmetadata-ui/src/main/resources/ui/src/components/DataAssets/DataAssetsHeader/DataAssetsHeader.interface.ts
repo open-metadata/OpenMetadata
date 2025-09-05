@@ -317,11 +317,6 @@ export interface DataAssetDirectory {
   entityType: EntityType.DIRECTORY;
 }
 
-export interface DataAssetDirectory {
-  dataAsset: Directory;
-  entityType: EntityType.DIRECTORY;
-}
-
 export interface DataAssetFile {
   dataAsset: File;
   entityType: EntityType.FILE;

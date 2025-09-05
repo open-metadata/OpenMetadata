@@ -1692,6 +1692,8 @@ export const getEntityLinkFromType = (
     case EntityType.API_ENDPOINT:
     case EntityType.DIRECTORY:
     case EntityType.FILE:
+    case EntityType.SPREADSHEET:
+    case EntityType.WORKSHEET:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
@@ -2333,7 +2335,18 @@ export const getEntityBreadcrumbs = (
 
       return getBreadcrumbForEntityWithParent({
         entity: data,
-        entityType: EntityType.DIRECTORY,
+        entityType: EntityType.DIRECTORY, // Since parent will be directory
+        includeCurrent,
+        parents: isUndefined(data.directory) ? [] : [data.directory],
+      });
+    }
+
+    case EntityType.SPREADSHEET: {
+      const data = entity as Spreadsheet;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY, // Since parent will be directory
         includeCurrent,
         parents: isUndefined(data.directory) ? [] : [data.directory],
       });

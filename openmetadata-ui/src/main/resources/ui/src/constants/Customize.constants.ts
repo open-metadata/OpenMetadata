@@ -59,6 +59,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.SCHEMAS]: 'label.schema-plural',
   [EntityTabs.CONTRACT]: 'label.contract',
   [EntityTabs.DIRECTORIES]: 'label.directory-plural',
+  [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
 } as const;
 
 export type CustomizeEntityType =

@@ -42,6 +42,7 @@ import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDeta
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
@@ -416,6 +417,8 @@ class EntityUtilClassBase {
         return DirectoryDetailsPage;
       case EntityType.FILE:
         return FileDetailsPage;
+      case EntityType.SPREADSHEET:
+        return SpreadsheetDetailsPage;
 
       default:
         return null;
@@ -480,6 +483,12 @@ class EntityUtilClassBase {
       }
       case EntityType.FILE: {
         return ResourceEntity.FILE;
+      }
+      case EntityType.SPREADSHEET: {
+        return ResourceEntity.SPREADSHEET;
+      }
+      case EntityType.WORKSHEET: {
+        return ResourceEntity.WORKSHEET;
       }
 
       default: {

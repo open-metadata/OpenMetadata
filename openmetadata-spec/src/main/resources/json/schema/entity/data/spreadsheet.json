@@ -190,6 +190,6 @@
       "default": "Approved"
     }
   },
-  "required": ["id", "name"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }
