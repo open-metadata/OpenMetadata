@@ -68,9 +68,25 @@ export const redirectToExplorePage = async (page: Page) => {
 };
 
 export const removeLandingBanner = async (page: Page) => {
-  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
-  await page.click('[data-testid="welcome-screen-close-btn"]');
-  await widgetResponse;
+  try {
+    const welcomePageCloseButton = await page
+      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
+        state: 'visible',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Do nothing if the welcome banner does not exist
+        return;
+      });
+
+    // Close the welcome banner if it exists
+    if (welcomePageCloseButton?.isVisible()) {
+      await welcomePageCloseButton.click();
+    }
+  } catch {
+    // Do nothing if the welcome banner does not exist
+    return;
+  }
 };
 
 export const createNewPage = async (browser: Browser) => {
