@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, pick } from 'lodash';
+import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
@@ -44,7 +44,7 @@ import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interf
 import TableTags from '../../Database/TableTags/TableTags.component';
 
 export const ContractSchemaFormTab: React.FC<{
-  selectedSchema: string[];
+  selectedSchema: Column[];
   onNext: () => void;
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
@@ -53,8 +53,9 @@ export const ContractSchemaFormTab: React.FC<{
 }> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const [allColumns, setAllColumns] = useState<Column[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
+  const [allColumnsData, setAllColumnData] = useState<Column[]>([]);
+  const [columnsData, setColumnsData] = useState<Column[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>();
   const [isLoading, setIsLoading] = useState(false);
 
   const tableFqn = useMemo(
@@ -79,13 +80,18 @@ export const ContractSchemaFormTab: React.FC<{
   const handleChangeTable = useCallback(
     (selectedRowKeys: Key[]) => {
       setSelectedKeys(selectedRowKeys as string[]);
+      const selectedColumns =
+        selectedRowKeys.length > 0
+          ? allColumnsData.filter((column) =>
+              selectedRowKeys.includes(column.fullyQualifiedName ?? '')
+            )
+          : [];
+
       onChange({
-        schema: allColumns.filter((column) =>
-          selectedRowKeys.includes(column.name)
-        ),
+        schema: selectedColumns,
       });
     },
-    [allColumns, onChange]
+    [allColumnsData, onChange]
   );
 
   const fetchTableColumns = useCallback(
@@ -105,11 +111,17 @@ export const ContractSchemaFormTab: React.FC<{
         });
 
         const prunedColumns = pruneEmptyChildren(response.data);
-        setAllColumns(prunedColumns);
+        setColumnsData(prunedColumns);
+        setAllColumnData((prev) => {
+          const combined = [...prev, ...selectedSchema, ...prunedColumns];
+
+          return uniqBy(combined, 'fullyQualifiedName');
+        });
+
         handlePagingChange(response.paging);
       } catch {
         // Set empty state if API fails
-        setAllColumns([]);
+        setColumnsData([]);
         handlePagingChange({
           offset: 1,
           limit: pageSize,
@@ -118,7 +130,7 @@ export const ContractSchemaFormTab: React.FC<{
       }
       setIsLoading(false);
     },
-    [tableFqn, pageSize]
+    [tableFqn, pageSize, selectedSchema, setAllColumnData]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -126,7 +138,7 @@ export const ContractSchemaFormTab: React.FC<{
       fetchTableColumns(currentPage);
       handlePageChange(currentPage);
     },
-    [fetchTableColumns]
+    [fetchTableColumns, handlePageChange]
   );
 
   const paginationProps = useMemo(
@@ -274,6 +286,12 @@ export const ContractSchemaFormTab: React.FC<{
   );
 
   useEffect(() => {
+    setSelectedKeys(
+      selectedSchema.map((item) => (item as Column).fullyQualifiedName ?? '')
+    );
+  }, [selectedSchema]);
+
+  useEffect(() => {
     fetchTableColumns();
   }, [fetchTableColumns]);
 
@@ -291,13 +309,14 @@ export const ContractSchemaFormTab: React.FC<{
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
-          dataSource={allColumns}
+          dataSource={columnsData}
           loading={isLoading}
           pagination={false}
-          rowKey="name"
+          rowKey="fullyQualifiedName"
           rowSelection={{
             selectedRowKeys: selectedKeys,
             onChange: handleChangeTable,
+            preserveSelectedRowKeys: true, // Preserve selections across page changes
           }}
         />
       </Card>

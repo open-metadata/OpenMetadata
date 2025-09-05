@@ -4361,4 +4361,181 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify that the data contract is also deleted (should throw HttpResponseException)
     assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
   }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractNewPropertiesFullLifecycle(TestInfo test) throws IOException {
+    // Test the full lifecycle of new properties: termsOfUse, security, and sla
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create data contract with all new properties
+    String termsOfUse =
+        "# Terms of Use\n\nThis data is for internal use only.\n\n## Usage Guidelines\n- Do not share externally\n- Must comply with GDPR";
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withAccessPolicy("internal-only-policy")
+            .withDataClassification("Confidential");
+
+    org.openmetadata.schema.api.data.ContractSLA sla =
+        new org.openmetadata.schema.api.data.ContractSLA()
+            .withRefreshFrequency(
+                new org.openmetadata.schema.api.data.RefreshFrequency()
+                    .withInterval(1)
+                    .withUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.DAY))
+            .withMaxLatency(
+                new org.openmetadata.schema.api.data.MaxLatency()
+                    .withValue(4)
+                    .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
+            .withAvailabilityTime("09:00 UTC")
+            .withRetention(
+                new org.openmetadata.schema.api.data.Retention()
+                    .withPeriod(90)
+                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.DAY));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withTermsOfUse(termsOfUse)
+            .withSecurity(security)
+            .withSla(sla);
+
+    // Test 1: Create data contract with new properties
+    DataContract created = createDataContract(create);
+    assertNotNull(created);
+    assertEquals(termsOfUse, created.getTermsOfUse());
+    assertNotNull(created.getSecurity());
+    assertEquals("internal-only-policy", created.getSecurity().getAccessPolicy());
+    assertEquals("Confidential", created.getSecurity().getDataClassification());
+    assertNotNull(created.getSla());
+    assertEquals(Integer.valueOf(1), created.getSla().getRefreshFrequency().getInterval());
+    assertEquals(
+        org.openmetadata.schema.api.data.RefreshFrequency.Unit.DAY,
+        created.getSla().getRefreshFrequency().getUnit());
+    assertEquals(Integer.valueOf(4), created.getSla().getMaxLatency().getValue());
+    assertEquals(
+        org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR,
+        created.getSla().getMaxLatency().getUnit());
+    assertEquals("09:00 UTC", created.getSla().getAvailabilityTime());
+    assertEquals(Integer.valueOf(90), created.getSla().getRetention().getPeriod());
+    assertEquals(
+        org.openmetadata.schema.api.data.Retention.Unit.DAY,
+        created.getSla().getRetention().getUnit());
+
+    // Test 2: Read data contract and verify properties are retrieved
+    DataContract retrieved = getDataContract(created.getId(), null);
+    assertEquals(termsOfUse, retrieved.getTermsOfUse());
+    assertNotNull(retrieved.getSecurity());
+    assertEquals("internal-only-policy", retrieved.getSecurity().getAccessPolicy());
+    assertEquals("Confidential", retrieved.getSecurity().getDataClassification());
+    assertNotNull(retrieved.getSla());
+    assertEquals(Integer.valueOf(1), retrieved.getSla().getRefreshFrequency().getInterval());
+    assertEquals(
+        org.openmetadata.schema.api.data.RefreshFrequency.Unit.DAY,
+        retrieved.getSla().getRefreshFrequency().getUnit());
+
+    // Test 3: Update properties using PUT
+    String updatedTermsOfUse = "# Updated Terms\n\nNew terms apply from today.";
+    org.openmetadata.schema.api.data.ContractSecurity updatedSecurity =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withAccessPolicy("public-policy")
+            .withDataClassification("Public");
+
+    org.openmetadata.schema.api.data.ContractSLA updatedSla =
+        new org.openmetadata.schema.api.data.ContractSLA()
+            .withRefreshFrequency(
+                new org.openmetadata.schema.api.data.RefreshFrequency()
+                    .withInterval(2)
+                    .withUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR))
+            .withMaxLatency(
+                new org.openmetadata.schema.api.data.MaxLatency()
+                    .withValue(1)
+                    .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
+            .withAvailabilityTime("06:00 UTC");
+
+    create.withTermsOfUse(updatedTermsOfUse).withSecurity(updatedSecurity).withSla(updatedSla);
+
+    DataContract updated = updateDataContract(create);
+    assertEquals(updatedTermsOfUse, updated.getTermsOfUse());
+    assertEquals("public-policy", updated.getSecurity().getAccessPolicy());
+    assertEquals("Public", updated.getSecurity().getDataClassification());
+    assertEquals(Integer.valueOf(2), updated.getSla().getRefreshFrequency().getInterval());
+    assertEquals(
+        org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR,
+        updated.getSla().getRefreshFrequency().getUnit());
+    assertEquals("06:00 UTC", updated.getSla().getAvailabilityTime());
+    assertNull(updated.getSla().getRetention()); // Verify retention was removed
+
+    // Test 4: Patch individual properties
+    String originalJson = JsonUtils.pojoToJson(updated);
+
+    // Patch only termsOfUse
+    String patchedTermsOfUse = "# Patched Terms\n\nOnly terms updated via patch.";
+    updated.setTermsOfUse(patchedTermsOfUse);
+    DataContract patched = patchDataContract(created.getId(), originalJson, updated);
+    assertEquals(patchedTermsOfUse, patched.getTermsOfUse());
+    // Verify other properties remain unchanged
+    assertEquals("public-policy", patched.getSecurity().getAccessPolicy());
+    assertEquals(Integer.valueOf(2), patched.getSla().getRefreshFrequency().getInterval());
+
+    // Test 5: Patch to remove properties (set to null)
+    originalJson = JsonUtils.pojoToJson(patched);
+    patched.setSecurity(null);
+    patched.setSla(null);
+    DataContract patchedWithNulls = patchDataContract(created.getId(), originalJson, patched);
+    assertEquals(patchedTermsOfUse, patchedWithNulls.getTermsOfUse());
+    assertNull(patchedWithNulls.getSecurity());
+    assertNull(patchedWithNulls.getSla());
+
+    // Test 6: Create contract with only termsOfUse (partial properties)
+    Table newTable = createUniqueTable(test.getDisplayName() + "_partial");
+    CreateDataContract partialCreate =
+        createDataContractRequest(test.getDisplayName() + "_partial", newTable)
+            .withTermsOfUse("Simple terms");
+
+    DataContract partial = createDataContract(partialCreate);
+    assertEquals("Simple terms", partial.getTermsOfUse());
+    assertNull(partial.getSecurity());
+    assertNull(partial.getSla());
+
+    // Test 7: Update to add security and sla to partial contract
+    partialCreate.withSecurity(security).withSla(sla);
+    DataContract partialUpdated = updateDataContract(partialCreate);
+    assertEquals("Simple terms", partialUpdated.getTermsOfUse());
+    assertNotNull(partialUpdated.getSecurity());
+    assertNotNull(partialUpdated.getSla());
+
+    // Test 8: Test with complex SLA configurations
+    org.openmetadata.schema.api.data.ContractSLA complexSla =
+        new org.openmetadata.schema.api.data.ContractSLA()
+            .withRefreshFrequency(
+                new org.openmetadata.schema.api.data.RefreshFrequency()
+                    .withInterval(1)
+                    .withUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.MONTH))
+            .withMaxLatency(
+                new org.openmetadata.schema.api.data.MaxLatency()
+                    .withValue(30)
+                    .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.MINUTE))
+            .withAvailabilityTime("23:59 UTC")
+            .withRetention(
+                new org.openmetadata.schema.api.data.Retention()
+                    .withPeriod(7)
+                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.YEAR));
+
+    Table complexTable = createUniqueTable(test.getDisplayName() + "_complex");
+    CreateDataContract complexCreate =
+        createDataContractRequest(test.getDisplayName() + "_complex", complexTable)
+            .withSla(complexSla);
+
+    DataContract complex = createDataContract(complexCreate);
+    assertNotNull(complex.getSla());
+    assertEquals(
+        org.openmetadata.schema.api.data.RefreshFrequency.Unit.MONTH,
+        complex.getSla().getRefreshFrequency().getUnit());
+    assertEquals(Integer.valueOf(30), complex.getSla().getMaxLatency().getValue());
+    assertEquals("23:59 UTC", complex.getSla().getAvailabilityTime());
+    assertEquals(Integer.valueOf(7), complex.getSla().getRetention().getPeriod());
+    assertEquals(
+        org.openmetadata.schema.api.data.Retention.Unit.YEAR,
+        complex.getSla().getRetention().getUnit());
+  }
 }
