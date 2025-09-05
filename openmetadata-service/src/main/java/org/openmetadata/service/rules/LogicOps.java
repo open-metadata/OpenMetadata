@@ -11,11 +11,18 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 public class LogicOps {
 
@@ -105,6 +112,60 @@ public class LogicOps {
             return false; // More than one team or both team and user ownership
           }
           return true;
+        });
+
+    // Domain validation for Data Product assignment
+    // This validates that entities being assigned to Data Products have matching domains
+    jsonLogic.addOperation(
+        "validateDataProductDomainMatch",
+        (args) -> {
+          if (nullOrEmpty(args) || args.length < 2) {
+            return true; // If no data products or domains, validation passes
+          }
+
+          List<EntityReference> dataProducts =
+              JsonUtils.convertValue(args[0], new TypeReference<List<EntityReference>>() {});
+          List<EntityReference> domains =
+              JsonUtils.convertValue(args[1], new TypeReference<List<EntityReference>>() {});
+
+          if (nullOrEmpty(dataProducts)) {
+            return true; // If no data products, validation passes
+          } else if (nullOrEmpty(domains)) {
+            return false; // If data products but no domains, validation fails
+          }
+
+          // Convert entity domains to a Set of UUIDs for efficient lookup
+          Set<UUID> entityDomainIds =
+              domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+
+          // Get all data product entities in bulk instead of using a loop
+          try {
+            List<DataProduct> dpEntities =
+                Entity.getEntities(dataProducts, "domains", Include.NON_DELETED);
+
+            for (DataProduct dpEntity : dpEntities) {
+              List<EntityReference> dpDomains = dpEntity.getDomains();
+
+              if (nullOrEmpty(dpDomains)) {
+                continue; // If data product has no domains, skip validation
+              }
+
+              // Convert data product domains to a Set of UUIDs for efficient comparison
+              Set<UUID> dpDomainIds =
+                  dpDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+
+              // Use Collections.disjoint for O(n+m) performance instead of O(n*m)
+              boolean hasMatchingDomain = !Collections.disjoint(entityDomainIds, dpDomainIds);
+
+              if (!hasMatchingDomain) {
+                return false; // Domain mismatch found
+              }
+            }
+          } catch (Exception e) {
+            // If we can't fetch the data products, fail validation for safety
+            return false;
+          }
+          return true; // All data products have matching domains
         });
 
     // Example: {"filterReferenceByType":[{"var":"owner"},"team"]}

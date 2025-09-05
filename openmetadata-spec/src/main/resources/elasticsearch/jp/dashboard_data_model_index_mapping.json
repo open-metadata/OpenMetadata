@@ -136,6 +136,10 @@
           }
         }
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "upstreamLineage": {
         "type": "object"
       },

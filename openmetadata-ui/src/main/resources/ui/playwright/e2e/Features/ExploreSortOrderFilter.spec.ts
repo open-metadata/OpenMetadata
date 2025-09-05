@@ -67,13 +67,14 @@ test.describe('Explore Sort Order Filter', () => {
 
       await page.waitForLoadState('networkidle');
 
-      await page.getByRole('button', { name: 'Data Assets' }).click();
+      await page.getByTestId('search-dropdown-Data Assets').click();
       await page.waitForSelector(
-        'data-testid="drop-down-menu" data-testid="loader"',
+        '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
           state: 'detached',
         }
       );
+
       const dataAssetDropdownRequest = page.waitForResponse(
         '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
       );
@@ -89,16 +90,17 @@ test.describe('Explore Sort Order Filter', () => {
           state: 'visible',
         }
       );
+
       await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
 
-      await page.getByRole('button', { name: 'Data Assets' }).click();
+      await page.getByTestId('search-dropdown-Data Assets').click();
 
       await page.waitForSelector(
-        'data-testid="drop-down-menu" data-testid="loader"',
+        '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
           state: 'detached',
         }
@@ -111,6 +113,7 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
       await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
+      
       await page.getByTestId('update-btn').click();
 
       await afterAction();

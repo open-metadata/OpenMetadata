@@ -469,7 +469,7 @@
       "deleted": {
         "type": "boolean"
       },
-      "status": {
+      "entityStatus": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },

@@ -412,6 +412,10 @@
       "deleted": {
         "type": "boolean"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "lifeCycle": {
         "type": "object"
       },

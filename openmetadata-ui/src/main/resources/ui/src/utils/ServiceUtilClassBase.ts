@@ -125,7 +125,8 @@ import {
   SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
-import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
+import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
@@ -172,6 +173,8 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
+    DriveServiceType.GoogleDrive,
+    PipelineServiceType.Snowplow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -252,7 +255,7 @@ class ServiceUtilClassBase {
       name: getTestConnectionName(connectionType),
       workflowType: WorkflowType.TestConnection,
       request: {
-        connection: { config: configData as ConfigClass },
+        connection: { config: configData as ConfigObject },
         serviceType,
         connectionType,
         serviceName,

@@ -209,6 +209,10 @@
           }
         }
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "owners": {
         "properties": {
           "id": {

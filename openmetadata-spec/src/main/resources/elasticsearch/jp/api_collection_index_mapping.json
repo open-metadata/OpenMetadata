@@ -236,6 +236,10 @@
           }
         }
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "version": {
         "type": "float"
       },

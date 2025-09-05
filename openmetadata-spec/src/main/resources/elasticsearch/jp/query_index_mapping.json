@@ -415,6 +415,10 @@
           }
         }
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tier": {
         "properties": {
           "description": {

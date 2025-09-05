@@ -211,12 +211,17 @@ export const hardDeleteUserProfilePage = async (
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName-input"]', '');
-  await page.getByTestId('displayName-input').fill(editedUserName);
 
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.getByTestId('displayName-input').click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
   await page.getByText('Save').click();
   await saveResponse;
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -289,21 +294,12 @@ export const handleUserUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit description
 };
 
 export const updateUserDetails = async (
   page: Page,
-  {
-    updatedDisplayName,
-    isAdmin,
-  }: {
-    updatedDisplayName: string;
-    teamName: string;
-    isAdmin?: boolean;
-    role?: string;
-  }
+  updatedDisplayName: string,
+  isAdmin?: boolean
 ) => {
   if (isAdmin) {
     await handleAdminUpdateDetails(page, updatedDisplayName);
@@ -500,6 +496,16 @@ export const updateExpiration = async (page: Page, expiry: number) => {
     `ccc d'th' MMMM, yyyy`
   );
 
+  // Wait for dropdown to close and ensure no overlays are present
+  await page.waitForTimeout(100);
+
+  // Click outside to close any open dropdowns
+  await page.mouse.click(1, 1);
+
+  // Wait for any dropdown animations to complete
+  await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+
+  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(

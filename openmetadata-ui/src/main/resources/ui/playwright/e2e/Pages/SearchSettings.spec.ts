@@ -163,8 +163,15 @@ test.describe('Search Preview test', () => {
       new RegExp(mockEntitySearchSettings.url + '$')
     );
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     const searchInput = page.getByTestId('searchbar');
+    const previewRes = page.waitForResponse('/api/v1/search/preview');
     await searchInput.fill(table1.entity.name);
+    await previewRes;
 
     const descriptionField = page.getByTestId(
       `field-configuration-panel-description`
@@ -174,6 +181,9 @@ test.describe('Search Preview test', () => {
     await descriptionField.click();
 
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const searchResultsContainer = page.locator('.search-results-container');
 

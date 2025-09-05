@@ -162,6 +162,31 @@
                             }
                         }
                     },
+                    "tier": {
+                        "properties": {
+                            "tagFQN": {
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text",
+                                        "analyzer": "om_analyzer"
+                                    }
+                                }
+                            },
+                            "labelType": {
+                                "type": "keyword"
+                            },
+                            "description": {
+                                "type": "text"
+                            },
+                            "source": {
+                                "type": "keyword"
+                            },
+                            "state": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
                     "owner": {
                         "properties": {
                             "id": {
@@ -380,6 +405,31 @@
                         "type": "text",
                         "analyzer": "ik_max_word",
                         "search_analyzer": "ik_smart"
+                    },
+                    "source": {
+                        "type": "keyword"
+                    },
+                    "state": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "tier": {
+                "properties": {
+                    "tagFQN": {
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text",
+                                "analyzer": "om_analyzer"
+                            }
+                        }
+                    },
+                    "labelType": {
+                        "type": "keyword"
+                    },
+                    "description": {
+                        "type": "text"
                     },
                     "source": {
                         "type": "keyword"

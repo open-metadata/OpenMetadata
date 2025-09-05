@@ -203,6 +203,10 @@
           }
         }
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "domains": {
         "properties": {
           "id": {

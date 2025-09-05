@@ -347,9 +347,6 @@
       "deleted": {
         "type": "boolean"
       },
-      "status": {
-        "type": "text"
-      },
       "entityType": {
         "type": "keyword",
         "fields": {
@@ -359,6 +356,10 @@
             "ignore_above": 256
           }
         }
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "upstreamLineage": {
         "type": "object"
