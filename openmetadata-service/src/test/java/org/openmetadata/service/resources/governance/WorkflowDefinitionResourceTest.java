@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import jakarta.ws.rs.client.Entity;
@@ -1095,6 +1096,280 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(4)
+  void test_PrepareMethodValidation_OnCreate(TestInfo test) {
+    // Test that validation is triggered during workflow creation via prepare()
+
+    // Test 1: Create with cyclic workflow - should fail
+    String cyclicWorkflow =
+        """
+    {
+      "name": "testCyclicValidation",
+      "displayName": "Cyclic Workflow",
+      "description": "Test workflow with cycle",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task2", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "task2"},
+        {"from": "task2", "to": "task1"},
+        {"from": "task2", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition cyclicCreate =
+        JsonUtils.readValue(cyclicWorkflow, CreateWorkflowDefinition.class);
+
+    // Attempt to create workflow with cycle - should get BAD_REQUEST
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(cyclicCreate));
+
+    assertEquals(
+        Response.Status.BAD_REQUEST.getStatusCode(),
+        response.getStatus(),
+        "Should fail with BAD_REQUEST for cyclic workflow");
+
+    // Test 2: Create with duplicate node IDs - should fail
+    String duplicateNodeWorkflow =
+        """
+    {
+      "name": "testDuplicateNodeValidation",
+      "displayName": "Duplicate Node Workflow",
+      "description": "Test workflow with duplicate nodes",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition duplicateCreate =
+        JsonUtils.readValue(duplicateNodeWorkflow, CreateWorkflowDefinition.class);
+
+    response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(duplicateCreate));
+
+    assertEquals(
+        Response.Status.BAD_REQUEST.getStatusCode(),
+        response.getStatus(),
+        "Should fail with BAD_REQUEST for duplicate node IDs");
+
+    // Test 3: Create valid workflow - should succeed
+    String validWorkflow =
+        """
+    {
+      "name": "testPrepareValidation",
+      "displayName": "Valid Prepare Workflow",
+      "description": "Valid test workflow",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validCreate =
+        JsonUtils.readValue(validWorkflow, CreateWorkflowDefinition.class);
+
+    response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(validCreate));
+
+    // Check response status and log error if not successful
+    if (response.getStatus() != Response.Status.CREATED.getStatusCode()
+        && response.getStatus() != Response.Status.OK.getStatusCode()) {
+      String errorMessage = response.readEntity(String.class);
+      LOG.error(
+          "Failed to create valid workflow. Status: {}, Error: {}",
+          response.getStatus(),
+          errorMessage);
+      fail(
+          "Valid workflow creation failed with status "
+              + response.getStatus()
+              + ": "
+              + errorMessage);
+    }
+
+    WorkflowDefinition created = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(created);
+    assertEquals("testPrepareValidation", created.getName());
+  }
+
+  @Test
+  @Order(5)
+  void test_PrepareMethodValidation_OnUpdate(TestInfo test) {
+    // Test that validation is triggered during workflow update via prepare()
+
+    // First create a valid workflow
+    String initialWorkflow =
+        """
+    {
+      "name": "testUpdateValidation",
+      "displayName": "Update Test Workflow",
+      "description": "Test workflow for update",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition create =
+        JsonUtils.readValue(initialWorkflow, CreateWorkflowDefinition.class);
+
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .put(Entity.json(create));
+
+    WorkflowDefinition created = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(created);
+
+    // Test 1: Update to introduce a cycle - should fail
+    String cyclicUpdate =
+        """
+    {
+      "name": "testUpdateValidation",
+      "displayName": "Update Test Workflow",
+      "description": "Test workflow with cycle for update",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task2", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "task2"},
+        {"from": "task2", "to": "task1"},
+        {"from": "task1", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition cyclicUpdateRequest =
+        JsonUtils.readValue(cyclicUpdate, CreateWorkflowDefinition.class);
+
+    // Use PUT endpoint for update
+    response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .put(Entity.json(cyclicUpdateRequest));
+
+    assertEquals(
+        Response.Status.BAD_REQUEST.getStatusCode(),
+        response.getStatus(),
+        "Should fail with BAD_REQUEST when updating to cyclic workflow");
+
+    // Test 2: Update with valid changes - should succeed
+    String validUpdate =
+        """
+    {
+      "name": "testUpdateValidation",
+      "displayName": "Updated Test Workflow",
+      "description": "Updated test workflow",
+      "trigger": {
+        "type": "periodicBatchEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "schedule": {"scheduleTimeline": "None"},
+          "batchSize": 100
+        }
+      },
+      "nodes": [
+        {"type": "startEvent", "subType": "startEvent", "name": "start"},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task1", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "task2", "config": {"fieldName": "tags", "fieldValue": "Test"}},
+        {"type": "endEvent", "subType": "endEvent", "name": "end"}
+      ],
+      "edges": [
+        {"from": "start", "to": "task1"},
+        {"from": "task1", "to": "task2"},
+        {"from": "task2", "to": "end"}
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validUpdateRequest =
+        JsonUtils.readValue(validUpdate, CreateWorkflowDefinition.class);
+
+    response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .put(Entity.json(validUpdateRequest));
+
+    assertTrue(
+        response.getStatus() == Response.Status.OK.getStatusCode()
+            || response.getStatus() == Response.Status.CREATED.getStatusCode(),
+        "Valid workflow update should succeed");
+
+    WorkflowDefinition updated = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(updated);
+    assertEquals("Updated Test Workflow", updated.getDisplayName());
+    assertEquals(4, updated.getNodes().size());
+  }
+
+  @Test
+  @Order(6)
   void test_EventBasedWorkflowForMultipleEntities(TestInfo test)
       throws IOException, HttpResponseException, InterruptedException {
     LOG.info("Starting test_EventBasedWorkflowForMultipleEntities");
@@ -2093,6 +2368,1005 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(11)
+  void test_WorkflowValidationEndpoint(TestInfo test) throws IOException {
+    LOG.info("Starting test_WorkflowValidationEndpoint");
+
+    // Test 1: Valid workflow should pass validation
+    String validWorkflowJson =
+        """
+    {
+      "name": "validTestWorkflow",
+      "displayName": "Valid Test Workflow",
+      "description": "A valid workflow for testing",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created", "Updated"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "checkTask",
+          "displayName": "Check Task",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "input": ["relatedEntity"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          },
+          "output": ["result"],
+          "branches": ["true", "false"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "checkTask"
+        },
+        {
+          "from": "checkTask",
+          "to": "end",
+          "condition": "true"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition validWorkflow =
+        JsonUtils.readValue(validWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response response =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(validWorkflow));
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    String responseBody = response.readEntity(String.class);
+    assertTrue(responseBody.contains("valid"));
+    LOG.debug("Valid workflow passed validation");
+
+    // Test 2: Workflow with cycle should fail
+    String cyclicWorkflowJson =
+        """
+    {
+      "name": "cyclicWorkflow",
+      "displayName": "Cyclic Workflow",
+      "description": "Workflow with a cycle",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "check1",
+          "displayName": "Check 1",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+          },
+          "output": ["result"],
+          "branches": ["true", "false"]
+        },
+        {
+          "name": "check2",
+          "displayName": "Check 2",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {
+            "rules": "{\\"!!\\":{\\"var\\":\\"owners\\"}}"
+          },
+          "output": ["result"],
+          "branches": ["true", "false"]
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "check1"
+        },
+        {
+          "from": "check1",
+          "to": "check2",
+          "condition": "true"
+        },
+        {
+          "from": "check2",
+          "to": "check1",
+          "condition": "false"
+        },
+        {
+          "from": "check2",
+          "to": "end",
+          "condition": "true"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition cyclicWorkflow =
+        JsonUtils.readValue(cyclicWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response cyclicResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(cyclicWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), cyclicResponse.getStatus());
+    String cyclicResponseBody = cyclicResponse.readEntity(String.class);
+    assertTrue(
+        cyclicResponseBody.contains("contains a cycle in its execution path"),
+        "Expected cycle error message, got: " + cyclicResponseBody);
+    LOG.debug("Cyclic workflow correctly rejected: {}", cyclicResponseBody);
+
+    // Test 3: Workflow with duplicate node IDs should fail
+    String duplicateNodeWorkflowJson =
+        """
+    {
+      "name": "duplicateNodeWorkflow",
+      "displayName": "Duplicate Node Workflow",
+      "description": "Workflow with duplicate node IDs",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "task1",
+          "displayName": "Task 1",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test"
+          }
+        },
+        {
+          "name": "task1",
+          "displayName": "Task 1 Duplicate",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Test.Tag"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "task1"
+        },
+        {
+          "from": "task1",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition duplicateNodeWorkflow =
+        JsonUtils.readValue(duplicateNodeWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response duplicateResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(duplicateNodeWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), duplicateResponse.getStatus());
+    String duplicateResponseBody = duplicateResponse.readEntity(String.class);
+    assertTrue(
+        duplicateResponseBody.contains("duplicate node ID"),
+        "Expected duplicate node ID error message, got: " + duplicateResponseBody);
+    LOG.debug("Duplicate node workflow correctly rejected: {}", duplicateResponseBody);
+
+    // Test 4: Node ID clashing with workflow name should fail
+    String clashingNodeWorkflowJson =
+        """
+    {
+      "name": "clashingWorkflow",
+      "displayName": "Clashing Workflow",
+      "description": "Workflow where node ID clashes with workflow name",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "clashingWorkflow",
+          "displayName": "Clashing Node",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "clashingWorkflow"
+        },
+        {
+          "from": "clashingWorkflow",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition clashingNodeWorkflow =
+        JsonUtils.readValue(clashingNodeWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response clashResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(clashingNodeWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), clashResponse.getStatus());
+    String clashResponseBody = clashResponse.readEntity(String.class);
+    assertTrue(
+        clashResponseBody.contains("clashes with the workflow name"),
+        "Expected node name clash error message, got: " + clashResponseBody);
+    LOG.debug("Node clashing with workflow name correctly rejected: {}", clashResponseBody);
+
+    // Test 5: User approval task on entity without reviewer support should fail
+    String invalidUserTaskWorkflowJson =
+        """
+    {
+      "name": "invalidUserTaskWorkflow",
+      "displayName": "Invalid User Task Workflow",
+      "description": "Workflow with user approval on non-reviewer entity",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "approval",
+          "displayName": "Approval",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            }
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "approval"
+        },
+        {
+          "from": "approval",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition invalidUserTaskWorkflow =
+        JsonUtils.readValue(invalidUserTaskWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response userTaskResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidUserTaskWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), userTaskResponse.getStatus());
+    String userTaskResponseBody = userTaskResponse.readEntity(String.class);
+    assertTrue(
+        userTaskResponseBody.contains("does not support reviewers"),
+        "Expected reviewer support error message, got: " + userTaskResponseBody);
+    LOG.debug("Invalid user task workflow correctly rejected: {}", userTaskResponseBody);
+
+    // Test 6: Correct updatedBy namespace with user task should pass
+    String correctNamespaceWorkflowJson =
+        """
+    {
+      "name": "correctNamespaceWorkflow",
+      "displayName": "Correct Namespace Workflow",
+      "description": "Workflow with correct updatedBy namespace",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm"],
+          "events": ["Created"]
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "userApproval",
+          "displayName": "User Approval",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {
+              "addReviewers": true
+            }
+          },
+          "output": ["updatedBy"]
+        },
+        {
+          "name": "setTask",
+          "displayName": "Set Task",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Approved"
+          },
+          "input": ["relatedEntity", "updatedBy"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "userApproval"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "userApproval"
+        },
+        {
+          "from": "userApproval",
+          "to": "setTask"
+        },
+        {
+          "from": "setTask",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition correctNamespaceWorkflow =
+        JsonUtils.readValue(correctNamespaceWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response namespaceResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(correctNamespaceWorkflow));
+
+    assertEquals(Response.Status.OK.getStatusCode(), namespaceResponse.getStatus());
+    String namespaceResponseBody = namespaceResponse.readEntity(String.class);
+    assertTrue(namespaceResponseBody.contains("valid"));
+    LOG.debug("Correct namespace workflow with user task passed: {}", namespaceResponseBody);
+
+    // Test 7: Workflow with edge referencing non-existent node should fail
+    String invalidEdgeWorkflowJson =
+        """
+    {
+      "name": "invalidEdgeWorkflow",
+      "displayName": "Invalid Edge Workflow",
+      "description": "Workflow with edge to non-existent node",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "nonExistentNode"
+        },
+        {
+          "from": "nonExistentNode",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition invalidEdgeWorkflow =
+        JsonUtils.readValue(invalidEdgeWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response edgeResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(invalidEdgeWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), edgeResponse.getStatus());
+    String edgeResponseBody = edgeResponse.readEntity(String.class);
+    assertTrue(
+        edgeResponseBody.contains("non-existent node"),
+        "Expected non-existent node error message, got: " + edgeResponseBody);
+    LOG.debug("Invalid edge workflow correctly rejected: {}", edgeResponseBody);
+
+    // Test 8: Workflow without start event should fail
+    String noStartWorkflowJson =
+        """
+    {
+      "name": "noStartWorkflow",
+      "displayName": "No Start Workflow",
+      "description": "Workflow without start event",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "task",
+          "displayName": "Task",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "task",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition noStartWorkflow =
+        JsonUtils.readValue(noStartWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response noStartResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(noStartWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), noStartResponse.getStatus());
+    String noStartResponseBody = noStartResponse.readEntity(String.class);
+    assertTrue(
+        noStartResponseBody.contains("must have exactly one start event"),
+        "Expected start event error message, got: " + noStartResponseBody);
+    LOG.debug("No start event workflow correctly rejected: {}", noStartResponseBody);
+
+    // Test 9: Complex cycle with multiple paths should be detected
+    String complexCycleWorkflowJson =
+        """
+    {
+      "name": "complexCycleWorkflow",
+      "displayName": "Complex Cycle Workflow",
+      "description": "Workflow with complex cycle",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "fork",
+          "displayName": "Fork",
+          "type": "gateway",
+          "subType": "parallelGateway"
+        },
+        {
+          "name": "task1",
+          "displayName": "Task 1",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test1"
+          }
+        },
+        {
+          "name": "task2",
+          "displayName": "Task 2",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Test.Tag"
+          }
+        },
+        {
+          "name": "join",
+          "displayName": "Join",
+          "type": "gateway",
+          "subType": "parallelGateway"
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "fork"
+        },
+        {
+          "from": "fork",
+          "to": "task1"
+        },
+        {
+          "from": "fork",
+          "to": "task2"
+        },
+        {
+          "from": "task1",
+          "to": "join"
+        },
+        {
+          "from": "task2",
+          "to": "join"
+        },
+        {
+          "from": "join",
+          "to": "fork"
+        },
+        {
+          "from": "join",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition complexCycleWorkflow =
+        JsonUtils.readValue(complexCycleWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response complexCycleResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(complexCycleWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), complexCycleResponse.getStatus());
+    String complexCycleResponseBody = complexCycleResponse.readEntity(String.class);
+    assertTrue(
+        complexCycleResponseBody.contains("contains a cycle in its execution path"),
+        "Expected cycle error message, got: " + complexCycleResponseBody);
+    LOG.debug("Complex cycle workflow correctly rejected: {}", complexCycleResponseBody);
+
+    // Test 10: Multiple start nodes should fail
+    String multipleStartWorkflowJson =
+        """
+    {
+      "name": "multipleStartWorkflow",
+      "displayName": "Multiple Start Workflow",
+      "description": "Workflow with multiple start nodes",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start1",
+          "displayName": "Start 1",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "start2",
+          "displayName": "Start 2",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "task",
+          "displayName": "Task",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start1",
+          "to": "task"
+        },
+        {
+          "from": "start2",
+          "to": "task"
+        },
+        {
+          "from": "task",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition multipleStartWorkflow =
+        JsonUtils.readValue(multipleStartWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response multipleStartResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(multipleStartWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), multipleStartResponse.getStatus());
+    String multipleStartResponseBody = multipleStartResponse.readEntity(String.class);
+    assertTrue(
+        multipleStartResponseBody.contains("must have exactly one start event"),
+        "Expected multiple start nodes error message, got: " + multipleStartResponseBody);
+    LOG.debug("Multiple start nodes workflow correctly rejected: {}", multipleStartResponseBody);
+
+    // Test 11: Orphaned nodes (not reachable from start) should fail
+    String orphanedNodesWorkflowJson =
+        """
+    {
+      "name": "orphanedNodesWorkflow",
+      "displayName": "Orphaned Nodes Workflow",
+      "description": "Workflow with orphaned nodes",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "task1",
+          "displayName": "Task 1",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test1"
+          }
+        },
+        {
+          "name": "orphanedTask",
+          "displayName": "Orphaned Task",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Test.Tag"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        },
+        {
+          "name": "orphanedEnd",
+          "displayName": "Orphaned End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "task1"
+        },
+        {
+          "from": "task1",
+          "to": "end"
+        },
+        {
+          "from": "orphanedTask",
+          "to": "orphanedEnd"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition orphanedNodesWorkflow =
+        JsonUtils.readValue(orphanedNodesWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response orphanedNodesResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(orphanedNodesWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), orphanedNodesResponse.getStatus());
+    String orphanedNodesResponseBody = orphanedNodesResponse.readEntity(String.class);
+    assertTrue(
+        orphanedNodesResponseBody.contains("orphaned nodes not reachable from start"),
+        "Expected orphaned nodes error message, got: " + orphanedNodesResponseBody);
+    LOG.debug("Orphaned nodes workflow correctly rejected: {}", orphanedNodesResponseBody);
+
+    // Test 12: Non-end node without outgoing edges should fail
+    String noOutgoingEdgeWorkflowJson =
+        """
+    {
+      "name": "noOutgoingEdgeWorkflow",
+      "displayName": "No Outgoing Edge Workflow",
+      "description": "Workflow with non-end node without outgoing edges",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "task1",
+          "displayName": "Task 1",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Test1"
+          }
+        },
+        {
+          "name": "task2",
+          "displayName": "Task 2",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "tags",
+            "fieldValue": "Test.Tag"
+          }
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "task1"
+        },
+        {
+          "from": "task1",
+          "to": "task2"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition noOutgoingEdgeWorkflow =
+        JsonUtils.readValue(noOutgoingEdgeWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response noOutgoingEdgeResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(noOutgoingEdgeWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), noOutgoingEdgeResponse.getStatus());
+    String noOutgoingEdgeResponseBody = noOutgoingEdgeResponse.readEntity(String.class);
+    assertTrue(
+        noOutgoingEdgeResponseBody.contains("non-end node")
+            && noOutgoingEdgeResponseBody.contains("no outgoing edges"),
+        "Expected no outgoing edges error message, got: " + noOutgoingEdgeResponseBody);
+    LOG.debug(
+        "Non-end node without outgoing edges correctly rejected: {}", noOutgoingEdgeResponseBody);
+
+    // Test 13: End node with outgoing edges should fail
+    String endWithOutgoingWorkflowJson =
+        """
+    {
+      "name": "endWithOutgoingWorkflow",
+      "displayName": "End With Outgoing Workflow",
+      "description": "Workflow with end node having outgoing edges",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["table"],
+          "events": ["Created"]
+        }
+      },
+      "nodes": [
+        {
+          "name": "start",
+          "displayName": "Start",
+          "type": "startEvent",
+          "subType": "startEvent"
+        },
+        {
+          "name": "end",
+          "displayName": "End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        },
+        {
+          "name": "task",
+          "displayName": "Task After End",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {
+            "fieldName": "description",
+            "fieldValue": "Should not reach here"
+          }
+        },
+        {
+          "name": "finalEnd",
+          "displayName": "Final End",
+          "type": "endEvent",
+          "subType": "endEvent"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "end"
+        },
+        {
+          "from": "end",
+          "to": "task"
+        },
+        {
+          "from": "task",
+          "to": "finalEnd"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition endWithOutgoingWorkflow =
+        JsonUtils.readValue(endWithOutgoingWorkflowJson, CreateWorkflowDefinition.class);
+
+    Response endWithOutgoingResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/validate"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(endWithOutgoingWorkflow));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), endWithOutgoingResponse.getStatus());
+    String endWithOutgoingResponseBody = endWithOutgoingResponse.readEntity(String.class);
+    assertTrue(
+        endWithOutgoingResponseBody.contains("end event node")
+            && endWithOutgoingResponseBody.contains("with outgoing edges"),
+        "Expected end node with outgoing edges error message, got: " + endWithOutgoingResponseBody);
+    LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
+
+    LOG.info("test_WorkflowValidationEndpoint completed successfully");
+  }
+
+  @Test
+  @Order(12)
   void test_MutualExclusivitySmartReplacement(TestInfo test)
       throws IOException, HttpResponseException, InterruptedException {
     LOG.info("Starting test_MutualExclusivitySmartReplacement");

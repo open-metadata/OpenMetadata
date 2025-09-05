@@ -2,16 +2,29 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 /**
@@ -32,12 +45,24 @@ public class WorkflowTransactionManager {
 
   /**
    * Create a workflow definition with atomic transaction across both databases.
-   * This method should be called from WorkflowDefinitionResource, NOT from repository.
+   * This method handles authorization AND transaction coordination.
    */
-  public static WorkflowDefinition createWorkflowDefinition(WorkflowDefinition entity) {
+  public static WorkflowDefinition createWorkflowDefinition(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      WorkflowDefinition entity,
+      Authorizer authorizer,
+      Limits limits) {
     // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+    // Authorization (following OpenMetadata pattern)
+    OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, CREATE);
+    CreateResourceContext<WorkflowDefinition> createResourceContext =
+        new CreateResourceContext<>(Entity.WORKFLOW_DEFINITION, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, createResourceContext);
 
     // Pre-validate by creating Workflow object (constructor will throw if invalid)
     Workflow workflow = new Workflow(entity);
@@ -53,11 +78,14 @@ public class WorkflowTransactionManager {
             // Within this transaction, call the repository methods
             // The repository's postCreate will deploy to Flowable
             // Both operations happen within THIS transaction
-            WorkflowDefinition created = repository.create(null, entity);
+            WorkflowDefinition created = repository.create(uriInfo, entity);
 
             LOG.info("Successfully created workflow definition: {}", entity.getName());
             return created;
 
+          } catch (BadRequestException | EntityNotFoundException e) {
+            // Preserve these exception types for proper HTTP status codes
+            throw e;
           } catch (Exception e) {
             LOG.error("Failed to create workflow definition: {}", entity.getName(), e);
             // The transaction will rollback automatically
@@ -69,16 +97,34 @@ public class WorkflowTransactionManager {
 
   /**
    * Update a workflow definition with atomic transaction across both databases.
-   * This method should be called from WorkflowDefinitionResource, NOT from repository.
+   * This method handles authorization AND transaction coordination.
    */
   public static WorkflowDefinition updateWorkflowDefinition(
-      WorkflowDefinition original, WorkflowDefinition updated, String updatedBy) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      WorkflowDefinition original,
+      WorkflowDefinition updated,
+      String updatedBy,
+      Authorizer authorizer) {
 
     // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Pre-validate the updated workflow
+    // Pre-validate the updated workflow BEFORE authorization and transaction
+    // This ensures we fail fast with proper exception types
+    // Update method in the repository doesn't call prepareInternal so we validate here, update
+    // method calls prepareInternal in the resource layer
+    repository.prepareInternal(updated, true);
+
+    // Authorization (following OpenMetadata pattern)
+    OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, EDIT_ALL);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(
+            Entity.WORKFLOW_DEFINITION, original.getId(), original.getFullyQualifiedName());
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Pre-validate by creating Workflow object
     Workflow updatedWorkflow = new Workflow(updated);
 
     // Start a NEW transaction at the API level
@@ -91,12 +137,15 @@ public class WorkflowTransactionManager {
             // The repository's postUpdate will handle Flowable operations
             // Both DB operations happen within THIS transaction
             PutResponse<WorkflowDefinition> response =
-                repository.update(null, original, updated, updatedBy);
+                repository.update(uriInfo, original, updated, updatedBy);
             WorkflowDefinition result = response.getEntity();
 
             LOG.info("Successfully updated workflow definition: {}", updated.getName());
             return result;
 
+          } catch (BadRequestException | EntityNotFoundException e) {
+            // Preserve these exception types for proper HTTP status codes
+            throw e;
           } catch (Exception e) {
             LOG.error("Failed to update workflow definition: {}", updated.getName(), e);
             // The transaction will rollback automatically
@@ -108,12 +157,23 @@ public class WorkflowTransactionManager {
 
   /**
    * Delete a workflow definition with atomic transaction across both databases.
-   * This method should be called from WorkflowDefinitionResource, NOT from repository.
+   * This method handles authorization AND transaction coordination.
    */
-  public static void deleteWorkflowDefinition(WorkflowDefinition entity, boolean hardDelete) {
+  public static void deleteWorkflowDefinition(
+      SecurityContext securityContext,
+      WorkflowDefinition entity,
+      boolean hardDelete,
+      Authorizer authorizer) {
     // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+    // Authorization (following OpenMetadata pattern)
+    OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, EDIT_ALL);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(
+            Entity.WORKFLOW_DEFINITION, entity.getId(), entity.getFullyQualifiedName());
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Start a NEW transaction at the API level
     Jdbi jdbi = Entity.getJdbi();
@@ -128,6 +188,9 @@ public class WorkflowTransactionManager {
 
             LOG.info("Successfully deleted workflow definition: {}", entity.getName());
 
+          } catch (BadRequestException | EntityNotFoundException e) {
+            // Preserve these exception types for proper HTTP status codes
+            throw e;
           } catch (Exception e) {
             LOG.error("Failed to delete workflow definition: {}", entity.getName(), e);
             // The transaction will rollback automatically
@@ -139,16 +202,20 @@ public class WorkflowTransactionManager {
 
   /**
    * Create or update a workflow definition with distributed transaction coordination.
-   * Handles both creation and update with proper Flowable synchronization.
+   * Handles authorization, both creation and update with proper Flowable synchronization.
    */
   public static PutResponse<WorkflowDefinition> createOrUpdateWorkflowDefinition(
-      WorkflowDefinition entity, String updatedBy) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      WorkflowDefinition entity,
+      String updatedBy,
+      Authorizer authorizer,
+      Limits limits) {
 
     // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Pre-validate by creating Workflow object
     Workflow workflow = new Workflow(entity);
 
     // Check if workflow exists
@@ -162,16 +229,118 @@ public class WorkflowTransactionManager {
     }
 
     if (existing == null) {
-      // Create new workflow
-      WorkflowDefinition created = createWorkflowDefinition(entity);
+      // Create new workflow with authorization
+      WorkflowDefinition created =
+          createWorkflowDefinition(uriInfo, securityContext, entity, authorizer, limits);
       return new PutResponse<>(Response.Status.CREATED, created, ENTITY_CREATED);
     } else {
-      // Update existing workflow
-      WorkflowDefinition updated = updateWorkflowDefinition(existing, entity, updatedBy);
+      // Update existing workflow with authorization
+      WorkflowDefinition updated =
+          updateWorkflowDefinition(
+              uriInfo, securityContext, existing, entity, updatedBy, authorizer);
       return new PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
     }
   }
 
-  // Removed deployToFlowableFirst - the postCreate/postUpdate hooks handle deployment
-  // We accept that we cannot have true atomic transactions across two databases
+  /**
+   * Patch a workflow definition with atomic transaction across both databases.
+   * This method handles authorization AND transaction coordination for JsonPatch operations.
+   */
+  public static PatchResponse<WorkflowDefinition> patchWorkflowDefinition(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      Authorizer authorizer) {
+
+    // Get the repository
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+    // Authorization (following OpenMetadata pattern for patch)
+    OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, patch);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(Entity.WORKFLOW_DEFINITION, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Start a NEW transaction at the API level
+    Jdbi jdbi = Entity.getJdbi();
+
+    return jdbi.inTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          try {
+            // The repository's patch will handle the actual patching
+            // The repository's postUpdate will handle Flowable operations
+            // Both DB operations happen within THIS transaction
+            PatchResponse<WorkflowDefinition> response =
+                repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+
+            LOG.info("Successfully patched workflow definition: {}", response.entity().getName());
+            return response;
+
+          } catch (BadRequestException | EntityNotFoundException e) {
+            // Preserve these exception types for proper HTTP status codes
+            throw e;
+          } catch (Exception e) {
+            LOG.error("Failed to patch workflow definition with id: {}", id, e);
+            // The transaction will rollback automatically
+            throw new UnhandledServerException(
+                "Failed to patch workflow definition: " + e.getMessage(), e);
+          }
+        });
+  }
+
+  /**
+   * Patch a workflow definition by name with atomic transaction across both databases.
+   * This method handles authorization AND transaction coordination for JsonPatch operations.
+   */
+  public static PatchResponse<WorkflowDefinition> patchWorkflowDefinitionByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      Authorizer authorizer) {
+
+    // Get the repository
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+    // Authorization (following OpenMetadata pattern for patch)
+    OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, patch);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(Entity.WORKFLOW_DEFINITION, null, fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Start a NEW transaction at the API level
+    Jdbi jdbi = Entity.getJdbi();
+
+    return jdbi.inTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          try {
+            // The repository's patch will handle the actual patching
+            // The repository's postUpdate will handle Flowable operations
+            // Both DB operations happen within THIS transaction
+            PatchResponse<WorkflowDefinition> response =
+                repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
+
+            LOG.info("Successfully patched workflow definition: {}", response.entity().getName());
+            return response;
+
+          } catch (BadRequestException | EntityNotFoundException e) {
+            // Preserve these exception types for proper HTTP status codes
+            throw e;
+          } catch (Exception e) {
+            LOG.error("Failed to patch workflow definition with name: {}", fqn, e);
+            // The transaction will rollback automatically
+            throw new UnhandledServerException(
+                "Failed to patch workflow definition: " + e.getMessage(), e);
+          }
+        });
+  }
+
+  // Note: While we cannot achieve true 2PC (two-phase commit) across OpenMetadata and Flowable,
+  // we use compensating transactions and handle deployment within our transaction boundaries
+  // to minimize the risk of inconsistency between the two systems
 }

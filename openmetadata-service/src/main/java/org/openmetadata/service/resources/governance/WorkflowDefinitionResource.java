@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -49,7 +51,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Path("/v1/governance/workflowDefinitions")
@@ -320,8 +325,10 @@ public class WorkflowDefinitionResource
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
 
     // Use WorkflowTransactionManager for atomic operation across both databases
+    // It handles both authorization and transaction coordination
     WorkflowDefinition created =
-        WorkflowTransactionManager.createWorkflowDefinition(workflowDefinition);
+        WorkflowTransactionManager.createWorkflowDefinition(
+            uriInfo, securityContext, workflowDefinition, authorizer, limits);
     return Response.status(Response.Status.CREATED)
         .entity(repository.withHref(uriInfo, created))
         .build();
@@ -353,7 +360,13 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    // Use WorkflowTransactionManager for atomic operation across both databases
+    // It handles authorization, patching, and Flowable synchronization
+    PatchResponse<WorkflowDefinition> response =
+        WorkflowTransactionManager.patchWorkflowDefinition(
+            uriInfo, securityContext, id, patch, authorizer);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   @PATCH
@@ -382,7 +395,13 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    // Use WorkflowTransactionManager for atomic operation across both databases
+    // It handles authorization, patching, and Flowable synchronization
+    PatchResponse<WorkflowDefinition> response =
+        WorkflowTransactionManager.patchWorkflowDefinitionByName(
+            uriInfo, securityContext, fqn, patch, authorizer);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   @PUT
@@ -407,11 +426,12 @@ public class WorkflowDefinitionResource
     WorkflowDefinition workflowDefinition =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
 
-    // Let the TransactionManager handle all the logic within a single transaction
-    // This avoids cache issues and ensures atomic operations
+    // Let the TransactionManager handle authorization and transaction coordination
+    // This ensures atomic operations across both databases
     String updatedBy = securityContext.getUserPrincipal().getName();
     PutResponse<WorkflowDefinition> response =
-        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(workflowDefinition, updatedBy);
+        WorkflowTransactionManager.createOrUpdateWorkflowDefinition(
+            uriInfo, securityContext, workflowDefinition, updatedBy, authorizer, limits);
 
     return Response.status(response.getStatus())
         .entity(repository.withHref(uriInfo, response.getEntity()))
@@ -449,8 +469,9 @@ public class WorkflowDefinitionResource
     WorkflowDefinition workflow =
         repository.get(uriInfo, id, new EntityUtil.Fields(repository.getAllowedFields()));
 
-    // Use WorkflowTransactionManager for atomic deletion
-    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+    // Use WorkflowTransactionManager for atomic deletion with authorization
+    WorkflowTransactionManager.deleteWorkflowDefinition(
+        securityContext, workflow, hardDelete, authorizer);
 
     return Response.ok().build();
   }
@@ -518,8 +539,9 @@ public class WorkflowDefinitionResource
     WorkflowDefinition workflow =
         repository.getByName(uriInfo, fqn, new EntityUtil.Fields(repository.getAllowedFields()));
 
-    // Use WorkflowTransactionManager for atomic deletion
-    WorkflowTransactionManager.deleteWorkflowDefinition(workflow, hardDelete);
+    // Use WorkflowTransactionManager for atomic deletion with authorization
+    WorkflowTransactionManager.deleteWorkflowDefinition(
+        securityContext, workflow, hardDelete, authorizer);
 
     return Response.ok().build();
   }
@@ -544,6 +566,51 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @POST
+  @Path("/validate")
+  @Operation(
+      operationId = "validateWorkflowDefinition",
+      summary = "Validate a Workflow Definition",
+      description =
+          "Validates a Workflow Definition for cycles, node ID conflicts, user task requirements, and updatedBy namespace configuration. "
+              + "This is useful for workflow builders to test their configuration before saving.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Workflow Definition is valid",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Workflow Definition validation failed",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response validate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateWorkflowDefinition create) {
+    // Convert to entity for validation
+    WorkflowDefinition workflowDefinition =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+
+    // Authorization check - user must have at least VIEW permission for workflows
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    ResourceContext<WorkflowDefinition> resourceContext = new ResourceContext<>(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Validate the workflow configuration
+    // This will throw BadRequestException on any validation failure
+    repository.validateWorkflow(workflowDefinition);
+
+    return Response.ok()
+        .entity(
+            Map.of(
+                "status", "valid",
+                "message", "Workflow validation successful",
+                "validatedAt", System.currentTimeMillis()))
+        .build();
   }
 
   @POST
