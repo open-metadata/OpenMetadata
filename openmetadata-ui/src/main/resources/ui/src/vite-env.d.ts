@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// eslint-disable-next-line spaced-comment
+/// <reference types="vite/client" />
 
-const development: boolean = (() => {
-  // Use Vite's import.meta.env which is properly typed now
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    return import.meta.env.MODE === 'development';
-  }
+interface ImportMetaEnv {
+  readonly MODE: string;
+  readonly BASE_URL: string;
+  readonly PROD: boolean;
+  readonly DEV: boolean;
+  // Add other env variables as needed
+}
 
-  // Fallback to process.env (defined by Vite's define option)
-  return !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-})();
-
-export const isDev = (): boolean => {
-  return development;
-};
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
