@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -29,6 +29,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
+import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   redirectToHomePage,
@@ -71,7 +72,7 @@ test.describe('Data Contracts', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await table.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
@@ -107,6 +108,12 @@ test.describe('Data Contracts', () => {
         },
       ],
     });
+
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
+
     await afterAction();
   });
 
