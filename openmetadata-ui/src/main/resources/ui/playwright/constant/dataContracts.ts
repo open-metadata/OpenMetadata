@@ -50,3 +50,22 @@ export const NEW_TABLE_TEST_CASE = {
   value: '1000',
   description: 'New table test case for TableColumnCountToEqual',
 };
+
+export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
+  name: `data_contract_container_semantic_${uuid()}`,
+  description: 'new data contract semantic contains description ',
+  rules: [
+    {
+      field: 'Tier',
+      operator: 'Contains',
+    },
+    {
+      field: 'Tags',
+      operator: 'Contains',
+    },
+    {
+      field: 'Glossary Term',
+      operator: 'Contains',
+    },
+  ],
+};

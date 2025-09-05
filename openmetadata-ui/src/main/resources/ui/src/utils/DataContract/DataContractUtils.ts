@@ -226,6 +226,11 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.column]: i18n.t('label.column'),
 };
 
+const SEMANTIC_OPERATORS = [
+  ...jsonLogicSearchClassBase.defaultSelectOperators,
+  'array_contains',
+];
+
 export const getSematicRuleFields = () => {
   const allFields = jsonLogicSearchClassBase.getCommonConfig();
 
@@ -239,7 +244,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
@@ -265,7 +270,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -289,10 +294,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'multiselect',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: [
-          ...jsonLogicSearchClassBase.defaultSelectOperators,
-          'array_contains',
-        ],
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,

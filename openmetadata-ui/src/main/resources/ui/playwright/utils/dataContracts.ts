@@ -40,6 +40,11 @@ export const saveAndTriggerDataContractValidation = async (
 
   await page.reload();
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   return responseData;
 };
 
