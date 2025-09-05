@@ -13,6 +13,7 @@
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
+import i18next from '../i18next/LocalUtil';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
@@ -26,7 +27,7 @@ export const formatDateTime = (date?: number) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
@@ -40,11 +41,11 @@ export const formatDate = (date?: number, supportUTC = false) => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
-    : dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
+    : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
 };
 
 /**
@@ -56,7 +57,7 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
     return '';
   }
 
-  return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
+  return DateTime.fromMillis(toNumber(timestamp), { locale: i18next.language }).toFormat(
     format ?? DATE_TIME_WITH_OFFSET_FORMAT
   );
 };
@@ -68,7 +69,7 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
 export const getTimeZone = (): string => {
   // Getting local time zone
   const timeZoneToString = new Date()
-    .toLocaleDateString('en-US', {
+    .toLocaleDateString(i18next.language, {
       day: '2-digit',
       timeZoneName: 'long',
     })
@@ -91,7 +92,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
     return '';
   }
 
-  const dateTime = DateTime.fromMillis(timeStamp, { locale: 'en-US' });
+  const dateTime = DateTime.fromMillis(timeStamp, { locale: i18next.language });
 
   return dateTime.toLocaleString(DateTime.DATETIME_FULL);
 };
@@ -120,7 +121,7 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds);
   }
 
-  return DateTime.fromMillis(milliseconds, { locale: 'en-US' }).toFormat(
+  return DateTime.fromMillis(milliseconds, { locale: i18next.language }).toFormat(
     format
   );
 };
@@ -132,7 +133,7 @@ export const customFormatDateTime = (
  */
 export const getRelativeTime = (timeStamp?: number): string => {
   return !isNil(timeStamp)
-    ? DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelative() ?? ''
+    ? DateTime.fromMillis(timeStamp, { locale: i18next.language }).toRelative() ?? ''
     : '';
 };
 
@@ -175,9 +176,9 @@ export const getRelativeCalendar = (
   baseTimeStamp?: number
 ): string => {
   return capitalize(
-    DateTime.fromMillis(timeStamp, { locale: 'en-US' }).toRelativeCalendar({
+    DateTime.fromMillis(timeStamp, { locale: i18next.language }).toRelativeCalendar({
       base: baseTimeStamp
-        ? DateTime.fromMillis(baseTimeStamp, { locale: 'en-US' })
+        ? DateTime.fromMillis(baseTimeStamp, { locale: i18next.language })
         : DateTime.now(),
     }) || ''
   );
