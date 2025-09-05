@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
@@ -17,23 +18,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -188,6 +197,84 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   }
 
   @Test
+  void test_bulkAssetsOperationWithMixedAssetTypes(TestInfo test) throws IOException {
+    // Disable domain validation rule for this test since we're testing mixed asset types, not
+    // domain validation
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Get the repository instance
+      DataProductRepository dataProductRepository =
+          (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+
+      // Create a data product
+      CreateDataProduct create = createRequest(getEntityName(test));
+      DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+      // Create different asset types
+      TopicResourceTest topicTest = new TopicResourceTest();
+      Topic topic =
+          topicTest.createEntity(
+              topicTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+
+      // Create a dashboard
+      DashboardResourceTest dashboardTest = new DashboardResourceTest();
+      Dashboard dashboard =
+          dashboardTest.createEntity(
+              dashboardTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+
+      // Create BulkAssets request with mixed asset types (Table, Dashboard, Topic)
+      BulkAssets bulkAssets =
+          new BulkAssets()
+              .withAssets(
+                  List.of(
+                      TEST_TABLE1.getEntityReference(),
+                      dashboard.getEntityReference(),
+                      topic.getEntityReference()));
+
+      // Test bulk add operation
+      BulkOperationResult result =
+          dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets);
+      assertEquals(ApiStatus.SUCCESS, result.getStatus());
+      assertEquals(3, result.getNumberOfRowsProcessed());
+      assertEquals(3, result.getNumberOfRowsPassed());
+
+      // Verify all assets are added to the data product
+      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+      assertEquals(3, product.getAssets().size());
+
+      // Verify each asset type is present
+      List<String> assetTypes =
+          product.getAssets().stream()
+              .map(EntityReference::getType)
+              .sorted()
+              .collect(Collectors.toList());
+      assertEquals(List.of("dashboard", "table", "topic"), assetTypes);
+
+      // Test bulk remove operation
+      BulkAssets removeAssets =
+          new BulkAssets()
+              .withAssets(List.of(dashboard.getEntityReference(), topic.getEntityReference()));
+
+      result =
+          dataProductRepository.bulkRemoveAssets(product.getFullyQualifiedName(), removeAssets);
+      assertEquals(ApiStatus.SUCCESS, result.getStatus());
+      assertEquals(2, result.getNumberOfRowsProcessed());
+      assertEquals(2, result.getNumberOfRowsPassed());
+
+      // Verify only table remains
+      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
+      assertEquals(1, product.getAssets().size());
+      assertEquals("table", product.getAssets().get(0).getType());
+      assertEquals(TEST_TABLE1.getId(), product.getAssets().get(0).getId());
+    } finally {
+      // Re-enable the rule for other tests
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
   void test_inheritOwnerExpertsFromDomain(TestInfo test) throws IOException {
     DomainResourceTest domainResourceTest = new DomainResourceTest();
 
@@ -339,5 +426,206 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Test
+  void testBulkAddAssets_DataProductDomainValidation(TestInfo test) throws IOException {
+    // Create domains for testing
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    Domain dataDomain =
+        domainResourceTest.createEntity(
+            domainResourceTest
+                .createRequest(test.getDisplayName() + "_DataDomain")
+                .withName("DataDomain")
+                .withDescription("Data domain for testing"),
+            ADMIN_AUTH_HEADERS);
+
+    Domain engineeringDomain =
+        domainResourceTest.createEntity(
+            domainResourceTest
+                .createRequest(test.getDisplayName() + "_EngineeringDomain")
+                .withName("EngineeringDomain")
+                .withDescription("Engineering domain for testing"),
+            ADMIN_AUTH_HEADERS);
+
+    // Create data product with data domain
+    CreateDataProduct createDataProduct =
+        createRequest(test.getDisplayName() + "_DataProduct")
+            .withDomains(List.of(dataDomain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create tables with different domain assignments
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    // Table with matching domain (should succeed in bulk add)
+    org.openmetadata.schema.entity.data.Table matchingTable =
+        tableResourceTest.createEntity(
+            tableResourceTest
+                .createRequest(test.getDisplayName() + "_MatchingTable")
+                .withDomains(List.of(dataDomain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Table with non-matching domain (should fail in bulk add)
+    org.openmetadata.schema.entity.data.Table nonMatchingTable =
+        tableResourceTest.createEntity(
+            tableResourceTest
+                .createRequest(test.getDisplayName() + "_NonMatchingTable")
+                .withDomains(List.of(engineeringDomain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Test 1: Bulk add assets with matching domains - should succeed
+    BulkAssets matchingAssetsRequest =
+        new BulkAssets().withAssets(List.of(matchingTable.getEntityReference()));
+
+    BulkOperationResult successResult =
+        TestUtils.put(
+            getCollection().path("/" + dataProduct.getName() + "/assets/add"),
+            matchingAssetsRequest,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, successResult.getStatus());
+    assertEquals(1, successResult.getNumberOfRowsProcessed());
+    assertEquals(1, successResult.getNumberOfRowsPassed());
+    assertEquals(0, successResult.getNumberOfRowsFailed());
+    assertEquals(1, successResult.getSuccessRequest().size());
+    assertTrue(successResult.getFailedRequest().isEmpty());
+
+    // Test 2: Bulk add assets with non-matching domains - should fail
+    BulkAssets nonMatchingAssetsRequest =
+        new BulkAssets().withAssets(List.of(nonMatchingTable.getEntityReference()));
+
+    BulkOperationResult failResult =
+        TestUtils.put(
+            getCollection().path("/" + dataProduct.getName() + "/assets/add"),
+            nonMatchingAssetsRequest,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsProcessed());
+    assertEquals(0, failResult.getNumberOfRowsPassed());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertTrue(failResult.getSuccessRequest().isEmpty());
+    assertEquals(1, failResult.getFailedRequest().size());
+    assertTrue(failResult.getFailedRequest().get(0).getMessage().contains("Cannot assign asset"));
+    assertTrue(
+        failResult
+            .getFailedRequest()
+            .get(0)
+            .getMessage()
+            .contains("Data Product Domain Validation"));
+
+    // Test 3: Mixed bulk operation - one matching, one non-matching
+    BulkAssets mixedAssetsRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(matchingTable.getEntityReference(), nonMatchingTable.getEntityReference()));
+
+    // Remove the matching table first to test mixed scenario cleanly
+    BulkAssets removeMatchingRequest =
+        new BulkAssets().withAssets(List.of(matchingTable.getEntityReference()));
+    TestUtils.put(
+        getCollection().path("/" + dataProduct.getName() + "/assets/remove"),
+        removeMatchingRequest,
+        BulkOperationResult.class,
+        Status.OK,
+        ADMIN_AUTH_HEADERS);
+
+    // Now test mixed operation
+    BulkOperationResult mixedResult =
+        TestUtils.put(
+            getCollection().path("/" + dataProduct.getName() + "/assets/add"),
+            mixedAssetsRequest,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, mixedResult.getStatus());
+    assertEquals(2, mixedResult.getNumberOfRowsProcessed());
+    assertEquals(1, mixedResult.getNumberOfRowsPassed()); // matching table succeeds
+    assertEquals(1, mixedResult.getNumberOfRowsFailed()); // non-matching table fails
+    assertEquals(1, mixedResult.getSuccessRequest().size());
+    assertEquals(1, mixedResult.getFailedRequest().size());
+
+    // Test 4: Disable rule and retry failed operation - should succeed
+    String originalRuleName = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(originalRuleName, false);
+
+    try {
+      BulkOperationResult disabledRuleResult =
+          TestUtils.put(
+              getCollection().path("/" + dataProduct.getName() + "/assets/add"),
+              nonMatchingAssetsRequest,
+              BulkOperationResult.class,
+              Status.OK,
+              ADMIN_AUTH_HEADERS);
+
+      assertEquals(ApiStatus.SUCCESS, disabledRuleResult.getStatus());
+      assertEquals(1, disabledRuleResult.getNumberOfRowsProcessed());
+      assertEquals(1, disabledRuleResult.getNumberOfRowsPassed());
+      assertEquals(0, disabledRuleResult.getNumberOfRowsFailed());
+
+    } finally {
+      // Re-enable rule for other tests
+      EntityResourceTest.toggleRule(originalRuleName, true);
+    }
+
+    // Test 5: Bulk remove assets - should always work regardless of domain validation
+    BulkAssets removeAllRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(matchingTable.getEntityReference(), nonMatchingTable.getEntityReference()));
+
+    BulkOperationResult removeResult =
+        TestUtils.put(
+            getCollection().path("/" + dataProduct.getName() + "/assets/remove"),
+            removeAllRequest,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, removeResult.getStatus());
+    assertEquals(2, removeResult.getNumberOfRowsProcessed());
+    assertEquals(2, removeResult.getNumberOfRowsPassed());
+    assertEquals(0, removeResult.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a data product with APPROVED status by default
+    CreateDataProduct createDataProduct = createRequest(getEntityName(test));
+    DataProduct dataProduct = createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Verify the data product is created with APPROVED status
+    assertEquals(
+        EntityStatus.APPROVED,
+        dataProduct.getEntityStatus(),
+        "DataProduct should be created with APPROVED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(dataProduct);
+    dataProduct.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    DataProduct updatedDataProduct =
+        patchEntityAndCheck(dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedDataProduct.getEntityStatus(),
+        "DataProduct should be updated to IN_REVIEW status");
+
+    // Get the data product again to confirm the status is persisted
+    DataProduct retrievedDataProduct = getEntity(updatedDataProduct.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedDataProduct.getEntityStatus(),
+        "Retrieved data product should maintain IN_REVIEW status");
   }
 }
