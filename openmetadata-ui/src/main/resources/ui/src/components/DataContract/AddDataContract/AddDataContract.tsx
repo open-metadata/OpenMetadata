@@ -172,9 +172,7 @@ const AddDataContract: React.FC<{
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
             prevLabel={t('label.contract-detail-plural')}
-            selectedSchema={
-              contract?.schema?.map((column) => column.name) || []
-            }
+            selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
