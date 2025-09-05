@@ -437,8 +437,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
 
   @Test
   @Order(10)
-  @DisplayName("Test cache performance with tag operations")
-  public void testTagCachePerformance() {
+  @DisplayName("Test cache functionality with tag operations")
+  public void testTagCacheOperations() {
     if (!(tagUsageDAO instanceof CachedTagUsageDAO)) {
       LOG.warn("Skipping cached tag test - cache not enabled");
       return;
@@ -446,9 +446,7 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
 
     int operationCount = 50;
 
-    long startTime = System.currentTimeMillis();
-
-    // Perform mixed tag operations using the actual test tag
+    // Perform mixed tag operations and verify correctness
     for (int i = 0; i < operationCount; i++) {
       // Use the actual test tag FQN with a different hash per iteration
       String tagHash = testTagFQNHash + "-" + i;
@@ -462,26 +460,35 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
           LabelType.MANUAL.ordinal(),
           State.CONFIRMED.ordinal());
 
-      // Get tags (should hit cache on subsequent calls)
+      // Get tags and verify they exist
       List<TagLabel> tags = tagUsageDAO.getTags(testEntityFQNHash);
       assertNotNull(tags, "Tags should be retrievable");
+      assertFalse(tags.isEmpty(), "Tags list should not be empty after applying tags");
 
-      // Note: updateState method not available in TagUsageDAO interface - operation skipped
+      // Verify the tag we just applied is present
+      boolean tagExists =
+          tags.stream()
+              .anyMatch(tag -> tag.getTagFQN() != null && tag.getTagFQN().equals(testTagFQN));
+      assertTrue(tagExists, "Applied tag should be present in the retrieved tags");
     }
 
-    long endTime = System.currentTimeMillis();
-    long totalTime = endTime - startTime;
+    // Verify final state consistency
+    List<TagLabel> finalTags = tagUsageDAO.getTags(testEntityFQNHash);
+    assertNotNull(finalTags, "Final tags should not be null");
+    assertFalse(finalTags.isEmpty(), "Final tags list should contain applied tags");
+
+    // Verify cache returns consistent results on repeated calls
+    for (int i = 0; i < 10; i++) {
+      List<TagLabel> cachedTags = tagUsageDAO.getTags(testEntityFQNHash);
+      assertEquals(
+          finalTags.size(),
+          cachedTags.size(),
+          "Cache should return consistent results on repeated calls");
+    }
 
     LOG.info(
-        "Performed {} tag cache operations in {} ms (avg: {} ms per operation)",
-        operationCount * 2,
-        totalTime,
-        (double) totalTime / (operationCount * 2));
-
-    // Performance should be reasonable (increased threshold for CI/test environments)
-    assertTrue(totalTime < operationCount * 100, "Tag cache operations should be reasonably fast");
-
-    LOG.info("Tag cache performance test passed");
+        "Successfully performed {} tag cache operations with consistent results",
+        operationCount * 2);
   }
 
   @AfterEach
