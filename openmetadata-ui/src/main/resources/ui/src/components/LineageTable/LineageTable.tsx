@@ -22,6 +22,7 @@ import { Button, Dropdown } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import ButtonGroup from 'antd/lib/button/button-group';
 import Card from 'antd/lib/card/Card';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,12 +32,15 @@ import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg
 import { ReactComponent as SwitchVerticalIcon } from '../../assets/svg/ic-switch-vertical.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { NO_DATA } from '../../constants/constants';
+import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/tests/testCase';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
+import { getAssetsPageQuickFilters } from '../../utils/AdvancedSearchUtils';
 import {
   getEntityLinkFromType,
   highlightSearchText,
@@ -48,6 +52,9 @@ import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
+import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
+import ExploreQuickFilters from '../Explore/ExploreQuickFilters';
+import { AssetsOfEntity } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './lineage-table.less';
 
@@ -62,14 +69,18 @@ const LineageTable: React.FC<LineageTableProps> = ({
   currentPage = 1,
   total = 0,
 }) => {
-  const { nodes } = useLineageProvider();
+  const { nodes, selectedQuickFilters, setSelectedQuickFilters } =
+    useLineageProvider();
   const { fqn } = useFqn();
   const [currentNodeData, setCurrentNodeData] = useState(null);
   const [filterNodes, setFilterNodes] = useState<SearchSourceAlias[]>(
     nodes?.map((n) => n.data.node) as SearchSourceAlias[]
   );
   const { t } = useTranslation();
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
+  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+
   const [searchValue, setSearchValue] = React.useState<string>('');
   const onSearch = useCallback(
     (text: string) => {
@@ -172,6 +183,36 @@ const LineageTable: React.FC<LineageTableProps> = ({
     );
   }, [navigate, radioGroupOptions, selectedStream]);
 
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => [...prevSelected, key]);
+  };
+
+  const filterMenu: ItemType[] = useMemo(() => {
+    return filters.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      onClick: handleMenuClick,
+    }));
+  }, [filters]);
+
+  const queryFilter = useMemo(() => {
+    const nodeIds = (nodes ?? [])
+      .map((node) => node.data?.node?.id)
+      .filter(Boolean);
+
+    return {
+      query: {
+        bool: {
+          must: {
+            terms: {
+              'id.keyword': nodeIds,
+            },
+          },
+        },
+      },
+    };
+  }, [nodes]);
+
   useEffect(() => {
     const activeNode = nodes.find(
       (node) => node.data.node.fullyQualifiedName === fqn
@@ -182,39 +223,87 @@ const LineageTable: React.FC<LineageTableProps> = ({
       : setCurrentNodeData(null);
   }, [nodes]);
 
+  const handleQuickFiltersValueSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          if (preField.key === field.key) {
+            return field;
+          } else {
+            return preField;
+          }
+        });
+
+        return data;
+      });
+    },
+    [setSelectedQuickFilters]
+  );
+
   const cardHeader = useMemo(() => {
     return (
-      <div className="d-flex justify-between items-center">
-        <div className="d-flex gap-2">
-          <Button icon={<FilterOutlined />} />
-          <Searchbar
-            placeholder={t('label.search-for-type', {
-              type: t('label.entity'),
-            })}
-            searchValue={searchValue}
-            typingInterval={300}
-            onSearch={onSearch}
-          />
+      <>
+        <div className="d-flex justify-between items-center">
+          <div className="d-flex gap-2">
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button
+                ghost
+                className="expand-btn"
+                icon={<FilterOutlined />}
+                type="primary"
+              />
+            </Dropdown>
+
+            <Searchbar
+              placeholder={t('label.search-for-type', {
+                type: t('label.entity'),
+              })}
+              searchValue={searchValue}
+              typingInterval={300}
+              onSearch={onSearch}
+            />
+          </div>
+          <div className="d-flex gap-2">
+            <Button
+              className="font-semibold"
+              onClick={() => navigate({ search: '?mode=lineage' })}>
+              Lineage
+            </Button>
+            <Button
+              ghost
+              className="font-semibold"
+              type="primary"
+              onClick={() => navigate({ search: '?mode=impact_analysis' })}>
+              Impact Analysis
+            </Button>
+            <Button icon={<ShareAltOutlined />} />
+            <Button icon={<SettingOutlined />} />
+          </div>
         </div>
-        <div className="d-flex gap-2">
-          <Button
-            className="font-semibold"
-            onClick={() => navigate({ search: '?mode=lineage' })}>
-            Lineage
-          </Button>
-          <Button
-            ghost
-            className="font-semibold"
-            type="primary"
-            onClick={() => navigate({ search: '?mode=impact_analysis' })}>
-            Impact Analysis
-          </Button>
-          <Button icon={<ShareAltOutlined />} />
-          <Button icon={<SettingOutlined />} />
-        </div>
-      </div>
+        <ExploreQuickFilters
+          independent
+          aggregations={{}}
+          defaultQueryFilter={queryFilter}
+          fields={selectedQuickFilters}
+          index={SearchIndex.ALL}
+          showDeleted={false}
+          onFieldValueSelect={handleQuickFiltersValueSelect}
+        />
+      </>
     );
-  }, [searchValue, onSearch]);
+  }, [
+    searchValue,
+    onSearch,
+    selectedQuickFilters,
+    filterMenu,
+    selectedFilter,
+    queryFilter,
+  ]);
 
   const paginationProps = useMemo(() => {
     return {
@@ -327,6 +416,46 @@ const LineageTable: React.FC<LineageTableProps> = ({
     ],
     [t, renderName]
   );
+
+  useEffect(() => {
+    const updatedQuickFilters = filters
+      .filter((filter) => selectedFilter.includes(filter.key))
+      .map((selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
+
+        return originalFilterItem || selectedFilterItem;
+      });
+
+    const newItems = updatedQuickFilters.filter(
+      (item) =>
+        !selectedQuickFilters.some(
+          (existingItem) => item.key === existingItem.key
+        )
+    );
+
+    if (newItems.length > 0) {
+      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
+    }
+  }, [selectedFilter, selectedQuickFilters, filters]);
+
+  useEffect(() => {
+    const dropdownItems = getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE);
+
+    setFilters(
+      dropdownItems.map((item) => ({
+        ...item,
+        value: [],
+      }))
+    );
+
+    const defaultFilterValues = dropdownItems
+      .filter((item) => LINEAGE_DEFAULT_QUICK_FILTERS.includes(item.key))
+      .map((item) => item.key);
+
+    setSelectedFilter(defaultFilterValues);
+  }, []);
 
   return (
     <Card title={cardHeader}>

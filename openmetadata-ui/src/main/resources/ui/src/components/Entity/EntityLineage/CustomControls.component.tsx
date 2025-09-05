@@ -16,6 +16,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
+import { Type } from 'js-yaml';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +24,6 @@ import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.consta
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -34,11 +34,10 @@ const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,
 }: LineageControlProps) => {
   const { t } = useTranslation();
-  const { onQueryFilterUpdate, nodes } = useLineageProvider();
+  const { setSelectedQuickFilters, nodes, selectedQuickFilters } =
+    useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
-  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
-    ExploreQuickFilterField[]
-  >([]);
+
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
 
@@ -89,11 +88,6 @@ const CustomControls: FC<LineageControlProps> = ({
     setSelectedFilter(defaultFilterValues);
   }, []);
 
-  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const quickFilterQuery = getQuickFilterQuery(data);
-    onQueryFilterUpdate(JSON.stringify(quickFilterQuery));
-  };
-
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
       setSelectedQuickFilters((pre) => {
@@ -105,9 +99,7 @@ const CustomControls: FC<LineageControlProps> = ({
           }
         });
 
-        handleQuickFiltersChange(data);
-
-        return data;
+        return data as Type;
       });
     },
     [setSelectedQuickFilters]
