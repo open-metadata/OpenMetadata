@@ -195,6 +195,11 @@
       "type": "boolean",
       "default": true
     },
+    "enableStreamableLogs": {
+      "description": "Enable real-time log streaming to the OpenMetadata server. When enabled, ingestion logs will be automatically shipped to the server's configured log storage backend (S3 or compatible).",
+      "type": "boolean",
+      "default": false
+    },
     "href": {
       "description": "Link to this ingestion pipeline resource.",
       "$ref": "../../../type/basic.json#/definitions/href"
