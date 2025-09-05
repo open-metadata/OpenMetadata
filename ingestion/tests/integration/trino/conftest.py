@@ -1,13 +1,16 @@
 import os.path
 import random
+from decimal import Decimal
 from time import sleep
+from typing import Literal
 
 import docker
+import numpy as np
 import pandas as pd
 import pytest
 import testcontainers.core.network
 from sqlalchemy import create_engine, insert
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import Engine, make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
@@ -182,6 +185,24 @@ def minio_container(docker_network):
         yield minio
 
 
+def convert_numpy_to_python(obj):
+    """Recursively convert numpy arrays to Python lists in nested structures."""
+    if isinstance(obj, dict):
+        return {k: convert_numpy_to_python(v) for k, v in obj.items()}
+    elif isinstance(obj, np.ndarray) or hasattr(obj, "__array__"):
+        # Convert array and recursively process elements
+        return [convert_numpy_to_python(item) for item in obj.tolist()]
+    elif isinstance(obj, Decimal):
+        # Convert Decimal to float for SQL compatibility
+        return float(obj)
+    elif isinstance(obj, (list, tuple)):
+        return type(obj)(convert_numpy_to_python(item) for item in obj)
+    elif pd.isna(obj):
+        return None
+    else:
+        return obj
+
+
 @pytest.fixture(scope="session")
 def create_test_data(trino_container):
     engine = create_engine(
@@ -193,17 +214,29 @@ def create_test_data(trino_container):
     data_dir = os.path.dirname(__file__) + "/data"
     for file in os.listdir(data_dir):
         df = pd.read_parquet(f"{data_dir}/{file}")
+        table_name = file.replace(".parquet", "")
+
+        # Convert data types
         for col in df.columns:
             if pd.api.types.is_datetime64tz_dtype(df[col]):
                 df[col] = df[col].dt.tz_convert(None)
-        df.to_sql(
-            file.replace(".parquet", ""),
-            engine,
-            schema="my_schema",
-            if_exists="fail",
-            index=False,
-            method=custom_insert,
-        )
+            elif df[col].dtype == "object":
+                df[col] = df[col].apply(convert_numpy_to_python)
+
+        if_exists: Literal["fail", "append"] = "fail"
+        # For complex types, create table manually then insert
+        if table_name == "with_struct":
+            create_and_insert_with_struct_table(engine, table_name, df)
+        else:
+            # Regular tables can use pandas auto-detection
+            df.to_sql(
+                table_name,
+                engine,
+                schema="my_schema",
+                if_exists=if_exists,
+                index=False,
+                method=custom_insert,
+            )
         sleep(1)
         engine.execute(
             "ANALYZE " + f'minio."my_schema"."{file.replace(".parquet", "")}"'
@@ -212,6 +245,62 @@ def create_test_data(trino_container):
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
     return
+
+
+def create_and_insert_with_struct_table(
+    engine: Engine, table_name: str, df: pd.DataFrame
+) -> None:
+    """Used to create Trinio tables with structs, because df.to_sql does not get types right and inserts fail"""
+
+    # Create the table with the correct schema
+    engine.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS minio.my_schema.{table_name} (
+            payload ROW(
+                foobar VARCHAR,
+                foobaz DOUBLE,
+                foos ARRAY(ROW(bars VARCHAR))
+            ),
+            foosbars ARRAY(VARCHAR)
+        )
+    """
+    )
+
+    # Insert data directly using proper Trino syntax
+    for _, row in df.iterrows():
+        payload = row["payload"]
+        foosbars = row["foosbars"]
+
+        # Format the ROW value
+        if payload:
+            foobar_val = f"'{payload['foobar']}'" if payload.get("foobar") else "NULL"
+            foobaz_val = str(payload.get("foobaz", "NULL"))
+
+            # Format the nested array of ROWs
+            foos_items = []
+            if payload.get("foos"):
+                for item in payload["foos"]:
+                    if item and "bars" in item:
+                        foos_items.append(f"ROW('{item['bars']}')")
+            foos_val = f"ARRAY[{', '.join(foos_items)}]" if foos_items else "ARRAY[]"
+
+            payload_val = f"ROW({foobar_val}, {foobaz_val}, {foos_val})"
+        else:
+            payload_val = "NULL"
+
+        # Format the simple array
+        if foosbars:
+            foosbars_items = [f"'{item}'" for item in foosbars]
+            foosbars_val = f"ARRAY[{', '.join(foosbars_items)}]"
+        else:
+            foosbars_val = "ARRAY[]"
+
+        # Execute the insert
+        insert_sql = f"""
+            INSERT INTO minio.my_schema.{table_name} (payload, foosbars)
+            VALUES ({payload_val}, {foosbars_val})
+        """
+        engine.execute(insert_sql)
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):

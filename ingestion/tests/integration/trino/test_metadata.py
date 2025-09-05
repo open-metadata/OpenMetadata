@@ -18,6 +18,7 @@ def run_workflow(run_workflow, ingestion_config, create_test_data):
         "{database_service}.minio.my_schema.iris",
         "{database_service}.minio.my_schema.userdata",
         "{database_service}.minio.my_schema.empty",
+        "{database_service}.minio.my_schema.with_struct",
     ],
     ids=lambda x: x.split(".")[-1],
 )
