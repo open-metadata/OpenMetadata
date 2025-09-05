@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-export interface NavigationBlockerProps {
-  children: React.ReactNode;
-  enabled?: boolean;
-  message?: string;
-  title?: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm?: () => Promise<void>;
+export interface UnsavedChangesModalProps {
+  open: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
   onCancel?: () => void;
+  title?: string;
+  description?: string;
+  discardText?: string;
+  saveText?: string;
+  loading?: boolean;
 }
