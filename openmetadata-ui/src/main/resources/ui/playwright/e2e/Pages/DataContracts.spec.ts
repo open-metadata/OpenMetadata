@@ -54,7 +54,6 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
-  const table2 = new TableClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -68,7 +67,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.create(apiContext);
-    await table2.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -111,7 +109,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.delete(apiContext);
-    await table2.delete(apiContext);
     await testClassification.delete(apiContext);
     await testTag.delete(apiContext);
     await testGlossary.delete(apiContext);
@@ -541,7 +538,7 @@ test.describe('Data Contracts', () => {
     });
   });
 
-  test('Contract Status badge should not be visible if Contract Tab is hidden by Person', async ({
+  test('Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona', async ({
     page,
   }) => {
     test.slow(true);
@@ -549,7 +546,7 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Create Data Contract in Table and validate it fails',
       async () => {
-        await table2.visitEntityPage(page);
+        await table.visitEntityPage(page);
 
         // Open contract section and start adding contract
         await page.click('[data-testid="contract"]');
@@ -678,6 +675,35 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('selectable-list-update-btn').click();
       await personaResponse;
     });
+
+    await test.step(
+      'Verify Contract tab and status badge are visible if persona is set',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify Contract tab is not visible (should be hidden by persona customization)
+        await expect(page.getByTestId('contract')).toBeVisible();
+
+        // Verify Contract status badge is not visible in header
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toBeVisible();
+
+        // Additional verification: Check that other tabs are still visible
+        await expect(page.getByTestId('schema')).toBeVisible();
+        await expect(page.getByTestId('activity_feed')).toBeVisible();
+        await expect(page.getByTestId('sample_data')).toBeVisible();
+        await expect(page.getByTestId('table_queries')).toBeVisible();
+        await expect(page.getByTestId('profiler')).toBeVisible();
+        await expect(page.getByTestId('lineage')).toBeVisible();
+        await expect(page.getByTestId('custom_properties')).toBeVisible();
+      }
+    );
 
     await test.step('Customize Table page to hide Contract tab', async () => {
       await settingClick(page, GlobalSettingOptions.PERSONA);
