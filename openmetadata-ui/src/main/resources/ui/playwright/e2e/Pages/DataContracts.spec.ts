@@ -970,7 +970,7 @@ test.describe('Data Contracts', () => {
 
       await test.step('Save contract and validate for schema', async () => {
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -1014,7 +1014,7 @@ test.describe('Data Contracts', () => {
         ).not.toBeChecked();
 
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -1056,7 +1056,7 @@ test.describe('Data Contracts', () => {
           }
 
           const saveContractResponse = page.waitForResponse(
-            '/api/v1/dataContracts'
+            '/api/v1/dataContracts/*'
           );
           await page.getByTestId('save-contract-btn').click();
 
