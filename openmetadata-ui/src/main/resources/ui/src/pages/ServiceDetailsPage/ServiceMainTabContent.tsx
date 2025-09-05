@@ -142,28 +142,7 @@ function ServiceMainTabContent({
     }
   };
 
-  const getServiceFieldForQuery = (serviceCategory: ServiceTypes): string => {
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.MESSAGING_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.PIPELINE_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.STORAGE_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.SEARCH_SERVICES:
-        return 'service.fullyQualifiedName';
-      case ServiceCategory.API_SERVICES:
-        return 'service.fullyQualifiedName';
-      default:
-        return 'service.fullyQualifiedName';
-    }
-  };
+  const getServiceFieldForQuery = (): string => 'service.fullyQualifiedName';
 
   /**
    * Formulates updated tags and updates table entity data for API call
@@ -249,7 +228,7 @@ function ServiceMainTabContent({
                 must: [
                   {
                     term: {
-                      [getServiceFieldForQuery(serviceCategory)]:
+                      [getServiceFieldForQuery()]:
                         serviceDetails.fullyQualifiedName,
                     },
                   },
@@ -284,7 +263,7 @@ function ServiceMainTabContent({
   const onServiceSearch = (value: string) => {
     navigate({
       search: QueryString.stringify({
-        service: isEmpty(value) ? undefined : value,
+        serviceSearch: isEmpty(value) ? undefined : value,
       }),
     });
     if (!value || !value.trim()) {
