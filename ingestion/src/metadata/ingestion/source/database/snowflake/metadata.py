@@ -672,7 +672,7 @@ class SnowflakeSource(
         self, database_name: Optional[str] = None, schema_name: Optional[str] = None
     ) -> str:
         url = (
-            f"https://app.snowflake.com/{self.org_name.lower()}"
+            f"https://{self.service_connection.snowflakeSourceHost}/{self.org_name.lower()}"
             f"/{self.account.lower()}/#/data/databases/{database_name}"
         )
         if schema_name:
@@ -898,6 +898,8 @@ class SnowflakeSource(
         """
         Get columns of table/view/stream
         """
+        # For streams, we will use source table/view's columns
+        # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
             cursor = self.connection.execute(
                 SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name)
@@ -906,6 +908,13 @@ class SnowflakeSource(
                 result = cursor.fetchone()
                 if result:
                     table_name = result[6].split(".")[-1]
+                    # Can't fetch source of stream is source is dropped or no priviledge
+                    if table_name == "No privilege or table dropped":
+                        logger.debug(
+                            f"Couldn't fetch columns of stream [{result and result[1]}],"
+                            f" due to error on source: {table_name}. Result: {result}"
+                        )
+                        return []
             except Exception:
                 pass
 

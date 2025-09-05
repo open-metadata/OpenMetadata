@@ -534,6 +534,8 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +576,10 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Spark Engine Configuration.
+     */
+    sparkEngine?: SparkEngineConfiguration;
 }
 
 /**
@@ -1414,13 +1420,22 @@ export interface ConfigObject {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
+     *
+     * SSL Configuration for OpenMetadata Server
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: SSLConfigObject;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Choose Auth Config Type.
      *
@@ -1431,12 +1446,6 @@ export interface ConfigObject {
      * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1540,6 +1549,10 @@ export interface ConfigObject {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -4443,7 +4456,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -4573,7 +4586,7 @@ export interface Style {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
@@ -4596,6 +4609,36 @@ export enum ServiceType {
     Search = "Search",
     Security = "Security",
     Storage = "Storage",
+}
+
+/**
+ * Spark Engine Configuration.
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface SparkEngineConfiguration {
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote: string;
+    type:   SparkEngineType;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+export enum SparkEngineType {
+    Spark = "Spark",
 }
 
 /**
@@ -4722,4 +4765,5 @@ export enum WorkflowStatus {
 export enum WorkflowType {
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }

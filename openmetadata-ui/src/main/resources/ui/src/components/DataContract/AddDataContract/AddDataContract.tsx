@@ -27,8 +27,8 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ContractStatus,
   DataContract,
+  EntityStatus,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
@@ -93,7 +93,7 @@ const AddDataContract: React.FC<{
               type: EntityType.TABLE,
             },
             semantics: validSemantics,
-            status: ContractStatus.Active,
+            entityStatus: EntityStatus.Approved,
           }));
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
@@ -151,9 +151,7 @@ const AddDataContract: React.FC<{
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
             prevLabel={t('label.contract-detail-plural')}
-            selectedSchema={
-              contract?.schema?.map((column) => column.name) || []
-            }
+            selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
