@@ -405,12 +405,15 @@ function ServiceMainTabContent({
                           showPagination:
                             !isUndefined(pagingInfo) &&
                             pagingInfo.showPagination,
-                          isNumberBased: Boolean(searchValue),
+                          isNumberBased: Boolean(
+                            searchValue && searchValue.trim()
+                          ),
                           pageSize: pagingInfo.pageSize,
                           paging,
-                          pagingHandler: searchValue
-                            ? handleServicePageChange
-                            : pagingHandler,
+                          pagingHandler:
+                            searchValue && searchValue.trim()
+                              ? handleServicePageChange
+                              : pagingHandler,
                           onShowSizeChange: pagingInfo.handlePageSizeChange,
                         }}
                         data-testid="service-children-table"
