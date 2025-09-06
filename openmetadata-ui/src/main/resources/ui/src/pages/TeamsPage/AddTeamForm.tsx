@@ -15,10 +15,11 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { toLower, trim } from 'lodash';
+import { isUndefined, toLower, trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -27,6 +28,7 @@ import {
   Team,
   TeamType,
 } from '../../generated/entity/teams/team';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   FieldProp,
@@ -48,6 +50,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const { inlineAlertDetails } = useApplicationStore();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
   const { activeDomainEntityRef } = useDomainStore();
@@ -163,6 +166,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       title={t('label.add-entity', { entity: t('label.team') })}
       width={750}
       onCancel={onCancel}>
+      {!isUndefined(inlineAlertDetails) && (
+        <InlineAlert {...inlineAlertDetails} />
+      )}
       <Form
         form={form}
         id="add-team-form"
