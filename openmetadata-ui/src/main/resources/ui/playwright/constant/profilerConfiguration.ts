@@ -12,6 +12,7 @@
  */
 
 const metrics = [
+  'cardinalityDistribution',
   'columnCount',
   'columnNames',
   'countInSet',

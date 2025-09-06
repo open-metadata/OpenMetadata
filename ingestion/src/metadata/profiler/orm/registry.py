@@ -214,3 +214,9 @@ def is_value_non_numeric(value) -> bool:
         return False
     except Exception:
         return False
+
+
+def is_enum(_type) -> bool:
+    if isinstance(_type, DataType):
+        return _type.value == DataType.ENUM.value
+    return issubclass(_type.__class__, Enum)
