@@ -1124,6 +1124,66 @@ test.describe('Data Contracts', () => {
     }
   });
 
+  test('Nested Column should not be selectable', async ({ page }) => {
+    const entityFQN = table.entityResponseData.fullyQualifiedName;
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Schema' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // First level column should be selectable
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    await expect(
+      page.locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-checked`
+      )
+    ).toBeVisible();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(
+        page.getByText(table.entityLinkColumnsName[i])
+      ).not.toBeVisible();
+    }
+
+    // Expand the Column and check if they are disabled
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[2]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[4]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(page.getByText(table.columnsName[i])).toBeVisible();
+
+      await expect(
+        page.locator(
+          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] .ant-checkbox-input`
+        )
+      ).toBeDisabled();
+    }
+  });
+
   test('should allow adding a semantic with multiple rules', async ({
     page,
   }) => {
