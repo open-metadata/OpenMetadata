@@ -186,13 +186,13 @@ export const setUserDefaultPersona = async (
 ) => {
   await visitOwnProfilePage(page);
 
-  await page.locator('[data-testid="edit-user-persona"]').nth(1).click();
+  await page.locator('[data-testid="default-edit-user-persona"]').click();
 
   await expect(
-    page.locator('[data-testid="persona-select-list"]')
+    page.locator('[data-testid="default-persona-select-list"]')
   ).toBeVisible();
 
-  await page.locator('[data-testid="persona-select-list"]').click();
+  await page.locator('[data-testid="default-persona-select-list"]').click();
   await page.waitForLoadState('networkidle');
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
@@ -200,7 +200,9 @@ export const setUserDefaultPersona = async (
   // Click on the persona option by text within the dropdown
   await page.locator(`[data-testid="${personaName}-option"]`).click();
 
-  await page.locator('[data-testid="user-profile-persona-edit-save"]').click();
+  await page
+    .locator('[data-testid="user-profile-default-persona-edit-save"]')
+    .click();
 
   await setDefaultPersona;
 
