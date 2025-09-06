@@ -554,6 +554,7 @@
     "endpoint-url": "终点 URL",
     "endpoint-url-for-aws": "EndPoint URL for the AWS",
     "enter": "输入",
+    "enter-custom-unit-of-measurement": "输入自定义测量单位并按Enter键",
     "enter-entity": "输入{{entity}}",
     "enter-entity-name": "输入{{entity}}的名称",
     "enter-entity-value": "输入{{entity}}的值",

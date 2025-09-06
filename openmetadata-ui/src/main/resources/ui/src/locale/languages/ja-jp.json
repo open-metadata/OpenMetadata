@@ -554,6 +554,7 @@
     "endpoint-url": "エンドポイントURL",
     "endpoint-url-for-aws": "AWSエンドポイントURL",
     "enter": "入力",
+    "enter-custom-unit-of-measurement": "カスタム測定単位を入力してEnterを押してください",
     "enter-entity": "{{entity}} を入力",
     "enter-entity-name": "{{entity}} の名前を入力",
     "enter-entity-value": "{{entity}} の値を入力",

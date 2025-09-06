@@ -554,6 +554,7 @@
     "endpoint-url": "Endpoint URL",
     "endpoint-url-for-aws": "EndPoint URL for the AWS",
     "enter": "Enter",
+    "enter-custom-unit-of-measurement": "Enter Custom Measurement Unit and Press Enter",
     "enter-entity": "Enter {{entity}}",
     "enter-entity-name": "Enter {{entity}} name",
     "enter-entity-value": "Enter {{entity}} Value",

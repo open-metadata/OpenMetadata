@@ -554,6 +554,7 @@
     "endpoint-url": "엔드포인트 URL",
     "endpoint-url-for-aws": "AWS용 엔드포인트 URL",
     "enter": "입력",
+    "enter-custom-unit-of-measurement": "사용자 지정 측정 단위를 입력하고 Enter를 누르세요",
     "enter-entity": "{{entity}} 입력",
     "enter-entity-name": "{{entity}} 이름 입력",
     "enter-entity-value": "{{entity}} 값 입력",

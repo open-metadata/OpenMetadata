@@ -140,7 +140,7 @@ export type DataAssetsHeaderProps = {
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
-  onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
+  onMetricUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   isCustomizedView?: boolean;
   disableRunAgentsButton?: boolean;
   afterTriggerAction?: VoidFunction;

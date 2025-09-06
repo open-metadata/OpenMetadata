@@ -85,13 +85,22 @@ const MetricDetailsPage = () => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
-      setMetricDetails((previous) => {
-        return {
+      if (key === 'unitOfMeasurement') {
+        setMetricDetails((previous) => ({
           ...previous,
           version: res.version,
-          ...(key ? { [key]: res[key] } : res),
-        };
-      });
+          unitOfMeasurement: res.unitOfMeasurement,
+          customUnitOfMeasurement: res.customUnitOfMeasurement,
+        }));
+      } else {
+        setMetricDetails((previous) => {
+          return {
+            ...previous,
+            version: res.version,
+            ...(key ? { [key]: res[key] } : res),
+          };
+        });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
