@@ -79,6 +79,10 @@ export interface TestSuite {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Link to the ingestion pipeline that ingested this entity.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Indicates if the test suite is inherited from a parent entity.
      */
     inherited?: boolean;
@@ -151,6 +155,8 @@ export interface TestSuite {
  * the relationship of a table `belongs to a` database.
  *
  * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+ *
+ * Link to the ingestion pipeline that ingested this entity.
  */
 export interface EntityReference {
     /**

@@ -105,6 +105,11 @@ export interface App {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+     * at runtime based on the Ingestion Agent of the service.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Name of the Application.
      */
     name:                          string;
@@ -153,6 +158,10 @@ export interface App {
      * Support Email for the application
      */
     supportEmail?: string;
+    /**
+     * If the app support execution through the external runner.
+     */
+    supportsIngestionRunner?: boolean;
     /**
      * If the app run can be interrupted as part of the execution.
      */
@@ -547,6 +556,9 @@ export interface Action {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+ * at runtime based on the Ingestion Agent of the service.
  */
 export interface EntityReference {
     /**
@@ -646,6 +658,9 @@ export enum MetadataAttribute {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+ * at runtime based on the Ingestion Agent of the service.
  */
 export interface TagLabel {
     /**

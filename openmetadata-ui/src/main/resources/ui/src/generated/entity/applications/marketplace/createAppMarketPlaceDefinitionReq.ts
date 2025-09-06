@@ -110,6 +110,10 @@ export interface CreateAppMarketPlaceDefinitionReq {
      */
     supportEmail?: string;
     /**
+     * If the app support execution through the external runner.
+     */
+    supportsIngestionRunner?: boolean;
+    /**
      * If the app run can be interrupted as part of the execution.
      */
     supportsInterrupt?: boolean;
