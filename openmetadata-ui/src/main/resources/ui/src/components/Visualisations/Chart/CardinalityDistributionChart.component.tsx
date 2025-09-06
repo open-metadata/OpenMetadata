@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tag } from 'antd';
+import { Card, Col, Row, Tag } from 'antd';
 import { isUndefined, map } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,30 +21,37 @@ import {
   Legend,
   ResponsiveContainer,
   Tooltip,
+  TooltipProps,
   XAxis,
   YAxis,
 } from 'recharts';
 import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
-import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
-import { HistogramClass } from '../../../generated/entity/data/table';
+import { ColumnProfile } from '../../../generated/entity/data/table';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { DataDistributionHistogramProps } from './Chart.interface';
 
-const DataDistributionHistogram = ({
+export interface CardinalityDistributionChartProps {
+  data: {
+    firstDayData?: ColumnProfile;
+    currentDayData?: ColumnProfile;
+  };
+  noDataPlaceholderText?: string | React.ReactNode;
+}
+
+const CardinalityDistributionChart = ({
   data,
   noDataPlaceholderText,
-}: DataDistributionHistogramProps) => {
+}: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
   const showSingleGraph =
-    isUndefined(data.firstDayData?.histogram) ||
-    isUndefined(data.currentDayData?.histogram);
+    isUndefined(data.firstDayData?.cardinalityDistribution) ||
+    isUndefined(data.currentDayData?.cardinalityDistribution);
 
   if (
-    isUndefined(data.firstDayData?.histogram) &&
-    isUndefined(data.currentDayData?.histogram)
+    isUndefined(data.firstDayData?.cardinalityDistribution) &&
+    isUndefined(data.currentDayData?.cardinalityDistribution)
   ) {
     return (
       <Row align="middle" className="h-full w-full" justify="center">
@@ -55,21 +62,49 @@ const DataDistributionHistogram = ({
     );
   }
 
+  const renderTooltip: TooltipProps<string | number, string>['content'] = (
+    props
+  ) => {
+    const { active, payload } = props;
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+
+      return (
+        <Card>
+          <p className="font-semibold text-sm mb-1">{`${t('label.category')}: ${
+            data.name
+          }`}</p>
+          <p className="text-sm mb-1">{`${t('label.count')}: ${tooltipFormatter(
+            data.count
+          )}`}</p>
+          <p className="text-sm">{`${t('label.percentage')}: ${
+            data.percentage
+          }%`}</p>
+        </Card>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <Row className="w-full" data-testid="chart-container">
       {map(data, (columnProfile, key) => {
-        if (isUndefined(columnProfile?.histogram)) {
+        if (
+          isUndefined(columnProfile) ||
+          isUndefined(columnProfile?.cardinalityDistribution)
+        ) {
           return;
         }
 
-        const histogramData =
-          (columnProfile?.histogram as HistogramClass) ||
-          DEFAULT_HISTOGRAM_DATA;
+        const cardinalityData = columnProfile.cardinalityDistribution;
 
-        const graphData = histogramData.frequencies?.map((frequency, i) => ({
-          name: histogramData?.boundaries?.[i],
-          frequency,
-        }));
+        const graphData =
+          cardinalityData.categories?.map((category, i) => ({
+            name: category,
+            count: cardinalityData.counts?.[i] || 0,
+            percentage: cardinalityData.percentages?.[i] || 0,
+          })) || [];
 
         const graphDate = customFormatDateTime(
           columnProfile?.timestamp || 0,
@@ -86,38 +121,41 @@ const DataDistributionHistogram = ({
                 {graphDate}
               </Col>
               <Col offset={showSingleGraph ? 1 : 2} span={24}>
-                <Tag data-testid="skew-tag">{`${t('label.skew')}: ${
-                  columnProfile?.nonParametricSkew || '--'
-                }`}</Tag>
+                <Tag data-testid="cardinality-tag">{`${t('label.total-entity', {
+                  entity: t('label.category-plural'),
+                })}: ${cardinalityData.categories?.length || 0}`}</Tag>
               </Col>
               <Col span={24}>
                 <ResponsiveContainer
                   debounce={200}
-                  id={`${key}-histogram`}
+                  id={`${key}-cardinality`}
                   minHeight={300}>
                   <BarChart
                     className="w-full"
                     data={graphData}
+                    layout="vertical"
                     margin={{ left: 16 }}>
                     <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                     <XAxis
-                      dataKey="name"
                       padding={{ left: 16, right: 16 }}
                       tick={{ fontSize: 12 }}
+                      tickFormatter={(props) => axisTickFormatter(props, '%')}
+                      type="number"
                     />
                     <YAxis
                       allowDataOverflow
+                      dataKey="name"
                       padding={{ top: 16, bottom: 16 }}
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(props) => axisTickFormatter(props)}
+                      tickFormatter={(value: string) =>
+                        value?.length > 15 ? `${value.slice(0, 15)}...` : value
+                      }
+                      type="category"
+                      width={120}
                     />
                     <Legend />
-                    <Tooltip
-                      formatter={(value: number | string) =>
-                        tooltipFormatter(value)
-                      }
-                    />
-                    <Bar dataKey="frequency" fill={CHART_BLUE_1} />
+                    <Tooltip content={renderTooltip} />
+                    <Bar dataKey="percentage" fill={CHART_BLUE_1} />
                   </BarChart>
                 </ResponsiveContainer>
               </Col>
@@ -129,4 +167,4 @@ const DataDistributionHistogram = ({
   );
 };
 
-export default DataDistributionHistogram;
+export default CardinalityDistributionChart;

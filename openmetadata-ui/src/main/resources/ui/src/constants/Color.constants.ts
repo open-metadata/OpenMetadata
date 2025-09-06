@@ -29,6 +29,7 @@ export const LIGHT_GRAY = '#F1F4F9';
 export const INDIGO_1 = '#3538CD';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
 export const BLUE_2 = '#3ca2f4';
+export const CHART_BLUE_1 = '#1890FF';
 export const RIPTIDE = '#76E9C6';
 export const MY_SIN = '#FEB019';
 export const SAN_MARINO = '#416BB3';

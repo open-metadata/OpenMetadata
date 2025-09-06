@@ -32,6 +32,7 @@ import {
 } from '../../../../utils/TableProfilerUtils';
 import { ColumnMetricsInterface } from '../../../../utils/TableProfilerUtils.interface';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CardinalityDistributionChart from '../../../Visualisations/Chart/CardinalityDistributionChart.component';
 import DataDistributionHistogram from '../../../Visualisations/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
 import CustomMetricGraphs from './CustomMetricGraphs/CustomMetricGraphs.component';
@@ -202,26 +203,55 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           title={t('label.data-quartile-plural')}
         />
       </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="histogram-metrics"
-          loading={isLoading}>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title data-testid="data-distribution-title" level={5}>
-                {t('label.data-distribution')}
-              </Typography.Title>
-            </Col>
-            <Col span={24}>
-              <DataDistributionHistogram
-                data={{ firstDayData: firstDay, currentDayData: currentDay }}
-                noDataPlaceholderText={noProfilerMessage}
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
+      {firstDay?.histogram || currentDay?.histogram ? (
+        <Col span={24}>
+          <Card
+            className="shadow-none global-border-radius"
+            data-testid="histogram-metrics"
+            loading={isLoading}>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Typography.Title
+                  data-testid="data-distribution-title"
+                  level={5}>
+                  {t('label.data-distribution')}
+                </Typography.Title>
+              </Col>
+              <Col span={24}>
+                <DataDistributionHistogram
+                  data={{ firstDayData: firstDay, currentDayData: currentDay }}
+                  noDataPlaceholderText={noProfilerMessage}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      ) : null}
+      {firstDay?.cardinalityDistribution ||
+      currentDay?.cardinalityDistribution ? (
+        <Col span={24}>
+          <Card
+            className="shadow-none global-border-radius"
+            data-testid="cardinality-distribution-metrics"
+            loading={isLoading}>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Typography.Title
+                  data-testid="cardinality-distribution-title"
+                  level={5}>
+                  {t('label.cardinality')}
+                </Typography.Title>
+              </Col>
+              <Col span={24}>
+                <CardinalityDistributionChart
+                  data={{ firstDayData: firstDay, currentDayData: currentDay }}
+                  noDataPlaceholderText={noProfilerMessage}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      ) : null}
       <Col span={24}>
         <CustomMetricGraphs
           customMetrics={customMetrics}
