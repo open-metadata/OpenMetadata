@@ -30,9 +30,9 @@ import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
-import ProviderSelector from './ProviderSelector';
+import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './SettingsSso.less';
-import SSOConfigurationForm from './SSOConfigurationForm';
+import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
 
 const SettingsSso = () => {
   const { t } = useTranslation();

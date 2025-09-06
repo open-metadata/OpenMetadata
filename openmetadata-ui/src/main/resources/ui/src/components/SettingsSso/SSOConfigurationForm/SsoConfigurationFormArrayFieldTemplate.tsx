@@ -17,9 +17,9 @@ import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
-import { useClipboard } from '../../hooks/useClipBoard';
-import { splitCSV } from '../../utils/CSV/CSV.utils';
+import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { splitCSV } from '../../../utils/CSV/CSV.utils';
 import './sso-configuration-form-array-field-template.less';
 
 const SsoCustomTagRenderer = (props: CustomTagProps) => {

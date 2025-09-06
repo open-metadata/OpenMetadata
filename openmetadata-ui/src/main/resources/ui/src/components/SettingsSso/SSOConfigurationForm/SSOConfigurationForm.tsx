@@ -19,13 +19,13 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import LdapIcon from '../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../assets/img/icon-azure.png';
-import GoogleIcon from '../../assets/img/icon-google.png';
-import OktaIcon from '../../assets/img/icon-okta.png';
+import LdapIcon from '../../../assets/img/ic-ldap.svg';
+import SamlIcon from '../../../assets/img/ic-saml.svg';
+import Auth0Icon from '../../../assets/img/icon-auth0.png';
+import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
+import AzureIcon from '../../../assets/img/icon-azure.png';
+import GoogleIcon from '../../../assets/img/icon-google.png';
+import OktaIcon from '../../../assets/img/icon-okta.png';
 
 import {
   AuthenticationConfiguration,
@@ -38,15 +38,15 @@ import {
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
   VALIDATION_STATUS,
-} from '../../constants/SSO.constant';
-import { AuthProvider, ClientType } from '../../generated/settings/settings';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
-import authorizerConfigSchema from '../../jsons/configuration/authorizerConfiguration.json';
+} from '../../../constants/SSO.constant';
+import { AuthProvider, ClientType } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import authenticationConfigSchema from '../../../jsons/configuration/authenticationConfiguration.json';
+import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfiguration.json';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
-} from '../../rest/miscAPI';
+} from '../../../rest/miscAPI';
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
@@ -57,21 +57,21 @@ import {
   SecurityValidationResponse,
   validateSecurityConfiguration,
   ValidationResult,
-} from '../../rest/securityConfigAPI';
-import { getAuthConfig } from '../../utils/AuthProvider.util';
-import { transformErrors } from '../../utils/formUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import DescriptionFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
-import Loader from '../common/Loader/Loader';
-import ResizablePanels from '../common/ResizablePanels/ResizablePanels';
-import { UnsavedChangesModal } from '../Modals/UnsavedChangesModal/UnsavedChangesModal';
-import ProviderSelector from './ProviderSelector';
+} from '../../../rest/securityConfigAPI';
+import { getAuthConfig } from '../../../utils/AuthProvider.util';
+import { transformErrors } from '../../../utils/formUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import Loader from '../../common/Loader/Loader';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal';
+import ProviderSelector from '../ProviderSelector/ProviderSelector';
+import SSODocPanel from '../SSODocPanel/SSODocPanel';
+import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import './SSOConfigurationForm.less';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
-import SSODocPanel from './SSODocPanel';
-import { SSOGroupedFieldTemplate } from './SSOGroupedFieldTemplate';
 
 const widgets = {
   SelectWidget: SelectWidget,

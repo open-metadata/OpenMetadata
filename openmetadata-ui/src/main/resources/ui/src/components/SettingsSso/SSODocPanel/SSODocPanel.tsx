@@ -14,22 +14,22 @@ import { Col, Row, Typography } from 'antd';
 import { first, last } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import LdapIcon from '../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../assets/img/icon-azure.png';
-import GoogleIcon from '../../assets/img/icon-google.png';
-import OktaIcon from '../../assets/img/icon-okta.png';
+import LdapIcon from '../../../assets/img/ic-ldap.svg';
+import SamlIcon from '../../../assets/img/ic-saml.svg';
+import Auth0Icon from '../../../assets/img/icon-auth0.png';
+import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
+import AzureIcon from '../../../assets/img/icon-azure.png';
+import GoogleIcon from '../../../assets/img/icon-google.png';
+import OktaIcon from '../../../assets/img/icon-okta.png';
 import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
-} from '../../constants/regex.constants';
-import { AuthProvider } from '../../generated/settings/settings';
-import { fetchMarkdownFile } from '../../rest/miscAPI';
-import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
-import Loader from '../common/Loader/Loader';
-import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
+} from '../../../constants/regex.constants';
+import { AuthProvider } from '../../../generated/settings/settings';
+import { fetchMarkdownFile } from '../../../rest/miscAPI';
+import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import './SSODocPanel.less';
 
 interface SSODocPanelProp {
