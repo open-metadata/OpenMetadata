@@ -95,6 +95,7 @@
           "dataProduct",
           "databaseService",
           "dashboardService",
+          "driveService",
           "query",
           "queryCostRecord",
           "apiService",
@@ -117,7 +118,8 @@
           "topic",
           "chart",
           "user",
-          "testCase"
+          "testCase",
+          "directory"
         ]
       },
       "default": ["all"],

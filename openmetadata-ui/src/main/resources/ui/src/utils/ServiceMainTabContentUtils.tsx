@@ -20,13 +20,16 @@ import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/Rich
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
+import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
@@ -144,6 +147,12 @@ export const callServicePatchAPI = async (
       return await patchSearchIndexDetails(id, jsonPatch);
     case ServiceCategory.API_SERVICES:
       return await patchApiCollection(id, jsonPatch);
+    case ServiceCategory.DRIVE_SERVICES:
+      return await patchDriveAssetDetails<Directory>(
+        id,
+        jsonPatch,
+        EntityType.DIRECTORY
+      );
     default:
       return;
   }

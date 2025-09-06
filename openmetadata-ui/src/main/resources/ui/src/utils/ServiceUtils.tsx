@@ -37,6 +37,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
@@ -104,7 +105,8 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
     serviceType !== PipelineServiceType.CustomPipeline &&
-    serviceType !== StorageServiceType.CustomStorage
+    serviceType !== StorageServiceType.CustomStorage &&
+    serviceType !== DriveServiceType.CustomDrive
   );
 };
 
@@ -115,35 +117,6 @@ export const getServiceTypesFromServiceCategory = (
   serviceCat: ServiceCategory
 ) => {
   return SERVICE_TYPES_ENUM[serviceCat];
-};
-
-export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
-  let serviceCat;
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-      serviceCat = t('label.database-lowercase');
-
-      break;
-    case ServiceCategory.MESSAGING_SERVICES:
-      serviceCat = t('label.messaging-lowercase');
-
-      break;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      serviceCat = t('label.dashboard-lowercase');
-
-      break;
-
-    case ServiceCategory.PIPELINE_SERVICES:
-      serviceCat = t('label.pipeline-lowercase');
-
-      break;
-    default:
-      serviceCat = '';
-
-      break;
-  }
-
-  return [serviceCat, t('label.service-lowercase')].join(' ');
 };
 
 export const setServiceSchemaCount = (
@@ -323,6 +296,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.collection'))
       );
 
+    case ServiceCategory.DRIVE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.directory'))
+      );
+
     default:
       return;
   }
@@ -346,6 +325,8 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
       return GlobalSettingOptions.SEARCH;
     case ServiceCategory.API_SERVICES:
       return GlobalSettingOptions.APIS;
+    case ServiceCategory.DRIVE_SERVICES:
+      return GlobalSettingOptions.DRIVES;
     case ServiceCategory.SECURITY_SERVICES:
       return GlobalSettingOptions.SECURITY;
     case ServiceCategory.DATABASE_SERVICES:
@@ -392,6 +373,13 @@ export const getResourceEntityFromServiceCategory = (
 
     case ServiceCategory.API_SERVICES:
       return ResourceEntity.API_SERVICE;
+
+    case 'directories':
+    case 'files':
+    case 'spreadsheets':
+    case 'worksheets':
+    case ServiceCategory.DRIVE_SERVICES:
+      return ResourceEntity.DRIVE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -413,6 +401,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.search-index-plural');
     case ServiceCategory.API_SERVICES:
       return t('label.collection-plural');
+    case ServiceCategory.DRIVE_SERVICES:
+      return t('label.directory-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
@@ -446,6 +436,8 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.SEARCH_SERVICES;
     case EntityType.API_SERVICE:
       return ServiceCategory.API_SERVICES;
+    case EntityType.DRIVE_SERVICE:
+      return ServiceCategory.DRIVE_SERVICES;
     case EntityType.SECURITY_SERVICE:
       return ServiceCategory.SECURITY_SERVICES;
     case EntityType.DATABASE_SERVICE:
@@ -474,6 +466,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.SEARCH_SERVICE;
     case ServiceCategory.API_SERVICES:
       return EntityType.API_SERVICE;
+    case ServiceCategory.DRIVE_SERVICES:
+      return EntityType.DRIVE_SERVICE;
     case ServiceCategory.SECURITY_SERVICES:
       return EntityType.SECURITY_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
@@ -504,6 +498,9 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.API_SERVICES:
       return entityUtilClassBase.getEntityLink(EntityType.API_COLLECTION, fqn);
+
+    case ServiceCategory.DRIVE_SERVICES:
+      return entityUtilClassBase.getEntityLink(EntityType.DIRECTORY, fqn);
 
     case ServiceCategory.DATABASE_SERVICES:
     default:
