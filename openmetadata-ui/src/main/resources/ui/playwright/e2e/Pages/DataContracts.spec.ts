@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -1141,6 +1141,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
     await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
@@ -1278,7 +1280,6 @@ test.describe('Data Contracts', () => {
     await page.reload();
 
     await page.waitForLoadState('networkidle');
-
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1286,6 +1287,68 @@ test.describe('Data Contracts', () => {
     await expect(
       page.getByTestId('contract-status-card-item-Semantics-status')
     ).toContainText('Passed');
+  });
+
+  test('Nested Column should not be selectable', async ({ page }) => {
+    const entityFQN = table.entityResponseData.fullyQualifiedName;
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('button', { name: 'Schema' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // First level column should be selectable
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    await expect(
+      page.locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-checked`
+      )
+    ).toBeVisible();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(
+        page.getByText(table.entityLinkColumnsName[i])
+      ).not.toBeVisible();
+    }
+
+    // Expand the Column and check if they are disabled
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[2]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[4]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(page.getByText(table.columnsName[i])).toBeVisible();
+
+      await expect(
+        page.locator(
+          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] .ant-checkbox-input`
+        )
+      ).toBeDisabled();
+    }
   });
 
   test('should allow adding a semantic with multiple rules', async ({
