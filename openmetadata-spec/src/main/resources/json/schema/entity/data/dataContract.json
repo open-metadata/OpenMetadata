@@ -60,19 +60,70 @@
       ],
       "additionalProperties": false
     },
-    "contractSecurity": {
+    "rowFilter": {
       "type": "object",
-      "description": "Security and access policy expectations",
+      "description": "Filter that defines what subset of the data is accessible to certain consumers",
+      "properties": {
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column to apply the filter"
+        },
+        "values": {
+          "type": "array",
+          "title": "Filter Values",
+          "description": "Values applied to the filter",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dataConsumers": {
+      "type": "object",
+      "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
       "properties": {
         "accessPolicy": {
           "type": "string",
           "title": "Access Policy",
           "description": "Reference to an access policy ID or name that should govern this data"
         },
+        "identities": {
+          "type": "array",
+          "title": "Consumer AD Groups",
+          "description": "List of groups that are intended consumers of the data",
+          "items": {
+              "type": "string"
+          },
+          "default": null
+        },
+        "rowFilters": {
+          "type": "array",
+          "title": "Row Data Filters",
+          "description": "List of filters that define what subset of the data is accessible to the consumers",
+          "items": {
+              "$ref": "#/definitions/rowFilter"
+          },
+          "default": null
+        }
+      }
+    },
+    "contractSecurity": {
+      "type": "object",
+      "description": "Security and access policy expectations",
+      "properties": {
         "dataClassification": {
           "type": "string",
           "title": "Data Classification",
           "description": "Expected data classification (e.g. Confidential, PII, etc.)"
+        },
+        "consumers": {
+          "type": "array",
+          "title": "Data Consumers",
+          "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
+          "items": {
+              "$ref": "#/definitions/dataConsumers"
+          }
         }
       }
     },
