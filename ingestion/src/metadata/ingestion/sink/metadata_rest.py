@@ -40,7 +40,11 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
 )
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import (
+    DataModel,
+    PipelineObservability,
+    Table,
+)
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -87,7 +91,10 @@ from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineObservabilityLink,
+    PipelineUsage,
+)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -240,6 +247,32 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             left=StackTraceError(
                 name="Data Model",
                 error="Sink did not receive a table. We cannot ingest the data model.",
+                stackTrace=None,
+            )
+        )
+
+    @_run_dispatch.register
+    def write_pipeline_observability(
+        self, pipeline_observability_link: PipelineObservabilityLink
+    ) -> Either[PipelineObservability]:
+        """
+        Send to OM the DataModel based on a table ID
+        :param pipeline_observability_link: Table ID + Data Model
+        """
+
+        table: Table = pipeline_observability_link.table_entity
+
+        if table:
+            data_model = self.metadata.ingest_table_pipeline_observability(
+                table=table,
+                data_model=pipeline_observability_link.pipeline_observability,
+            )
+            return Either(right=data_model)
+
+        return Either(
+            left=StackTraceError(
+                name="Pipeline Observability",
+                error="Sink did not receive a table. We cannot ingest the pipeline observability.",
                 stackTrace=None,
             )
         )

@@ -24,7 +24,11 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    PipelineObservability,
+    Schedule,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
 )
@@ -49,7 +53,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineObservabilityLink,
+    PipelineServiceSource,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -268,6 +275,115 @@ class DbtcloudSource(PipelineServiceSource):
             logger.error(f"Failed to get pipeline name due to : {exc}")
 
         return None
+
+    def _find_table_entity(self, model) -> Optional[Table]:
+        """
+        Find table entity for a DBT model across configured database services
+        """
+        if not (model.database and model.dbtschema and model.name):
+            return None
+
+        for db_service_name in self.get_db_service_names() or ["*"]:
+            try:
+                table_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=db_service_name,
+                    database_name=model.database,
+                    schema_name=model.dbtschema,
+                    table_name=model.name,
+                )
+
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                if table_entity:
+                    return table_entity
+
+            except Exception as exc:
+                logger.debug(
+                    f"Failed to find table {model.name} in service {db_service_name}: {exc}"
+                )
+                continue
+
+        logger.debug(f"Could not find table entity for model {model.name}")
+        return None
+
+    def _create_pipeline_observability(
+        self, pipeline_details: DBTJob, latest_run
+    ) -> PipelineObservability:
+        """
+        Create pipeline observability data from job details and run information
+        """
+        pipeline_entity = self._get_pipeline_entity(pipeline_details.name)
+        if not pipeline_entity:
+            return None
+
+        return PipelineObservability(
+            pipeline=pipeline_entity.entityReference,
+            schedule=Schedule(
+                scheduleInterval=(
+                    pipeline_details.schedule.cron
+                    if pipeline_details.schedule
+                    else None
+                )
+            ),
+            lastRunTime=(
+                Timestamp(latest_run.finished_at)
+                if latest_run and latest_run.finished_at
+                else None
+            ),
+            lastRunStatus=(
+                STATUS_MAP.get(latest_run.state, StatusType.Failed.value)
+                if latest_run
+                else None
+            ),
+        )
+
+    def yield_pipeline_observability(
+        self, pipeline_details: DBTJob
+    ) -> Iterable[Either[PipelineObservabilityLink]]:
+        """
+        Get Pipeline Observability for a table
+        """
+        try:
+            # Get the latest runs for this job to extract observability data
+            runs = self.client.get_runs(job_id=pipeline_details.id)
+            if not runs:
+                logger.debug(f"No runs found for job {pipeline_details.name}")
+                return
+
+            latest_run = runs[0] if runs else None
+
+            # Get models associated with this job using the latest run
+            if latest_run:
+                models_and_seeds = self.client.get_models_and_seeds_details(
+                    job_id=pipeline_details.id, run_id=latest_run.id
+                )
+
+                if models_and_seeds:
+                    for model in models_and_seeds:
+                        # Find corresponding table entities for each model
+                        table_entity = self._find_table_entity(model)
+                        if table_entity:
+                            # Create pipeline observability data
+                            pipeline_obs = self._create_pipeline_observability(
+                                pipeline_details, latest_run
+                            )
+                            if pipeline_obs:
+                                # Create the link between table and pipeline observability
+                                pipeline_obs_link = PipelineObservabilityLink(
+                                    table_entity=table_entity,
+                                    pipeline_observability=pipeline_obs,
+                                )
+                                yield Either(right=pipeline_obs_link)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.name,
+                    error=f"Wild error ingesting pipeline observability {pipeline_details} - {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def yield_pipeline_status(
         self, pipeline_details: DBTJob

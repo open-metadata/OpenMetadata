@@ -22,7 +22,7 @@ from typing_extensions import Annotated
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineState
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import PipelineObservability, Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -70,6 +70,15 @@ class PipelineUsage(BaseModel):
 
     pipeline: Pipeline
     usage: UsageRequest
+
+
+class PipelineObservabilityLink(BaseModel):
+    """
+    Tmp model to handle pipeline observability ingestion
+    """
+
+    table_entity: Table
+    pipeline_observability: PipelineObservability
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -130,6 +139,12 @@ class PipelineServiceTopology(ServiceTopology):
             NodeStage(
                 type_=UsageRequest,
                 processor="yield_pipeline_usage",
+                consumer=["pipeline_service"],
+                nullable=True,
+            ),
+            NodeStage(
+                type_=PipelineObservabilityLink,
+                processor="yield_pipeline_observability",
                 consumer=["pipeline_service"],
                 nullable=True,
             ),
@@ -317,6 +332,11 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
         """Method to yield the bulk pipeline lineage details"""
 
+    def yield_pipeline_observability(
+        self, pipeline_details: Any
+    ) -> PipelineObservabilityLink:
+        """Method to yield pipeline observability data for tables associated with the pipeline"""
+
     def process_pipeline_bulk_lineage(self) -> Iterable[AddLineageRequest]:
         """Method to process the bulk pipeline lineage"""
         if self.source_config.includeLineage:
@@ -423,6 +443,24 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             if self.source_config.lineageInformation
             else []
         )
+
+    def _get_pipeline_entity(self, pipeline_name: str) -> Optional[Pipeline]:
+        """
+        Get pipeline entity by name
+        """
+        try:
+            pipeline_fqn = fqn.build(
+                self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+
+            return self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+
+        except Exception as exc:
+            logger.debug(f"Failed to get pipeline entity {pipeline_name}: {exc}")
+            return None
 
     def get_storage_service_names(self) -> List[str]:
         """

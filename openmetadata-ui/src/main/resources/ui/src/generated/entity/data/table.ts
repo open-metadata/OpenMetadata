@@ -119,6 +119,10 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Pipeline observability information for the table.
+     */
+    pipelineObservability?: PipelineObservability;
+    /**
      * Processed lineage for the table
      */
     processedLineage?: boolean;
@@ -613,6 +617,10 @@ export interface CustomMetric {
  *
  * Reference to the Location that contains this table.
  *
+ * Reference to the associated model entity.
+ *
+ * Reference to the pipeline that processes this table/model.
+ *
  * Link to Database service this table is hosted in.
  *
  * Executable test suite associated with this table
@@ -981,6 +989,66 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * Pipeline observability information for the table.
+ *
+ * Pipeline observability information for data models.
+ */
+export interface PipelineObservability {
+    /**
+     * Models associated with this pipeline execution.
+     */
+    associatedModels?: AssociatedModel[];
+    /**
+     * Timestamp of the last pipeline execution.
+     */
+    lastRunTime?: number;
+    /**
+     * Reference to the pipeline that processes this table/model.
+     */
+    pipeline?: EntityReference;
+    /**
+     * Schedule configuration for the pipeline.
+     */
+    schedule?: Schedule;
+}
+
+/**
+ * Model associated with the data processing pipeline.
+ */
+export interface AssociatedModel {
+    /**
+     * Reference to the associated model entity.
+     */
+    entityReference?: EntityReference;
+    /**
+     * Name of the associated model.
+     */
+    name?: string;
+    /**
+     * Runtime execution time of the associated model.
+     */
+    runTime?: number;
+}
+
+/**
+ * Schedule configuration for the pipeline.
+ */
+export interface Schedule {
+    /**
+     * End date of the pipeline schedule.
+     */
+    endDate?: Date;
+    /**
+     * Scheduler interval for the pipeline in cron format.
+     */
+    scheduleInterval?: string;
+    /**
+     * Start date of the pipeline schedule.
+     */
+    startDate?: Date;
 }
 
 /**
