@@ -25,7 +25,7 @@ import { EntityClass } from './EntityClass';
 
 export class SearchIndexClass extends EntityClass {
   service = {
-    name: `pw-search-service-${uuid()}`,
+    name: `pw.search%service-${uuid()}`,
     serviceType: 'ElasticSearch',
     connection: {
       config: {
@@ -40,7 +40,7 @@ export class SearchIndexClass extends EntityClass {
       },
     },
   };
-  private searchIndexName = `pw-search-index-${uuid()}`;
+  private searchIndexName = `pw.search%index-${uuid()}`;
   private fqn = `${this.service.name}.${this.searchIndexName}`;
 
   children = [
