@@ -220,7 +220,7 @@ class DataRetentionAppTest extends OpenMetadataApplicationTest {
       Entity.CHART,
       Entity.DASHBOARD_DATA_MODEL,
       Entity.API_SERVICE,
-      Entity.API_COLLCECTION,
+      Entity.API_COLLECTION,
       Entity.API_ENDPOINT,
       Entity.MESSAGING_SERVICE,
       Entity.TOPIC,

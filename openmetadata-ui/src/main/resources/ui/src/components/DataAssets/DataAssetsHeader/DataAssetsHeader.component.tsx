@@ -429,14 +429,14 @@ export const DataAssetsHeader = ({
   ]);
 
   const dataContractLatestResultButton = useMemo(() => {
-    const entityContainContractTab =
-      isUndefined(customizedPage?.tabs) ??
+    const entityContainContractTabVisible =
+      isUndefined(customizedPage?.tabs) ||
       Boolean(
         customizedPage?.tabs?.find((item) => item.id === EntityTabs.CONTRACT)
       );
 
     if (
-      entityContainContractTab &&
+      entityContainContractTabVisible &&
       dataContract?.latestResult?.status &&
       [
         ContractExecutionStatus.Aborted,

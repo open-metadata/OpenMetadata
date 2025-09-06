@@ -37,7 +37,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   public APICollectionRepository() {
     super(
         APICollectionResource.COLLECTION_PATH,
-        Entity.API_COLLCECTION,
+        Entity.API_COLLECTION,
         APICollection.class,
         Entity.getCollectionDAO().apiCollectionDAO(),
         "",
@@ -75,7 +75,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         ? null
         : findTo(
             apiCollection.getId(),
-            Entity.API_COLLCECTION,
+            Entity.API_COLLECTION,
             Relationship.CONTAINS,
             Entity.API_ENDPOINT);
   }
