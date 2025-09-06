@@ -608,12 +608,9 @@ test.describe('User Profile Persona Interactions', () => {
 
         expect(personaText).toBeTruthy();
 
-        // Wait for navigation response
-        const navigationResponse =
-          adminPage.waitForResponse('/api/v1/personas/*');
+        // Click the persona link to navigate
         await personaLink.click();
         await adminPage.waitForLoadState('networkidle');
-        await navigationResponse;
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
@@ -760,12 +757,9 @@ test.describe('User Profile Persona Interactions', () => {
 
         expect(personaText).toBeTruthy();
 
-        // Wait for navigation response
-        const navigationResponse =
-          adminPage.waitForResponse('/api/v1/personas/*');
+        // Click the persona link to navigate
         await personaLink.click();
         await adminPage.waitForLoadState('networkidle');
-        await navigationResponse;
 
         // Verify we're on the persona page
         await expect(adminPage.url()).toContain('/persona/');
