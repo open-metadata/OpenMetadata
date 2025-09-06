@@ -38,6 +38,16 @@ test.describe('Add TestCase New Flow', () => {
     await expect(page.locator('[data-id="selected-entity"]')).toBeVisible();
   };
 
+  const selectColumn = async (page: Page, columnName: string) => {
+    await page.click('[id="root\\/column"]');
+    // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
+    await page.waitForTimeout(2000);
+    await page.waitForSelector(`.ant-select-dropdown [title="${columnName}"]`, {
+      state: 'visible',
+    });
+    await page.locator(`.ant-select-dropdown [title="${columnName}"]`).click();
+  };
+
   // Helper function to create test case
   const createTestCase = async (data: {
     page: Page;
@@ -224,17 +234,7 @@ test.describe('Add TestCase New Flow', () => {
         .click();
       await selectTable(page, table);
 
-      await page.click('[id="root\\/column"]');
-      // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
-      await page.waitForTimeout(2000);
-      await page.waitForSelector(
-        `.ant-select-dropdown [title="${table.entity.columns[0].name}"]`
-      );
-      await page
-        .locator(
-          `.ant-select-dropdown [title="${table.entity.columns[0].name}"]`
-        )
-        .click();
+      await selectColumn(page, table.entity.columns[0].name);
 
       await createTestCase({
         page,
@@ -272,6 +272,8 @@ test.describe('Add TestCase New Flow', () => {
   test('Add multiple test case from table details page and validate pipeline', async ({
     page,
   }) => {
+    test.slow();
+
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
     await table.create(apiContext);
@@ -299,6 +301,8 @@ test.describe('Add TestCase New Flow', () => {
     await page.click('[data-testid="profiler-add-table-test-btn"]');
     await page.click('[data-testid="column"]');
     await page.waitForLoadState('networkidle');
+
+    await selectColumn(page, table.entity.columns[0].name);
 
     await createTestCase({
       page,
