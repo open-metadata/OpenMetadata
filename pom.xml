@@ -34,6 +34,7 @@
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
     <module>openmetadata-mcp</module>
+    <module>openmetadata-ui-core-components</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
