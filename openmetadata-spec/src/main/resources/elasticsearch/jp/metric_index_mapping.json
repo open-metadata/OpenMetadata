@@ -347,11 +347,12 @@
       "deleted": {
         "type": "boolean"
       },
-      "status": {
-        "type": "text"
-      },
       "entityType": {
         "type": "keyword"
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "upstreamLineage": {
         "type": "object"

@@ -1464,7 +1464,7 @@ public interface CollectionDAO {
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<CollectionDAO.EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatch(
         @BindList("toIds") List<String> toIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType);
@@ -3201,6 +3201,21 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    // Search glossary terms by both name and displayName using LIKE queries
+    // The displayName column is a generated column added in migration 1.9.3
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
+            + "AND fqnHash LIKE :parentHash "
+            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
+            + "ORDER BY name "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> searchGlossaryTerms(
+        @Bind("parentHash") String parentHash,
+        @Bind("searchTerm") String searchTerm,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -4044,35 +4059,27 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
-                + "FROM ("
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
-                + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 1 "
-                + "  UNION ALL "
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
-                + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 0 "
-                + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
-                + "FROM ("
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gterm.json "
-                + "  FROM glossary_term_entity AS gterm "
-                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 1 "
-                + "  UNION ALL "
-                + "  SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, ta.json "
-                + "  FROM tag AS ta "
-                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
-                + "  WHERE tu.source = 0 "
-                + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.json "
+                + "  WHEN tu.source = 0 THEN ta.json "
+                + "END as json "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "WHERE tu.targetFQNHash LIKE :targetFQNHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -6187,6 +6194,33 @@ public interface CollectionDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
+    }
+
+    @SqlQuery(
+        "SELECT json FROM <table> <cond> "
+            + "AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listEntityProfileAtTimestamp(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    default List<String> listEntityProfileData(ListFilter filter, Long startTs, Long endTs) {
+      return listEntityProfileAtTimestamp(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), startTs, endTs);
+    }
+
+    @SqlUpdate("DELETE FROM <table> <cond> AND timestamp = :timestamp")
+    void deleteEntityProfileData(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("timestamp") Long timestamp);
+
+    default void deleteEntityProfileData(ListFilter filter, Long timestamp) {
+      deleteEntityProfileData(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
   }
 

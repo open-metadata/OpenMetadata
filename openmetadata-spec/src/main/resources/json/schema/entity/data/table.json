@@ -1214,6 +1214,11 @@
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Table.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": [

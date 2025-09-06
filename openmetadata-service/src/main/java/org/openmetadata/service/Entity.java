@@ -136,6 +136,7 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
   public static final String FIELD_CERTIFICATION = "certification";
+  public static final String FIELD_ENTITY_STATUS = "entityStatus";
 
   public static final String FIELD_DISABLED = "disabled";
 
@@ -176,7 +177,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
 
-  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_COLLECTION = "apiCollection";
   public static final String API_ENDPOINT = "apiEndpoint";
 
   public static final String API = "api";
@@ -251,6 +252,7 @@ public final class Entity {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String TEST_CASE_RESULT = "testCaseResult";
+  public static final String ENTITY_PROFILE = "entityProfile";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
@@ -303,7 +305,7 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(MLMODEL, MLMODEL_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(TOPIC, MESSAGING_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API, API_SERVICE);
-    ENTITY_SERVICE_TYPE_MAP.put(API_COLLCECTION, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_COLLECTION, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
@@ -320,7 +322,7 @@ public final class Entity {
             MLMODEL_SERVICE,
             PIPELINE_SERVICE,
             API_SERVICE,
-            API_COLLCECTION,
+            API_COLLECTION,
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,

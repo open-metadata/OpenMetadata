@@ -30,8 +30,6 @@ workflowConfig:
       jwtToken: "token"
 """
 
-from typing import Dict, List
-
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PROCEDURE_QUERIES,
@@ -41,7 +39,6 @@ from metadata.ingestion.source.database.oracle.query_parser import (
     OracleQueryParserSource,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
     StoredProcedureLineageMixin,
 )
 from metadata.utils.helpers import get_start_and_end
@@ -63,17 +60,13 @@ class OracleLineageSource(
 
     stored_procedure_query = ORACLE_GET_STORED_PROCEDURE_QUERIES
 
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
         )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
 
-        return queries_dict
+        return query

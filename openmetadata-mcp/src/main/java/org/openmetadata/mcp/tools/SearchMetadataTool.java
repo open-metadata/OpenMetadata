@@ -166,7 +166,7 @@ public class SearchMetadataTool implements McpTool {
         "SearchMetadataTool does not support limits enforcement.");
   }
 
-  private Map<String, Object> buildEnhancedSearchResponse(
+  public static Map<String, Object> buildEnhancedSearchResponse(
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
@@ -226,7 +226,7 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
-  private Map<String, Object> cleanSearchResult(
+  public static Map<String, Object> cleanSearchResult(
       Map<String, Object> source, List<String> requestedFields) {
     Map<String, Object> result = new HashMap<>();
 
@@ -247,7 +247,7 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
-  private Map<String, Object> createEmptyResponse() {
+  public static Map<String, Object> createEmptyResponse() {
     Map<String, Object> result = new HashMap<>();
     result.put("results", Collections.emptyList());
     result.put("totalFound", 0);

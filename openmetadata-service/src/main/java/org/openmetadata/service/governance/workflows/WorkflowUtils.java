@@ -8,13 +8,13 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class WorkflowUtils {
