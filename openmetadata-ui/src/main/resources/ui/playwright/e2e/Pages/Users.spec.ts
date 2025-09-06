@@ -577,7 +577,7 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Select first available persona - try test ID first, fallback to role selector
       const personaOptionTestId = adminPage.getByTestId(
-        `${persona1.data.name}-option`
+        `${persona1.data.displayName}-option`
       );
 
       await personaOptionTestId.click();
@@ -612,6 +612,7 @@ test.describe('User Profile Persona Interactions', () => {
         const navigationResponse =
           adminPage.waitForResponse('/api/v1/personas/*');
         await personaLink.click();
+        await adminPage.waitForLoadState('networkidle');
         await navigationResponse;
 
         // Verify we're on the persona page
@@ -685,13 +686,13 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Select multiple personas - try test IDs first, fallback to role selectors
       const persona1OptionTestId = adminPage.getByTestId(
-        `${persona1.data.name}-option`
+        `${persona1.data.displayName}-option`
       );
 
       await persona1OptionTestId.click();
 
       const persona2OptionTestId = adminPage.getByTestId(
-        `${persona2.data.name}-option`
+        `${persona2.data.displayName}-option`
       );
 
       await persona2OptionTestId.click();
@@ -728,7 +729,7 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Select specific persona for default - try test ID first, fallback to role selector
       const defaultPersonaOptionTestId = adminPage.getByTestId(
-        `${persona1.data.name}-option`
+        `${persona1.data.displayName}-option`
       );
 
       await defaultPersonaOptionTestId.click();
@@ -763,6 +764,7 @@ test.describe('User Profile Persona Interactions', () => {
         const navigationResponse =
           adminPage.waitForResponse('/api/v1/personas/*');
         await personaLink.click();
+        await adminPage.waitForLoadState('networkidle');
         await navigationResponse;
 
         // Verify we're on the persona page

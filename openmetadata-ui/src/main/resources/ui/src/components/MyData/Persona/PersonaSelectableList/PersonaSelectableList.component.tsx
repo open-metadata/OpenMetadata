@@ -209,7 +209,7 @@ export const PersonaSelectableList = ({
                 label: persona.displayName || persona.name,
                 value: persona.id,
                 className: 'font-normal',
-                'data-testid': `${persona.name}-option`,
+                'data-testid': `${persona.displayName || persona.name}-option`,
               }))}
               placeholder="Please select"
               popupClassName="persona-custom-dropdown-class"
