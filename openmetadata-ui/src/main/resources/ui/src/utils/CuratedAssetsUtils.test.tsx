@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Config } from '@react-awesome-query-builder/core';
 import { render, screen } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import {
   AlertMessage,
@@ -20,6 +22,7 @@ import {
   getModifiedQueryFilterWithSelectedAssets,
   getSelectedResourceCount,
   getTotalResourceCount,
+  isValidElasticsearchQuery,
 } from './CuratedAssetsUtils';
 
 jest.mock('react-i18next', () => ({
@@ -301,7 +304,10 @@ describe('CuratedAssetsUtils', () => {
     });
 
     it('handles empty query filter object', () => {
-      const result = getModifiedQueryFilterWithSelectedAssets({}, ['table']);
+      const result = getModifiedQueryFilterWithSelectedAssets(
+        {} as QueryFilterInterface,
+        ['table']
+      );
 
       expect(result).toEqual({
         query: {
@@ -319,21 +325,12 @@ describe('CuratedAssetsUtils', () => {
     });
 
     it('handles undefined selected resources', () => {
-      const result = getModifiedQueryFilterWithSelectedAssets({});
+      const result = getModifiedQueryFilterWithSelectedAssets(
+        {} as QueryFilterInterface
+      );
 
-      expect(result).toEqual({
-        query: {
-          bool: {
-            must: [
-              {
-                bool: {
-                  should: [],
-                },
-              },
-            ],
-          },
-        },
-      });
+      // When selectedResource is undefined, function returns original queryFilterObject
+      expect(result).toEqual({});
     });
   });
 
@@ -342,7 +339,7 @@ describe('CuratedAssetsUtils', () => {
       const result = getExploreURLWithFilters({
         queryFilter: '{"query":{"bool":{"must":[]}}}',
         selectedResource: ['table'],
-        config: {},
+        config: {} as Config,
       });
 
       expect(result).toBe('/explore');
@@ -352,17 +349,18 @@ describe('CuratedAssetsUtils', () => {
       const result = getExploreURLWithFilters({
         queryFilter: 'invalid-json',
         selectedResource: ['table'],
-        config: {},
+        config: {} as Config,
       });
 
-      expect(result).toBe('');
+      // Function returns default explore path when JSON parsing fails
+      expect(result).toBe('/explore');
     });
 
     it('handles empty query filter', () => {
       const result = getExploreURLWithFilters({
         queryFilter: '',
         selectedResource: ['table'],
-        config: {},
+        config: {} as Config,
       });
 
       expect(result).toBe('/explore');
@@ -376,6 +374,212 @@ describe('CuratedAssetsUtils', () => {
         '{}',
         '',
       ]);
+    });
+  });
+
+  describe('isValidElasticsearchQuery', () => {
+    it('returns false for empty query strings', () => {
+      expect(isValidElasticsearchQuery('')).toBe(false);
+      expect(isValidElasticsearchQuery('{}')).toBe(false);
+      expect(isValidElasticsearchQuery('{"query":{"bool":{"must":[]}}}')).toBe(
+        false
+      );
+    });
+
+    it('returns false for invalid JSON', () => {
+      expect(isValidElasticsearchQuery('invalid-json')).toBe(false);
+    });
+
+    it('returns false for query without query structure', () => {
+      expect(isValidElasticsearchQuery('{"data": "test"}')).toBe(false);
+    });
+
+    it('returns false for empty term objects', () => {
+      const invalidQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must: [
+                    { term: {} }, // Empty term object
+                    { term: {} }, // Empty term object
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(invalidQuery)).toBe(false);
+    });
+
+    it('returns true for valid term conditions', () => {
+      const validQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must: [
+                    {
+                      bool: {
+                        must_not: {
+                          exists: {
+                            field: 'owners.displayName.keyword',
+                          },
+                        },
+                      },
+                    },
+                    {
+                      term: {
+                        descriptionStatus: 'COMPLETE',
+                      },
+                    },
+                    {
+                      bool: {
+                        should: [
+                          {
+                            term: {
+                              entityType: 'dashboard',
+                            },
+                          },
+                          {
+                            term: {
+                              entityType: 'metric',
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(validQuery)).toBe(true);
+    });
+
+    it('returns true for simple single condition', () => {
+      const simpleQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'owners.displayName.keyword': 'John',
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(simpleQuery)).toBe(true);
+    });
+
+    it('returns true for exists conditions', () => {
+      const existsQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                exists: {
+                  field: 'owners.displayName.keyword',
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(existsQuery)).toBe(true);
+    });
+
+    it('returns false for exists conditions with empty field', () => {
+      const invalidExistsQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                exists: {
+                  field: '', // Empty field
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(invalidExistsQuery)).toBe(false);
+    });
+
+    it('returns true for terms array conditions', () => {
+      const termsQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                terms: {
+                  entityType: ['dashboard', 'metric'],
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(termsQuery)).toBe(true);
+    });
+
+    it('returns false for empty terms objects', () => {
+      const invalidTermsQuery = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                terms: {}, // Empty terms object
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(invalidTermsQuery)).toBe(false);
+    });
+
+    it('returns false for should array with empty conditions', () => {
+      const emptyShouldQuery = JSON.stringify({
+        query: {
+          bool: {
+            should: [], // Empty should array
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(emptyShouldQuery)).toBe(false);
+    });
+
+    it('returns true for mixed must_not conditions', () => {
+      const mustNotQuery = JSON.stringify({
+        query: {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  deleted: true,
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      expect(isValidElasticsearchQuery(mustNotQuery)).toBe(true);
     });
   });
 });

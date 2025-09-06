@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Form } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,15 +59,35 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  getExploreURLWithFilters: jest.fn().mockReturnValue('test-url'),
+  getSimpleExploreURLForAssetTypes: jest.fn().mockReturnValue('test-url'),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
-}));
+jest.mock('antd', () => {
+  const actual = jest.requireActual('antd');
+
+  const MockTreeSelect = ({ treeData = [], onChange }: any) => {
+    return (
+      <div data-testid="mock-tree-select">
+        {treeData.map((opt: any) => (
+          <button
+            data-testid={`${opt.value}-option`}
+            key={opt.value}
+            onClick={() => onChange([opt.value])}>
+            {typeof opt.title === 'string' ? opt.title : opt.value}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  return {
+    ...actual,
+    TreeSelect: MockTreeSelect,
+    Skeleton: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
+  };
+});
 
 const mockFetchEntityCount = jest.fn();
 const mockSelectedAssetsInfo = {
@@ -106,9 +132,7 @@ describe('SelectAssetTypeField', () => {
       </TestWrapper>
     );
 
-    expect(
-      screen.getByLabelText('label.select-asset-type')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.select-asset-type')).toBeInTheDocument();
   });
 
   it('handles asset type selection', async () => {
@@ -118,19 +142,13 @@ describe('SelectAssetTypeField', () => {
       </TestWrapper>
     );
 
-    const select = screen.getByTestId('asset-type-select');
+    const dashboardOption = await screen.findByTestId('dashboard-option');
 
     await act(async () => {
-      fireEvent.click(select);
+      fireEvent.click(dashboardOption);
     });
 
-    const tableOption = screen.getByText('Table');
-
-    await act(async () => {
-      fireEvent.click(tableOption);
-    });
-
-    expect(tableOption).toBeInTheDocument();
+    expect(dashboardOption).toBeInTheDocument();
   });
 
   it('displays loading skeleton when count is loading', () => {
@@ -160,15 +178,15 @@ describe('SelectAssetTypeField', () => {
       },
     };
 
-    await act(async () => {
-      render(
-        <TestWrapper>
-          <SelectAssetTypeField {...propsWithCount} />
-        </TestWrapper>
-      );
-    });
+    render(
+      <TestWrapper>
+        <SelectAssetTypeField {...propsWithCount} />
+      </TestWrapper>
+    );
 
-    expect(screen.getByTestId('alert-message')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('alert-message')).toBeInTheDocument()
+    );
   });
 
   it('does not display alert message when no resource count', () => {
