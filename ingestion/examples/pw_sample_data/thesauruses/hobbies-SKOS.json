@@ -1,0 +1,1332 @@
+[
+    {
+      "@id": "http://hobbies.com/achievement_hobbies",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Achievement hobbies",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#topConceptOf": [
+        {
+          "@id": "http://hobbies.com/scheme"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/air_sports",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Air sports",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/airsoft",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Airsoft",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/amateur_radio",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Amateur radio",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/antiquities",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Antiquities",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/archery",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Archery",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/audiophilia",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Audiophilia",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/auto_audiophilia",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Auto audiophilia",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/auto_racing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Auto racing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/badminton",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Badminton",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/baseball",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Baseball",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/basketball",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Basketball",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/baton_twirling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Baton twirling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/billiards",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Billiards",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/board_sports",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Board sports",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/bonsai",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Bonsai",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/bowling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Bowling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/boxing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Boxing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/chess",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Chess",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/climbing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Climbing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/coin_collecting",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Coin collecting",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/collection_hobbies",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Collection hobbies",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#topConceptOf": [
+        {
+          "@id": "http://hobbies.com/scheme"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/competition_hobbies",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Competition hobbies",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#topConceptOf": [
+        {
+          "@id": "http://hobbies.com/scheme"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/computer_programming",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Computer programming",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/cricket",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Cricket",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/cycling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Cycling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/dance",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Dance",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/darts",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Darts",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/disc_golf",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Disc golf",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/equestrianism",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Equestrianism",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/fencing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Fencing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/figure_skating",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Figure skating",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/fishing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Fishing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/fossil_collecting",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Fossil collecting",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/gardening",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Gardening",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/golfing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Golfing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/gymnastics",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Gymnastics",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/handball",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Handball",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/home_automation",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Home automation",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/ice_hockey",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Ice hockey",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/indoors",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Collection"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "indoors",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#member": [
+        {
+          "@id": "http://hobbies.com/audiophilia"
+        },
+        {
+          "@id": "http://hobbies.com/baton_twirling"
+        },
+        {
+          "@id": "http://hobbies.com/bonsai"
+        },
+        {
+          "@id": "http://hobbies.com/computer_programming"
+        },
+        {
+          "@id": "http://hobbies.com/dance"
+        },
+        {
+          "@id": "http://hobbies.com/amateur_radio"
+        },
+        {
+          "@id": "http://hobbies.com/home_automation"
+        },
+        {
+          "@id": "http://hobbies.com/knapping"
+        },
+        {
+          "@id": "http://hobbies.com/lapidary"
+        },
+        {
+          "@id": "http://hobbies.com/locksport"
+        },
+        {
+          "@id": "http://hobbies.com/scrapbooking"
+        },
+        {
+          "@id": "http://hobbies.com/coin_collecting"
+        },
+        {
+          "@id": "http://hobbies.com/stamp_collecting"
+        },
+        {
+          "@id": "http://hobbies.com/billiards"
+        },
+        {
+          "@id": "http://hobbies.com/bowling"
+        },
+        {
+          "@id": "http://hobbies.com/boxing"
+        },
+        {
+          "@id": "http://hobbies.com/chess"
+        },
+        {
+          "@id": "http://hobbies.com/darts"
+        },
+        {
+          "@id": "http://hobbies.com/fencing"
+        },
+        {
+          "@id": "http://hobbies.com/role-playing_games"
+        },
+        {
+          "@id": "http://hobbies.com/table_football"
+        },
+        {
+          "@id": "http://hobbies.com/handball"
+        },
+        {
+          "@id": "http://hobbies.com/martial_arts"
+        },
+        {
+          "@id": "http://hobbies.com/video_gaming"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/kart_racing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Kart racing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/kayaking",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Kayaking",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/kitesurfing",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Kitesurfing",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/knapping",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Knapping",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/lapidary",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Lapidary",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/locksport",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Locksport",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/martial_arts",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Martial arts",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/metal_detecting",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Metal detecting",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/mineral_collecting",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Mineral collecting",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/model_building",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Model building",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/model_rocketry",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Model rocketry",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/model_building"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/mountainbiking",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Mountainbiking",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/outdoors",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Collection"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "outdoors",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#member": [
+        {
+          "@id": "http://hobbies.com/air_sports"
+        },
+        {
+          "@id": "http://hobbies.com/board_sports"
+        },
+        {
+          "@id": "http://hobbies.com/kayaking"
+        },
+        {
+          "@id": "http://hobbies.com/kitesurfing"
+        },
+        {
+          "@id": "http://hobbies.com/mountainbiking"
+        },
+        {
+          "@id": "http://hobbies.com/scuba_diving"
+        },
+        {
+          "@id": "http://hobbies.com/snowmobiling"
+        },
+        {
+          "@id": "http://hobbies.com/antiquities"
+        },
+        {
+          "@id": "http://hobbies.com/auto_audiophilia"
+        },
+        {
+          "@id": "http://hobbies.com/fossil_collecting"
+        },
+        {
+          "@id": "http://hobbies.com/metal_detecting"
+        },
+        {
+          "@id": "http://hobbies.com/mineral_collecting"
+        },
+        {
+          "@id": "http://hobbies.com/airsoft"
+        },
+        {
+          "@id": "http://hobbies.com/archery"
+        },
+        {
+          "@id": "http://hobbies.com/auto_racing"
+        },
+        {
+          "@id": "http://hobbies.com/badminton"
+        },
+        {
+          "@id": "http://hobbies.com/baseball"
+        },
+        {
+          "@id": "http://hobbies.com/basketball"
+        },
+        {
+          "@id": "http://hobbies.com/climbing"
+        },
+        {
+          "@id": "http://hobbies.com/cricket"
+        },
+        {
+          "@id": "http://hobbies.com/cycling"
+        },
+        {
+          "@id": "http://hobbies.com/disc_golf"
+        },
+        {
+          "@id": "http://hobbies.com/equestrianism"
+        },
+        {
+          "@id": "http://hobbies.com/figure_skating"
+        },
+        {
+          "@id": "http://hobbies.com/fishing"
+        },
+        {
+          "@id": "http://hobbies.com/golfing"
+        },
+        {
+          "@id": "http://hobbies.com/gymnastics"
+        },
+        {
+          "@id": "http://hobbies.com/ice_hockey"
+        },
+        {
+          "@id": "http://hobbies.com/kart_racing"
+        },
+        {
+          "@id": "http://hobbies.com/paintball"
+        },
+        {
+          "@id": "http://hobbies.com/rugby_league"
+        },
+        {
+          "@id": "http://hobbies.com/swimming"
+        },
+        {
+          "@id": "http://hobbies.com/tennis"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/paintball",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Paintball",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/photography",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Photography",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/radio-controlled_modeling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Radio-controlled modeling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/model_building"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/role-playing_games",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Role-playing games",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/rugby_league",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Rugby league",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/scale_modeling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Scale modeling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/model_building"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/scheme"
+    },
+    {
+      "@id": "http://hobbies.com/scrapbooking",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Scrapbooking",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/scuba_diving",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Scuba diving",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/snowmobiling",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Snowmobiling",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/achievement_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/stamp_collecting",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Stamp collecting",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/collection_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/swimming",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Swimming",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/table_football",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Table football",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/tennis",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Tennis",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://hobbies.com/video_gaming",
+      "@type": [
+        "http://www.w3.org/2004/02/skos/core#Concept"
+      ],
+      "http://www.w3.org/2004/02/skos/core#prefLabel": [
+        {
+          "@value": "Video gaming",
+          "@language": "en"
+        }
+      ],
+      "http://www.w3.org/2004/02/skos/core#broader": [
+        {
+          "@id": "http://hobbies.com/competition_hobbies"
+        }
+      ]
+    },
+    {
+      "@id": "http://www.w3.org/2004/02/skos/core#Collection"
+    },
+    {
+      "@id": "http://www.w3.org/2004/02/skos/core#Concept"
+    }
+  ]

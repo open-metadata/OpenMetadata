@@ -1,0 +1,292 @@
+{
+    "lifeCycleData": [
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+            "lifeCycle": {
+                "created": {
+                  "days": 7,
+                  "accessedByAProcess": "Alice"
+                },
+                "updated": {
+                  "days": 6,
+                  "accessedByAProcess": "Bob"
+                },
+                "accessed": {
+                  "days": 6,
+                  "accessedByAProcess": "Charlie"
+                }
+            }
+        },
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_location",
+            "lifeCycle": {
+                "created": {
+                  "days": 6,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "aaron_johnson0",
+                    "type": "user"
+                  }
+                },
+                "updated": {
+                  "days": 6,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "amber_green0",
+                    "type": "user"
+                  }
+                },
+                "accessed": {
+                  "days": 5,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "alex_pollard9",
+                    "type": "user"
+                  }
+                }
+            }
+        },
+        {
+            "fqn": "sample_data.ecommerce_db.shopify.dim_location",
+            "lifeCycle": {
+                "created": {
+                  "days": 4,
+                  "accessedBy": {
+                    "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+                    "name": "anthony_wall4",
+                    "type": "user"
+                  }
+                },
+                "updated": {
+                  "days": 4,
+                  "accessedByAProcess": "Alice"
+                },
+                "accessed": {
+                  "days": 4,
+                  "accessedByAProcess": "David"
+                }
+            }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.dim_staff",
+          "lifeCycle": {
+              "created": {
+                "days": 2,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 2,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 2,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.\"dim.product.variant\"",
+          "lifeCycle": {
+              "created": {
+                "days": 5,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 4,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 3,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.fact_order",
+          "lifeCycle": {
+              "created": {
+                "days": 14,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 14,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 13,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.fact_sale",
+          "lifeCycle": {
+              "created": {
+                "days": 11,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 11,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 10,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.fact_session",
+          "lifeCycle": {
+              "created": {
+                "days": 14,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 12,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 9,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.marketing",
+          "lifeCycle": {
+              "created": {
+                "days": 10,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 10,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 8,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.raw_order",
+          "lifeCycle": {
+              "created": {
+                "days": 27,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 26,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 25,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.raw_product_catalog",
+          "lifeCycle": {
+              "created": {
+                "days": 30,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 30,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 29,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.sales",
+          "lifeCycle": {
+              "created": {
+                "days": 20,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 19,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 17,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.\"dim.product\"",
+          "lifeCycle": {
+              "created": {
+                "days": 50,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 50,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 49,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.dim_address_clean",
+          "lifeCycle": {
+              "created": {
+                "days": 60,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 55,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 55,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.dim(shop)",
+          "lifeCycle": {
+              "created": {
+                "days": 25,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 14,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 24,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        },
+        {
+          "fqn": "sample_data.ecommerce_db.shopify.\"dim.shop\"",
+          "lifeCycle": {
+              "created": {
+                "days": 70,
+                "accessedByAProcess": "Alice"
+              },
+              "updated": {
+                "days": 61,
+                "accessedByAProcess": "Bob"
+              },
+              "accessed": {
+                "days": 62,
+                "accessedByAProcess": "Charlie"
+              }
+          }
+        }
+    ]
+}
