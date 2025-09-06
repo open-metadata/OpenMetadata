@@ -55,6 +55,13 @@ class JSONLogicSearchClassBase {
         text: {
           operators: ['like', 'not_like', 'regexp'],
         },
+        multiselect: {
+          operators: [
+            ...(this.baseConfig.types.multiselect?.widgets?.multiselect
+              ?.operators || []),
+            'array_contains',
+          ],
+        },
       },
       // Limits source to user input values, not other fields
       valueSources: ['value'],
@@ -65,6 +72,12 @@ class JSONLogicSearchClassBase {
         ...this.baseConfig.types.select.widgets,
         text: {
           operators: ['like', 'not_like', 'regexp'],
+        },
+        select: {
+          operators: [
+            ...(this.baseConfig.types.select?.widgets?.select?.operators || []),
+            'array_contains',
+          ],
         },
       },
       valueSources: ['value'],
@@ -100,7 +113,7 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.widgets.text,
     },
   };
-  configOperators = {
+  configOperators: Config['operators'] = {
     ...this.baseConfig.operators,
     like: {
       ...this.baseConfig.operators.like,
@@ -141,7 +154,6 @@ class JSONLogicSearchClassBase {
       label: t('label.is-entity', { entity: t('label.reviewer') }),
       labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
       cardinality: 0,
-      unary: true,
       jsonLogic: 'isReviewer',
       sqlOp: 'IS REVIEWER',
     },
@@ -149,9 +161,16 @@ class JSONLogicSearchClassBase {
       label: t('label.is-entity', { entity: t('label.owner') }),
       labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
       cardinality: 0,
-      unary: true,
       jsonLogic: 'isOwner',
       sqlOp: 'IS OWNER',
+    },
+    array_contains: {
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
+      valueTypes: ['multiselect', 'select'],
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: 'contains',
     },
   };
 
