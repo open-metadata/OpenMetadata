@@ -280,6 +280,7 @@ const SSOConfigurationFormRJSF = ({
                 publicKeyUrls: [],
                 tokenValidationAlgorithm: 'RS256',
                 jwtPrincipalClaims: [],
+                jwtPrincipalClaimsMapping: [],
               }),
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
@@ -726,6 +727,15 @@ const SSOConfigurationFormRJSF = ({
           'ui:title': 'OIDC Configuration',
         };
       }
+      // Hide root-level clientId and callbackUrl for confidential clients since we have OIDC equivalents
+      authConfig.clientId = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+      authConfig.callbackUrl = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
     }
 
     return {
@@ -1062,6 +1072,7 @@ const SSOConfigurationFormRJSF = ({
               publicKeyUrls: [],
               tokenValidationAlgorithm: 'RS256',
               jwtPrincipalClaims: [],
+              jwtPrincipalClaimsMapping: [],
             }),
       } as AuthenticationConfiguration,
       authorizerConfiguration: {

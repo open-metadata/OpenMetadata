@@ -16,7 +16,6 @@ import { ClientType } from '../generated/configuration/securityConfiguration';
 // Common hidden fields for all providers
 export const COMMON_HIDDEN_FIELDS = {
   responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Authorizer hidden fields
@@ -297,6 +296,11 @@ export const COMMON_FIELD_TITLES = {
     'ui:title': 'JWT Principal Claims',
     'ui:placeholder': 'Enter value (e.g. email, sub, name) and press ENTER',
   },
+  jwtPrincipalClaimsMapping: {
+    'ui:title': 'JWT Principal Claims Mapping',
+    'ui:placeholder':
+      'Enter username:claim_name (e.g. username:preferred_username) and press ENTER. Both username and email mappings required.',
+  },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   clientType: {
     'ui:title': 'Client Type',
@@ -391,10 +395,7 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
 };
 
 // Common fields to always remove from authentication configuration
-export const COMMON_AUTH_FIELDS_TO_REMOVE = [
-  'responseType',
-  'jwtPrincipalClaimsMapping',
-];
+export const COMMON_AUTH_FIELDS_TO_REMOVE = ['responseType'];
 
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
@@ -482,6 +483,7 @@ export interface AuthenticationConfiguration {
   publicKeyUrls: string[];
   tokenValidationAlgorithm: string;
   jwtPrincipalClaims: string[];
+  jwtPrincipalClaimsMapping: string[];
   enableSelfSignup: boolean;
   clientType?: ClientType;
   secret?: string;
