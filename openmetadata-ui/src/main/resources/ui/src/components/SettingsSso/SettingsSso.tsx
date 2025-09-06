@@ -27,6 +27,7 @@ import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
+import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import ProviderSelector from './ProviderSelector';
@@ -84,74 +85,85 @@ const SettingsSso = () => {
       GlobalSettingsMenuCategory.SSO
     );
 
-    // For configured SSO providers, show "Settings > Provider Name"
-    if (
-      currentProvider &&
-      currentProvider !== AuthProvider.Basic &&
-      hasExistingConfig
-    ) {
-      const providerDisplayName = getProviderDisplayName(currentProvider);
+    const urlProvider = searchParams.get('provider');
 
-      const updatedBreadcrumb = [...baseBreadcrumb];
-      updatedBreadcrumb[updatedBreadcrumb.length - 1] = {
-        name: providerDisplayName,
-        url: '',
-        activeTitle: true,
-      };
+    // Show provider name in breadcrumb for specific providers
+    if (urlProvider && urlProvider !== AuthProvider.Basic) {
+      const providerDisplayName = getProviderDisplayName(urlProvider);
 
-      return updatedBreadcrumb;
-    }
-
-    // For new provider configuration, show "Settings > SSO > Provider Name"
-    if (
-      currentProvider &&
-      currentProvider !== AuthProvider.Basic &&
-      !hasExistingConfig
-    ) {
-      const providerDisplayName = getProviderDisplayName(currentProvider);
-
-      const updatedBaseBreadcrumb = baseBreadcrumb.map((item, index) => {
-        if (index === baseBreadcrumb.length - 1) {
-          return {
-            ...item,
+      // For existing SSO configuration, replace SSO with provider name
+      if (hasExistingConfig) {
+        return [
+          ...baseBreadcrumb.slice(0, -1),
+          {
+            name: providerDisplayName,
+            url: '', // No URL for active/current page
+            activeTitle: true,
+          },
+        ];
+      } else {
+        // For new configuration, show Settings > SSO > Provider hierarchy
+        // First ensure the SSO breadcrumb is clickable
+        const updatedBaseBreadcrumb = [...baseBreadcrumb];
+        if (updatedBaseBreadcrumb.length > 1) {
+          updatedBaseBreadcrumb[updatedBaseBreadcrumb.length - 1] = {
+            ...updatedBaseBreadcrumb[updatedBaseBreadcrumb.length - 1],
             url: getSettingPath(GlobalSettingsMenuCategory.SSO),
-            activeTitle: false,
+            activeTitle: false, // SSO is not active when provider is selected
           };
         }
 
-        return item;
-      });
-
-      return [
-        ...updatedBaseBreadcrumb,
-        {
-          name: providerDisplayName,
-          url: '',
-          activeTitle: true,
-        },
-      ];
+        // Add provider as additional breadcrumb item
+        return [
+          ...updatedBaseBreadcrumb,
+          {
+            name: providerDisplayName,
+            url: '', // No URL for active/current page
+            activeTitle: true,
+          },
+        ];
+      }
     }
 
-    return baseBreadcrumb;
-  }, [currentProvider, hasExistingConfig]);
+    // For base cases (provider selector, basic provider, or no provider),
+    // ensure SSO breadcrumb is active (blue) since it's the current page
+    const updatedBaseBreadcrumb = [...baseBreadcrumb];
+    if (updatedBaseBreadcrumb.length > 1) {
+      updatedBaseBreadcrumb[updatedBaseBreadcrumb.length - 1] = {
+        ...updatedBaseBreadcrumb[updatedBaseBreadcrumb.length - 1],
+        url: '', // No URL for active/current page
+        activeTitle: true,
+      };
+    }
 
-  // Check URL parameters for provider selection
+    return updatedBaseBreadcrumb;
+  }, [searchParams, hasExistingConfig]);
+
+  // Combined effect to handle URL parameters and existing configuration
   useEffect(() => {
     const providerParam = searchParams.get('provider');
+
+    // If URL explicitly shows provider=basic, show provider selector immediately
+    if (providerParam === AuthProvider.Basic) {
+      setCurrentProvider(providerParam);
+      setHasExistingConfig(false);
+      setShowProviderSelector(true);
+      setActiveTab('configure');
+      setIsLoading(false);
+
+      return;
+    }
+
+    // If there's a valid provider in URL, set it and check existing config
     if (
       providerParam &&
       Object.values(AuthProvider).includes(providerParam as AuthProvider)
     ) {
       setCurrentProvider(providerParam);
-      setShowProviderSelector(false);
-    } else {
-      setShowProviderSelector(false);
-      setCurrentProvider('');
+      setShowProviderSelector(false); // Don't show selector for specific providers
     }
-  }, [searchParams]);
 
-  // Check for existing SSO configuration
-  useEffect(() => {
+    // Check for existing SSO configuration
     const checkExistingConfig = async () => {
       try {
         const response = await getSecurityConfiguration();
@@ -177,35 +189,48 @@ const SettingsSso = () => {
             } else {
               setActiveTab('configure');
             }
+
+            // Set current provider for breadcrumb display only if no URL parameter
+            if (!providerParam) {
+              setCurrentProvider(config.authenticationConfiguration.provider);
+              setSearchParams({
+                provider: config.authenticationConfiguration.provider,
+              });
+            }
+            setShowProviderSelector(false);
           } else {
             setHasExistingConfig(false);
             setActiveTab('configure');
+            // Only show provider selector if no specific provider in URL
+            if (!providerParam) {
+              setShowProviderSelector(true);
+              setCurrentProvider('');
+            }
           }
-          // Set current provider for breadcrumb display only if no URL parameter
-          const providerParam = searchParams.get('provider');
-          if (!providerParam) {
-            setCurrentProvider(config.authenticationConfiguration.provider);
-            setSearchParams({
-              provider: config.authenticationConfiguration.provider,
-            });
-          }
-          setShowProviderSelector(false);
         } else {
           setHasExistingConfig(false);
           setActiveTab('configure');
-          setShowProviderSelector(true);
+          // Only show provider selector if no specific provider in URL
+          if (!providerParam) {
+            setShowProviderSelector(true);
+            setCurrentProvider('');
+          }
         }
       } catch (error) {
         setHasExistingConfig(false);
         setActiveTab('configure');
-        setShowProviderSelector(true);
+        // Only show provider selector if no specific provider in URL
+        if (!providerParam) {
+          setShowProviderSelector(true);
+          setCurrentProvider('');
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     checkExistingConfig();
-  }, [searchParams]);
+  }, [searchParams, setSearchParams]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -251,14 +276,18 @@ const SettingsSso = () => {
   }, []);
 
   const handleChangeProvider = useCallback(() => {
-    setSearchParams({});
-
-    setShowProviderSelector(true);
-    setCurrentProvider('');
-    setHasExistingConfig(false);
-    setActiveTab('configure');
-    setSsoEnabled(true);
+    setSearchParams({ provider: AuthProvider.Basic });
   }, [setSearchParams]);
+
+  // Show loading state first to prevent flickering
+  if (isLoading) {
+    return (
+      <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
+        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
+        <Loader />
+      </PageLayoutV1>
+    );
+  }
 
   // If showing provider selector
   if (showProviderSelector) {
@@ -277,25 +306,16 @@ const SettingsSso = () => {
   }
 
   // If no existing configuration, show the form directly without tabs
-  if (!isLoading && !hasExistingConfig) {
+  if (!hasExistingConfig) {
     return (
       <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
 
         <SSOConfigurationForm
           selectedProvider={currentProvider}
+          onChangeProvider={handleChangeProvider}
           onProviderSelect={handleProviderSelect}
         />
-      </PageLayoutV1>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
-        <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
-
-        <SSOConfigurationForm />
       </PageLayoutV1>
     );
   }

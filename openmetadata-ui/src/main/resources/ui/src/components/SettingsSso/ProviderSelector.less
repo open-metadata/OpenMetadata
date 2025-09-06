@@ -13,18 +13,12 @@
 
 @import (reference) '../../styles/variables.less';
 .sso-provider-selection {
-  height: calc(100vh - (@om-navbar-height + 50px));
+  min-height: calc(100vh - (@om-navbar-height + 50px));
   background: @white;
   border: 1px solid @grey-15;
   border-radius: @border-rad-sm;
   margin-top: @size-xs;
-
-  .ant-card-body {
-    padding: @padding-lg;
-
-    display: flex;
-    flex-direction: column;
-  }
+  padding: @padding-lg;
   .provider-selector-container {
     .provider-selector-header {
       display: flex;
@@ -42,7 +36,6 @@
 
     .provider-selection-container {
       gap: @size-2xl - @size-md;
-      flex: 1;
       padding: @size-xxs;
     }
 
