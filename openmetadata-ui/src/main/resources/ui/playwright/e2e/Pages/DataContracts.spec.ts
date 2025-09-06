@@ -1123,4 +1123,333 @@ test.describe('Data Contracts', () => {
       });
     }
   });
+
+  test('Nested Column should not be selectable', async ({ page }) => {
+    const entityFQN = table.entityResponseData.fullyQualifiedName;
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Schema' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // First level column should be selectable
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    await expect(
+      page.locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-checked`
+      )
+    ).toBeVisible();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(
+        page.getByText(table.entityLinkColumnsName[i])
+      ).not.toBeVisible();
+    }
+
+    // Expand the Column and check if they are disabled
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[2]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[4]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(page.getByText(table.columnsName[i])).toBeVisible();
+
+      await expect(
+        page.locator(
+          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] .ant-checkbox-input`
+        )
+      ).toBeDisabled();
+    }
+  });
+
+  test('should allow adding a semantic with multiple rules', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_SEMANTICS1.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'admin',
+      true
+    );
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator2 = page.locator('.rule').nth(1);
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[1].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[1].operator
+    );
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-title')
+    ).toContainText(DATA_CONTRACT_SEMANTICS1.name);
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-description')
+    ).toContainText(DATA_CONTRACT_SEMANTICS1.description);
+
+    await page.locator('.expand-collapse-icon').click();
+
+    await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
+  });
+
+  test('should allow adding a second semantic and verify its rule', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    // Add first semantic
+    await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_SEMANTICS1.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'admin',
+      true
+    );
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator2 = page.locator('.rule').nth(1);
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[1].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[1].operator
+    );
+    await page.getByTestId('save-semantic-button').click();
+    // Add second semantic
+    await page.getByTestId('add-semantic-button').click();
+    await page.fill('#semantics_1_name', DATA_CONTRACT_SEMANTICS2.name);
+    await page.fill(
+      '#semantics_1_description',
+      DATA_CONTRACT_SEMANTICS2.description
+    );
+    const ruleLocator3 = page.locator('.group').nth(2);
+    await selectOption(
+      page,
+      ruleLocator3.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS2.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS2.rules[0].operator
+    );
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-1')
+        .locator('.semantic-form-item-title')
+    ).toContainText(DATA_CONTRACT_SEMANTICS2.name);
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-1')
+        .locator('.semantic-form-item-description')
+    ).toContainText(DATA_CONTRACT_SEMANTICS2.description);
+  });
+
+  test('should allow editing a semantic and reflect changes', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_SEMANTICS1.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'admin',
+      true
+    );
+    await page.getByTestId('save-semantic-button').click();
+    // Edit semantic
+    await page
+      .getByTestId('contract-semantics-card-0')
+      .locator('.edit-expand-button')
+      .click();
+    await page.fill('#semantics_0_name', 'Edited Semantic Name');
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-title')
+    ).toContainText('Edited Semantic Name');
+  });
+
+  test('should allow deleting a semantic and remove it from the list', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_SEMANTICS1.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS1.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'admin',
+      true
+    );
+    await page.getByTestId('save-semantic-button').click();
+    // Add second semantic
+    await page.getByTestId('add-semantic-button').click();
+    await page.fill('#semantics_1_name', DATA_CONTRACT_SEMANTICS2.name);
+    await page.fill(
+      '#semantics_1_description',
+      DATA_CONTRACT_SEMANTICS2.description
+    );
+    const ruleLocator3 = page.locator('.group').nth(2);
+    await selectOption(
+      page,
+      ruleLocator3.locator('.group--field .ant-select'),
+      DATA_CONTRACT_SEMANTICS2.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_SEMANTICS2.rules[0].operator
+    );
+    await page.getByTestId('save-semantic-button').click();
+    // Delete second semantic
+    await page.getByTestId('delete-semantic-1').click();
+
+    await expect(
+      page.getByTestId('contract-semantics-card-1')
+    ).not.toBeVisible();
+  });
 });
