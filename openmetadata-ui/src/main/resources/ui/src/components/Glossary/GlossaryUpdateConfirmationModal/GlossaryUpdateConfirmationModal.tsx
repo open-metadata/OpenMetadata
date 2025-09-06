@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -72,7 +73,9 @@ export const GlossaryUpdateConfirmationModal = ({
       }
     } catch (err) {
       // error
-      setTagError(err.response?.data);
+      setTagError(
+        (err as AxiosError).response?.data as { code: number; message: string }
+      );
       setUpdateState(UpdateState.FAILED);
     }
   };
