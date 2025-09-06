@@ -18,6 +18,9 @@ import org.openmetadata.service.resources.events.subscription.TypedEvent;
  */
 class CollectionDAOEventOrderingTest extends OpenMetadataApplicationTest {
 
+  private static final String POSTGRESQL = "PostgreSQL";
+  private static final String MYSQL = "MySQL";
+
   private CollectionDAO.ChangeEventDAO changeEventDAO;
   private Handle handle;
   private String testSubscriptionId;
@@ -214,21 +217,44 @@ class CollectionDAOEventOrderingTest extends OpenMetadataApplicationTest {
   private void insertFailedEvent(String subscriptionId, String json, long timestamp) {
     // Use a unique extension for each failed event to avoid duplicate key constraint
     String uniqueExtension = "failed-event-" + UUID.randomUUID().toString();
-    handle.execute(
-        "INSERT INTO consumers_dlq (id, extension, json, source) VALUES (?, ?, ?, ?)",
-        subscriptionId,
-        uniqueExtension,
-        json,
-        "test-source");
+    String query;
+
+    try {
+      String dbProductName = handle.getConnection().getMetaData().getDatabaseProductName();
+      if (POSTGRESQL.equalsIgnoreCase(dbProductName)) {
+        query =
+            "INSERT INTO consumers_dlq (id, extension, json, source) VALUES (?, ?, ?::jsonb, ?)";
+      } else if (MYSQL.equalsIgnoreCase(dbProductName)) {
+        query = "INSERT INTO consumers_dlq (id, extension, json, source) VALUES (?, ?, ?, ?)";
+      } else {
+        throw new IllegalStateException("Unsupported database: " + dbProductName);
+      }
+    } catch (java.sql.SQLException e) {
+      throw new RuntimeException("Failed to determine database type", e);
+    }
+
+    handle.execute(query, subscriptionId, uniqueExtension, json, "test-source");
   }
 
   private void insertSuccessfulEvent(String subscriptionId, String json, long timestamp) {
     String changeEventId = UUID.randomUUID().toString();
-    handle.execute(
-        "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) VALUES (?, ?, ?, ?)",
-        changeEventId,
-        subscriptionId,
-        json,
-        timestamp);
+    String query;
+
+    try {
+      String dbProductName = handle.getConnection().getMetaData().getDatabaseProductName();
+      if (POSTGRESQL.equalsIgnoreCase(dbProductName)) {
+        query =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) VALUES (?, ?, ?::jsonb, ?)";
+      } else if (MYSQL.equalsIgnoreCase(dbProductName)) {
+        query =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) VALUES (?, ?, ?, ?)";
+      } else {
+        throw new IllegalStateException("Unsupported database: " + dbProductName);
+      }
+    } catch (java.sql.SQLException e) {
+      throw new RuntimeException("Failed to determine database type", e);
+    }
+
+    handle.execute(query, changeEventId, subscriptionId, json, timestamp);
   }
 }

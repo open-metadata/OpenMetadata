@@ -17,19 +17,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 
 class FuzzySearchClauseTest {
+
+  @BeforeEach
+  void setUp() {
+    // Mock the Entity.getSearchRepository() static method dependency
+    SearchRepository mockSearchRepository = mock(SearchRepository.class);
+    when(mockSearchRepository.getIndexNameWithoutAlias("table_search_index"))
+        .thenReturn("table_search_index");
+    Entity.setSearchRepository(mockSearchRepository);
+  }
 
   @Test
   void testNgramFieldsAreSeparatedFromFuzzySearch() {

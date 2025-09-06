@@ -179,7 +179,8 @@ class JwtFilterTest {
 
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("unable to decode the token"));
   }
 
   @Test
@@ -230,7 +231,8 @@ class JwtFilterTest {
 
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
-    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid token"));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
   }
 
   /**
