@@ -1,1 +1,2 @@
-ALTER TABLE SERVER_CHANGE_LOG ADD COLUMN metrics JSON;
+-- This column is already created in v000__create_server_change_log.sql
+-- ALTER TABLE SERVER_CHANGE_LOG ADD COLUMN metrics JSON;

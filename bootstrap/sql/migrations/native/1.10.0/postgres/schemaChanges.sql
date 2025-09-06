@@ -19,3 +19,4 @@ WHERE configtype = 'entityRulesSettings'
     FROM jsonb_array_elements(json->'entitySemantics') AS rule
     WHERE rule->>'name' = 'Data Product Domain Validation'
   );
+
