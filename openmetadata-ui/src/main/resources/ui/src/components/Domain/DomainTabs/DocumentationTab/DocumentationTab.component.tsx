@@ -141,7 +141,11 @@ const DocumentationTab = ({
             wrapInCard
             description={description}
             entityName={getEntityName(domain)}
-            entityType={EntityType.DOMAIN}
+            entityType={
+              type === DocumentationEntity.DOMAIN
+                ? EntityType.DOMAIN
+                : EntityType.DATA_PRODUCT
+            }
             hasEditAccess={editDescriptionPermission}
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
@@ -159,7 +163,7 @@ const DocumentationTab = ({
               newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
-              entityType={EntityType.DOMAIN}
+              entityType={resourceType}
               permission={editTagsPermission}
               selectedTags={domain.tags ?? []}
               showTaskHandler={false}
@@ -173,7 +177,7 @@ const DocumentationTab = ({
               newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
-              entityType={EntityType.DOMAIN}
+              entityType={resourceType}
               permission={editGlossaryTermsPermission}
               selectedTags={domain.tags ?? []}
               showTaskHandler={false}

@@ -11,36 +11,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  CloseOutlined,
-  HolderOutlined,
-  RedoOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Switch,
-  Tree,
-  TreeDataNode,
-  TreeProps,
-  Typography,
-} from 'antd';
+import { HolderOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
+import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
+import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
 
@@ -48,24 +33,8 @@ interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
 }
 
-const getNavigationItems = (
-  treeData: TreeDataNode[],
-  hiddenKeys: string[]
-): NavigationItem[] => {
-  return treeData.map((item) => {
-    return {
-      id: item.key,
-      title: item.title,
-      isHidden: hiddenKeys.includes(item.key as string),
-      children: getNavigationItems(item.children ?? [], hiddenKeys),
-    } as NavigationItem;
-  });
-};
-
 export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
 
@@ -85,12 +54,8 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   }, [currentNavigation, treeData, hiddenKeys]);
 
   const handleSave = async () => {
-    setSaving(true);
-
     const navigationItems = getNavigationItems(treeData, hiddenKeys);
-
     await onSave(navigationItems);
-    setSaving(false);
   };
 
   const onDrop: TreeProps['onDrop'] = (info) => {
@@ -174,57 +139,15 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
     </div>
   );
 
-  const handleCancel = () => {
-    navigate(-1);
-  };
-
   return (
     <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
       <Row gutter={[0, 20]}>
         <Col span={24}>
-          <Card
-            bodyStyle={{ padding: 0 }}
-            bordered={false}
-            extra={
-              <Space>
-                <Button
-                  data-testid="cancel-button"
-                  disabled={saving}
-                  icon={<CloseOutlined />}
-                  onClick={handleCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="reset-button"
-                  disabled={saving}
-                  icon={<RedoOutlined />}
-                  onClick={handleReset}>
-                  {t('label.reset')}
-                </Button>
-                <Button
-                  data-testid="save-button"
-                  disabled={disableSave}
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  type="primary"
-                  onClick={handleSave}>
-                  {t('label.save')}
-                </Button>
-              </Space>
-            }
-            title={
-              <div>
-                <Typography.Title
-                  className="m-0"
-                  data-testid="customize-page-title"
-                  level={5}>
-                  {t('label.customize-your-navigation')}
-                </Typography.Title>
-                <Typography.Paragraph className="m-0 text-sm font-normal">
-                  {t('message.customize-your-navigation-subheader')}
-                </Typography.Paragraph>
-              </div>
-            }
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={t('label.customize-your-navigation')}
+            onReset={handleReset}
+            onSave={handleSave}
           />
         </Col>
 

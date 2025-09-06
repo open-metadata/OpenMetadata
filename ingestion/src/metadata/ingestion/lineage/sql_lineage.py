@@ -271,7 +271,9 @@ def _replace_target_table(
 ) -> LineageParser:
     try:
         # Create a new target table instead of modifying the existing one
-        new_table = Table(expected_table_name.replace(DEFAULT_SCHEMA_NAME, ""))
+        # Replace "<default>." with empty string to handle schema prefix correctly
+        clean_table_name = expected_table_name.replace(f"{DEFAULT_SCHEMA_NAME}.", "")
+        new_table = LineageTable(clean_table_name)
 
         # Create a new statement holder with the updated target table
         stmt_holder = parser.parser._stmt_holders[0]
@@ -312,12 +314,15 @@ def __process_udf_es_results(
     source_table: Union[DataFunction, LineageTable],
     database_name: Optional[str],
     schema_name: Optional[str],
-    service_name: Optional[str],
+    service_names: Union[str, List[str]],
     timeout_seconds: int,
     column_lineage: dict,
     es_result_entities: List[StoredProcedure],
     procedure: Optional[StoredProcedure] = None,
 ):
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     for entity in es_result_entities:
         if (
             entity.storedProcedureType == StoredProcedureType.UDF
@@ -345,7 +350,7 @@ def __process_udf_es_results(
                         source,
                         database_name,
                         schema_name,
-                        service_name,
+                        service_names,
                         timeout_seconds,
                         column_lineage,
                         procedure or entity,
@@ -358,19 +363,22 @@ def __process_udf_table_names(
     source_table: Union[DataFunction, LineageTable],
     database_name: Optional[str],
     schema_name: Optional[str],
-    service_name: Optional[str],
+    service_names: Union[str, List[str]],
     timeout_seconds: int,
     column_lineage: dict,
     procedure: Optional[StoredProcedure] = None,
 ):
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     database_query, schema_query, table = get_table_fqn_from_query_name(
         str(source_table)
     )
     function_fqn_string = build_es_fqn_search_string(
-        database_query or database_name,
-        schema_query or schema_name,
-        service_name,
-        table,
+        database_name=database_query or database_name,
+        schema_name=schema_query or schema_name,
+        service_name=service_names[0],  # Use first service for table entity lookup
+        table_name=table,
     )
     es_result_entities: Optional[List[StoredProcedure]] = metadata.es_search_from_fqn(
         entity_type=StoredProcedure,
@@ -383,7 +391,7 @@ def __process_udf_table_names(
             source_table,
             database_name,
             schema_name,
-            service_name,
+            service_names,
             timeout_seconds,
             column_lineage,
             es_result_entities,
@@ -398,7 +406,7 @@ def get_source_table_names(
     source_table: Union[DataFunction, LineageTable],
     database_name: Optional[str],
     schema_name: Optional[str],
-    service_name: Optional[str],
+    service_names: Union[str, List[str]],
     timeout_seconds: int,
     column_lineage: dict,
     procedure: Optional[StoredProcedure] = None,
@@ -406,6 +414,9 @@ def get_source_table_names(
     """
     Get source table names from DataFunction
     """
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     try:
         if not isinstance(source_table, DataFunction):
             yield (
@@ -420,7 +431,7 @@ def get_source_table_names(
                 source_table,
                 database_name,
                 schema_name,
-                service_name,
+                service_names,
                 timeout_seconds,
                 column_lineage,
                 procedure,
@@ -594,7 +605,7 @@ def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
     to_table: str,
-    service_name: str,
+    service_names: Union[str, List[str]],
     database_name: Optional[str],
     schema_name: Optional[str],
     masked_query: str,
@@ -607,10 +618,13 @@ def _create_lineage_by_table_name(
     """
     This method is to create a lineage between two tables
     """
+    if isinstance(service_names, str):
+        service_names = [service_names]
+
     try:
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
-            service_names=service_name,
+            service_names=service_names,
             database_name=database_name,
             database_schema=schema_name,
             table_name=from_table,
@@ -619,7 +633,7 @@ def _create_lineage_by_table_name(
 
         to_table_entities = get_table_entities_from_query(
             metadata=metadata,
-            service_names=service_name,
+            service_names=service_names,
             database_name=database_name,
             database_schema=schema_name,
             table_name=to_table,
@@ -761,7 +775,7 @@ def get_lineage_by_query(
                     source_table=source_table,
                     database_name=database_name,
                     schema_name=schema_name,
-                    service_name=service_names,
+                    service_names=service_names,
                     timeout_seconds=timeout_seconds,
                     column_lineage=column_lineage,
                 ):
@@ -769,7 +783,7 @@ def get_lineage_by_query(
                         metadata,
                         from_table=str(from_table_name),
                         to_table=str(intermediate_table),
-                        service_name=service_names,
+                        service_names=service_names,
                         database_name=database_name,
                         schema_name=schema_name,
                         masked_query=masked_query,
@@ -784,7 +798,7 @@ def get_lineage_by_query(
                     metadata,
                     from_table=str(intermediate_table),
                     to_table=str(target_table),
-                    service_name=service_names,
+                    service_names=service_names,
                     database_name=database_name,
                     schema_name=schema_name,
                     masked_query=masked_query,
@@ -802,7 +816,7 @@ def get_lineage_by_query(
                         source_table=source_table,
                         database_name=database_name,
                         schema_name=schema_name,
-                        service_name=service_names,
+                        service_names=service_names,
                         timeout_seconds=timeout_seconds,
                         column_lineage=column_lineage,
                     ):
@@ -810,7 +824,7 @@ def get_lineage_by_query(
                             metadata,
                             from_table=str(from_table_name),
                             to_table=str(target_table),
-                            service_name=service_names,
+                            service_names=service_names,
                             database_name=database_name,
                             schema_name=schema_name,
                             masked_query=masked_query,
@@ -876,7 +890,7 @@ def get_lineage_via_table_entity(
                 source_table=from_table_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                service_name=service_names,
+                service_names=service_names,
                 timeout_seconds=timeout_seconds,
                 column_lineage=column_lineage,
             ):
@@ -884,7 +898,7 @@ def get_lineage_via_table_entity(
                     metadata,
                     from_table=str(source_table),
                     to_table=f"{schema_name}.{to_table_name}",
-                    service_name=service_names,
+                    service_names=service_names,
                     database_name=database_name,
                     schema_name=schema_name,
                     masked_query=masked_query,

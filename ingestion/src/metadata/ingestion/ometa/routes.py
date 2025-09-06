@@ -193,6 +193,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityProfile import EntityProfile
 
 ROUTES = {
     MlModel.__name__: "/mlmodels",
@@ -330,4 +331,5 @@ ROUTES = {
     # Drives
     DriveService.__name__: "/services/driveServices",
     CreateDriveServiceRequest.__name__: "/services/driveServices",
+    EntityProfile.__name__: "/entity/profiles",
 }
