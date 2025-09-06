@@ -48,7 +48,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.TIER,
       'extension',
       'descriptionStatus',
-      'entityType',
+      EntityFields.ENTITY_TYPE,
       'descriptionSources.Suggested',
       'tags.labelType',
       'tier.labelType',

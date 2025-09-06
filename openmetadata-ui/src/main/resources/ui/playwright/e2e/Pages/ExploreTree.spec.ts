@@ -129,7 +129,7 @@ test.describe('Explore Tree scenarios', () => {
 
       await expect(
         page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryTerm');
+      ).toContainText('Data Assets: glossaryterm');
 
       await page.getByTestId('explore-tree-title-Tags').click();
 

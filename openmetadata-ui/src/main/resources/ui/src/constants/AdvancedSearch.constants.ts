@@ -47,7 +47,7 @@ export const COMMON_DROPDOWN_ITEMS = [
 export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: t('label.data-asset-plural'),
-    key: EntityFields.ENTITY_TYPE,
+    key: EntityFields.ENTITY_TYPE_KEYWORD,
   },
   {
     label: t('label.domain-plural'),
