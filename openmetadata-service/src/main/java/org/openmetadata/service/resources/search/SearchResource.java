@@ -186,7 +186,13 @@ public class SearchResource {
                   "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.")
           @DefaultValue("false")
           @QueryParam("semanticSearch")
-          boolean semanticSearch)
+          boolean semanticSearch,
+      @Parameter(
+              description =
+                  "Language locale for search (e.g., 'en', 'es', 'fr'). Used to prioritize translated content in search results.")
+          @DefaultValue("en")
+          @QueryParam("locale")
+          String locale)
       throws IOException {
 
     if (nullOrEmpty(query)) {

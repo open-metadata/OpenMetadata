@@ -70,6 +70,17 @@ public class TopicIndex implements SearchIndex {
     doc.put("upstreamLineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put("service", getEntityWithDisplayName(topic.getService()));
+
+    // Add multi-language translations for search
+    org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
+        doc, topic);
+    String multiLangSearchText =
+        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
+            topic);
+    if (!multiLangSearchText.isEmpty()) {
+      doc.put("translationsSearchText", multiLangSearchText);
+    }
+
     return doc;
   }
 

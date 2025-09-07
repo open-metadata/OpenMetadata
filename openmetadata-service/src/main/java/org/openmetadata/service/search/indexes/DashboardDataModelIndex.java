@@ -52,6 +52,17 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
     doc.put("domains", getEntitiesWithDisplayName(dashboardDataModel.getDomains()));
+
+    // Add multi-language translations for search
+    org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
+        doc, dashboardDataModel);
+    String multiLangSearchText =
+        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
+            dashboardDataModel);
+    if (!multiLangSearchText.isEmpty()) {
+      doc.put("translationsSearchText", multiLangSearchText);
+    }
+
     return doc;
   }
 

@@ -51,6 +51,17 @@ public record ContainerIndex(Container container) implements ColumnIndex {
     doc.put("fullPath", container.getFullPath());
     doc.put("upstreamLineage", SearchIndex.getLineageData(container.getEntityReference()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
+
+    // Add multi-language translations for search
+    org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
+        doc, container);
+    String multiLangSearchText =
+        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
+            container);
+    if (!multiLangSearchText.isEmpty()) {
+      doc.put("translationsSearchText", multiLangSearchText);
+    }
+
     return doc;
   }
 

@@ -85,6 +85,16 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmb
     // Enrich with semantic data (embeddings + RDF context)
     enrichWithSemanticData(doc, table);
 
+    // Add multi-language translations for search
+    org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
+        doc, table);
+    String multiLangSearchText =
+        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
+            table);
+    if (!multiLangSearchText.isEmpty()) {
+      doc.put("translationsSearchText", multiLangSearchText);
+    }
+
     return doc;
   }
 

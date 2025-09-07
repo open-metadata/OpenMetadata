@@ -109,6 +109,11 @@
       "description": "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.",
       "type": "boolean",
       "default": false
+    },
+    "locale": {
+      "description": "Language locale for search (e.g., 'en', 'es', 'fr'). Used to prioritize translated content in search results.",
+      "type": "string",
+      "default": "en"
     }
   },
   "additionalProperties": false

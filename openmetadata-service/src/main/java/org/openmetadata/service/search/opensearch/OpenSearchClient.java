@@ -103,6 +103,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.MultiLanguageSearchQueryBuilder;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -415,6 +416,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       if (semanticQuery != null) {
         searchSourceBuilder.query(semanticQuery);
       }
+    }
+
+    // Apply locale-aware search if locale is specified
+    if (request.getLocale() != null && !request.getLocale().equals("en")) {
+      enhanceQueryWithLocale(searchSourceBuilder, request.getQuery(), request.getLocale());
     }
 
     // Add Query Filter
@@ -3135,5 +3141,66 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
+  }
+
+  /**
+   * Enhances the search query with locale-aware field selection.
+   * Prioritizes translation fields for non-English locales.
+   */
+  private void enhanceQueryWithLocale(
+      SearchSourceBuilder searchSourceBuilder, String searchText, String locale) {
+    if (searchSourceBuilder.query() == null || nullOrEmpty(searchText)) {
+      return;
+    }
+
+    QueryBuilder currentQuery = searchSourceBuilder.query();
+    BoolQueryBuilder enhancedQuery = QueryBuilders.boolQuery();
+
+    // Build locale fallback chain (e.g., es-MX -> es)
+    List<String> localeChain = MultiLanguageSearchQueryBuilder.buildLocaleFallbackChain(locale);
+
+    // Add locale-specific queries with boosting
+    BoolQueryBuilder localeQueries = QueryBuilders.boolQuery();
+    double boostMultiplier = 2.0;
+    boolean hasNonEnglishLocale = false;
+
+    for (String searchLocale : localeChain) {
+      if ("en".equals(searchLocale)) {
+        continue; // English is handled by default fields
+      }
+      hasNonEnglishLocale = true;
+
+      // Search in locale-specific display name
+      localeQueries.should(
+          QueryBuilders.matchQuery(
+                  String.format("translations.%s.displayName", searchLocale), searchText)
+              .boost((float) (5.0 * boostMultiplier)));
+
+      // Search in locale-specific description
+      localeQueries.should(
+          QueryBuilders.matchQuery(
+                  String.format("translations.%s.description", searchLocale), searchText)
+              .boost((float) (2.0 * boostMultiplier)));
+
+      boostMultiplier *= 0.8; // Reduce boost for fallback locales
+    }
+
+    // If we have locale-specific queries, use them as primary search with original as fallback
+    if (hasNonEnglishLocale && localeQueries.hasClauses()) {
+      // Primary search in translation fields
+      enhancedQuery.should(localeQueries);
+      // Fallback to original query with lower boost
+      enhancedQuery.should(QueryBuilders.constantScoreQuery(currentQuery).boost(0.5f));
+      // Add fuzzy search on translations text
+      enhancedQuery.should(
+          QueryBuilders.matchQuery("translationsSearchText", searchText)
+              .fuzziness(Fuzziness.AUTO)
+              .boost(0.3f));
+    } else {
+      // No locale or English locale - use original query
+      enhancedQuery.must(currentQuery);
+    }
+
+    searchSourceBuilder.query(enhancedQuery);
   }
 }

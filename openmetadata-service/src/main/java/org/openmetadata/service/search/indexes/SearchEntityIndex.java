@@ -21,6 +21,17 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("indexType", searchIndex.getIndexType());
     doc.put("upstreamLineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
+
+    // Add multi-language translations for search
+    org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
+        doc, searchIndex);
+    String multiLangSearchText =
+        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
+            searchIndex);
+    if (!multiLangSearchText.isEmpty()) {
+      doc.put("translationsSearchText", multiLangSearchText);
+    }
+
     return doc;
   }
 
