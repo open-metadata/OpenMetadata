@@ -113,7 +113,6 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
       await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
-      
       await page.getByTestId('update-btn').click();
 
       await afterAction();
