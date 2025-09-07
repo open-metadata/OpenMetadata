@@ -1,204 +1,110 @@
 package org.openmetadata.sdk.entities;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import org.openmetadata.sdk.client.OpenMetadata;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.models.ListParams;
-import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 
-public class Chart extends org.openmetadata.schema.entity.data.Chart {
+/**
+ * SDK wrapper for Chart operations.
+ * This class provides static methods for Chart CRUD operations.
+ */
+public class Chart {
+  private static OpenMetadataClient defaultClient;
 
-  // Static methods for CRUD operations
-  public static Chart create(org.openmetadata.schema.entity.data.Chart chart)
-      throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().create(chart);
+  public static void setDefaultClient(OpenMetadataClient client) {
+    defaultClient = client;
   }
 
-  public static Chart retrieve(String id) throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().get(id);
-  }
-
-  public static Chart retrieve(String id, String fields) throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().get(id, fields);
-  }
-
-  public static Chart retrieve(UUID id) throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().get(id);
-  }
-
-  public static Chart retrieveByName(String name) throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().getByName(name);
-  }
-
-  public static Chart retrieveByName(String name, String fields) throws OpenMetadataException {
-    return (Chart) OpenMetadata.client().charts().getByName(name, fields);
-  }
-
-  public static ChartCollection list() throws OpenMetadataException {
-    return new ChartCollection(OpenMetadata.client().charts().list());
-  }
-
-  public static ChartCollection list(ListParams params) throws OpenMetadataException {
-    return new ChartCollection(OpenMetadata.client().charts().list(params));
-  }
-
-  public static void delete(String id) throws OpenMetadataException {
-    OpenMetadata.client().charts().delete(id);
-  }
-
-  public static void delete(UUID id) throws OpenMetadataException {
-    OpenMetadata.client().charts().delete(id);
-  }
-
-  // Async delete methods
-  public static CompletableFuture<Void> deleteAsync(String id) {
-    return OpenMetadata.client().charts().deleteAsync(id);
-  }
-
-  public static CompletableFuture<Void> deleteAsync(UUID id) {
-    return OpenMetadata.client().charts().deleteAsync(id);
-  }
-
-  // Export/Import methods
-  public static String exportCsv() throws OpenMetadataException {
-    return OpenMetadata.client().charts().exportCsv();
-  }
-
-  public static String exportCsv(String name) throws OpenMetadataException {
-    return OpenMetadata.client().charts().exportCsv(name);
-  }
-
-  public static String importCsv(String csvData) throws OpenMetadataException {
-    return OpenMetadata.client().charts().importCsv(csvData);
-  }
-
-  public static String importCsv(String csvData, boolean dryRun) throws OpenMetadataException {
-    return OpenMetadata.client().charts().importCsv(csvData, dryRun);
-  }
-
-  // Instance methods
-  public Chart save() throws OpenMetadataException {
-    if (this.getId() == null) {
-      return (Chart) OpenMetadata.client().charts().create(this);
-    } else {
-      return (Chart) OpenMetadata.client().charts().update(this.getId(), this);
+  private static OpenMetadataClient getClient() {
+    if (defaultClient == null) {
+      throw new IllegalStateException("Default client not set. Call setDefaultClient() first.");
     }
+    return defaultClient;
   }
 
-  public Chart update() throws OpenMetadataException {
-    if (this.getId() == null) {
-      throw new IllegalStateException("Cannot update a chart without an ID");
+  // Static CRUD methods
+  public static org.openmetadata.schema.entity.data.Chart create(CreateChart request) {
+    // Convert CreateChart to Chart entity
+    org.openmetadata.schema.entity.data.Chart chart =
+        new org.openmetadata.schema.entity.data.Chart();
+    chart.setName(request.getName());
+    if (request.getDisplayName() != null) {
+      chart.setDisplayName(request.getDisplayName());
     }
-    return (Chart) OpenMetadata.client().charts().update(this.getId(), this);
+    if (request.getDescription() != null) {
+      chart.setDescription(request.getDescription());
+    }
+    if (request.getOwners() != null) {
+      chart.setOwners(request.getOwners());
+    }
+    if (request.getTags() != null) {
+      chart.setTags(request.getTags());
+    }
+    if (request.getService() != null) {
+      chart.setService(
+          new org.openmetadata.schema.type.EntityReference()
+              .withFullyQualifiedName(request.getService())
+              .withType("dashboardService"));
+    }
+    return getClient().charts().create(chart);
   }
 
-  public void delete() throws OpenMetadataException {
-    if (this.getId() == null) {
-      throw new IllegalStateException("Cannot delete a chart without an ID");
-    }
-    OpenMetadata.client().charts().delete(this.getId());
+  public static org.openmetadata.schema.entity.data.Chart retrieve(String id) {
+    return getClient().charts().get(id);
   }
 
-  // Fluent API methods
-  public Chart addTags(List<org.openmetadata.schema.type.TagLabel> tags) {
-    if (this.getTags() == null) {
-      this.setTags(tags);
-    } else {
-      this.getTags().addAll(tags);
-    }
-    return this;
+  public static org.openmetadata.schema.entity.data.Chart retrieve(String id, String fields) {
+    return getClient().charts().get(id, fields);
   }
 
-  public Chart setOwner(org.openmetadata.schema.type.EntityReference owner) {
-    this.setOwner(owner);
-    return this;
+  public static org.openmetadata.schema.entity.data.Chart retrieveByName(String name) {
+    return getClient().charts().getByName(name);
   }
 
-  // Static builder methods for list/retrieve params
-  public static class ListBuilder {
-    private final ListParams params = new ListParams();
-
-    public ListBuilder fields(String fields) {
-      params.setFields(fields);
-      return this;
-    }
-
-    public ListBuilder limit(int limit) {
-      params.setLimit(limit);
-      return this;
-    }
-
-    public ListBuilder before(String before) {
-      params.setBefore(before);
-      return this;
-    }
-
-    public ListBuilder after(String after) {
-      params.setAfter(after);
-      return this;
-    }
-
-    public ListBuilder include(String include) {
-      params.setInclude(include);
-      return this;
-    }
-
-    public ChartCollection list() throws OpenMetadataException {
-      return Chart.list(params);
-    }
+  public static org.openmetadata.schema.entity.data.Chart retrieveByName(
+      String name, String fields) {
+    return getClient().charts().getByName(name, fields);
   }
 
-  public static ListBuilder listBuilder() {
-    return new ListBuilder();
+  public static org.openmetadata.schema.entity.data.Chart update(
+      String id, org.openmetadata.schema.entity.data.Chart entity) {
+    return getClient().charts().update(id, entity);
   }
 
-  // Collection class with auto-pagination
-  public static class ChartCollection
-      implements Iterable<org.openmetadata.schema.entity.data.Chart> {
-    private final ListResponse<org.openmetadata.schema.entity.data.Chart> response;
-
-    public ChartCollection(ListResponse<org.openmetadata.schema.entity.data.Chart> response) {
-      this.response = response;
+  public static org.openmetadata.schema.entity.data.Chart update(
+      org.openmetadata.schema.entity.data.Chart entity) {
+    if (entity.getId() == null) {
+      throw new IllegalArgumentException("Chart must have an ID for update");
     }
+    return update(entity.getId().toString(), entity);
+  }
 
-    public List<org.openmetadata.schema.entity.data.Chart> getData() {
-      return response.getData();
-    }
+  public static void delete(String id) {
+    delete(id, false, false);
+  }
 
-    public boolean hasNextPage() {
-      return response.hasNextPage();
-    }
+  public static void delete(String id, boolean recursive, boolean hardDelete) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", String.valueOf(recursive));
+    params.put("hardDelete", String.valueOf(hardDelete));
+    getClient().charts().delete(id, params);
+  }
 
-    public boolean hasPreviousPage() {
-      return response.hasPreviousPage();
-    }
+  // Async operations
+  public static CompletableFuture<org.openmetadata.schema.entity.data.Chart> createAsync(
+      CreateChart request) {
+    return CompletableFuture.supplyAsync(() -> create(request));
+  }
 
-    public int getTotal() {
-      return response.getTotal();
-    }
+  public static CompletableFuture<org.openmetadata.schema.entity.data.Chart> retrieveAsync(
+      String id) {
+    return CompletableFuture.supplyAsync(() -> retrieve(id));
+  }
 
-    public ChartCollection nextPage() throws OpenMetadataException {
-      if (!hasNextPage()) {
-        throw new IllegalStateException("No next page available");
-      }
-      ListParams params = new ListParams().setAfter(response.getPaging().getAfter());
-      return Chart.list(params);
-    }
-
-    public ChartCollection previousPage() throws OpenMetadataException {
-      if (!hasPreviousPage()) {
-        throw new IllegalStateException("No previous page available");
-      }
-      ListParams params = new ListParams().setBefore(response.getPaging().getBefore());
-      return Chart.list(params);
-    }
-
-    @Override
-    public Iterator<org.openmetadata.schema.entity.data.Chart> iterator() {
-      return response.getData().iterator();
-    }
+  public static CompletableFuture<Void> deleteAsync(
+      String id, boolean recursive, boolean hardDelete) {
+    return CompletableFuture.runAsync(() -> delete(id, recursive, hardDelete));
   }
 }

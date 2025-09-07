@@ -1,0 +1,249 @@
+package org.openmetadata.sdk.integration;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.BaseSDKTest;
+import org.openmetadata.sdk.OM;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class GlossarySDKIntegrationTest extends BaseSDKTest {
+
+  private Glossary glossary;
+
+  @Override
+  protected void additionalSetUp() throws Exception {
+    createGlossary();
+  }
+
+  @Override
+  protected void additionalTearDown() throws Exception {
+    if (glossary != null) {
+      try {
+        OM.Glossary.delete(glossary.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  private void createGlossary() throws Exception {
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(generateTestName("test_glossary"))
+            .withDisplayName("Test Glossary")
+            .withDescription("Glossary for SDK integration tests");
+
+    glossary = OM.Glossary.create(createGlossary);
+    assertNotNull(glossary);
+  }
+
+  @Test
+  void testGlossaryCRUDOperations() {
+    String glossaryName = generateTestName("test_glossary_crud");
+
+    CreateGlossary createRequest =
+        new CreateGlossary()
+            .withName(glossaryName)
+            .withDisplayName("Test Glossary CRUD")
+            .withDescription("Test glossary for CRUD operations");
+
+    Glossary createdGlossary = OM.Glossary.create(createRequest);
+    assertNotNull(createdGlossary);
+    assertNotNull(createdGlossary.getId());
+    assertEquals(glossaryName, createdGlossary.getName());
+
+    try {
+      Glossary retrievedGlossary = OM.Glossary.retrieve(createdGlossary.getId().toString());
+      assertNotNull(retrievedGlossary);
+      assertEquals(createdGlossary.getId(), retrievedGlossary.getId());
+
+      retrievedGlossary.setDescription("Updated glossary description");
+      Glossary updatedGlossary = OM.Glossary.update(retrievedGlossary);
+      assertEquals("Updated glossary description", updatedGlossary.getDescription());
+
+    } finally {
+      OM.Glossary.delete(createdGlossary.getId().toString());
+    }
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.Glossary.retrieve(createdGlossary.getId().toString());
+        });
+  }
+
+  @Test
+  void testGlossaryTermCRUDOperations() {
+    String termName = generateTestName("test_term");
+
+    CreateGlossaryTerm createRequest =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withDisplayName("Test Term")
+            .withDescription("Test term for SDK integration")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    GlossaryTerm createdTerm = OM.GlossaryTerm.create(createRequest);
+    assertNotNull(createdTerm);
+    assertNotNull(createdTerm.getId());
+    assertEquals(termName, createdTerm.getName());
+
+    try {
+      GlossaryTerm retrievedTerm = OM.GlossaryTerm.retrieve(createdTerm.getId().toString());
+      assertNotNull(retrievedTerm);
+      assertEquals(createdTerm.getId(), retrievedTerm.getId());
+
+      retrievedTerm.setDescription("Updated term description");
+      GlossaryTerm updatedTerm = OM.GlossaryTerm.update(retrievedTerm);
+      assertEquals("Updated term description", updatedTerm.getDescription());
+
+    } finally {
+      OM.GlossaryTerm.delete(createdTerm.getId().toString());
+    }
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.GlossaryTerm.retrieve(createdTerm.getId().toString());
+        });
+  }
+
+  @Test
+  void testGlossaryTermHierarchy() {
+    String parentTermName = generateTestName("parent_term");
+    String childTermName = generateTestName("child_term");
+
+    CreateGlossaryTerm createParent =
+        new CreateGlossaryTerm()
+            .withName(parentTermName)
+            .withDisplayName("Parent Term")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    GlossaryTerm parentTerm = OM.GlossaryTerm.create(createParent);
+    assertNotNull(parentTerm);
+
+    try {
+      CreateGlossaryTerm createChild =
+          new CreateGlossaryTerm()
+              .withName(childTermName)
+              .withDisplayName("Child Term")
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withParent(parentTerm.getFullyQualifiedName());
+
+      GlossaryTerm childTerm = OM.GlossaryTerm.create(createChild);
+      assertNotNull(childTerm);
+      assertNotNull(childTerm.getParent());
+      assertEquals(
+          parentTerm.getFullyQualifiedName(), childTerm.getParent().getFullyQualifiedName());
+
+      OM.GlossaryTerm.delete(childTerm.getId().toString());
+
+    } finally {
+      OM.GlossaryTerm.delete(parentTerm.getId().toString());
+    }
+  }
+
+  @Test
+  void testGlossaryTermWithSynonyms() {
+    String termName = generateTestName("test_term_synonyms");
+    List<String> synonyms = new ArrayList<>();
+    synonyms.add("synonym1");
+    synonyms.add("synonym2");
+    synonyms.add("synonym3");
+
+    CreateGlossaryTerm createRequest =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withDisplayName("Test Term with Synonyms")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withSynonyms(synonyms);
+
+    GlossaryTerm term = OM.GlossaryTerm.create(createRequest);
+    assertNotNull(term);
+    assertEquals(3, term.getSynonyms().size());
+
+    try {
+      term.getSynonyms().add("synonym4");
+      GlossaryTerm updatedTerm = OM.GlossaryTerm.update(term);
+      assertEquals(4, updatedTerm.getSynonyms().size());
+
+    } finally {
+      OM.GlossaryTerm.delete(term.getId().toString());
+    }
+  }
+
+  @Test
+  void testGlossaryTermWithRelatedTerms() {
+    String term1Name = generateTestName("term1");
+    String term2Name = generateTestName("term2");
+
+    CreateGlossaryTerm createTerm1 =
+        new CreateGlossaryTerm()
+            .withName(term1Name)
+            .withDisplayName("Term 1")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    GlossaryTerm term1 = OM.GlossaryTerm.create(createTerm1);
+
+    CreateGlossaryTerm createTerm2 =
+        new CreateGlossaryTerm()
+            .withName(term2Name)
+            .withDisplayName("Term 2")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    GlossaryTerm term2 = OM.GlossaryTerm.create(createTerm2);
+
+    try {
+      GlossaryTerm term1WithRelated = OM.GlossaryTerm.retrieve(term1.getId().toString());
+
+      List<EntityReference> relatedTerms = new ArrayList<>();
+      relatedTerms.add(new EntityReference().withId(term2.getId()).withType("glossaryTerm"));
+      term1WithRelated.setRelatedTerms(relatedTerms);
+
+      GlossaryTerm updatedTerm1 = OM.GlossaryTerm.update(term1WithRelated);
+      assertNotNull(updatedTerm1.getRelatedTerms());
+      assertEquals(1, updatedTerm1.getRelatedTerms().size());
+
+    } finally {
+      OM.GlossaryTerm.delete(term1.getId().toString());
+      OM.GlossaryTerm.delete(term2.getId().toString());
+    }
+  }
+
+  @Test
+  void testGlossaryWithOwners() {
+    String glossaryName = generateTestName("test_glossary_owners");
+    CreateGlossary createRequest =
+        new CreateGlossary().withName(glossaryName).withDisplayName("Test Glossary with Owners");
+
+    Glossary testGlossary = OM.Glossary.create(createRequest);
+    assertNotNull(testGlossary);
+
+    try {
+      Glossary glossaryWithOwners = OM.Glossary.retrieve(testGlossary.getId().toString());
+
+      List<EntityReference> owners = new ArrayList<>();
+      owners.add(
+          new EntityReference()
+              .withId(UUID.fromString("c3eb265f-5445-4ad3-ba5e-797d3a3071bb"))
+              .withType("user"));
+      glossaryWithOwners.setOwners(owners);
+
+      Glossary updatedGlossary = OM.Glossary.update(glossaryWithOwners);
+      assertNotNull(updatedGlossary.getOwners());
+
+    } finally {
+      OM.Glossary.delete(testGlossary.getId().toString());
+    }
+  }
+}

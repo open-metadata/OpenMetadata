@@ -31,7 +31,7 @@ public class DataProduct extends org.openmetadata.schema.entity.domains.DataProd
   public static DataProduct update(
       String id, org.openmetadata.schema.entity.domains.DataProduct patch)
       throws OpenMetadataException {
-    return (DataProduct) OpenMetadata.client().dataProducts().patch(id, patch);
+    return (DataProduct) OpenMetadata.client().dataProducts().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

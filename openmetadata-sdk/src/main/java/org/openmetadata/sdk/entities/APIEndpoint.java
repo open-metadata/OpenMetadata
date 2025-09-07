@@ -30,7 +30,7 @@ public class APIEndpoint extends org.openmetadata.schema.entity.data.APIEndpoint
 
   public static APIEndpoint update(String id, org.openmetadata.schema.entity.data.APIEndpoint patch)
       throws OpenMetadataException {
-    return (APIEndpoint) OpenMetadata.client().apiEndpoints().patch(id, patch);
+    return (APIEndpoint) OpenMetadata.client().apiEndpoints().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

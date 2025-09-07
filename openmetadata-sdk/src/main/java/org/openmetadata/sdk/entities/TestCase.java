@@ -30,7 +30,7 @@ public class TestCase extends org.openmetadata.schema.tests.TestCase {
 
   public static TestCase update(String id, org.openmetadata.schema.tests.TestCase patch)
       throws OpenMetadataException {
-    return (TestCase) OpenMetadata.client().testCases().patch(id, patch);
+    return (TestCase) OpenMetadata.client().testCases().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

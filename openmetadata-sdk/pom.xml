@@ -55,6 +55,13 @@
             <version>${slf4j.version}</version>
         </dependency>
         
+        <!-- JSON Patch -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>0.4.14</version>
+        </dependency>
+        
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

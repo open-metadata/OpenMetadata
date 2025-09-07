@@ -30,7 +30,7 @@ public class TestSuite extends org.openmetadata.schema.tests.TestSuite {
 
   public static TestSuite update(String id, org.openmetadata.schema.tests.TestSuite patch)
       throws OpenMetadataException {
-    return (TestSuite) OpenMetadata.client().testSuites().patch(id, patch);
+    return (TestSuite) OpenMetadata.client().testSuites().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

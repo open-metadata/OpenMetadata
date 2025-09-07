@@ -31,7 +31,7 @@ public class Workflow extends org.openmetadata.schema.entity.automations.Workflo
   public static Workflow update(
       String id, org.openmetadata.schema.entity.automations.Workflow patch)
       throws OpenMetadataException {
-    return (Workflow) OpenMetadata.client().workflows().patch(id, patch);
+    return (Workflow) OpenMetadata.client().workflows().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

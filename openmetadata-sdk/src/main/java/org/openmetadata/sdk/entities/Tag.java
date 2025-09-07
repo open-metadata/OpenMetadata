@@ -1,172 +1,106 @@
 package org.openmetadata.sdk.entities;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import org.openmetadata.sdk.client.OpenMetadata;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.models.ListParams;
-import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 
-public class Tag extends org.openmetadata.schema.entity.classification.Tag {
+/**
+ * SDK wrapper for Tag operations.
+ * This class provides static methods for Tag CRUD operations.
+ */
+public class Tag {
+  private static OpenMetadataClient defaultClient;
 
-  // Static methods for CRUD operations
-  public static Tag create(org.openmetadata.schema.entity.classification.Tag tag)
-      throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().create(tag);
+  public static void setDefaultClient(OpenMetadataClient client) {
+    defaultClient = client;
   }
 
-  public static Tag retrieve(String id) throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().get(id);
+  private static OpenMetadataClient getClient() {
+    if (defaultClient == null) {
+      throw new IllegalStateException("Default client not set. Call setDefaultClient() first.");
+    }
+    return defaultClient;
   }
 
-  public static Tag retrieve(String id, String fields) throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().get(id, fields);
+  // Static CRUD methods
+  public static org.openmetadata.schema.entity.classification.Tag create(CreateTag request) {
+    // Convert CreateTag to Tag
+    org.openmetadata.schema.entity.classification.Tag entity =
+        new org.openmetadata.schema.entity.classification.Tag();
+    entity.setName(request.getName());
+    if (request.getDisplayName() != null) {
+      entity.setDisplayName(request.getDisplayName());
+    }
+    if (request.getDescription() != null) {
+      entity.setDescription(request.getDescription());
+    }
+    if (request.getClassification() != null) {
+      entity.setClassification(
+          new EntityReference()
+              .withFullyQualifiedName(request.getClassification())
+              .withType("classification"));
+    }
+    return getClient().tags().create(entity);
   }
 
-  public static Tag retrieve(UUID id) throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().get(id);
+  public static org.openmetadata.schema.entity.classification.Tag retrieve(String id) {
+    return getClient().tags().get(id);
   }
 
-  public static Tag retrieveByName(String name) throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().getByName(name);
+  public static org.openmetadata.schema.entity.classification.Tag retrieve(
+      String id, String fields) {
+    return getClient().tags().get(id, fields);
   }
 
-  public static Tag retrieveByName(String name, String fields) throws OpenMetadataException {
-    return (Tag) OpenMetadata.client().tags().getByName(name, fields);
+  public static org.openmetadata.schema.entity.classification.Tag retrieveByName(String name) {
+    return getClient().tags().getByName(name);
   }
 
-  public static TagCollection list() throws OpenMetadataException {
-    return new TagCollection(OpenMetadata.client().tags().list());
+  public static org.openmetadata.schema.entity.classification.Tag retrieveByName(
+      String name, String fields) {
+    return getClient().tags().getByName(name, fields);
   }
 
-  public static TagCollection list(ListParams params) throws OpenMetadataException {
-    return new TagCollection(OpenMetadata.client().tags().list(params));
+  public static org.openmetadata.schema.entity.classification.Tag update(
+      String id, org.openmetadata.schema.entity.classification.Tag entity) {
+    return getClient().tags().update(id, entity);
   }
 
-  public static void delete(String id) throws OpenMetadataException {
-    OpenMetadata.client().tags().delete(id);
+  public static org.openmetadata.schema.entity.classification.Tag update(
+      org.openmetadata.schema.entity.classification.Tag entity) {
+    if (entity.getId() == null) {
+      throw new IllegalArgumentException("Tag must have an ID for update");
+    }
+    return update(entity.getId().toString(), entity);
   }
 
-  public static void delete(UUID id) throws OpenMetadataException {
-    OpenMetadata.client().tags().delete(id);
+  public static void delete(String id) {
+    delete(id, false, false);
   }
 
-  // Async delete methods
-  public static CompletableFuture<Void> deleteAsync(String id) {
-    return OpenMetadata.client().tags().deleteAsync(id);
+  public static void delete(String id, boolean recursive, boolean hardDelete) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", String.valueOf(recursive));
+    params.put("hardDelete", String.valueOf(hardDelete));
+    getClient().tags().delete(id, params);
   }
 
-  public static CompletableFuture<Void> deleteAsync(UUID id) {
-    return OpenMetadata.client().tags().deleteAsync(id);
+  // Async operations
+  public static CompletableFuture<org.openmetadata.schema.entity.classification.Tag> createAsync(
+      CreateTag request) {
+    return CompletableFuture.supplyAsync(() -> create(request));
   }
 
-  // Instance methods
-  public Tag save() throws OpenMetadataException {
-    if (this.getId() == null) {
-      return (Tag) OpenMetadata.client().tags().create(this);
-    } else {
-      return (Tag) OpenMetadata.client().tags().update(this.getId(), this);
-    }
+  public static CompletableFuture<org.openmetadata.schema.entity.classification.Tag> retrieveAsync(
+      String id) {
+    return CompletableFuture.supplyAsync(() -> retrieve(id));
   }
 
-  public Tag update() throws OpenMetadataException {
-    if (this.getId() == null) {
-      throw new IllegalStateException("Cannot update a tag without an ID");
-    }
-    return (Tag) OpenMetadata.client().tags().update(this.getId(), this);
-  }
-
-  public void delete() throws OpenMetadataException {
-    if (this.getId() == null) {
-      throw new IllegalStateException("Cannot delete a tag without an ID");
-    }
-    OpenMetadata.client().tags().delete(this.getId());
-  }
-
-  // Static builder methods for list/retrieve params
-  public static class ListBuilder {
-    private final ListParams params = new ListParams();
-
-    public ListBuilder fields(String fields) {
-      params.setFields(fields);
-      return this;
-    }
-
-    public ListBuilder limit(int limit) {
-      params.setLimit(limit);
-      return this;
-    }
-
-    public ListBuilder before(String before) {
-      params.setBefore(before);
-      return this;
-    }
-
-    public ListBuilder after(String after) {
-      params.setAfter(after);
-      return this;
-    }
-
-    public ListBuilder include(String include) {
-      params.setInclude(include);
-      return this;
-    }
-
-    public TagCollection list() throws OpenMetadataException {
-      return Tag.list(params);
-    }
-  }
-
-  public static ListBuilder listBuilder() {
-    return new ListBuilder();
-  }
-
-  // Collection class with auto-pagination
-  public static class TagCollection
-      implements Iterable<org.openmetadata.schema.entity.classification.Tag> {
-    private final ListResponse<org.openmetadata.schema.entity.classification.Tag> response;
-
-    public TagCollection(ListResponse<org.openmetadata.schema.entity.classification.Tag> response) {
-      this.response = response;
-    }
-
-    public List<org.openmetadata.schema.entity.classification.Tag> getData() {
-      return response.getData();
-    }
-
-    public boolean hasNextPage() {
-      return response.hasNextPage();
-    }
-
-    public boolean hasPreviousPage() {
-      return response.hasPreviousPage();
-    }
-
-    public int getTotal() {
-      return response.getTotal();
-    }
-
-    public TagCollection nextPage() throws OpenMetadataException {
-      if (!hasNextPage()) {
-        throw new IllegalStateException("No next page available");
-      }
-      ListParams params = new ListParams().setAfter(response.getPaging().getAfter());
-      return Tag.list(params);
-    }
-
-    public TagCollection previousPage() throws OpenMetadataException {
-      if (!hasPreviousPage()) {
-        throw new IllegalStateException("No previous page available");
-      }
-      ListParams params = new ListParams().setBefore(response.getPaging().getBefore());
-      return Tag.list(params);
-    }
-
-    @Override
-    public Iterator<org.openmetadata.schema.entity.classification.Tag> iterator() {
-      return response.getData().iterator();
-    }
+  public static CompletableFuture<Void> deleteAsync(
+      String id, boolean recursive, boolean hardDelete) {
+    return CompletableFuture.runAsync(() -> delete(id, recursive, hardDelete));
   }
 }

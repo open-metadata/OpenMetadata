@@ -47,7 +47,7 @@ public class Search {
     return getClient().search().suggest(query, index, null);
   }
 
-  public static String suggest(String query, String index, Integer size) 
+  public static String suggest(String query, String index, Integer size)
       throws OpenMetadataException {
     return getClient().search().suggest(query, index, size);
   }
@@ -83,63 +83,69 @@ public class Search {
 
   // Async operations
   public static CompletableFuture<String> searchAsync(String query) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return search(query);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return search(query);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> searchAsync(String query, String index) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return search(query, index);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return search(query, index);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> suggestAsync(String query) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return suggest(query);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return suggest(query);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> aggregateAsync(String query, String index, String field) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return aggregate(query, index, field);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return aggregate(query, index, field);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> reindexAsync(String entityType) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return reindex(entityType);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return reindex(entityType);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> reindexAllAsync() {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return reindexAll();
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return reindexAll();
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   // Builder for complex search queries
@@ -190,13 +196,14 @@ public class Search {
     }
 
     public CompletableFuture<String> executeAsync() {
-      return CompletableFuture.supplyAsync(() -> {
-        try {
-          return execute();
-        } catch (OpenMetadataException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      return CompletableFuture.supplyAsync(
+          () -> {
+            try {
+              return execute();
+            } catch (OpenMetadataException e) {
+              throw new RuntimeException(e);
+            }
+          });
     }
   }
 }

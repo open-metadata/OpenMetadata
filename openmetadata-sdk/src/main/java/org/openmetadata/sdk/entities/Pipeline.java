@@ -79,13 +79,15 @@ public class Pipeline extends org.openmetadata.schema.entity.data.Pipeline {
   }
 
   public static org.openmetadata.schema.entity.data.Pipeline patch(String id, String jsonPatch) {
-    // JSON patch requires a Pipeline object with patch operations
-    org.openmetadata.schema.entity.data.Pipeline patchPipeline =
-        new org.openmetadata.schema.entity.data.Pipeline();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty pipeline as the service expects a Pipeline object
-    return (org.openmetadata.schema.entity.data.Pipeline)
-        getClient().pipelines().patch(id, patchPipeline);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().pipelines().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

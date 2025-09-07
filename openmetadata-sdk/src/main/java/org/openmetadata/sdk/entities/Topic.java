@@ -80,12 +80,15 @@ public class Topic extends org.openmetadata.schema.entity.data.Topic {
   }
 
   public static org.openmetadata.schema.entity.data.Topic patch(String id, String jsonPatch) {
-    // JSON patch requires a Topic object with patch operations
-    org.openmetadata.schema.entity.data.Topic patchTopic =
-        new org.openmetadata.schema.entity.data.Topic();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty topic as the service expects a Topic object
-    return (org.openmetadata.schema.entity.data.Topic) getClient().topics().patch(id, patchTopic);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().topics().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

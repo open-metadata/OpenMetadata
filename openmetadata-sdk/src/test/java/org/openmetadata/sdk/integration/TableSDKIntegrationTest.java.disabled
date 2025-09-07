@@ -1,0 +1,323 @@
+package org.openmetadata.sdk.integration;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.BaseSDKTest;
+import org.openmetadata.sdk.OM;
+
+/**
+ * Integration tests for Table SDK operations.
+ * These tests verify the complete flow of creating, reading, updating, and deleting tables.
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class TableSDKIntegrationTest extends BaseSDKTest {
+
+  private DatabaseService databaseService;
+  private Database database;
+  private DatabaseSchema databaseSchema;
+
+  @Override
+  protected void additionalSetUp() throws Exception {
+    // Create prerequisite service, database, and schema for tables
+    createPrerequisites();
+  }
+
+  @Override
+  protected void additionalTearDown() throws Exception {
+    // Clean up in reverse order
+    if (databaseSchema != null) {
+      try {
+        OM.DatabaseSchema.delete(databaseSchema.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+    if (database != null) {
+      try {
+        OM.Database.delete(database.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+    if (databaseService != null) {
+      try {
+        OM.DatabaseService.delete(databaseService.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  private void createPrerequisites() throws Exception {
+    // Create database service
+    MysqlConnection mysqlConnection =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test")
+            .withAuthType(new basicAuth().withPassword("test"));
+
+    DatabaseConnection connection = new DatabaseConnection().withConfig(mysqlConnection);
+
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(generateTestName("test_db_service"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(connection);
+
+    databaseService = OM.DatabaseService.create(createService);
+    assertNotNull(databaseService);
+
+    // Create database
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName(generateTestName("test_database"))
+            .withService(databaseService.getFullyQualifiedName());
+
+    database = OM.Database.create(createDatabase);
+    assertNotNull(database);
+
+    // Create schema
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(generateTestName("test_schema"))
+            .withDatabase(database.getFullyQualifiedName());
+
+    databaseSchema = OM.DatabaseSchema.create(createSchema);
+    assertNotNull(databaseSchema);
+  }
+
+  @Test
+  void testTableCRUDOperations() {
+    // Create table
+    String tableName = generateTestName("test_table");
+    List<Column> columns = createTestColumns();
+
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withColumns(columns)
+            .withDescription("Test table for SDK integration test");
+
+    Table createdTable = OM.Table.create(createRequest);
+    assertNotNull(createdTable);
+    assertNotNull(createdTable.getId());
+    assertEquals(tableName, createdTable.getName());
+    assertEquals(3, createdTable.getColumns().size());
+
+    // Retrieve table
+    Table retrievedTable = OM.Table.retrieve(createdTable.getId().toString());
+    assertNotNull(retrievedTable);
+    assertEquals(createdTable.getId(), retrievedTable.getId());
+    assertEquals(createdTable.getName(), retrievedTable.getName());
+
+    // Update table - add description to column
+    retrievedTable.getColumns().get(0).setDescription("Updated primary key description");
+    Table updatedTable = OM.Table.update(retrievedTable);
+    assertNotNull(updatedTable);
+    assertEquals(
+        "Updated primary key description", updatedTable.getColumns().get(0).getDescription());
+
+    // Delete table
+    OM.Table.delete(createdTable.getId().toString());
+
+    // Verify deletion
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.Table.retrieve(createdTable.getId().toString());
+        });
+  }
+
+  @Test
+  void testTableWithTags() {
+    // Create table
+    String tableName = generateTestName("test_table_tags");
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withColumns(createTestColumns());
+
+    Table table = OM.Table.create(createRequest);
+    assertNotNull(table);
+
+    try {
+      // Fetch with tags field
+      Table tableWithTags = OM.Table.retrieve(table.getId().toString(), "tags");
+
+      // Add tags
+      List<TagLabel> tags = new ArrayList<>();
+      tags.add(
+          new TagLabel()
+              .withTagFQN("PII.Sensitive")
+              .withSource(TagLabel.TagSource.CLASSIFICATION)
+              .withState(TagLabel.State.CONFIRMED));
+      tableWithTags.setTags(tags);
+
+      // Update with tags
+      Table updatedTable = OM.Table.update(tableWithTags);
+      assertNotNull(updatedTable.getTags());
+      assertEquals(1, updatedTable.getTags().size());
+      assertEquals("PII.Sensitive", updatedTable.getTags().get(0).getTagFQN());
+
+    } finally {
+      // Clean up
+      OM.Table.delete(table.getId().toString());
+    }
+  }
+
+  @Test
+  void testTableWithOwners() {
+    // Create table
+    String tableName = generateTestName("test_table_owners");
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withColumns(createTestColumns());
+
+    Table table = OM.Table.create(createRequest);
+    assertNotNull(table);
+
+    try {
+      // Fetch with owners field
+      Table tableWithOwners = OM.Table.retrieve(table.getId().toString(), "owners");
+
+      // Add owners (assuming test users exist)
+      List<EntityReference> owners = new ArrayList<>();
+      owners.add(
+          new EntityReference()
+              .withId(
+                  UUID.fromString(
+                      "c3eb265f-5445-4ad3-ba5e-797d3a3071bb")) // This should be a real user ID in
+              // actual tests
+              .withType("user"));
+      tableWithOwners.setOwners(owners);
+
+      // Update with owners
+      Table updatedTable = OM.Table.update(tableWithOwners);
+      assertNotNull(updatedTable.getOwners());
+      assertTrue(updatedTable.getOwners().size() > 0);
+
+    } finally {
+      // Clean up
+      OM.Table.delete(table.getId().toString());
+    }
+  }
+
+  @Test
+  void testTableColumnOperations() {
+    // Create table with initial columns
+    String tableName = generateTestName("test_table_columns");
+    List<Column> columns = createTestColumns();
+
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withColumns(columns);
+
+    Table table = OM.Table.create(createRequest);
+    assertNotNull(table);
+    assertEquals(3, table.getColumns().size());
+
+    try {
+      // Add a new column
+      Column newColumn =
+          new Column()
+              .withName("status")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(50)
+              .withDescription("Status column");
+      table.getColumns().add(newColumn);
+
+      // Update column descriptions
+      table.getColumns().get(0).setDescription("Updated ID description");
+      table.getColumns().get(1).setDescription("Updated name description");
+
+      // Update table
+      Table updatedTable = OM.Table.update(table);
+      assertEquals(4, updatedTable.getColumns().size());
+      assertEquals("Updated ID description", updatedTable.getColumns().get(0).getDescription());
+      assertEquals("status", updatedTable.getColumns().get(3).getName());
+
+    } finally {
+      // Clean up
+      OM.Table.delete(table.getId().toString());
+    }
+  }
+
+  @Test
+  void testRetrieveByName() {
+    // Create table
+    String tableName = generateTestName("test_table_by_name");
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withColumns(createTestColumns());
+
+    Table table = OM.Table.create(createRequest);
+    assertNotNull(table);
+
+    try {
+      // Retrieve by fully qualified name
+      String fqn = table.getFullyQualifiedName();
+      Table retrievedTable = OM.Table.retrieveByName(fqn);
+      assertNotNull(retrievedTable);
+      assertEquals(table.getId(), retrievedTable.getId());
+      assertEquals(table.getName(), retrievedTable.getName());
+
+    } finally {
+      // Clean up
+      OM.Table.delete(table.getId().toString());
+    }
+  }
+
+  private List<Column> createTestColumns() {
+    List<Column> columns = new ArrayList<>();
+
+    columns.add(
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withDescription("Primary key"));
+
+    columns.add(
+        new Column()
+            .withName("name")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withDescription("Name column"));
+
+    columns.add(
+        new Column()
+            .withName("created_at")
+            .withDataType(ColumnDataType.TIMESTAMP)
+            .withDescription("Creation timestamp"));
+
+    return columns;
+  }
+}

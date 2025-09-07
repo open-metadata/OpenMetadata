@@ -2,109 +2,103 @@ package org.openmetadata.sdk.entities;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import org.openmetadata.sdk.client.OpenMetadata;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.models.ListParams;
-import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 
-public class Glossary extends org.openmetadata.schema.entity.data.Glossary {
+/**
+ * SDK wrapper for Glossary operations.
+ * This class provides static methods for Glossary CRUD operations.
+ */
+public class Glossary {
+  private static OpenMetadataClient defaultClient;
 
-  public static Glossary create(org.openmetadata.schema.entity.data.Glossary entity)
-      throws OpenMetadataException {
-    return (Glossary) OpenMetadata.client().glossaries().create(entity);
+  public static void setDefaultClient(OpenMetadataClient client) {
+    defaultClient = client;
   }
 
-  public static Glossary retrieve(String id) throws OpenMetadataException {
-    return (Glossary) OpenMetadata.client().glossaries().get(id);
+  private static OpenMetadataClient getClient() {
+    if (defaultClient == null) {
+      throw new IllegalStateException("Default client not set. Call setDefaultClient() first.");
+    }
+    return defaultClient;
   }
 
-  public static Glossary retrieve(UUID id) throws OpenMetadataException {
-    return retrieve(id.toString());
+  // Static CRUD methods
+  public static org.openmetadata.schema.entity.data.Glossary create(CreateGlossary request) {
+    // Convert CreateGlossary to Glossary
+    org.openmetadata.schema.entity.data.Glossary entity =
+        new org.openmetadata.schema.entity.data.Glossary();
+    entity.setName(request.getName());
+    if (request.getDisplayName() != null) {
+      entity.setDisplayName(request.getDisplayName());
+    }
+    if (request.getDescription() != null) {
+      entity.setDescription(request.getDescription());
+    }
+    if (request.getOwners() != null) {
+      entity.setOwners(request.getOwners());
+    }
+    if (request.getTags() != null) {
+      entity.setTags(request.getTags());
+    }
+    return getClient().glossaries().create(entity);
   }
 
-  public static Glossary retrieveByName(String name) throws OpenMetadataException {
-    return (Glossary) OpenMetadata.client().glossaries().getByName(name);
+  public static org.openmetadata.schema.entity.data.Glossary retrieve(String id) {
+    return getClient().glossaries().get(id);
   }
 
-  public static Glossary update(String id, org.openmetadata.schema.entity.data.Glossary patch)
-      throws OpenMetadataException {
-    return (Glossary) OpenMetadata.client().glossaries().patch(id, patch);
+  public static org.openmetadata.schema.entity.data.Glossary retrieve(String id, String fields) {
+    return getClient().glossaries().get(id, fields);
   }
 
-  public static void delete(String id, boolean recursive, boolean hardDelete)
-      throws OpenMetadataException {
+  public static org.openmetadata.schema.entity.data.Glossary retrieveByName(String name) {
+    return getClient().glossaries().getByName(name);
+  }
+
+  public static org.openmetadata.schema.entity.data.Glossary retrieveByName(
+      String name, String fields) {
+    return getClient().glossaries().getByName(name, fields);
+  }
+
+  public static org.openmetadata.schema.entity.data.Glossary update(
+      String id, org.openmetadata.schema.entity.data.Glossary entity) {
+    return getClient().glossaries().update(id, entity);
+  }
+
+  public static org.openmetadata.schema.entity.data.Glossary update(
+      org.openmetadata.schema.entity.data.Glossary entity) {
+    if (entity.getId() == null) {
+      throw new IllegalArgumentException("Glossary must have an ID for update");
+    }
+    return update(entity.getId().toString(), entity);
+  }
+
+  public static void delete(String id) {
+    delete(id, false, false);
+  }
+
+  public static void delete(String id, boolean recursive, boolean hardDelete) {
     Map<String, String> params = new HashMap<>();
     params.put("recursive", String.valueOf(recursive));
     params.put("hardDelete", String.valueOf(hardDelete));
-    OpenMetadata.client().glossaries().delete(id, params);
+    getClient().glossaries().delete(id, params);
   }
 
-  public static ListResponse<org.openmetadata.schema.entity.data.Glossary> list()
-      throws OpenMetadataException {
-    return OpenMetadata.client().glossaries().list();
+  // Async operations
+  public static CompletableFuture<org.openmetadata.schema.entity.data.Glossary> createAsync(
+      CreateGlossary request) {
+    return CompletableFuture.supplyAsync(() -> create(request));
   }
 
-  public static ListResponse<org.openmetadata.schema.entity.data.Glossary> list(ListParams params)
-      throws OpenMetadataException {
-    return OpenMetadata.client().glossaries().list(params);
+  public static CompletableFuture<org.openmetadata.schema.entity.data.Glossary> retrieveAsync(
+      String id) {
+    return CompletableFuture.supplyAsync(() -> retrieve(id));
   }
 
   public static CompletableFuture<Void> deleteAsync(
       String id, boolean recursive, boolean hardDelete) {
-    return CompletableFuture.runAsync(
-        () -> {
-          try {
-            delete(id, recursive, hardDelete);
-          } catch (OpenMetadataException e) {
-            throw new RuntimeException(e);
-          }
-        });
-  }
-
-  public static String exportCsv(String glossaryId) throws OpenMetadataException {
-    return OpenMetadata.client().glossaries().exportCsv(glossaryId);
-  }
-
-  public static String importCsv(String csvData) throws OpenMetadataException {
-    return OpenMetadata.client().glossaries().importCsv(csvData);
-  }
-
-  public static String importCsv(String csvData, boolean dryRun) throws OpenMetadataException {
-    return OpenMetadata.client().glossaries().importCsv(csvData, dryRun);
-  }
-
-  public static CompletableFuture<String> exportCsvAsync(String glossaryId) {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            return exportCsv(glossaryId);
-          } catch (OpenMetadataException e) {
-            throw new RuntimeException(e);
-          }
-        });
-  }
-
-  public static CompletableFuture<String> importCsvAsync(String csvData) {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            return importCsv(csvData);
-          } catch (OpenMetadataException e) {
-            throw new RuntimeException(e);
-          }
-        });
-  }
-
-  public static CompletableFuture<String> importCsvAsync(String csvData, boolean dryRun) {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            return importCsv(csvData, dryRun);
-          } catch (OpenMetadataException e) {
-            throw new RuntimeException(e);
-          }
-        });
+    return CompletableFuture.runAsync(() -> delete(id, recursive, hardDelete));
   }
 }

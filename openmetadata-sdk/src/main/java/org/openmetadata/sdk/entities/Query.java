@@ -75,12 +75,15 @@ public class Query extends org.openmetadata.schema.entity.data.Query {
   }
 
   public static org.openmetadata.schema.entity.data.Query patch(String id, String jsonPatch) {
-    // JSON patch requires a Query object with patch operations
-    org.openmetadata.schema.entity.data.Query patchQuery =
-        new org.openmetadata.schema.entity.data.Query();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty query as the service expects a Query object
-    return (org.openmetadata.schema.entity.data.Query) getClient().queries().patch(id, patchQuery);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().queries().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

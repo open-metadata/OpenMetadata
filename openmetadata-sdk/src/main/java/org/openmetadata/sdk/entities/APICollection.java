@@ -31,7 +31,7 @@ public class APICollection extends org.openmetadata.schema.entity.data.APICollec
   public static APICollection update(
       String id, org.openmetadata.schema.entity.data.APICollection patch)
       throws OpenMetadataException {
-    return (APICollection) OpenMetadata.client().apiCollections().patch(id, patch);
+    return (APICollection) OpenMetadata.client().apiCollections().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

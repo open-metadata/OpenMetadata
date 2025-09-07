@@ -1,0 +1,216 @@
+package org.openmetadata.sdk.integration;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.sdk.BaseSDKTest;
+import org.openmetadata.sdk.OM;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class ClassificationSDKIntegrationTest extends BaseSDKTest {
+
+  private Classification classification;
+
+  @Override
+  protected void additionalSetUp() throws Exception {
+    createClassification();
+  }
+
+  @Override
+  protected void additionalTearDown() throws Exception {
+    if (classification != null) {
+      try {
+        OM.Classification.delete(classification.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  private void createClassification() throws Exception {
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(generateTestName("test_classification"))
+            .withDisplayName("Test Classification")
+            .withDescription("Classification for SDK integration tests");
+
+    classification = OM.Classification.create(createClassification);
+    assertNotNull(classification);
+  }
+
+  @Test
+  void testClassificationCRUDOperations() {
+    String classificationName = generateTestName("test_classification_crud");
+
+    CreateClassification createRequest =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDisplayName("Test Classification CRUD")
+            .withDescription("Test classification for CRUD operations");
+
+    Classification createdClassification = OM.Classification.create(createRequest);
+    assertNotNull(createdClassification);
+    assertNotNull(createdClassification.getId());
+    assertEquals(classificationName, createdClassification.getName());
+
+    try {
+      Classification retrievedClassification =
+          OM.Classification.retrieve(createdClassification.getId().toString());
+      assertNotNull(retrievedClassification);
+      assertEquals(createdClassification.getId(), retrievedClassification.getId());
+
+      retrievedClassification.setDescription("Updated classification description");
+      Classification updatedClassification = OM.Classification.update(retrievedClassification);
+      assertEquals("Updated classification description", updatedClassification.getDescription());
+
+    } finally {
+      OM.Classification.delete(createdClassification.getId().toString());
+    }
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.Classification.retrieve(createdClassification.getId().toString());
+        });
+  }
+
+  @Test
+  void testTagCRUDOperations() {
+    String tagName = generateTestName("test_tag");
+
+    CreateTag createRequest =
+        new CreateTag()
+            .withName(tagName)
+            .withDisplayName("Test Tag")
+            .withDescription("Test tag for SDK integration")
+            .withClassification(classification.getFullyQualifiedName());
+
+    Tag createdTag = OM.Tag.create(createRequest);
+    assertNotNull(createdTag);
+    assertNotNull(createdTag.getId());
+    assertEquals(tagName, createdTag.getName());
+
+    try {
+      Tag retrievedTag = OM.Tag.retrieve(createdTag.getId().toString());
+      assertNotNull(retrievedTag);
+      assertEquals(createdTag.getId(), retrievedTag.getId());
+
+      retrievedTag.setDescription("Updated tag description");
+      Tag updatedTag = OM.Tag.update(retrievedTag);
+      assertEquals("Updated tag description", updatedTag.getDescription());
+
+    } finally {
+      OM.Tag.delete(createdTag.getId().toString());
+    }
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.Tag.retrieve(createdTag.getId().toString());
+        });
+  }
+
+  @Test
+  void testTagHierarchy() {
+    String parentTagName = generateTestName("parent_tag");
+    String childTagName = generateTestName("child_tag");
+
+    CreateTag createParent =
+        new CreateTag()
+            .withName(parentTagName)
+            .withDisplayName("Parent Tag")
+            .withClassification(classification.getFullyQualifiedName());
+
+    Tag parentTag = OM.Tag.create(createParent);
+    assertNotNull(parentTag);
+
+    try {
+      CreateTag createChild =
+          new CreateTag()
+              .withName(childTagName)
+              .withDisplayName("Child Tag")
+              .withClassification(classification.getFullyQualifiedName())
+              .withParent(parentTag.getFullyQualifiedName());
+
+      Tag childTag = OM.Tag.create(createChild);
+      assertNotNull(childTag);
+      assertNotNull(childTag.getParent());
+      assertEquals(parentTag.getFullyQualifiedName(), childTag.getParent().getFullyQualifiedName());
+
+      OM.Tag.delete(childTag.getId().toString());
+
+    } finally {
+      OM.Tag.delete(parentTag.getId().toString());
+    }
+  }
+
+  @Test
+  void testClassificationWithMutuallyExclusive() {
+    String classificationName = generateTestName("test_classification_mutex");
+
+    CreateClassification createRequest =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDisplayName("Mutually Exclusive Classification")
+            .withDescription("Classification with mutually exclusive tags")
+            .withMutuallyExclusive(true);
+
+    Classification mutexClassification = OM.Classification.create(createRequest);
+    assertNotNull(mutexClassification);
+    assertTrue(mutexClassification.getMutuallyExclusive());
+
+    try {
+      CreateTag createTag1 =
+          new CreateTag()
+              .withName(generateTestName("mutex_tag1"))
+              .withDisplayName("Mutex Tag 1")
+              .withClassification(mutexClassification.getFullyQualifiedName());
+
+      Tag tag1 = OM.Tag.create(createTag1);
+      assertNotNull(tag1);
+
+      CreateTag createTag2 =
+          new CreateTag()
+              .withName(generateTestName("mutex_tag2"))
+              .withDisplayName("Mutex Tag 2")
+              .withClassification(mutexClassification.getFullyQualifiedName());
+
+      Tag tag2 = OM.Tag.create(createTag2);
+      assertNotNull(tag2);
+
+      OM.Tag.delete(tag1.getId().toString());
+      OM.Tag.delete(tag2.getId().toString());
+
+    } finally {
+      OM.Classification.delete(mutexClassification.getId().toString());
+    }
+  }
+
+  @Test
+  void testRetrieveByName() {
+    String classificationName = generateTestName("test_classification_by_name");
+    CreateClassification createRequest =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDisplayName("Test Classification by Name");
+
+    Classification testClassification = OM.Classification.create(createRequest);
+    assertNotNull(testClassification);
+
+    try {
+      String fqn = testClassification.getFullyQualifiedName();
+      Classification retrievedClassification = OM.Classification.retrieveByName(fqn);
+      assertNotNull(retrievedClassification);
+      assertEquals(testClassification.getId(), retrievedClassification.getId());
+      assertEquals(testClassification.getName(), retrievedClassification.getName());
+
+    } finally {
+      OM.Classification.delete(testClassification.getId().toString());
+    }
+  }
+}

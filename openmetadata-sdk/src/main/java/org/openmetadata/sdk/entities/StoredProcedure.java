@@ -70,12 +70,17 @@ public class StoredProcedure extends org.openmetadata.schema.entity.data.StoredP
     return (StoredProcedure) getClient().storedProcedures().update(id, storedProcedure);
   }
 
-  public static StoredProcedure patch(String id, String jsonPatch) {
-    // JSON patch requires a StoredProcedure object with patch operations
-    StoredProcedure patchStoredProcedure = new StoredProcedure();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty storedProcedure as the service expects a StoredProcedure object
-    return (StoredProcedure) getClient().storedProcedures().patch(id, patchStoredProcedure);
+  public static org.openmetadata.schema.entity.data.StoredProcedure patch(
+      String id, String jsonPatch) {
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().storedProcedures().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

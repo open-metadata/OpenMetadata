@@ -75,12 +75,15 @@ public class User extends org.openmetadata.schema.entity.teams.User {
   }
 
   public static org.openmetadata.schema.entity.teams.User patch(String id, String jsonPatch) {
-    // JSON patch requires a User object with patch operations
-    org.openmetadata.schema.entity.teams.User patchUser =
-        new org.openmetadata.schema.entity.teams.User();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty user as the service expects a User object
-    return (org.openmetadata.schema.entity.teams.User) getClient().users().patch(id, patchUser);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().users().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

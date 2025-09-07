@@ -30,7 +30,7 @@ public class TestDefinition extends org.openmetadata.schema.tests.TestDefinition
 
   public static TestDefinition update(String id, org.openmetadata.schema.tests.TestDefinition patch)
       throws OpenMetadataException {
-    return (TestDefinition) OpenMetadata.client().testDefinitions().patch(id, patch);
+    return (TestDefinition) OpenMetadata.client().testDefinitions().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

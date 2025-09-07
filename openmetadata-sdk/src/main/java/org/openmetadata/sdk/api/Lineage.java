@@ -52,21 +52,22 @@ public class Lineage {
     return getClient().lineage().addLineage(lineageRequest);
   }
 
-  public static String addLineage(String fromEntityId, String fromEntityType, 
-      String toEntityId, String toEntityType) throws OpenMetadataException {
+  public static String addLineage(
+      String fromEntityId, String fromEntityType, String toEntityId, String toEntityType)
+      throws OpenMetadataException {
     // Build lineage request
-    Map<String, Object> lineageRequest = Map.of(
-        "edge", Map.of(
-            "fromEntity", Map.of(
-                "id", fromEntityId,
-                "type", fromEntityType
-            ),
-            "toEntity", Map.of(
-                "id", toEntityId,
-                "type", toEntityType
-            )
-        )
-    );
+    Map<String, Object> lineageRequest =
+        Map.of(
+            "edge",
+            Map.of(
+                "fromEntity",
+                    Map.of(
+                        "id", fromEntityId,
+                        "type", fromEntityType),
+                "toEntity",
+                    Map.of(
+                        "id", toEntityId,
+                        "type", toEntityType)));
     return addLineage(lineageRequest);
   }
 
@@ -84,53 +85,59 @@ public class Lineage {
 
   // Async operations
   public static CompletableFuture<String> getLineageAsync(String entity) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return getLineage(entity);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return getLineage(entity);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
-  public static CompletableFuture<String> getEntityLineageAsync(String entityType, String entityId) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return getEntityLineage(entityType, entityId);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+  public static CompletableFuture<String> getEntityLineageAsync(
+      String entityType, String entityId) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return getEntityLineage(entityType, entityId);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> addLineageAsync(Object lineageRequest) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return addLineage(lineageRequest);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return addLineage(lineageRequest);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> deleteLineageAsync(String fromEntity, String toEntity) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return deleteLineage(fromEntity, toEntity);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return deleteLineage(fromEntity, toEntity);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public static CompletableFuture<String> exportLineageAsync(String entityType, String entityId) {
-    return CompletableFuture.supplyAsync(() -> {
-      try {
-        return exportLineage(entityType, entityId);
-      } catch (OpenMetadataException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return exportLineage(entityType, entityId);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   // Builder for lineage queries
@@ -181,13 +188,14 @@ public class Lineage {
     }
 
     public CompletableFuture<String> executeAsync() {
-      return CompletableFuture.supplyAsync(() -> {
-        try {
-          return execute();
-        } catch (OpenMetadataException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      return CompletableFuture.supplyAsync(
+          () -> {
+            try {
+              return execute();
+            } catch (OpenMetadataException e) {
+              throw new RuntimeException(e);
+            }
+          });
     }
   }
 }

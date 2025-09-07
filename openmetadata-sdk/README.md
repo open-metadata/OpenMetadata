@@ -212,41 +212,41 @@ String lineage = Lineage.builder()
 ## Bulk Operations
 
 ```java
-// Import CSV data
-String result = Bulk.importCsv("table", csvData);
-String result = Bulk.importCsv("table", csvData, true); // dry run
+// Bulk create entities
+List<Object> entities = Arrays.asList(entity1, entity2, entity3);
+String result = Bulk.create("table", entities);
 
-// Export CSV data
-String csv = Bulk.exportCsv("table");
-String csv = Bulk.exportCsv("table", "specific-name");
+// Bulk update entities
+List<Object> updates = Arrays.asList(updatedEntity1, updatedEntity2);
+String result = Bulk.update("table", updates);
 
-// Bulk add assets
-List<Map<String, Object>> assets = Arrays.asList(
-    Map.of("name", "table1", "database", "db1"),
-    Map.of("name", "table2", "database", "db1")
-);
-Bulk.addAssets("table", assets);
-
-// Bulk patch
-List<Map<String, Object>> patches = Arrays.asList(
-    Map.of("id", "id1", "description", "Updated description"),
-    Map.of("id", "id2", "description", "Another update")
-);
-Bulk.patch("table", patches);
-
-// Bulk delete
+// Bulk delete entities
 List<String> ids = Arrays.asList("id1", "id2", "id3");
-Bulk.delete("table", ids);
-Bulk.delete("table", ids, true); // hard delete
+String result = Bulk.delete("table", ids);
 
-// Bulk restore
-Bulk.restore("table", ids);
+// Bulk add tags
+List<String> entityIds = Arrays.asList("id1", "id2");
+List<String> tags = Arrays.asList("tag1", "tag2");
+Bulk.addTags("table", entityIds, tags);
+
+// Bulk remove tags
+Bulk.removeTags("table", entityIds, tags);
+
+// Get operation status
+String status = Bulk.getOperationStatus("operation-id");
 
 // Using the builder
 String result = Bulk.builder()
     .entityType("table")
-    .csvData(csvData)
-    .dryRun(true)
+    .entities(entities)
+    .forCreate()
+    .execute();
+
+// Builder for bulk delete
+String result = Bulk.builder()
+    .entityType("table")
+    .entityIds(ids)
+    .forDelete()
     .execute();
 ```
 
@@ -271,7 +271,7 @@ CompletableFuture<String> future = Lineage.addLineageAsync(lineageRequest);
 CompletableFuture<String> future = Lineage.exportLineageAsync("table", "id");
 
 // Async bulk operations
-CompletableFuture<String> future = Bulk.importCsvAsync("table", csvData);
+CompletableFuture<String> future = Bulk.createAsync("table", entities);
 CompletableFuture<String> future = Bulk.deleteAsync("table", ids);
 
 // Handle async results

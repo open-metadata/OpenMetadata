@@ -30,7 +30,7 @@ public class APIService extends org.openmetadata.schema.entity.services.ApiServi
   public static APIService update(
       String id, org.openmetadata.schema.entity.services.ApiService patch)
       throws OpenMetadataException {
-    return (APIService) OpenMetadata.client().apiServices().patch(id, patch);
+    return (APIService) OpenMetadata.client().apiServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

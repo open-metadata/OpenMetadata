@@ -33,7 +33,7 @@ public class IngestionPipeline
   public static IngestionPipeline update(
       String id, org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline patch)
       throws OpenMetadataException {
-    return (IngestionPipeline) OpenMetadata.client().ingestionPipelines().patch(id, patch);
+    return (IngestionPipeline) OpenMetadata.client().ingestionPipelines().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

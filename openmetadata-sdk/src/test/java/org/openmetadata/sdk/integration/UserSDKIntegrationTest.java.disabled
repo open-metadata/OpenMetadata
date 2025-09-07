@@ -1,0 +1,128 @@
+package org.openmetadata.sdk.integration;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.BaseSDKTest;
+import org.openmetadata.sdk.OM;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class UserSDKIntegrationTest extends BaseSDKTest {
+
+  @Test
+  void testUserCRUDOperations() {
+    String userName = generateTestName("test_user");
+    String email = userName + "@openmetadata.org";
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(email)
+            .withDisplayName("Test User")
+            .withDescription("Test user for SDK integration");
+
+    User createdUser = OM.User.create(createRequest);
+    assertNotNull(createdUser);
+    assertNotNull(createdUser.getId());
+    assertEquals(userName, createdUser.getName());
+    assertEquals(email, createdUser.getEmail());
+
+    User retrievedUser = OM.User.retrieve(createdUser.getId().toString());
+    assertNotNull(retrievedUser);
+    assertEquals(createdUser.getId(), retrievedUser.getId());
+
+    retrievedUser.setDescription("Updated description");
+    User updatedUser = OM.User.update(retrievedUser);
+    assertEquals("Updated description", updatedUser.getDescription());
+
+    OM.User.delete(createdUser.getId().toString());
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.User.retrieve(createdUser.getId().toString());
+        });
+  }
+
+  @Test
+  void testUserWithTeams() {
+    String userName = generateTestName("test_user_teams");
+    CreateUser createRequest =
+        new CreateUser().withName(userName).withEmail(userName + "@openmetadata.org");
+
+    User user = OM.User.create(createRequest);
+    assertNotNull(user);
+
+    try {
+      User userWithTeams = OM.User.retrieve(user.getId().toString(), "teams");
+
+      List<EntityReference> teams = new ArrayList<>();
+      teams.add(
+          new EntityReference()
+              .withId(UUID.fromString("9422cb0c-7588-4d48-9997-21be80c17a57"))
+              .withType("team"));
+      userWithTeams.setTeams(teams);
+
+      User updatedUser = OM.User.update(userWithTeams);
+      assertNotNull(updatedUser.getTeams());
+
+    } finally {
+      OM.User.delete(user.getId().toString());
+    }
+  }
+
+  @Test
+  void testUserWithRoles() {
+    String userName = generateTestName("test_user_roles");
+    CreateUser createRequest =
+        new CreateUser().withName(userName).withEmail(userName + "@openmetadata.org");
+
+    User user = OM.User.create(createRequest);
+    assertNotNull(user);
+
+    try {
+      User userWithRoles = OM.User.retrieve(user.getId().toString(), "roles");
+
+      List<EntityReference> roles = new ArrayList<>();
+      roles.add(
+          new EntityReference()
+              .withId(UUID.fromString("1d8b1d41-6583-4daa-9280-c20311134b87"))
+              .withType("role"));
+      userWithRoles.setRoles(roles);
+
+      User updatedUser = OM.User.update(userWithRoles);
+      assertNotNull(updatedUser.getRoles());
+
+    } finally {
+      OM.User.delete(user.getId().toString());
+    }
+  }
+
+  @Test
+  void testRetrieveByEmail() {
+    String userName = generateTestName("test_user_by_email");
+    String email = userName + "@openmetadata.org";
+
+    CreateUser createRequest = new CreateUser().withName(userName).withEmail(email);
+
+    User user = OM.User.create(createRequest);
+    assertNotNull(user);
+
+    try {
+      User retrievedUser = OM.User.retrieveByName(email);
+      assertNotNull(retrievedUser);
+      assertEquals(user.getId(), retrievedUser.getId());
+      assertEquals(email, retrievedUser.getEmail());
+
+    } finally {
+      OM.User.delete(user.getId().toString());
+    }
+  }
+}

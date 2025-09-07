@@ -1,0 +1,182 @@
+package org.openmetadata.sdk.integration;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.services.CreatePipelineService;
+import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
+import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.Task;
+import org.openmetadata.sdk.BaseSDKTest;
+import org.openmetadata.sdk.OM;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class PipelineSDKIntegrationTest extends BaseSDKTest {
+
+  private PipelineService pipelineService;
+
+  @Override
+  protected void additionalSetUp() throws Exception {
+    createPipelineService();
+  }
+
+  @Override
+  protected void additionalTearDown() throws Exception {
+    if (pipelineService != null) {
+      try {
+        OM.PipelineService.delete(pipelineService.getId().toString());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  private void createPipelineService() throws Exception {
+    AirflowConnection airflowConnection =
+        new AirflowConnection().withHostPort(URI.create("http://localhost:8080"));
+
+    PipelineConnection connection = new PipelineConnection().withConfig(airflowConnection);
+
+    CreatePipelineService createService =
+        new CreatePipelineService()
+            .withName(generateTestName("test_pipeline_service"))
+            .withServiceType(PipelineServiceType.Airflow)
+            .withConnection(connection);
+
+    pipelineService = OM.PipelineService.create(createService);
+    assertNotNull(pipelineService);
+  }
+
+  @Test
+  void testPipelineCRUDOperations() {
+    String pipelineName = generateTestName("test_pipeline");
+
+    CreatePipeline createRequest =
+        new CreatePipeline()
+            .withName(pipelineName)
+            .withService(pipelineService.getFullyQualifiedName())
+            .withDescription("Test pipeline for SDK integration");
+
+    Pipeline createdPipeline = OM.Pipeline.create(createRequest);
+    assertNotNull(createdPipeline);
+    assertNotNull(createdPipeline.getId());
+    assertEquals(pipelineName, createdPipeline.getName());
+
+    Pipeline retrievedPipeline = OM.Pipeline.retrieve(createdPipeline.getId().toString());
+    assertNotNull(retrievedPipeline);
+    assertEquals(createdPipeline.getId(), retrievedPipeline.getId());
+
+    retrievedPipeline.setDescription("Updated pipeline description");
+    Pipeline updatedPipeline = OM.Pipeline.update(retrievedPipeline);
+    assertEquals("Updated pipeline description", updatedPipeline.getDescription());
+
+    OM.Pipeline.delete(createdPipeline.getId().toString());
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          OM.Pipeline.retrieve(createdPipeline.getId().toString());
+        });
+  }
+
+  @Test
+  void testPipelineWithTasks() {
+    String pipelineName = generateTestName("test_pipeline_tasks");
+    List<Task> tasks = createTestTasks();
+
+    CreatePipeline createRequest =
+        new CreatePipeline()
+            .withName(pipelineName)
+            .withService(pipelineService.getFullyQualifiedName())
+            .withTasks(tasks);
+
+    Pipeline pipeline = OM.Pipeline.create(createRequest);
+    assertNotNull(pipeline);
+    assertEquals(3, pipeline.getTasks().size());
+
+    try {
+      Task newTask = new Task().withName("validation_task").withDescription("Data validation task");
+      pipeline.getTasks().add(newTask);
+
+      Pipeline updatedPipeline = OM.Pipeline.update(pipeline);
+      assertEquals(4, updatedPipeline.getTasks().size());
+
+    } finally {
+      OM.Pipeline.delete(pipeline.getId().toString());
+    }
+  }
+
+  @Test
+  void testPipelineWithOwners() {
+    String pipelineName = generateTestName("test_pipeline_owners");
+    CreatePipeline createRequest =
+        new CreatePipeline()
+            .withName(pipelineName)
+            .withService(pipelineService.getFullyQualifiedName());
+
+    Pipeline pipeline = OM.Pipeline.create(createRequest);
+    assertNotNull(pipeline);
+
+    try {
+      Pipeline pipelineWithOwners = OM.Pipeline.retrieve(pipeline.getId().toString(), "owners");
+
+      List<EntityReference> owners = new ArrayList<>();
+      owners.add(
+          new EntityReference()
+              .withId(UUID.fromString("c3eb265f-5445-4ad3-ba5e-797d3a3071bb"))
+              .withType("user"));
+      pipelineWithOwners.setOwners(owners);
+
+      Pipeline updatedPipeline = OM.Pipeline.update(pipelineWithOwners);
+      assertNotNull(updatedPipeline.getOwners());
+
+    } finally {
+      OM.Pipeline.delete(pipeline.getId().toString());
+    }
+  }
+
+  @Test
+  void testRetrieveByName() {
+    String pipelineName = generateTestName("test_pipeline_by_name");
+    CreatePipeline createRequest =
+        new CreatePipeline()
+            .withName(pipelineName)
+            .withService(pipelineService.getFullyQualifiedName());
+
+    Pipeline pipeline = OM.Pipeline.create(createRequest);
+    assertNotNull(pipeline);
+
+    try {
+      String fqn = pipeline.getFullyQualifiedName();
+      Pipeline retrievedPipeline = OM.Pipeline.retrieveByName(fqn);
+      assertNotNull(retrievedPipeline);
+      assertEquals(pipeline.getId(), retrievedPipeline.getId());
+      assertEquals(pipeline.getName(), retrievedPipeline.getName());
+
+    } finally {
+      OM.Pipeline.delete(pipeline.getId().toString());
+    }
+  }
+
+  private List<Task> createTestTasks() {
+    List<Task> tasks = new ArrayList<>();
+
+    tasks.add(new Task().withName("extract_task").withDescription("Extract data from source"));
+
+    tasks.add(new Task().withName("transform_task").withDescription("Transform extracted data"));
+
+    tasks.add(new Task().withName("load_task").withDescription("Load transformed data"));
+
+    return tasks;
+  }
+}

@@ -77,13 +77,15 @@ public class Dashboard extends org.openmetadata.schema.entity.data.Dashboard {
   }
 
   public static org.openmetadata.schema.entity.data.Dashboard patch(String id, String jsonPatch) {
-    // JSON patch requires a Dashboard object with patch operations
-    org.openmetadata.schema.entity.data.Dashboard patchDashboard =
-        new org.openmetadata.schema.entity.data.Dashboard();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty dashboard as the service expects a Dashboard object
-    return (org.openmetadata.schema.entity.data.Dashboard)
-        getClient().dashboards().patch(id, patchDashboard);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().dashboards().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

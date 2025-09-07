@@ -79,13 +79,15 @@ public class MlModel extends org.openmetadata.schema.entity.data.MlModel {
   }
 
   public static org.openmetadata.schema.entity.data.MlModel patch(String id, String jsonPatch) {
-    // JSON patch requires a MlModel object with patch operations
-    org.openmetadata.schema.entity.data.MlModel patchMlModel =
-        new org.openmetadata.schema.entity.data.MlModel();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty mlModel as the service expects a MlModel object
-    return (org.openmetadata.schema.entity.data.MlModel)
-        getClient().mlModels().patch(id, patchMlModel);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().mlModels().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

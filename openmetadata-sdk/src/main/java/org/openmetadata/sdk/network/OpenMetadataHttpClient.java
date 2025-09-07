@@ -2,6 +2,7 @@ package org.openmetadata.sdk.network;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Map;
@@ -27,6 +28,8 @@ import org.openmetadata.sdk.models.ErrorResponse;
 public class OpenMetadataHttpClient implements HttpClient {
   private static final MediaType JSON_MEDIA_TYPE =
       MediaType.parse("application/json; charset=utf-8");
+  private static final MediaType JSON_PATCH_MEDIA_TYPE =
+      MediaType.parse("application/json-patch+json; charset=utf-8");
   private final OkHttpClient okHttpClient;
   private final ObjectMapper objectMapper;
   private final OpenMetadataConfig config;
@@ -183,7 +186,13 @@ public class OpenMetadataHttpClient implements HttpClient {
 
     // Add authorization header
     if (config.getAccessToken() != null) {
-      requestBuilder.addHeader("Authorization", "Bearer " + config.getAccessToken());
+      if (config.isTestMode()) {
+        // In test mode, send the email in X-Auth-Params-Email header
+        requestBuilder.addHeader("X-Auth-Params-Email", config.getAccessToken());
+      } else {
+        // In production mode, use Bearer token
+        requestBuilder.addHeader("Authorization", "Bearer " + config.getAccessToken());
+      }
     }
 
     // Add headers from options
@@ -196,11 +205,26 @@ public class OpenMetadataHttpClient implements HttpClient {
     // Set request body and method
     RequestBody body = null;
     if (requestBody != null) {
-      try {
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
-        body = RequestBody.create(jsonBody, JSON_MEDIA_TYPE);
-      } catch (JsonProcessingException e) {
-        throw new InvalidRequestException("Failed to serialize request body: " + e.getMessage(), e);
+      // Check if this is a string request (for CSV import, etc.)
+      if (requestBody instanceof String) {
+        String contentType = "text/plain";
+        if (options != null && options.getHeaders() != null) {
+          contentType = options.getHeaders().getOrDefault("Content-Type", contentType);
+        }
+        body = RequestBody.create((String) requestBody, MediaType.parse(contentType));
+      } else {
+        try {
+          String jsonBody = objectMapper.writeValueAsString(requestBody);
+          // Use JSON Patch media type for PATCH requests with JsonNode
+          if (method == HttpMethod.PATCH && requestBody instanceof JsonNode) {
+            body = RequestBody.create(jsonBody, JSON_PATCH_MEDIA_TYPE);
+          } else {
+            body = RequestBody.create(jsonBody, JSON_MEDIA_TYPE);
+          }
+        } catch (JsonProcessingException e) {
+          throw new InvalidRequestException(
+              "Failed to serialize request body: " + e.getMessage(), e);
+        }
       }
     } else if (method == HttpMethod.POST
         || method == HttpMethod.PUT

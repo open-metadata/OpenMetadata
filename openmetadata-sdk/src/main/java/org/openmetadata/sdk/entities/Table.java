@@ -9,7 +9,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.dataassets.TableService;
 
-public class Table extends org.openmetadata.schema.entity.data.Table {
+/**
+ * SDK wrapper for Table operations.
+ * This class provides static methods for Table CRUD operations.
+ * It does NOT extend the schema Table class to avoid naming conflicts.
+ */
+public class Table {
   private static OpenMetadataClient defaultClient;
 
   public static void setDefaultClient(OpenMetadataClient client) {
@@ -25,25 +30,8 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Table create(CreateTable request) {
-    // Convert CreateTable to Table entity
-    org.openmetadata.schema.entity.data.Table table =
-        new org.openmetadata.schema.entity.data.Table();
-    table.setName(request.getName());
-    table.setDisplayName(request.getDisplayName());
-    table.setDescription(request.getDescription());
-    table.setTableType(request.getTableType());
-    table.setColumns(request.getColumns());
-    table.setTableConstraints(request.getTableConstraints());
-    table.setTags(request.getTags());
-    table.setOwners(request.getOwners());
-    table.setRetentionPeriod(request.getRetentionPeriod());
-    table.setExtension(request.getExtension());
-    table.setSourceHash(request.getSourceHash());
-    table.setFileFormat(request.getFileFormat());
-    table.setLifeCycle(request.getLifeCycle());
-    table.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Table) getClient().tables().create(table);
+    // Pass CreateTable request directly to the API
+    return getClient().tables().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Table retrieve(String id) {
@@ -79,13 +67,24 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
     return (org.openmetadata.schema.entity.data.Table) getClient().tables().update(id, table);
   }
 
+  public static org.openmetadata.schema.entity.data.Table update(
+      org.openmetadata.schema.entity.data.Table table) {
+    if (table.getId() == null) {
+      throw new IllegalArgumentException("Table must have an ID for update");
+    }
+    return update(table.getId().toString(), table);
+  }
+
   public static org.openmetadata.schema.entity.data.Table patch(String id, String jsonPatch) {
-    // JSON patch requires a Table object with patch operations
-    org.openmetadata.schema.entity.data.Table patchTable =
-        new org.openmetadata.schema.entity.data.Table();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty table as the service expects a Table object
-    return (org.openmetadata.schema.entity.data.Table) getClient().tables().patch(id, patchTable);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().tables().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {
@@ -135,23 +134,6 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
     return CompletableFuture.supplyAsync(() -> getClient().tables().importCsv(csvData, dryRun));
   }
 
-  // Instance methods
-  public org.openmetadata.schema.entity.data.Table save() {
-    if (this.getId() != null) {
-      return update(this.getId().toString(), this);
-    } else {
-      throw new IllegalStateException("Cannot save a table without an ID");
-    }
-  }
-
-  public void delete() {
-    if (this.getId() != null) {
-      delete(this.getId().toString());
-    } else {
-      throw new IllegalStateException("Cannot delete a table without an ID");
-    }
-  }
-
   // Collection class with iterator support
   public static class TableCollection {
     private final TableService service;
@@ -172,10 +154,10 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
       return response.getData();
     }
 
-    public Iterable<Table> autoPagingIterable() {
-      return new Iterable<Table>() {
+    public Iterable<org.openmetadata.schema.entity.data.Table> autoPagingIterable() {
+      return new Iterable<org.openmetadata.schema.entity.data.Table>() {
         @Override
-        public Iterator<Table> iterator() {
+        public Iterator<org.openmetadata.schema.entity.data.Table> iterator() {
           return new TableIterator(service, params);
         }
       };
@@ -251,7 +233,8 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
   }
 
   // Iterator for pagination
-  private static class TableIterator implements Iterator<Table> {
+  private static class TableIterator
+      implements Iterator<org.openmetadata.schema.entity.data.Table> {
     private final TableService service;
     private final TableListParams params;
     private Iterator<org.openmetadata.schema.entity.data.Table> currentPage;
@@ -293,11 +276,11 @@ public class Table extends org.openmetadata.schema.entity.data.Table {
     }
 
     @Override
-    public Table next() {
+    public org.openmetadata.schema.entity.data.Table next() {
       if (!hasNext()) {
         throw new java.util.NoSuchElementException();
       }
-      return (Table) currentPage.next();
+      return currentPage.next();
     }
   }
 }

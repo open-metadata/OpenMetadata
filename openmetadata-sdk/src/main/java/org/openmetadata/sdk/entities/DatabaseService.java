@@ -2,52 +2,104 @@ package org.openmetadata.sdk.entities;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import org.openmetadata.sdk.client.OpenMetadata;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.models.ListParams;
-import org.openmetadata.sdk.models.ListResponse;
+import java.util.concurrent.CompletableFuture;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 
 public class DatabaseService extends org.openmetadata.schema.entity.services.DatabaseService {
+  private static OpenMetadataClient defaultClient;
 
-  public static DatabaseService create(
-      org.openmetadata.schema.entity.services.DatabaseService entity) throws OpenMetadataException {
-    return (DatabaseService) OpenMetadata.client().databaseServices().create(entity);
+  public static void setDefaultClient(OpenMetadataClient client) {
+    defaultClient = client;
   }
 
-  public static DatabaseService retrieve(String id) throws OpenMetadataException {
-    return (DatabaseService) OpenMetadata.client().databaseServices().get(id);
+  private static OpenMetadataClient getClient() {
+    if (defaultClient == null) {
+      throw new IllegalStateException("Default client not set. Call setDefaultClient() first.");
+    }
+    return defaultClient;
   }
 
-  public static DatabaseService retrieve(UUID id) throws OpenMetadataException {
-    return retrieve(id.toString());
+  // Static CRUD methods
+  public static org.openmetadata.schema.entity.services.DatabaseService create(
+      CreateDatabaseService request) {
+    // Convert CreateDatabaseService to DatabaseService
+    org.openmetadata.schema.entity.services.DatabaseService service =
+        new org.openmetadata.schema.entity.services.DatabaseService();
+    service.setName(request.getName());
+    if (request.getDisplayName() != null) {
+      service.setDisplayName(request.getDisplayName());
+    }
+    if (request.getDescription() != null) {
+      service.setDescription(request.getDescription());
+    }
+    service.setServiceType(request.getServiceType());
+    service.setConnection(request.getConnection());
+    if (request.getTags() != null) {
+      service.setTags(request.getTags());
+    }
+    if (request.getOwners() != null) {
+      service.setOwners(request.getOwners());
+    }
+    return getClient().databaseServices().create(service);
   }
 
-  public static DatabaseService retrieveByName(String name) throws OpenMetadataException {
-    return (DatabaseService) OpenMetadata.client().databaseServices().getByName(name);
+  public static org.openmetadata.schema.entity.services.DatabaseService retrieve(String id) {
+    return getClient().databaseServices().get(id);
   }
 
-  public static DatabaseService update(
-      String id, org.openmetadata.schema.entity.services.DatabaseService patch)
-      throws OpenMetadataException {
-    return (DatabaseService) OpenMetadata.client().databaseServices().patch(id, patch);
+  public static org.openmetadata.schema.entity.services.DatabaseService retrieve(
+      String id, String fields) {
+    return getClient().databaseServices().get(id, fields);
   }
 
-  public static void delete(String id, boolean recursive, boolean hardDelete)
-      throws OpenMetadataException {
+  public static org.openmetadata.schema.entity.services.DatabaseService retrieveByName(
+      String name) {
+    return getClient().databaseServices().getByName(name);
+  }
+
+  public static org.openmetadata.schema.entity.services.DatabaseService retrieveByName(
+      String name, String fields) {
+    return getClient().databaseServices().getByName(name, fields);
+  }
+
+  public static org.openmetadata.schema.entity.services.DatabaseService update(
+      String id, org.openmetadata.schema.entity.services.DatabaseService service) {
+    return getClient().databaseServices().update(id, service);
+  }
+
+  public static org.openmetadata.schema.entity.services.DatabaseService update(
+      org.openmetadata.schema.entity.services.DatabaseService service) {
+    if (service.getId() == null) {
+      throw new IllegalArgumentException("DatabaseService must have an ID for update");
+    }
+    return update(service.getId().toString(), service);
+  }
+
+  public static void delete(String id) {
+    delete(id, false, false);
+  }
+
+  public static void delete(String id, boolean recursive, boolean hardDelete) {
     Map<String, String> params = new HashMap<>();
     params.put("recursive", String.valueOf(recursive));
     params.put("hardDelete", String.valueOf(hardDelete));
-    OpenMetadata.client().databaseServices().delete(id, params);
+    getClient().databaseServices().delete(id, params);
   }
 
-  public static ListResponse<org.openmetadata.schema.entity.services.DatabaseService> list()
-      throws OpenMetadataException {
-    return OpenMetadata.client().databaseServices().list();
+  // Async operations
+  public static CompletableFuture<org.openmetadata.schema.entity.services.DatabaseService>
+      createAsync(CreateDatabaseService request) {
+    return CompletableFuture.supplyAsync(() -> create(request));
   }
 
-  public static ListResponse<org.openmetadata.schema.entity.services.DatabaseService> list(
-      ListParams params) throws OpenMetadataException {
-    return OpenMetadata.client().databaseServices().list(params);
+  public static CompletableFuture<org.openmetadata.schema.entity.services.DatabaseService>
+      retrieveAsync(String id) {
+    return CompletableFuture.supplyAsync(() -> retrieve(id));
+  }
+
+  public static CompletableFuture<Void> deleteAsync(
+      String id, boolean recursive, boolean hardDelete) {
+    return CompletableFuture.runAsync(() -> delete(id, recursive, hardDelete));
   }
 }

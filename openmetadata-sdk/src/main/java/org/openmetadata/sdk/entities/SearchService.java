@@ -30,7 +30,7 @@ public class SearchService extends org.openmetadata.schema.entity.services.Searc
   public static SearchService update(
       String id, org.openmetadata.schema.entity.services.SearchService patch)
       throws OpenMetadataException {
-    return (SearchService) OpenMetadata.client().searchServices().patch(id, patch);
+    return (SearchService) OpenMetadata.client().searchServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

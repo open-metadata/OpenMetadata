@@ -71,12 +71,16 @@ public class SearchIndex extends org.openmetadata.schema.entity.data.SearchIndex
     return (SearchIndex) getClient().searchIndexes().update(id, searchIndex);
   }
 
-  public static SearchIndex patch(String id, String jsonPatch) {
-    // JSON patch requires a SearchIndex object with patch operations
-    SearchIndex patchSearchIndex = new SearchIndex();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty searchIndex as the service expects a SearchIndex object
-    return (SearchIndex) getClient().searchIndexes().patch(id, patchSearchIndex);
+  public static org.openmetadata.schema.entity.data.SearchIndex patch(String id, String jsonPatch) {
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().searchIndexes().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

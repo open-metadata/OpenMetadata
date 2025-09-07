@@ -31,7 +31,7 @@ public class EventSubscription extends org.openmetadata.schema.entity.events.Eve
   public static EventSubscription update(
       String id, org.openmetadata.schema.entity.events.EventSubscription patch)
       throws OpenMetadataException {
-    return (EventSubscription) OpenMetadata.client().eventSubscriptions().patch(id, patch);
+    return (EventSubscription) OpenMetadata.client().eventSubscriptions().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

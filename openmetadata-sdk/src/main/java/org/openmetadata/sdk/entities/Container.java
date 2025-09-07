@@ -82,13 +82,15 @@ public class Container extends org.openmetadata.schema.entity.data.Container {
   }
 
   public static org.openmetadata.schema.entity.data.Container patch(String id, String jsonPatch) {
-    // JSON patch requires a Container object with patch operations
-    org.openmetadata.schema.entity.data.Container patchContainer =
-        new org.openmetadata.schema.entity.data.Container();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty container as the service expects a Container object
-    return (org.openmetadata.schema.entity.data.Container)
-        getClient().containers().patch(id, patchContainer);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().containers().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

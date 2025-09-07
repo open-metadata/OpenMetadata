@@ -25,20 +25,8 @@ public class Database extends org.openmetadata.schema.entity.data.Database {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Database create(CreateDatabase request) {
-    // Convert CreateDatabase to Database entity
-    org.openmetadata.schema.entity.data.Database database =
-        new org.openmetadata.schema.entity.data.Database();
-    database.setName(request.getName());
-    database.setDisplayName(request.getDisplayName());
-    database.setDescription(request.getDescription());
-    database.setOwners(request.getOwners());
-    database.setRetentionPeriod(request.getRetentionPeriod());
-    database.setExtension(request.getExtension());
-    database.setSourceHash(request.getSourceHash());
-    database.setLifeCycle(request.getLifeCycle());
-    database.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Database) getClient().databases().create(database);
+    // Pass CreateDatabase request directly to the API
+    return getClient().databases().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Database retrieve(String id) {
@@ -75,14 +63,24 @@ public class Database extends org.openmetadata.schema.entity.data.Database {
         getClient().databases().update(id, database);
   }
 
+  public static org.openmetadata.schema.entity.data.Database update(
+      org.openmetadata.schema.entity.data.Database database) {
+    if (database.getId() == null) {
+      throw new IllegalArgumentException("Database must have an ID for update");
+    }
+    return update(database.getId().toString(), database);
+  }
+
   public static org.openmetadata.schema.entity.data.Database patch(String id, String jsonPatch) {
-    // JSON patch requires a Database object with patch operations
-    org.openmetadata.schema.entity.data.Database patchDatabase =
-        new org.openmetadata.schema.entity.data.Database();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty database as the service expects a Database object
-    return (org.openmetadata.schema.entity.data.Database)
-        getClient().databases().patch(id, patchDatabase);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().databases().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

@@ -11,6 +11,7 @@ public class OpenMetadataConfig {
   private final int readTimeout;
   private final int writeTimeout;
   private final boolean debug;
+  private final boolean testMode;
 
   private OpenMetadataConfig(Builder builder) {
     this.baseUrl = builder.baseUrl;
@@ -20,6 +21,7 @@ public class OpenMetadataConfig {
     this.readTimeout = builder.readTimeout;
     this.writeTimeout = builder.writeTimeout;
     this.debug = builder.debug;
+    this.testMode = builder.testMode;
   }
 
   public String getBaseUrl() {
@@ -50,6 +52,10 @@ public class OpenMetadataConfig {
     return debug;
   }
 
+  public boolean isTestMode() {
+    return testMode;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -62,6 +68,7 @@ public class OpenMetadataConfig {
     private int readTimeout = 60000; // 60 seconds
     private int writeTimeout = 60000; // 60 seconds
     private boolean debug = false;
+    private boolean testMode = false;
 
     private Builder() {}
 
@@ -112,6 +119,11 @@ public class OpenMetadataConfig {
 
     public Builder debug(boolean debug) {
       this.debug = debug;
+      return this;
+    }
+
+    public Builder testMode(boolean testMode) {
+      this.testMode = testMode;
       return this;
     }
 

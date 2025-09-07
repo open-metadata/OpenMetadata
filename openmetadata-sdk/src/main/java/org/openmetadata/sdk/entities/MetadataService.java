@@ -30,7 +30,7 @@ public class MetadataService extends org.openmetadata.schema.entity.services.Met
   public static MetadataService update(
       String id, org.openmetadata.schema.entity.services.MetadataService patch)
       throws OpenMetadataException {
-    return (MetadataService) OpenMetadata.client().metadataServices().patch(id, patch);
+    return (MetadataService) OpenMetadata.client().metadataServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

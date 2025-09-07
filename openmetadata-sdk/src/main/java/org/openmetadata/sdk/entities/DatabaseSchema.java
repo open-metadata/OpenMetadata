@@ -26,21 +26,8 @@ public class DatabaseSchema extends org.openmetadata.schema.entity.data.Database
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.DatabaseSchema create(
       CreateDatabaseSchema request) {
-    // Convert CreateDatabaseSchema to DatabaseSchema entity
-    org.openmetadata.schema.entity.data.DatabaseSchema databaseSchema =
-        new org.openmetadata.schema.entity.data.DatabaseSchema();
-    databaseSchema.setName(request.getName());
-    databaseSchema.setDisplayName(request.getDisplayName());
-    databaseSchema.setDescription(request.getDescription());
-    databaseSchema.setOwners(request.getOwners());
-    databaseSchema.setRetentionPeriod(request.getRetentionPeriod());
-    databaseSchema.setExtension(request.getExtension());
-    databaseSchema.setSourceHash(request.getSourceHash());
-    databaseSchema.setLifeCycle(request.getLifeCycle());
-    databaseSchema.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.DatabaseSchema)
-        getClient().databaseSchemas().create(databaseSchema);
+    // Pass CreateDatabaseSchema request directly to the API
+    return getClient().databaseSchemas().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.DatabaseSchema retrieve(String id) {
@@ -82,13 +69,15 @@ public class DatabaseSchema extends org.openmetadata.schema.entity.data.Database
 
   public static org.openmetadata.schema.entity.data.DatabaseSchema patch(
       String id, String jsonPatch) {
-    // JSON patch requires a DatabaseSchema object with patch operations
-    org.openmetadata.schema.entity.data.DatabaseSchema patchDatabaseSchema =
-        new org.openmetadata.schema.entity.data.DatabaseSchema();
-    // The jsonPatch string would be applied server-side
-    // For now, we pass an empty databaseSchema as the service expects a DatabaseSchema object
-    return (org.openmetadata.schema.entity.data.DatabaseSchema)
-        getClient().databaseSchemas().patch(id, patchDatabaseSchema);
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
+      return getClient().databaseSchemas().patch(id, patchNode);
+    } catch (Exception e) {
+      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
+          "Failed to parse JSON patch: " + e.getMessage(), e);
+    }
   }
 
   public static void delete(String id) {

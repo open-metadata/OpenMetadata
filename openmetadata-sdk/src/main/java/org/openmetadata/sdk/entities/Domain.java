@@ -30,7 +30,7 @@ public class Domain extends org.openmetadata.schema.entity.domains.Domain {
 
   public static Domain update(String id, org.openmetadata.schema.entity.domains.Domain patch)
       throws OpenMetadataException {
-    return (Domain) OpenMetadata.client().domains().patch(id, patch);
+    return (Domain) OpenMetadata.client().domains().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)
