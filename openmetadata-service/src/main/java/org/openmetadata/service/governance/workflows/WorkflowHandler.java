@@ -123,7 +123,11 @@ public class WorkflowHandler {
         .setAsyncExecutorAsyncJobLockTimeInMillis(
             workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
         .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
-            workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+            workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition())
+        .setAsyncExecutorDefaultAsyncJobAcquireWaitTime(
+            workflowSettings.getExecutorConfiguration().getAsyncJobAcquisitionInterval())
+        .setAsyncExecutorDefaultTimerJobAcquireWaitTime(
+            workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
 
     // Setting History CleanUp
     processEngineConfiguration
