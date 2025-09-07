@@ -44,6 +44,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.DOMAINS,
       'serviceType',
       EntityFields.TAG,
+      EntityFields.CERTIFICATION,
       EntityFields.TIER,
       'extension',
       'descriptionStatus',
