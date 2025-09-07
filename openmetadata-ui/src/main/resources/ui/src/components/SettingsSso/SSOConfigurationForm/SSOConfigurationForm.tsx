@@ -61,6 +61,7 @@ import {
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
@@ -111,6 +112,7 @@ const SSOConfigurationFormRJSF = ({
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const { setAuthConfig, setAuthorizerConfig } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -515,6 +517,24 @@ const SSOConfigurationFormRJSF = ({
           (field) =>
             delete authConfig[field as keyof AuthenticationConfiguration]
         );
+
+        // For confidential clients, populate clientId and callbackUrl from OIDC configuration
+        // since they are hidden in the UI but needed in the authentication object
+        if (
+          authConfig.clientType === ClientType.Confidential &&
+          authConfig.oidcConfiguration
+        ) {
+          const oidcConfig = authConfig.oidcConfiguration as Record<
+            string,
+            unknown
+          >;
+          if (typeof oidcConfig.id === 'string') {
+            authConfig.clientId = oidcConfig.id;
+          }
+          if (typeof oidcConfig.callbackUrl === 'string') {
+            authConfig.callbackUrl = oidcConfig.callbackUrl;
+          }
+        }
       }
 
       // Ensure boolean fields are always included (only for relevant providers)
@@ -941,12 +961,10 @@ const SSOConfigurationFormRJSF = ({
           showErrorToast(error as AxiosError);
         }
 
-        localStorage.removeItem('om-session');
-
         setIsLoading(false);
         setIsEditMode(false);
 
-        navigate('/signin');
+        onLogoutHandler();
       } else {
         // For existing configs, just update the saved data and stay in edit mode
         setSavedData(cleanedFormData);
