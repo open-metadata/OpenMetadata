@@ -32,6 +32,16 @@ test.describe('Add TestCase New Flow', () => {
       .click();
   };
 
+  const selectColumn = async (page: Page, columnName: string) => {
+    await page.click('#testCaseFormV1_selectedColumn');
+    // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
+    await page.waitForTimeout(2000);
+    await page.waitForSelector(`.ant-select-dropdown [title="${columnName}"]`, {
+      state: 'visible',
+    });
+    await page.locator(`.ant-select-dropdown [title="${columnName}"]`).click();
+  };
+
   // Helper function to create test case
   const createTestCase = async (data: {
     page: Page;
@@ -81,6 +91,11 @@ test.describe('Add TestCase New Flow', () => {
       const response = await tableTestCaseResponse;
       const ingestionPipelineResponse = await ingestionPipeline;
 
+      const requestBody = JSON.parse(
+        ingestionPipelineResponse.request().postData() || '{}'
+      );
+
+      expect(requestBody?.sourceConfig?.config).not.toHaveProperty('testCases');
       expect(response.status()).toBe(201);
       expect(ingestionPipelineResponse.status()).toBe(201);
     } else {
@@ -122,16 +137,22 @@ test.describe('Add TestCase New Flow', () => {
     await redirectToHomePage(page);
   });
 
+  const tableTestCaseDetails = {
+    testType: 'table row count to equal',
+    testTypeId: 'tableRowCountToEqual',
+    paramsValue: '10',
+  };
+
+  const columnTestCaseDetails = {
+    testType: 'Column Values To Be Unique',
+    testTypeId: 'columnValuesToBeUnique',
+  };
+
   test('Add Table Test Case', async ({ page }) => {
     const table = new TableClass();
     const { apiContext } = await getApiContext(page);
     await table.create(apiContext);
 
-    const testCaseDetails = {
-      testType: 'table row count to equal',
-      testTypeId: 'tableRowCountToEqual',
-      paramsValue: '10',
-    };
     await visitDataQualityPage(page);
 
     await test.step('Create table-level test case', async () => {
@@ -140,11 +161,11 @@ test.describe('Add TestCase New Flow', () => {
       await selectTable(page, table);
       await createTestCase({
         page,
-        ...testCaseDetails,
+        ...tableTestCaseDetails,
       });
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
-        `${testCaseDetails.testTypeId}_test_case`
+        `${tableTestCaseDetails.testTypeId}_test_case`
       );
     });
 
@@ -179,10 +200,6 @@ test.describe('Add TestCase New Flow', () => {
     await visitDataQualityPage(page);
 
     await test.step('Create column-level test case', async () => {
-      const testCaseDetails = {
-        testType: 'Column Values To Be Unique',
-        testTypeId: 'columnValuesToBeUnique',
-      };
       await visitDataQualityPage(page);
       // Create column-level test case
       await openTestCaseForm(page);
@@ -192,25 +209,15 @@ test.describe('Add TestCase New Flow', () => {
         .click();
       await selectTable(page, table);
 
-      await page.click('#testCaseFormV1_selectedColumn');
-      // appearing dropdown takes bit time and its not based on API call so adding manual wait to prevent flakiness.
-      await page.waitForTimeout(2000);
-      await page.waitForSelector(
-        `.ant-select-dropdown [title="${table.entity.columns[0].name}"]`
-      );
-      await page
-        .locator(
-          `.ant-select-dropdown [title="${table.entity.columns[0].name}"]`
-        )
-        .click();
+      await selectColumn(page, table.entity.columns[0].name);
 
       await createTestCase({
         page,
-        ...testCaseDetails,
+        ...columnTestCaseDetails,
       });
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
-        `${testCaseDetails.testTypeId}_test_case`
+        `${columnTestCaseDetails.testTypeId}_test_case`
       );
     });
 
@@ -235,6 +242,96 @@ test.describe('Add TestCase New Flow', () => {
           )
       ).toHaveCount(1);
     });
+  });
+
+  test('Add multiple test case from table details page and validate pipeline', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    await visitDataQualityTab(page, table);
+
+    await page
+      .getByRole('menuitem', {
+        name: 'Data Quality',
+      })
+      .click();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await page.click('[data-testid="profiler-add-table-test-btn"]');
+    await page.click('[data-testid="table"]');
+    await page.waitForLoadState('networkidle');
+
+    await createTestCase({
+      page,
+      ...tableTestCaseDetails,
+    });
+
+    await page.click('[data-testid="profiler-add-table-test-btn"]');
+    await page.click('[data-testid="column"]');
+    await page.waitForLoadState('networkidle');
+
+    await selectColumn(page, table.entity.columns[0].name);
+
+    await createTestCase({
+      page,
+      ...columnTestCaseDetails,
+      expectSchedulerCard: false,
+    });
+
+    await page.waitForSelector('[data-testid="test-case-form-v1"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      page.getByTestId('test-cases').getByTestId('count')
+    ).toHaveText('2');
+
+    await expect(page.getByTestId('pipeline').getByTestId('count')).toHaveText(
+      '1'
+    );
+
+    const pipelineApi = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines?*pipelineType=TestSuite*'
+    );
+    await page.getByTestId('pipeline').click();
+    await pipelineApi;
+
+    await page.getByTestId('more-actions').first().click();
+    await page.waitForSelector('[data-testid="actions-dropdown"]', {
+      state: 'visible',
+    });
+
+    await page.waitForSelector(
+      '[data-testid="actions-dropdown"] [data-testid="edit-button"]',
+      {
+        state: 'visible',
+      }
+    );
+
+    await page
+      .getByTestId('actions-dropdown')
+      .getByTestId('edit-button')
+      .click();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+    await page.waitForSelector('[data-testid="select-all-test-cases"]', {
+      state: 'visible',
+    });
+
+    await expect(page.getByTestId('select-all-test-cases')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 
   test('Non-owner user should not able to add test case', async ({

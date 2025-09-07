@@ -796,9 +796,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               config: {
                 type: ConfigType.TestSuite,
                 entityFullyQualifiedName: testSuiteResponse.fullyQualifiedName,
-                testCases: values.selectAllTestCases
-                  ? undefined
-                  : [createdTestCase.name, ...selectedTestCases],
+                testCases:
+                  values?.selectAllTestCases === false
+                    ? [createdTestCase.name, ...selectedTestCases]
+                    : undefined,
               },
             },
           };
