@@ -533,3 +533,49 @@
     border-color: @primary-6;
   }
 }
+
+// Styles for disabled inputs and selects in SSO forms
+.sso-configuration-form-card,
+.content-resizable-panel-container.sso-configured {
+  .ant-input[disabled] {
+    background-color: @grey-100;
+    color: @grey-500;
+    border-color: @grey-200;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .ant-select-disabled,
+  .ant-select-disabled.ant-select:not(.ant-select-customize-input) {
+    .ant-select-selection-item,
+    .ant-select-selector {
+      background-color: @grey-100;
+      color: @grey-500;
+      border-color: @grey-200;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+
+  // Target the disabled-field class specifically
+  .disabled-field {
+    .ant-input,
+    .form-control {
+      background-color: @grey-100;
+      color: @grey-500;
+      border-color: @grey-200;
+      cursor: not-allowed;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .ant-select .ant-select-selector {
+      background-color: @grey-100;
+      color: @grey-500;
+      border-color: @grey-200;
+      cursor: not-allowed;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+  }
+}

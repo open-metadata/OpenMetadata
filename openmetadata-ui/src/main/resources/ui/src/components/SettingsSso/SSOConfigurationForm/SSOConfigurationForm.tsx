@@ -18,7 +18,6 @@ import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import LdapIcon from '../../../assets/img/ic-ldap.svg';
 import SamlIcon from '../../../assets/img/ic-saml.svg';
 import Auth0Icon from '../../../assets/img/icon-auth0.png';
@@ -78,12 +77,13 @@ const widgets = {
   SelectWidget: SelectWidget,
 };
 
-// UI Schema type definitions
 interface UISchemaField {
   'ui:title'?: string;
   'ui:widget'?: string;
   'ui:hideError'?: boolean;
   'ui:options'?: Record<string, unknown>;
+  'ui:disabled'?: boolean;
+  'ui:classNames'?: string;
 }
 
 interface UISchemaObject {
@@ -127,8 +127,6 @@ const SSOConfigurationFormRJSF = ({
   const [activeField, setActiveField] = useState<string>('');
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
 
-  const navigate = useNavigate();
-
   const getProviderDisplayName = (provider: string) => {
     return provider === AuthProvider.Azure
       ? 'Azure AD'
@@ -168,7 +166,6 @@ const SSOConfigurationFormRJSF = ({
   useEffect(() => {
     const fetchExistingConfig = async () => {
       try {
-        // If selectedProvider is passed, don't fetch existing config
         if (selectedProvider) {
           setIsInitializing(false);
 
@@ -192,7 +189,6 @@ const SSOConfigurationFormRJSF = ({
           setInternalData(configData);
           setShowForm(true);
 
-          // If forceEditMode is true, start in edit mode
           if (forceEditMode) {
             setIsEditMode(true);
             setShowForm(true);
@@ -714,7 +710,6 @@ const SSOConfigurationFormRJSF = ({
     }
     const baseSchema = getSSOUISchema(currentProvider);
 
-    // Get current client type from form data
     const currentClientType =
       internalData?.authenticationConfiguration?.clientType;
 
@@ -732,6 +727,51 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+
+      // For existing SSO, only show fields that have values and disable them
+      const authData = savedData.authenticationConfiguration;
+
+      // Handle authority field
+      if (authData.authority && authData.authority.trim() !== '') {
+        authConfig.authority = {
+          ...authConfig.authority,
+          'ui:disabled': true,
+          'ui:classNames': 'disabled-field',
+        };
+      } else {
+        authConfig.authority = {
+          'ui:widget': 'hidden',
+          'ui:hideError': true,
+        };
+      }
+
+      // Handle callbackUrl field
+      if (authData.callbackUrl && authData.callbackUrl.trim() !== '') {
+        authConfig.callbackUrl = {
+          ...authConfig.callbackUrl,
+          'ui:disabled': true,
+          'ui:classNames': 'disabled-field',
+        };
+      } else {
+        authConfig.callbackUrl = {
+          'ui:widget': 'hidden',
+          'ui:hideError': true,
+        };
+      }
+
+      // Handle clientId field
+      if (authData.clientId && authData.clientId.trim() !== '') {
+        authConfig.clientId = {
+          ...authConfig.clientId,
+          'ui:disabled': true,
+          'ui:classNames': 'disabled-field',
+        };
+      } else {
+        authConfig.clientId = {
+          'ui:widget': 'hidden',
+          'ui:hideError': true,
+        };
+      }
     }
 
     // Show oidcConfiguration for confidential clients, hide for public clients
@@ -756,6 +796,92 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+    }
+
+    // Handle OIDC fields for existing SSO configurations - only show fields with values
+    if (
+      hasExistingConfig &&
+      savedData &&
+      currentClientType === ClientType.Confidential
+    ) {
+      const oidcConfig = authConfig.oidcConfiguration as UISchemaObject;
+      const oidcData = savedData.authenticationConfiguration
+        .oidcConfiguration as Record<string, unknown>;
+
+      if (oidcConfig && typeof oidcConfig === 'object' && oidcData) {
+        // Handle OIDC type field
+        if (oidcData.type && String(oidcData.type).trim() !== '') {
+          oidcConfig.type = {
+            ...oidcConfig.type,
+            'ui:disabled': true,
+            'ui:classNames': 'disabled-field',
+          };
+        } else {
+          oidcConfig.type = {
+            'ui:widget': 'hidden',
+            'ui:hideError': true,
+          };
+        }
+
+        // Handle OIDC id field
+        if (oidcData.id && String(oidcData.id).trim() !== '') {
+          oidcConfig.id = {
+            ...oidcConfig.id,
+            'ui:disabled': true,
+            'ui:classNames': 'disabled-field',
+          };
+        } else {
+          oidcConfig.id = {
+            'ui:widget': 'hidden',
+            'ui:hideError': true,
+          };
+        }
+
+        // Handle OIDC secret field
+        if (oidcData.secret && String(oidcData.secret).trim() !== '') {
+          oidcConfig.secret = {
+            ...oidcConfig.secret,
+            'ui:disabled': true,
+            'ui:classNames': 'disabled-field',
+          };
+        } else {
+          oidcConfig.secret = {
+            'ui:widget': 'hidden',
+            'ui:hideError': true,
+          };
+        }
+
+        // Handle OIDC discoveryUri field
+        if (
+          oidcData.discoveryUri &&
+          String(oidcData.discoveryUri).trim() !== ''
+        ) {
+          oidcConfig.discoveryUri = {
+            ...oidcConfig.discoveryUri,
+            'ui:disabled': true,
+            'ui:classNames': 'disabled-field',
+          };
+        } else {
+          oidcConfig.discoveryUri = {
+            'ui:widget': 'hidden',
+            'ui:hideError': true,
+          };
+        }
+
+        // Handle OIDC tenant field
+        if (oidcData.tenant && String(oidcData.tenant).trim() !== '') {
+          oidcConfig.tenant = {
+            ...oidcConfig.tenant,
+            'ui:disabled': true,
+            'ui:classNames': 'disabled-field',
+          };
+        } else {
+          oidcConfig.tenant = {
+            'ui:widget': 'hidden',
+            'ui:hideError': true,
+          };
+        }
+      }
     }
 
     return {
@@ -988,7 +1114,15 @@ const SSOConfigurationFormRJSF = ({
 
   const handleCancelConfirm = () => {
     setShowCancelModal(false);
-    // Reset to provider selection
+
+    // For existing/configured SSO, discard changes and stay on the same page
+    if (hasExistingConfig && savedData) {
+      setInternalData(savedData);
+
+      return;
+    }
+
+    // For new SSO setup, reset to provider selection
     setShowProviderSelector(true);
     setShowForm(false);
     setIsEditMode(false);
@@ -1007,14 +1141,18 @@ const SSOConfigurationFormRJSF = ({
     setShowCancelModal(false);
   };
 
+  // Handle cancel button click
+  const handleCancelClick = () => {
+    // Always show the modal - let the user decide what they want to do
+    setShowCancelModal(true);
+  };
+
   const handleSaveAndExit = async () => {
     try {
-      // Save the current form data first
       if (internalData) {
         await handleSave();
       }
 
-      // Close the modal first
       setShowCancelModal(false);
 
       // If existing config is present, just save and do nothing (stay on form)
@@ -1027,7 +1165,6 @@ const SSOConfigurationFormRJSF = ({
       // This will trigger the logout and sign-in redirect process
       handleCancelConfirm();
     } catch (error) {
-      // If save fails, don't exit - let user fix the issues
       setShowCancelModal(false);
     }
   };
@@ -1039,7 +1176,6 @@ const SSOConfigurationFormRJSF = ({
     setShowForm(true);
     setIsEditMode(true);
 
-    // Notify parent component about provider selection
     if (onProviderSelect) {
       onProviderSelect(provider);
     }
@@ -1159,50 +1295,62 @@ const SSOConfigurationFormRJSF = ({
   // If hideBorder is true, render form with ResizablePanels but without Card wrapper and header
   if (hideBorder) {
     return (
-      <ResizablePanels
-        className="content-height-with-resizable-panel sso-configured"
-        firstPanel={{
-          children: (
-            <>
-              {formContent}
-              {isEditMode && (
-                <div className="form-actions-bottom">
-                  <Button
-                    className="cancel-sso-configuration text-md"
-                    data-testid="cancel-sso-configuration"
-                    type="link"
-                    onClick={() => setShowCancelModal(true)}>
-                    {t('label.cancel-lowercase')}
-                  </Button>
-                  <Button
-                    className="save-sso-configuration text-md"
-                    data-testid="save-sso-configuration"
-                    disabled={isLoading}
-                    loading={isLoading}
-                    type="primary"
-                    onClick={handleSave}>
-                    {t('label.save')}
-                  </Button>
-                </div>
-              )}
-            </>
-          ),
-          minWidth: 400,
-          flex: 0.5,
-          className: 'content-resizable-panel-container sso-configured m-t-2',
-        }}
-        secondPanel={{
-          children: (
-            <SSODocPanel
-              activeField={activeField}
-              serviceName={currentProvider || 'general'}
-            />
-          ),
-          minWidth: 400,
-          flex: 0.5,
-          className: 'm-t-xs',
-        }}
-      />
+      <>
+        <UnsavedChangesModal
+          discardText={t('label.discard')}
+          open={showCancelModal}
+          saveText={t('label.save')}
+          title={t('message.unsaved-changes')}
+          onCancel={handleCancelModalClose}
+          onDiscard={handleCancelConfirm}
+          onSave={handleSaveAndExit}
+        />
+
+        <ResizablePanels
+          className="content-height-with-resizable-panel sso-configured"
+          firstPanel={{
+            children: (
+              <>
+                {formContent}
+                {isEditMode && (
+                  <div className="form-actions-bottom">
+                    <Button
+                      className="cancel-sso-configuration text-md"
+                      data-testid="cancel-sso-configuration"
+                      type="link"
+                      onClick={handleCancelClick}>
+                      {t('label.cancel-lowercase')}
+                    </Button>
+                    <Button
+                      className="save-sso-configuration text-md"
+                      data-testid="save-sso-configuration"
+                      disabled={isLoading}
+                      loading={isLoading}
+                      type="primary"
+                      onClick={handleSave}>
+                      {t('label.save')}
+                    </Button>
+                  </div>
+                )}
+              </>
+            ),
+            minWidth: 400,
+            flex: 0.5,
+            className: 'content-resizable-panel-container sso-configured m-t-2',
+          }}
+          secondPanel={{
+            children: (
+              <SSODocPanel
+                activeField={activeField}
+                serviceName={currentProvider || 'general'}
+              />
+            ),
+            minWidth: 400,
+            flex: 0.5,
+            className: 'm-t-xs',
+          }}
+        />
+      </>
     );
   }
 
@@ -1245,7 +1393,10 @@ const SSOConfigurationFormRJSF = ({
   return (
     <>
       <UnsavedChangesModal
+        discardText={t('label.discard')}
         open={showCancelModal}
+        saveText={t('label.save')}
+        title={t('message.unsaved-changes')}
         onCancel={handleCancelModalClose}
         onDiscard={handleCancelConfirm}
         onSave={handleSaveAndExit}
@@ -1263,7 +1414,7 @@ const SSOConfigurationFormRJSF = ({
                     className="cancel-sso-configuration text-md"
                     data-testid="cancel-sso-configuration"
                     type="link"
-                    onClick={() => setShowCancelModal(true)}>
+                    onClick={handleCancelClick}>
                     {t('label.cancel-lowercase')}
                   </Button>
                   <Button
