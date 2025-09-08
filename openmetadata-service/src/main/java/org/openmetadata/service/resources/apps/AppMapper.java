@@ -9,6 +9,7 @@ import javax.validation.ConstraintViolationException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -30,6 +31,9 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             null,
             createAppRequest.getName(),
             new EntityUtil.Fields(appMarketPlaceRepository.getAllowedFields()));
+    Boolean supportsIngestionRunner =
+        !marketPlaceDefinition.getAppType().equals(AppType.Internal)
+            && marketPlaceDefinition.getSupportsIngestionRunner();
     List<EntityReference> owners = validateOwners(createAppRequest.getOwners());
     App app =
         new App()
@@ -59,7 +63,12 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
             .withSystem(marketPlaceDefinition.getSystem())
             .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt())
-            .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName());
+            .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName())
+            .withSupportsIngestionRunner(supportsIngestionRunner)
+            .withIngestionRunner(
+                supportsIngestionRunner.equals(true)
+                    ? createAppRequest.getIngestionRunner()
+                    : null);
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());

@@ -37,6 +37,7 @@ import {
   getEntityName,
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
@@ -285,6 +286,13 @@ export const ContractSchemaFormTab: React.FC<{
     [tableFqn]
   );
 
+  const tableCheckBoxProps = useCallback(
+    (record: Column) => ({
+      disabled: Fqn.split(record.fullyQualifiedName ?? '').length !== 5, // 5 since FQN+Column = 4+1
+    }),
+    []
+  );
+
   useEffect(() => {
     setSelectedKeys(
       selectedSchema.map((item) => (item as Column).fullyQualifiedName ?? '')
@@ -317,6 +325,7 @@ export const ContractSchemaFormTab: React.FC<{
             selectedRowKeys: selectedKeys,
             onChange: handleChangeTable,
             preserveSelectedRowKeys: true, // Preserve selections across page changes
+            getCheckboxProps: tableCheckBoxProps,
           }}
         />
       </Card>

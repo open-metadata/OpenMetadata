@@ -28,6 +28,7 @@ public class LogicOps {
 
   public enum CustomLogicOps {
     LENGTH("length"),
+    CONTAINS("contains"),
     IS_REVIEWER("isReviewer"),
     IS_OWNER("isOwner");
 
@@ -53,6 +54,31 @@ public class LogicOps {
             return 0;
           }
           return args.length;
+        });
+
+    jsonLogic.addOperation(
+        "contains",
+        (args) -> {
+          if (nullOrEmpty(args) || args.length < 2) {
+            return false;
+          }
+
+          Object value = args[0];
+          Object container = args[1];
+
+          // If either value or container is null/empty, the rule is broken
+          if (CommonUtil.nullOrEmpty(value) || CommonUtil.nullOrEmpty(container)) {
+            return false;
+          }
+
+          if (container instanceof List<?> list) {
+            return list.contains(value);
+          } else if (container.getClass().isArray()) {
+            Object[] array = (Object[]) container;
+            return Arrays.asList(array).contains(value);
+          } else {
+            return container.toString().contains(value.toString());
+          }
         });
 
     // {"isReviewer": { var: "updatedBy"} }
