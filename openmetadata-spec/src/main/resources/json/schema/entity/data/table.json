@@ -929,51 +929,55 @@
       ]
     },
     "pipelineObservability": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.PipelineObservability",
-      "description": "Pipeline observability information for data models.",
-      "properties": {
-        "pipeline": {
-          "description": "Reference to the pipeline that processes this table/model.",
-          "$ref": "../../type/entityReference.json",
-          "default": null
-        },
-        "schedule": {
-          "description": "Schedule configuration for the pipeline.",
-          "type": "object",
-          "properties": {
-            "scheduleInterval": {
-              "description": "Scheduler interval for the pipeline in cron format.",
-              "type": "string",
-              "default": null
-            },
-            "startTime": {
-              "description": "Start date of the pipeline schedule.",
-              "$ref": "../../type/basic.json#/definitions/dateTime",
-              "default": null
-            },
-            "endTime": {
-              "description": "End date of the pipeline schedule.",
-              "$ref": "../../type/basic.json#/definitions/dateTime",
-              "default": null
-            }
+      "type": "array",
+      "description": "Pipeline observability information for data models. A table can have multiple pipelines associated with it.",
+      "items": {
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.PipelineObservability",
+        "properties": {
+          "pipeline": {
+            "description": "Reference to the pipeline that processes this table/model.",
+            "$ref": "../../type/entityReference.json",
+            "default": null
           },
-          "additionalProperties": false,
-          "default": null
+          "schedule": {
+            "description": "Schedule configuration for the pipeline.",
+            "type": "object",
+            "properties": {
+              "scheduleInterval": {
+                "description": "Scheduler interval for the pipeline in cron format.",
+                "type": "string",
+                "default": null
+              },
+              "startTime": {
+                "description": "Start date of the pipeline schedule.",
+                "$ref": "../../type/basic.json#/definitions/dateTime",
+                "default": null
+              },
+              "endTime": {
+                "description": "End date of the pipeline schedule.",
+                "$ref": "../../type/basic.json#/definitions/dateTime",
+                "default": null
+              }
+            },
+            "additionalProperties": false,
+            "default": null
+          },
+          "lastRunTime": {
+            "description": "Timestamp of the last pipeline execution.",
+            "$ref": "../../type/basic.json#/definitions/timestamp",
+            "default": null
+          },
+          "lastRunStatus": {
+            "description": "Status of the last pipeline execution.",
+            "type": "string",
+            "enum": ["Successful", "Failed", "Pending", "Skipped", "Running"],
+            "default": null
+          }
         },
-        "lastRunTime": {
-          "description": "Timestamp of the last pipeline execution.",
-          "$ref": "../../type/basic.json#/definitions/timestamp",
-          "default": null
-        },
-        "lastRunStatus": {
-          "description": "Status of the last pipeline execution.",
-          "type": "string",
-          "enum": ["Successful", "Failed", "Pending", "Skipped", "Running"],
-          "default": null
-        }
+        "additionalProperties": false
       },
-      "additionalProperties": false
+      "default": []
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT and DDL model is supported.",

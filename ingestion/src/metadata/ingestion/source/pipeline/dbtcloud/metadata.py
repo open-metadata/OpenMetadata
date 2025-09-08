@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.pipeline import (
 )
 from metadata.generated.schema.entity.data.table import (
     PipelineObservability,
+    PipelineObservabilityItem,
     Schedule,
     Table,
 )
@@ -158,9 +159,9 @@ class DbtcloudSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DBTJob
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest | PipelineObservabilityLink]]:
         """
-        Get lineage between pipeline and data sources
+        Get lineage between pipeline and data sources, and also handle pipeline observability
         """
         try:  # pylint: disable=too-many-nested-blocks
             if self.source_config.lineageInformation:
@@ -174,6 +175,10 @@ class DbtcloudSource(PipelineServiceSource):
                 pipeline_entity = self.metadata.get_by_name(
                     entity=Pipeline, fqn=pipeline_fqn
                 )
+
+                # Get the latest runs for pipeline observability data
+                runs = self.client.get_runs(job_id=pipeline_details.id)
+                latest_run = runs[0] if runs else None
 
                 dbt_models = self.client.get_model_details(
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
@@ -202,6 +207,19 @@ class DbtcloudSource(PipelineServiceSource):
                         if to_entity is None:
                             continue
 
+                        # Create pipeline observability for this table
+                        if latest_run:
+                            pipeline_obs = self._create_pipeline_observability(
+                                pipeline_details, latest_run
+                            )
+                            if pipeline_obs:
+                                pipeline_obs_link = PipelineObservabilityLink(
+                                    table_entity=to_entity,
+                                    pipeline_observability=pipeline_obs,
+                                )
+                                yield Either(right=pipeline_obs_link)
+
+                        # Process lineage relationships
                         for unique_id in model.dependsOn or []:
                             parents = [
                                 d for d in dbt_parents if d.uniqueId == unique_id
@@ -222,11 +240,24 @@ class DbtcloudSource(PipelineServiceSource):
                                 if from_entity is None:
                                     continue
 
+                                # Create pipeline observability for parent table
+                                if latest_run:
+                                    pipeline_obs = self._create_pipeline_observability(
+                                        pipeline_details, latest_run
+                                    )
+                                    if pipeline_obs:
+                                        pipeline_obs_link = PipelineObservabilityLink(
+                                            table_entity=from_entity,
+                                            pipeline_observability=pipeline_obs,
+                                        )
+                                        # yield Either(right=pipeline_obs_link)
+
                                 lineage_details = LineageDetails(
                                     pipeline=EntityReference(
                                         id=pipeline_entity.id.root, type="pipeline"
                                     ),
                                     source=LineageSource.PipelineLineage,
+                                    # pipeline_obs=Observ ???  
                                 )
 
                                 yield Either(
@@ -317,7 +348,8 @@ class DbtcloudSource(PipelineServiceSource):
         if not pipeline_entity:
             return None
 
-        return PipelineObservability(
+        # Create a single PipelineObservabilityItem
+        pipeline_obs_item = PipelineObservabilityItem(
             pipeline=pipeline_entity.entityReference,
             schedule=Schedule(
                 scheduleInterval=(
@@ -338,6 +370,8 @@ class DbtcloudSource(PipelineServiceSource):
             ),
         )
 
+        return PipelineObservability([pipeline_obs_item])
+
     def yield_pipeline_observability(
         self, pipeline_details: DBTJob
     ) -> Iterable[Either[PipelineObservabilityLink]]:
@@ -355,26 +389,42 @@ class DbtcloudSource(PipelineServiceSource):
 
             # Get models associated with this job using the latest run
             if latest_run:
-                models_and_seeds = self.client.get_models_and_seeds_details(
-                    job_id=pipeline_details.id, run_id=latest_run.id
+                dbt_models = self.client.get_model_details(
+                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
 
-                if models_and_seeds:
-                    for model in models_and_seeds:
-                        # Find corresponding table entities for each model
-                        table_entity = self._find_table_entity(model)
-                        if table_entity:
-                            # Create pipeline observability data
-                            pipeline_obs = self._create_pipeline_observability(
-                                pipeline_details, latest_run
+                if dbt_models:
+                    for model in dbt_models:
+                        for db_service_name in (
+                            self.source_config.lineageInformation.dbServiceNames or []
+                            if self.source_config.lineageInformation
+                            else self.get_db_service_names() or ["*"]
+                        ):
+                            table_entity = self.metadata.get_by_name(
+                                entity=Table,
+                                fqn=fqn.build(
+                                    metadata=self.metadata,
+                                    entity_type=Table,
+                                    table_name=model.name,
+                                    database_name=model.database,
+                                    schema_name=model.dbtschema,
+                                    service_name=db_service_name,
+                                ),
                             )
-                            if pipeline_obs:
-                                # Create the link between table and pipeline observability
-                                pipeline_obs_link = PipelineObservabilityLink(
-                                    table_entity=table_entity,
-                                    pipeline_observability=pipeline_obs,
+
+                            if table_entity:
+                                # Create pipeline observability data
+                                pipeline_obs = self._create_pipeline_observability(
+                                    pipeline_details, latest_run
                                 )
-                                yield Either(right=pipeline_obs_link)
+                                if pipeline_obs:
+                                    # Create the link between table and pipeline observability
+                                    pipeline_obs_link = PipelineObservabilityLink(
+                                        table_entity=table_entity,
+                                        pipeline_observability=pipeline_obs,
+                                    )
+                                    # yield Either(right=pipeline_obs_link)
+                                    break  # Found the table, no need to check other services when found
 
         except Exception as exc:
             yield Either(
