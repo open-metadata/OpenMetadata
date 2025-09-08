@@ -48,9 +48,10 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 const navigateToPersonaNavigation = async (page: Page) => {
+  const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
 
-  const getPersonas = page.waitForResponse('/api/v1/personas*');
+  await page.waitForLoadState('networkidle');
   await getPersonas;
 
   await page

@@ -126,8 +126,9 @@ test.describe('Navigation Blocker Tests', () => {
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
 
     // Click "Save changes" button (should save changes and then navigate)
-    const saveResponse = adminPage.waitForResponse('api/v1/docStore/**');
+    const saveResponse = adminPage.waitForResponse('api/v1/docStore*');
     await adminPage.locator('button:has-text("Save changes")').click();
+    await adminPage.waitForLoadState('networkidle');
 
     // Wait for save operation to complete
     await saveResponse;
