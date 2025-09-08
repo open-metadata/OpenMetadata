@@ -20,7 +20,6 @@ import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getEntityName } from '../../../../utils/EntityUtils';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import '../users.less';
@@ -87,18 +86,15 @@ const UserProfilePersonas = ({
             />
           </div>
         </div>
-        <div className="user-profile-card-body d-flex justify-start gap-2">
-          {defaultPersona?.fullyQualifiedName || defaultPersona?.name ? (
-            <Typography.Text
-              className="default-persona-text  cursor-pointer"
-              data-testid="default-persona-text">
-              {getEntityName(defaultPersona)}
-            </Typography.Text>
-          ) : (
-            <Typography.Paragraph className="m-b-0 text-sm  no-default-persona-text">
-              {t('message.no-default-persona')}
-            </Typography.Paragraph>
-          )}
+        <div
+          className="user-profile-card-body default-persona-text ml-8"
+          data-testid="default-persona-chip">
+          <Chip
+            showNoDataPlaceholder
+            data={defaultPersona ? [defaultPersona] : []}
+            entityType={EntityType.PERSONA}
+            noDataPlaceholder={t('message.no-default-persona')}
+          />
         </div>
       </>
     ),

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import './contract-detail-form-tab.less';
 
@@ -72,7 +73,7 @@ export const ContractDetailFormTab: React.FC<{
   useEffect(() => {
     if (initialValues) {
       form.setFieldsValue({
-        name: initialValues.name,
+        name: getEntityName(initialValues),
         description: initialValues.description,
         owners: initialValues.owners,
       });

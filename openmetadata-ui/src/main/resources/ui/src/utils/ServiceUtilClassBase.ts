@@ -14,7 +14,7 @@
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import MetricIcon from '../assets/svg/metric.svg';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
@@ -371,7 +371,7 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string) {
+  public getServiceLogo(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.CustomDatabase:
@@ -684,7 +684,7 @@ class ServiceUtilClassBase {
 
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  ): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
