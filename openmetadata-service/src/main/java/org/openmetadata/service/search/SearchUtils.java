@@ -20,7 +20,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
