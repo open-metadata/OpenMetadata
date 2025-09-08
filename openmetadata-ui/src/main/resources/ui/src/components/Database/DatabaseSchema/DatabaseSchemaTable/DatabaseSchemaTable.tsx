@@ -148,7 +148,7 @@ export const DatabaseSchemaTable = ({
     setIsLoading(true);
     try {
       const response = await searchQuery({
-        query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
+        query: '',
         pageNumber,
         pageSize: PAGE_SIZE,
         queryFilter: {
@@ -156,6 +156,24 @@ export const DatabaseSchemaTable = ({
             bool: {
               must: [
                 { term: { 'database.fullyQualifiedName': decodedDatabaseFQN } },
+                ...(searchValue
+                  ? [
+                      {
+                        bool: {
+                          should: [
+                            {
+                              wildcard: { 'name.keyword': `*${searchValue}*` },
+                            },
+                            {
+                              wildcard: {
+                                'description.keyword': `*${searchValue}*`,
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ]
+                  : []),
               ],
             },
           },

@@ -74,14 +74,39 @@ const TableConstraintsModal = ({
     setIsRelatedColumnLoading(true);
     try {
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+      const serviceFilter = getServiceNameQueryFilter(
+        tableDetails?.service?.name ?? ''
+      );
       const data = await searchQuery({
-        query:
-          value &&
-          `(columns.name.keyword:*${encodedValue}*) OR (columns.fullyQualifiedName:*${encodedValue}*)`,
+        query: value ? `*${encodedValue}*` : '',
         searchIndex: SearchIndex.TABLE,
-        queryFilter: getServiceNameQueryFilter(
-          tableDetails?.service?.name ?? ''
-        ),
+        queryFilter: value
+          ? {
+              query: {
+                bool: {
+                  must: [
+                    serviceFilter.query,
+                    {
+                      bool: {
+                        should: [
+                          {
+                            wildcard: {
+                              'columns.name.keyword': `*${encodedValue}*`,
+                            },
+                          },
+                          {
+                            wildcard: {
+                              'columns.fullyQualifiedName': `*${encodedValue}*`,
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            }
+          : serviceFilter,
         pageNumber: 1,
         pageSize: PAGE_SIZE,
         includeDeleted: false,

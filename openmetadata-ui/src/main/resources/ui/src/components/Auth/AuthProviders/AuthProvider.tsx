@@ -26,7 +26,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
+import { isNil, isNumber } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import Qs from 'qs';
 import {
@@ -480,14 +480,42 @@ export const AuthProvider = ({
 
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
-        // adding quotes for exact matching
-        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
-          activeDomain
-        )}")`;
-        queryParams.q = queryParams.q ?? '';
-        queryParams.q += isEmpty(queryParams.q)
-          ? domainStatement
-          : ` AND ${domainStatement}`;
+        // Escape special characters for exact matching
+        const domainStatement = escapeESReservedCharacters(activeDomain);
+
+        // Move domain filter to proper queryFilter structure
+        if (queryParams.query_filter) {
+          // Merge with existing query_filter
+          const existingFilter = JSON.parse(queryParams.query_filter as string);
+          queryParams.query_filter = JSON.stringify({
+            query: {
+              bool: {
+                must: [
+                  existingFilter.query || existingFilter,
+                  {
+                    match: {
+                      'domains.fullyQualifiedName': domainStatement,
+                    },
+                  },
+                ],
+              },
+            },
+          });
+        } else {
+          // Create new query_filter with proper structure
+          queryParams.query_filter = JSON.stringify({
+            query: {
+              match: {
+                'domains.fullyQualifiedName': domainStatement,
+              },
+            },
+          });
+        }
+
+        // Clear the q parameter if it exists since we're using query_filter
+        if (queryParams.q === '') {
+          delete queryParams.q;
+        }
 
         // Update the URL with the modified query parameter
         config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
