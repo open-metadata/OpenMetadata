@@ -12,9 +12,10 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Modal, Space, Typography } from 'antd';
+import { Button, Form, Modal, Space, Tabs, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import RecognizerEditor from '../../components/Classification/RecognizerEditor/RecognizerEditor.component';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
@@ -26,6 +27,7 @@ import {
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/tests/testCase';
+import { Recognizer } from '../../generated/type/recognizer';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   FieldProp,
@@ -53,6 +55,15 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const [recognizers, setRecognizers] = useState<Recognizer[]>(
+    initialValues?.recognizers ?? []
+  );
+  const [autoClassificationEnabled, setAutoClassificationEnabled] = useState<boolean>(
+    initialValues?.autoClassificationEnabled ?? false
+  );
+  const [autoClassificationConfig, setAutoClassificationConfig] = useState<any>(
+    initialValues?.autoClassificationConfig ?? null
+  );
   const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
     'domains',
     form
@@ -75,7 +86,12 @@ const TagsForm = ({
       ...initialValues,
       iconURL: initialValues?.style?.iconURL,
       color: initialValues?.style?.color,
+      autoClassificationEnabled: initialValues?.autoClassificationEnabled,
+      autoClassificationPriority: initialValues?.autoClassificationPriority,
     });
+    setRecognizers(initialValues?.recognizers ?? []);
+    setAutoClassificationEnabled(initialValues?.autoClassificationEnabled ?? false);
+    setAutoClassificationConfig(initialValues?.autoClassificationConfig ?? null);
   }, [initialValues]);
 
   const disableNameField = useMemo(
@@ -286,6 +302,45 @@ const TagsForm = ({
           },
         ] as FieldProp[])
       : []),
+    ...(!isClassification
+      ? ([
+          {
+            name: 'autoClassificationEnabled',
+            label: t('label.auto-classification-enabled'),
+            type: FieldTypes.SWITCH,
+            required: false,
+            props: {
+              'data-testid': 'auto-classification-enabled',
+              disabled: disableDisabledField,
+              onChange: (checked: boolean) => setAutoClassificationEnabled(checked),
+            },
+            helperText: t('message.auto-classification-help'),
+            id: 'root/autoClassificationEnabled',
+            formItemLayout: 'horizontal',
+            formItemProps: {
+              valuePropName: 'checked',
+            },
+          },
+          ...(autoClassificationEnabled
+            ? ([
+                {
+                  name: 'autoClassificationPriority',
+                  label: t('label.auto-classification-priority'),
+                  type: FieldTypes.NUMBER,
+                  required: false,
+                  props: {
+                    'data-testid': 'auto-classification-priority',
+                    disabled: disableDisabledField,
+                    min: 0,
+                    max: 100,
+                  },
+                  helperText: t('message.auto-classification-priority-help'),
+                  id: 'root/autoClassificationPriority',
+                },
+              ] as FieldProp[])
+            : []),
+        ] as FieldProp[])
+      : []),
   ];
 
   const handleSave = async (data: SubmitProps) => {
@@ -294,9 +349,13 @@ const TagsForm = ({
       const submitData = {
         ...data,
         domains: selectedDomain?.map((domain) => domain.fullyQualifiedName),
+        recognizers: !isClassification && autoClassificationEnabled ? recognizers : undefined,
+        autoClassificationConfig: isClassification ? autoClassificationConfig : undefined,
       };
       await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);
+      setRecognizers([]);
+      setAutoClassificationEnabled(false);
     } catch {
       // Parent will handle the error
     } finally {
@@ -323,48 +382,77 @@ const TagsForm = ({
           {header}
         </Typography.Text>
       }
-      width={750}
+      width={900}
       onCancel={() => {
         form.setFieldsValue(DEFAULT_FORM_VALUE);
+        setRecognizers([]);
+        setAutoClassificationEnabled(false);
+        setAutoClassificationConfig(null);
         onCancel();
       }}>
-      <EntityAttachmentProvider
-        entityFqn={initialValues?.fullyQualifiedName}
-        entityType={
-          isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
-        }>
-        <Form
-          form={form}
-          initialValues={initialValues ?? DEFAULT_FORM_VALUE}
-          layout="vertical"
-          name="tags"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}>
-          {generateFormFields(formFields)}
-          <div className="m-y-xs">
-            {getField(ownerField)}
-            {Boolean(ownersList.length) && (
-              <Space wrap data-testid="owner-container" size={[8, 8]}>
-                <OwnerLabel owners={ownersList} />
-              </Space>
-            )}
-          </div>
-          <div className="m-t-xss">
-            {getField(domainField)}
-            {selectedDomain && (
-              <DomainLabel
-                domains={selectedDomain}
-                entityFqn=""
-                entityId=""
-                entityType={
-                  isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
-                }
-                hasPermission={false}
+      <Form
+        form={form}
+        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
+        layout="vertical"
+        name="tags"
+        validateMessages={VALIDATION_MESSAGES}
+        onFinish={handleSave}>
+        <Tabs defaultActiveKey="general">
+          <Tabs.TabPane tab={t('label.general')} key="general">
+            <EntityAttachmentProvider
+              entityFqn={initialValues?.fullyQualifiedName}
+              entityType={
+                isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+              }>
+              {generateFormFields(formFields)}
+              <div className="m-y-xs">
+                {getField(ownerField)}
+                {Boolean(ownersList.length) && (
+                  <Space wrap data-testid="owner-container" size={[8, 8]}>
+                    <OwnerLabel owners={ownersList} />
+                  </Space>
+                )}
+              </div>
+              <div className="m-t-xss">
+                {getField(domainField)}
+                {selectedDomain && (
+                  <DomainLabel
+                    domains={selectedDomain}
+                    entityFqn=""
+                    entityId=""
+                    entityType={
+                      isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+                    }
+                    hasPermission={false}
+                  />
+                )}
+              </div>
+            </EntityAttachmentProvider>
+          </Tabs.TabPane>
+          {!isClassification && (
+            <Tabs.TabPane tab={t('label.recognizers')} key="recognizers">
+              <RecognizerEditor
+                recognizers={recognizers}
+                onRecognizersChange={setRecognizers}
+                isReadOnly={disableDisabledField}
               />
-            )}
-          </div>
-        </Form>
-      </EntityAttachmentProvider>
+            </Tabs.TabPane>
+          )}
+          {isClassification && (
+            <Tabs.TabPane tab={t('label.auto-classification')} key="auto-classification">
+              <div className="p-md">
+                <Typography.Paragraph>
+                  {t('message.auto-classification-config-help')}
+                </Typography.Paragraph>
+                {/* TODO: Add AutoClassificationConfig editor here */}
+                <Typography.Text type="secondary">
+                  Auto-classification configuration will be available in the next update.
+                </Typography.Text>
+              </div>
+            </Tabs.TabPane>
+          )}
+        </Tabs>
+      </Form>
     </Modal>
   );
 };

@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/type/contextRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContextRecognizer",
+  "description": "Context-aware recognizer using surrounding text",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.ContextRecognizer",
+  "properties": {
+    "type": {
+      "const": "context"
+    },
+    "contextWords": {
+      "description": "Words that indicate the presence of the entity",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "supportedEntity": {
+      "description": "The entity type this recognizer detects",
+      "$ref": "piiEntity.json"
+    },
+    "supportedLanguage": {
+      "description": "Language supported by this recognizer (ISO 639-1 code)",
+      "type": "string",
+      "default": "en",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "minScore": {
+      "description": "Minimum confidence score",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.4
+    },
+    "maxScore": {
+      "description": "Maximum confidence score",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.8
+    },
+    "increaseFactorByCharLength": {
+      "description": "Factor to increase score based on entity length",
+      "type": "number",
+      "default": 0.05
+    }
+  },
+  "required": ["type", "contextWords", "supportedEntity", "supportedLanguage"],
+  "additionalProperties": false
+}
