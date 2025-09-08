@@ -93,7 +93,7 @@ export const LDAP_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide universal settings managed in overview tab
-  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -149,7 +149,7 @@ export const SAML_UI_SCHEMA = {
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
-  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Show required fields for SAML
@@ -265,7 +265,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
   },
   // Hide universal settings managed in overview tab
-  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };
 
 // Common field titles
@@ -303,9 +303,9 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaimsMapping: {
     'ui:title': 'JWT Principal Claims Mapping',
     'ui:placeholder':
-      'Enter username:claim_name (e.g. username:preferred_username) and press ENTER. Both username and email mappings required.',
+      'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
   },
-  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -461,13 +461,25 @@ export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
 ];
 
 // Main SSO UI Schema generator
-export const getSSOUISchema = (provider: string) => {
+export const getSSOUISchema = (
+  provider: string,
+  hasExistingConfig?: boolean
+) => {
+  const providerSchema = PROVIDER_UI_SCHEMAS[provider] || {};
+
+  // For new configurations (no existing SSO), show enableSelfSignup field
+  // For existing SSO configurations, hide it (managed in overview tab)
+  const enableSelfSignupSchema = hasExistingConfig
+    ? { 'ui:widget': 'hidden', 'ui:hideError': true }
+    : { 'ui:title': 'Enable Self Signup' };
+
   const commonSchema = {
     authenticationConfiguration: {
       'ui:title': ' ', // Hide the title with a space to prevent rendering
       ...COMMON_HIDDEN_FIELDS,
       ...COMMON_FIELD_TITLES,
-      ...(PROVIDER_UI_SCHEMAS[provider] || {}),
+      ...providerSchema,
+      enableSelfSignup: enableSelfSignupSchema,
     },
     authorizerConfiguration: {
       'ui:title': ' ', // Hide the title with a space to prevent rendering

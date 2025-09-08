@@ -240,7 +240,7 @@ const SSOConfigurationFormRJSF = ({
         authenticationConfiguration: {
           provider: selectedProvider as AuthProvider,
           providerName: selectedProvider,
-          enableSelfSignup: false,
+          enableSelfSignup: true,
           clientType: isConfidentialClient
             ? ClientType.Confidential
             : ClientType.Public,
@@ -534,7 +534,7 @@ const SSOConfigurationFormRJSF = ({
 
       // Ensure boolean fields are always included (only for relevant providers)
       if (authConfig.enableSelfSignup === undefined) {
-        authConfig.enableSelfSignup = false;
+        authConfig.enableSelfSignup = true;
       }
     }
 
@@ -707,7 +707,7 @@ const SSOConfigurationFormRJSF = ({
     if (!currentProvider) {
       return {};
     }
-    const baseSchema = getSSOUISchema(currentProvider);
+    const baseSchema = getSSOUISchema(currentProvider, hasExistingConfig);
 
     const currentClientType =
       internalData?.authenticationConfiguration?.clientType;
