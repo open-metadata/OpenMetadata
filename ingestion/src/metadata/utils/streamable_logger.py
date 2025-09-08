@@ -291,77 +291,19 @@ class StreamableLogHandler(logging.Handler):
 
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server using the logs mixin"""
-        try:
-            # Use the logs mixin method if available, otherwise fallback to direct API call
-            if hasattr(self.metadata, "send_logs_to_s3"):
-                # Use the centralized logs mixin method
-                enable_compression = (
-                    os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-                )
-
-                success = self.metadata.send_logs_to_s3(
-                    pipeline_fqn=self.pipeline_fqn,
-                    run_id=self.run_id,
-                    log_content=log_content,
-                    compress=enable_compression and len(log_content) > 10240,
-                )
-
-                if success:
-                    # Update metrics
-                    line_count = log_content.count("\n") + 1
-                    self.metrics["logs_sent"] += line_count
-                    self.metrics["bytes_sent"] += len(log_content)
-
-                    logger.debug(
-                        f"Successfully shipped {line_count} log lines to server"
-                    )
-                else:
-                    raise Exception("Failed to send logs via mixin")
-            else:
-                # Fallback: Direct API call using the OpenMetadata client
-                # This maintains backward compatibility
-                logger.warning("Logs mixin not available, using direct API call")
-
-                # Use the existing OpenMetadata client's REST interface
-                enable_compression = (
-                    os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-                )
-
-                # Build payload
-                import base64
-                import gzip
-                import json
-                import socket
-
-                log_batch = {
-                    "logs": log_content,
-                    "timestamp": int(time.time() * 1000),
-                    "connectorId": f"{socket.gethostname()}-{os.getpid()}",
-                    "compressed": False,
-                    "lineCount": log_content.count("\n") + 1,
-                }
-
-                if enable_compression and len(log_content) > 10240:
-                    compressed = gzip.compress(log_content.encode("utf-8"))
-                    log_batch["logs"] = base64.b64encode(compressed).decode("utf-8")
-                    log_batch["compressed"] = True
-
-                # Use the metadata client's REST interface directly
-                response = self.metadata.client.post(
-                    f"/services/ingestionPipelines/logs/{self.pipeline_fqn}/{self.run_id}",
-                    data=json.dumps(log_batch),
-                )
-
-                # Update metrics
-                self.metrics["logs_sent"] += log_batch["lineCount"]
-                self.metrics["bytes_sent"] += len(json.dumps(log_batch))
-                # Log successful shipment for debugging
-                logger.debug(
-                    f"Successfully shipped {log_batch['lineCount']} log lines to server"
-                )
-        except Exception as e:
-            logger.error(f"Failed to send logs to server: {e}")
-            raise
+        enable_compression = (
+            os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
+        )
+        # Use the centralized logs mixin method which handles both new and legacy approaches
+        metrics = self.metadata.send_logs_batch(
+            pipeline_fqn=self.pipeline_fqn,
+            run_id=self.run_id,
+            log_content=log_content,
+            enable_compression=enable_compression,
+        )
+        # Update handler metrics with returned metrics
+        self.metrics["logs_sent"] += metrics["logs_sent"]
+        self.metrics["bytes_sent"] += metrics["bytes_sent"]
 
     def emit(self, record: logging.LogRecord):
         """

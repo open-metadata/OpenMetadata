@@ -96,6 +96,94 @@ class OMetaLogsMixin:
             logger.error(f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}")
             return False
 
+    def send_logs_batch(
+        self,
+        pipeline_fqn: str,
+        run_id: UUID,
+        log_content: str,
+        enable_compression: bool = False,
+    ) -> dict:
+        """
+        Send logs batch to S3 storage, handling both new and legacy approaches.
+
+        This method consolidates all log sending logic, including fallback
+        for backward compatibility.
+
+        Args:
+            pipeline_fqn: Fully qualified name of the ingestion pipeline
+            run_id: Unique identifier for the pipeline run
+            log_content: The log content to send
+            enable_compression: Whether to compress logs before sending
+
+        Returns:
+            dict: Metrics including lines sent and bytes sent
+
+        Raises:
+            Exception: If logs cannot be sent via any method
+        """
+        metrics = {"logs_sent": 0, "bytes_sent": 0}
+
+        try:
+            # Check if send_logs_to_s3 method exists (new approach)
+            if hasattr(self, "send_logs_to_s3"):
+                success = self.send_logs_to_s3(
+                    pipeline_fqn=pipeline_fqn,
+                    run_id=run_id,
+                    log_content=log_content,
+                    compress=enable_compression and len(log_content) > 10240,
+                )
+
+                if success:
+                    # Update metrics
+                    line_count = log_content.count("\n") + 1
+                    metrics["logs_sent"] = line_count
+                    metrics["bytes_sent"] = len(log_content)
+
+                    logger.debug(
+                        f"Successfully shipped {line_count} log lines to server"
+                    )
+                else:
+                    logger.error("Failed to send logs via mixin")
+                return metrics
+            else:
+                # Fallback: Direct API call for backward compatibility
+                logger.warning("Using fallback direct API call for log shipping")
+
+                # Build payload
+                log_batch = {
+                    "logs": log_content,
+                    "timestamp": int(time.time() * 1000),
+                    "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                    "compressed": False,
+                    "lineCount": log_content.count("\n") + 1,
+                }
+
+                if enable_compression and len(log_content) > 10240:
+                    compressed_data = gzip.compress(log_content.encode("utf-8"))
+                    log_batch["logs"] = base64.b64encode(compressed_data).decode(
+                        "utf-8"
+                    )
+                    log_batch["compressed"] = True
+
+                # Use the metadata client's REST interface directly
+                self.client.post(
+                    f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}",
+                    data=json.dumps(log_batch),
+                )
+
+                # Update metrics
+                metrics["logs_sent"] = log_batch["lineCount"]
+                metrics["bytes_sent"] = len(json.dumps(log_batch))
+
+                logger.debug(
+                    f"Successfully shipped {log_batch['lineCount']} log lines to server"
+                )
+                return metrics
+
+        except Exception as e:
+            logger.error(f"Failed to send logs batch for pipeline {pipeline_fqn}: {e}")
+        return metrics
+
     def create_log_stream(
         self,
         pipeline_fqn: str,
