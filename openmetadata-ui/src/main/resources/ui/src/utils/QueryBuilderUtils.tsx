@@ -396,17 +396,36 @@ export const getJsonTreeFromQueryFilter = (
     const id2 = generateUUID();
     const mustFilters = queryFilter?.query?.bool?.must as QueryFieldInterface[];
 
+    // If must array is empty or doesn't exist, return empty object
+    if (!mustFilters || mustFilters.length === 0) {
+      return {} as OldJsonTree;
+    }
+
+    // Detect conjunction from the elasticsearch query structure
+    // If the first filter has 'should' array, it's OR conjunction
+    // If it has 'must' array, it's AND conjunction
+    const firstFilter = mustFilters?.[0]?.bool as EsBoolQuery;
+    const hasShould = firstFilter?.should && Array.isArray(firstFilter.should);
+    const hasMust = firstFilter?.must && Array.isArray(firstFilter.must);
+
+    // Determine the conjunction based on the query structure
+    const conjunction = hasShould ? 'OR' : 'AND';
+    const filtersToProcess = hasShould
+      ? firstFilter.should
+      : hasMust
+      ? firstFilter.must
+      : [];
+
     return {
       type: 'group',
       properties: { conjunction: 'AND', not: false },
       children1: {
         [id2]: {
           type: 'group',
-          properties: { conjunction: 'AND', not: false },
+          properties: { conjunction, not: false },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
-            (mustFilters?.[0]?.bool as EsBoolQuery)
-              .must as QueryFieldInterface[],
+            filtersToProcess as QueryFieldInterface[],
             fields
           ),
           id: id2,
@@ -847,17 +866,20 @@ export const addEntityTypeFilter = (
 
 export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
-  entityType: string
+  entityType: string | string[]
 ): QueryFilterInterface => {
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]
     )[0];
     if (firstMustBlock?.bool?.must) {
-      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
-        term: {
-          entityType: entityType,
-        },
+      const entityTypes = Array.isArray(entityType) ? entityType : [entityType];
+      entityTypes.forEach((entityType) => {
+        (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
+          term: {
+            entityType: entityType,
+          },
+        });
       });
     }
   }

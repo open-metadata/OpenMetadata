@@ -67,7 +67,7 @@ export const TableProfilerContext =
 export const TableProfilerProvider = ({
   children,
   permissions,
-  table,
+  table: tableEntity,
   testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
@@ -87,6 +87,7 @@ export const TableProfilerProvider = ({
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
+  const [table, setTable] = useState<Table | undefined>(tableEntity);
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
@@ -208,6 +209,22 @@ export const TableProfilerProvider = ({
   };
 
   const onTestCaseSubmit = (testCase: TestCase) => {
+    setTable((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, testSuite: testCase.testSuite };
+    });
+
+    const paging = {
+      ...testCasePaging.paging,
+      // Increase total count as we are adding new test case
+      total: (testCasePaging.paging?.total || 0) + 1,
+    };
+
+    testCasePaging.handlePagingChange(paging);
+
     setAllTestCases((prevTestCases) => {
       return [testCase, ...prevTestCases];
     });

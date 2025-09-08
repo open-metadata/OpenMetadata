@@ -238,8 +238,7 @@ test.describe('Customize Landing Page Flow', () => {
         const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
 
         await adminPage
-          .locator('[data-testid="reset-layout-modal"] .ant-modal-footer')
-          .locator('text=Yes')
+          .getByRole('button', { name: 'Reset', exact: true })
           .click();
 
         await resetResponse;
