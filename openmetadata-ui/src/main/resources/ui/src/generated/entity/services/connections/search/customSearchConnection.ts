@@ -29,6 +29,7 @@ export interface CustomSearchConnection {
      * Custom search service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

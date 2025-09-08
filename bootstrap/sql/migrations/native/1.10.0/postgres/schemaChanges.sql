@@ -1,30 +1,14 @@
--- Performance optimization for tag_usage prefix queries (THE REAL FIX)
--- PostgreSQL version for OpenMetadata 1.10.0
--- Implements case-insensitive prefix search with massive performance gains
-
--- ========================================
--- STEP 1: Add Generated Column for Case-Insensitive Search
--- ========================================
-
--- Add lowercase columns for efficient case-insensitive searches
-ALTER TABLE tag_usage 
-ADD COLUMN IF NOT EXISTS targetfqnhash_lower text 
+-- Performance optimization for tag_usage prefix queries
+ADD COLUMN IF NOT EXISTS targetfqnhash_lower text
 GENERATED ALWAYS AS (lower(targetFQNHash)) STORED;
 
-ALTER TABLE tag_usage 
-ADD COLUMN IF NOT EXISTS tagfqn_lower text 
+ALTER TABLE tag_usage
+ADD COLUMN IF NOT EXISTS tagfqn_lower text
 GENERATED ALWAYS AS (lower(tagFQN)) STORED;
 
--- ========================================
--- STEP 2: Create Optimized Covering Indexes with text_pattern_ops
--- ========================================
-
--- Note: These may replace existing indexes from 1.9.3 that lack text_pattern_ops
 -- Using IF NOT EXISTS to handle both new installations and upgrades
-DROP INDEX IF EXISTS idx_tag_usage_target_composite;  -- This one exists from original 1.9.3
+DROP INDEX IF EXISTS idx_tag_usage_target_composite;
 
--- PRIMARY INDEX: For targetFQNHash prefix searches (LIKE 'prefix%')
--- This is the main culprit - needs text_pattern_ops for prefix matching
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_usage_target_prefix_covering
 ON tag_usage (source, targetfqnhash_lower text_pattern_ops)
 INCLUDE (tagFQN, labelType, state)
@@ -47,13 +31,6 @@ ON tag_usage (tagFQNHash, source)
 INCLUDE (targetFQNHash, tagFQN, labelType, state)
 WHERE state = 1;
 
--- Note: Indexes on classification and tag tables removed as they are not critical for the performance fix
--- The main performance issue is in tag_usage table which we've addressed above
-
--- ========================================
--- STEP 3: GIN Index for Contains Queries (if needed)
--- ========================================
-
 -- Only create if you need %contains% searches
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -61,10 +38,6 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX CONCURRENTLY IF NOT EXISTS gin_tag_usage_targetfqn_trgm
 ON tag_usage USING GIN (targetFQNHash gin_trgm_ops)
 WHERE state = 1;
-
--- ========================================
--- STEP 4: Table Optimizations
--- ========================================
 
 -- Optimize autovacuum for tag_usage (high update frequency)
 ALTER TABLE tag_usage SET (
@@ -75,10 +48,6 @@ ALTER TABLE tag_usage SET (
   fillfactor = 90                           -- Leave 10% free space for HOT updates
 );
 
--- ========================================
--- STEP 5: Update Statistics and Analyze
--- ========================================
-
 -- Increase statistics target for frequently queried columns
 ALTER TABLE tag_usage ALTER COLUMN targetFQNHash SET STATISTICS 1000;
 ALTER TABLE tag_usage ALTER COLUMN targetfqnhash_lower SET STATISTICS 1000;
@@ -86,31 +55,15 @@ ALTER TABLE tag_usage ALTER COLUMN tagFQN SET STATISTICS 500;
 ALTER TABLE tag_usage ALTER COLUMN tagfqn_lower SET STATISTICS 500;
 ALTER TABLE tag_usage ALTER COLUMN source SET STATISTICS 100;
 
--- Force immediate statistics update
--- VACUUM (ANALYZE) tag_usage;
--- ANALYZE classification;
--- ANALYZE tag;
-
--- ========================================
--- Fix for classification term count queries
--- ========================================
-
 -- Add index for efficient bulk term count queries
 -- The bulkGetTermCounts query uses: WHERE classificationHash IN (...) AND deleted = FALSE
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_classification_deleted 
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_classification_deleted
 ON tag (classificationHash, deleted);
-
--- ========================================
--- Fix for entity_relationship queries
--- ========================================
-
--- The queries filter on deleted = FALSE but current indexes don't include it
--- This causes slow queries as seen in AWS Performance Insights
 
 -- These new indexes replace the basic ones with better filtering on deleted column
 -- Using IF NOT EXISTS to handle both new installations and upgrades
-DROP INDEX IF EXISTS idx_entity_relationship_from_composite;  -- May exist from original 1.9.3
-DROP INDEX IF EXISTS idx_entity_relationship_to_composite;    -- May exist from original 1.9.3
+DROP INDEX IF EXISTS idx_entity_relationship_from_composite;
+DROP INDEX IF EXISTS idx_entity_relationship_to_composite;
 
 -- Create new indexes with deleted column for efficient filtering
 -- Using partial indexes (WHERE deleted = FALSE) for even better performance
@@ -135,5 +88,24 @@ CREATE INDEX IF NOT EXISTS idx_entity_relationship_bidirectional
 ON entity_relationship(fromId, toId, relation)
 WHERE deleted = FALSE;
 
--- Update statistics
--- ANALYZE entity_relationship;
+-- Add "Data Product Domain Validation" rule to existing entityRulesSettings configuration
+UPDATE openmetadata_settings
+SET json = jsonb_set(
+    json,
+    '{entitySemantics}',
+    (json->'entitySemantics') || jsonb_build_object(
+        'name', 'Data Product Domain Validation',
+        'description', 'Validates that Data Products assigned to an entity match the entity''s domains.',
+        'rule', '{"validateDataProductDomainMatch":[{"var":"dataProducts"},{"var":"domains"}]}',
+        'enabled', true,
+        'provider', 'system'
+    )::jsonb,
+    true
+)
+WHERE configtype = 'entityRulesSettings'
+  AND json->'entitySemantics' IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(json->'entitySemantics') AS rule
+    WHERE rule->>'name' = 'Data Product Domain Validation'
+  );

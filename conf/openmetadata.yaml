@@ -27,51 +27,48 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
-      
+
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
       selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
-      
+
       # Connection settings - relaxed for Docker/local development
       acceptQueueSize: ${SERVER_ACCEPT_QUEUE_SIZE:-256}  # OS-level connection backlog
       idleTimeout: ${SERVER_IDLE_TIMEOUT:-60 seconds}  # Close idle connections (increased from 30s)
-      
+
       # Buffer sizes for better throughput
       outputBufferSize: ${SERVER_OUTPUT_BUFFER_SIZE:-32KiB}
       inputBufferSize: ${SERVER_INPUT_BUFFER_SIZE:-8KiB}
       maxRequestHeaderSize: ${SERVER_MAX_REQUEST_HEADER_SIZE:-8KiB}
       maxResponseHeaderSize: ${SERVER_MAX_RESPONSE_HEADER_SIZE:-8KiB}
       headerCacheSize: ${SERVER_HEADER_CACHE_SIZE:-512B}  # Cache parsed headers (in bytes)
-      
+
       # Performance settings
       useServerHeader: false  # Don't send server version header
       useDateHeader: true
       useForwardedHeaders: ${SERVER_USE_FORWARDED_HEADERS:-false}  # Enable if behind proxy
-      
+
       # Data rate limits (prevent slow loris attacks)
       minRequestDataPerSecond: ${SERVER_MIN_REQUEST_DATA_RATE:-0B}  # 0B = disabled
       minResponseDataPerSecond: ${SERVER_MIN_RESPONSE_DATA_RATE:-0B}  # 0B = disabled
-      
-  adminConnectors: 
+
+  adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
       acceptorThreads: 1  # Admin endpoint needs minimal resources
       selectorThreads: 1
-      
+
   # Response compression disabled for maximum throughput
   gzip:
     enabled: false
 
-  # Thread pool configuration for request processing
-  maxThreads: ${SERVER_MAX_THREADS:-200}  # Increased for 1000 concurrent users
-  minThreads: ${SERVER_MIN_THREADS:-50}   # Keep more threads ready
-  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-60 seconds}
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}  # Java 21 virtual threads
-  
-  # Request queue configuration
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-2048}  # Queue for burst handling
-  
+  maxThreads: ${SERVER_MAX_THREADS:-50}
+  minThreads: ${SERVER_MIN_THREADS:-10}
+  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
+  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+
   # Request/Response logging (disable in production for performance)
   requestLog:
     appenders:
@@ -200,7 +197,7 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
-  
+
   # HikariCP Connection Pool Settings - Optimized for Performance
   maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-100}  # Increased from 50 for better concurrency
   minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-20}   # Increased from 10 to reduce connection creation overhead
@@ -210,14 +207,14 @@ database:
   checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-5 minute}
-  
-  
+
+
   # JDBC Driver Properties - Critical for Performance
   # These work across both PostgreSQL and MySQL drivers
   properties:
     # HikariCP connection pool settings
     connectionTimeout: ${DB_CONNECTION_TIMEOUT:-300000}  # 300 seconds
-    idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes  
+    idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes
     maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
     leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
@@ -233,12 +230,12 @@ database:
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
-    
+
     # Aurora PostgreSQL specific optimizations
     loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
     hostRecheckSeconds: ${DB_PG_HOST_RECHECK_SECONDS:-10}  # How often to check host status
     targetServerType: ${DB_PG_TARGET_SERVER_TYPE:-primary}  # primary, secondary, any, preferSecondary
-    
+
     # MySQL specific - these are ignored by PostgreSQL driver
     rewriteBatchedStatements: ${DB_MYSQL_REWRITE_BATCHED_STATEMENTS:-true}  # Critical for MySQL batch
     cachePrepStmts: ${DB_MYSQL_CACHE_PREP_STMTS:-true}
@@ -556,12 +553,12 @@ rdf:
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}
-  
+
   # TTL (Time To Live) settings in seconds
   entityTtlSeconds: ${CACHE_ENTITY_TTL:-3600}             # 1 hour for entities
   relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-3600} # 1 hour for relationships
   tagTtlSeconds: ${CACHE_TAG_TTL:-3600}                   # 1 hour for tags
-  
+
   # Redis configuration
   redis:
     # Redis connection URL
@@ -570,19 +567,19 @@ cache:
     url: ${CACHE_REDIS_URL:-redis://localhost:6379}
     authType: ${CACHE_REDIS_AUTH_TYPE:-NONE}
     database: ${CACHE_REDIS_DATABASE:-0}  # Redis database index (0-15)
-    
+
     # Authentication for standalone Redis
     username: ${CACHE_REDIS_USERNAME:-}
     passwordRef: ${CACHE_REDIS_PASSWORD:-}  # Reference to password in secrets manager
     useSSL: ${CACHE_REDIS_USE_SSL:-false}
-    
+
     # Key namespace prefix (useful for multi-tenant deployments)
     keyspace: ${CACHE_REDIS_KEYSPACE:-"om:prod"}
-    
+
     # Connection pool settings
     poolSize: ${CACHE_REDIS_POOL_SIZE:-64}
     connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
-    
+
     # AWS ElastiCache IAM Authentication (only if using ElastiCache)
     useIamAuth: ${CACHE_REDIS_USE_IAM:-false}
     awsRegion: ${CACHE_REDIS_AWS_REGION:-}
@@ -591,44 +588,3 @@ cache:
     awsAccessKey: ${AWS_ACCESS_KEY_ID:-}
     awsSecretKey: ${AWS_SECRET_ACCESS_KEY:-}
     tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes
-
-# Example configurations:
-#
-# 1. Cache disabled (default for development/testing)
-#    cache:
-#      provider: none
-#
-# 2. Standalone Redis with password authentication
-#    cache:
-#      provider: redis
-#      redis:
-#        url: redis://localhost:6379
-#        passwordRef: ${REDIS_PASSWORD}
-#
-# 2b. Standalone Redis with username and password authentication
-#    cache:
-#      provider: redis
-#      redis:
-#        url: redis://localhost:6379
-#        username: ${REDIS_USERNAME}
-#        passwordRef: ${REDIS_PASSWORD}
-#
-# 3. AWS ElastiCache with IAM authentication (using EC2 instance profile)
-#    cache:
-#      provider: redis
-#      redis:
-#        url: redis://my-cluster.abc123.cache.amazonaws.com:6379
-#        useIamAuth: true
-#        awsRegion: us-west-2
-#        awsUseInstanceProfile: true
-#
-# 4. AWS ElastiCache with IAM authentication (using access keys)
-#    cache:
-#      provider: redis
-#      redis:
-#        url: redis://my-cluster.abc123.cache.amazonaws.com:6379
-#        useIamAuth: true
-#        awsRegion: us-west-2
-#        awsUseInstanceProfile: false
-#        awsAccessKey: ${AWS_ACCESS_KEY_ID}
-#        awsSecretKey: ${AWS_SECRET_ACCESS_KEY}

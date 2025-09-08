@@ -181,21 +181,6 @@ class OMetaUserMixin:
         """
         Get a User or Team Entity Reference by searching by its name
         """
-        maybe_user = self._search_by_name(
-            entity=User, name=name, from_count=from_count, size=size, fields=fields
-        )
-        if maybe_user:
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_user.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
-                        name=maybe_user.name.root,
-                        displayName=maybe_user.displayName,
-                    )
-                ]
-            )
-
         maybe_team = self._search_by_name(
             entity=Team, name=name, from_count=from_count, size=size, fields=fields
         )
@@ -213,5 +198,18 @@ class OMetaUserMixin:
                     )
                 ]
             )
-
+        maybe_user = self._search_by_name(
+            entity=User, name=name, from_count=from_count, size=size, fields=fields
+        )
+        if maybe_user:
+            return EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=maybe_user.id.root,
+                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                        name=maybe_user.name.root,
+                        displayName=maybe_user.displayName,
+                    )
+                ]
+            )
         return None
