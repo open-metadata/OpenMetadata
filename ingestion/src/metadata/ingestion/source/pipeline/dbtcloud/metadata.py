@@ -393,6 +393,10 @@ class DbtcloudSource(PipelineServiceSource):
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
 
+                dbt_parents = self.client.get_models_and_seeds_details(
+                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+                )
+
                 if dbt_models:
                     for model in dbt_models:
                         for db_service_name in (
@@ -413,7 +417,7 @@ class DbtcloudSource(PipelineServiceSource):
                             )
 
                             if table_entity:
-                                # Create pipeline observability data
+                                # Create pipeline observability data for the model table
                                 pipeline_obs = self._create_pipeline_observability(
                                     pipeline_details, latest_run
                                 )
@@ -423,8 +427,39 @@ class DbtcloudSource(PipelineServiceSource):
                                         table_entity=table_entity,
                                         pipeline_observability=pipeline_obs,
                                     )
-                                    # yield Either(right=pipeline_obs_link)
-                                    break  # Found the table, no need to check other services when found
+                                    yield Either(right=pipeline_obs_link)
+
+                                # Process parent dependencies (same as lineage logic)
+                                for unique_id in model.dependsOn or []:
+                                    parents = [
+                                        d for d in dbt_parents if d.uniqueId == unique_id
+                                    ]
+                                    if parents:
+                                        parent_entity = self.metadata.get_by_name(
+                                            entity=Table,
+                                            fqn=fqn.build(
+                                                metadata=self.metadata,
+                                                entity_type=Table,
+                                                table_name=parents[0].name,
+                                                database_name=parents[0].database,
+                                                schema_name=parents[0].dbtschema,
+                                                service_name=db_service_name,
+                                            ),
+                                        )
+
+                                        if parent_entity:
+                                            # Create pipeline observability for parent table
+                                            parent_pipeline_obs = self._create_pipeline_observability(
+                                                pipeline_details, latest_run
+                                            )
+                                            if parent_pipeline_obs:
+                                                parent_obs_link = PipelineObservabilityLink(
+                                                    table_entity=parent_entity,
+                                                    pipeline_observability=parent_pipeline_obs,
+                                                )
+                                                yield Either(right=parent_obs_link)
+                                
+                                break  # Found the table, no need to check other services
 
         except Exception as exc:
             yield Either(
