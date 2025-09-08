@@ -1339,15 +1339,15 @@ public class SearchRepository {
     return scriptTxt.toString();
   }
 
-  protected final LoadingCache<String, String> searchRequestCache =
+  protected final LoadingCache<String, Response> searchRequestCache =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .build(new SearchRequestLoader());
 
-  class SearchRequestLoader extends CacheLoader<String, String> {
+  class SearchRequestLoader extends CacheLoader<String, Response> {
     @Override
-    public @NotNull String load(@CheckForNull String key) throws Exception {
+    public @NotNull Response load(@CheckForNull String key) throws Exception {
       throw new UnsupportedOperationException("Cache should use manual loading via searchClient");
     }
   }
@@ -1356,21 +1356,19 @@ public class SearchRepository {
     String cacheKey = generateCacheKey(request, subjectContext);
 
     try {
-      String cachedResult =
-          searchRequestCache.get(
-              cacheKey,
-              () -> {
-                try {
-                  Response res = searchClient.search(request, subjectContext);
-                  return (String) res.getEntity();
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
-                }
-              });
-
-      // Return a new Response with the cached entity
-      return Response.status(Response.Status.OK).entity(cachedResult).build();
-
+      return searchRequestCache.get(
+          cacheKey,
+          () -> {
+            try {
+              LOG.debug(
+                  "Cache MISS - executing search for key: {}",
+                  cacheKey.substring(0, Math.min(32, cacheKey.length())) + "...");
+              Response res = searchClient.search(request, subjectContext);
+              return res;
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
     } catch (Exception e) {
       if (e.getCause() instanceof IOException) {
         throw (IOException) e.getCause();
