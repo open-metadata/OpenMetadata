@@ -160,7 +160,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataQualityDataIndex() {
+  public void deleteDataQualityDataIndex() {
     deleteIndexInternal(Entity.TEST_CASE_RESULT);
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
@@ -193,7 +193,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataAssetsDataStream() {
+  public void deleteDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
