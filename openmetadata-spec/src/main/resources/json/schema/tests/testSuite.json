@@ -175,6 +175,10 @@
       "description": "Indicates if the test suite is inherited from a parent entity.",
       "type": "boolean",
       "default": false
+    },
+    "ingestionRunner": {
+      "description": "Link to the ingestion pipeline that ingested this entity.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": [
