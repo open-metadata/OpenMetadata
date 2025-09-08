@@ -124,8 +124,6 @@ elasticsearch:
   # Single host configuration for test
   host: localhost
   port: 9200
-  # Multi-host configuration (optional for testing)
-  hosts: []
   scheme: http
   username: ""
   password: ""
