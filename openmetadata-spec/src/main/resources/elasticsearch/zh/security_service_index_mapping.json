@@ -162,6 +162,31 @@
                             }
                         }
                     },
+                    "tier": {
+                        "properties": {
+                            "tagFQN": {
+                                "type": "keyword",
+                                "fields": {
+                                    "text": {
+                                        "type": "text",
+                                        "analyzer": "om_analyzer"
+                                    }
+                                }
+                            },
+                            "labelType": {
+                                "type": "keyword"
+                            },
+                            "description": {
+                                "type": "text"
+                            },
+                            "source": {
+                                "type": "keyword"
+                            },
+                            "state": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
                     "owner": {
                         "properties": {
                             "id": {
@@ -389,6 +414,31 @@
                     }
                 }
             },
+            "tier": {
+                "properties": {
+                    "tagFQN": {
+                        "type": "keyword",
+                        "fields": {
+                            "text": {
+                                "type": "text",
+                                "analyzer": "om_analyzer"
+                            }
+                        }
+                    },
+                    "labelType": {
+                        "type": "keyword"
+                    },
+                    "description": {
+                        "type": "text"
+                    },
+                    "source": {
+                        "type": "keyword"
+                    },
+                    "state": {
+                        "type": "keyword"
+                    }
+                }
+            },
             "suggest": {
                 "type": "completion",
                 "contexts": [
@@ -464,8 +514,15 @@
                 }
             },
             "entityType": {
-                "type": "keyword"
-            },
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
             "deleted": {
                 "type": "boolean"
             },

@@ -286,11 +286,15 @@ const ContractDetail: React.FC<{
     return (
       <Row align="middle" justify="space-between">
         <Col flex="auto">
-          <Typography.Text className="contract-title">
+          <Typography.Text
+            className="contract-title"
+            data-testid="contract-title">
             {getEntityName(contract)}
           </Typography.Text>
 
-          <Typography.Text className="contract-time">
+          <Typography.Text
+            className="contract-time"
+            data-testid="contract-last-updated-time">
             {t('message.modified-time-ago-by', {
               time: getRelativeTime(contract.updatedAt),
               by: contract.updatedBy,
@@ -300,7 +304,7 @@ const ContractDetail: React.FC<{
           <div className="contract-status-badge-container">
             <StatusBadgeV2
               externalIcon={FlagIcon}
-              label={contract.status ?? t('label.active')}
+              label={contract.entityStatus ?? t('label.approved')}
               status={StatusType.Success}
             />
 
@@ -316,7 +320,9 @@ const ContractDetail: React.FC<{
         <Col>
           <div className="contract-action-container">
             {!isEmpty(contract.owners) && (
-              <div className="contract-owner-label-container">
+              <div
+                className="contract-owner-label-container"
+                data-testid="contract-owner-card">
                 <Typography.Text>{t('label.owner-plural')}</Typography.Text>
                 <OwnerLabel
                   avatarSize={24}
@@ -475,7 +481,10 @@ const ContractDetail: React.FC<{
                         </Typography.Text>
                       </div>
                     ),
-                  }}>
+                  }}
+                  dataTestId="schema-table-card"
+                  defaultExpanded={!isEmpty(schemaDetail)}
+                  isExpandDisabled={isEmpty(schemaDetail)}>
                   <Table
                     columns={schemaColumns}
                     dataSource={schemaDetail}

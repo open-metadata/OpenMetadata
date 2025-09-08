@@ -16,20 +16,12 @@
 .unsaved-changes-modal-container {
   .ant-modal-content {
     .ant-modal-close {
-      top: 24px;
-      right: 24px;
-
       .ant-modal-close-x {
-        margin: 0;
-        width: 24px;
-        height: 24px;
-        font-size: 24px;
-        line-height: 24px;
+        margin-top: @size-md;
+        margin-right: @size-md;
       }
     }
     border-radius: 16px;
-    position: relative;
-    overflow: visible;
   }
 }
 
@@ -58,66 +50,29 @@
 
 .unsaved-changes-modal-content {
   flex: 1;
-  position: relative;
-  z-index: 10;
 }
 
 .unsaved-changes-modal-title {
   margin-bottom: 0 !important;
-  color: #181d27 !important;
-  font-weight: 600 !important;
-  font-size: 16px !important;
-  line-height: 24px !important;
-  letter-spacing: 0% !important;
+  color: @grey-900 !important;
 }
 
 .unsaved-changes-modal-description {
-  color: #535862 !important;
-  font-weight: 400 !important;
-  font-size: 14px !important;
-  line-height: 20px !important;
-  letter-spacing: 0% !important;
+  color: @grey-600 !important;
 }
 
 .unsaved-changes-modal-actions {
-  margin-top: 32px;
+  margin-top: @size-2xl;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: @size-sm;
-  position: relative;
-  z-index: 10;
 
   .ant-btn {
-    padding: 6px 12px !important;
-    height: 44px !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    font-size: 16px !important;
-    line-height: 24px !important;
-    color: #414651 !important;
-    flex: 1;
-
-    &.ant-btn-sm {
-      padding: 6px 12px !important;
-      height: 44px !important;
-      border-radius: 8px !important;
-      font-weight: 600 !important;
-      font-size: 16px !important;
-      line-height: 24px !important;
-      color: #414651 !important;
-    }
-
-    &.ant-btn-primary {
-      color: white !important;
-    }
-
-    &.unsaved-changes-modal-discard {
-      &:hover,
-      &:focus {
-        border-color: #d1d5db !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
-    }
+    padding: @size-xs @size-md;
+    height: auto;
+    border-radius: @border-rad-xs;
+    font-weight: @font-semibold;
+    font-size: @size-md;
+    line-height: 1.5;
   }
 }
