@@ -142,7 +142,10 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#testCaseFormV1_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
-    await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
+    await page
+      .getByTestId('test-case-form-v1')
+      .locator(descriptionBox)
+      .fill(NEW_TABLE_TEST_CASE.description);
 
     // Add tags to test case
     await page.click('[data-testid="tags-selector"] input');
@@ -303,7 +306,10 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#testCaseFormV1_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
-    await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
+    await page
+      .getByTestId('test-case-form-v1')
+      .locator(descriptionBox)
+      .fill(NEW_COLUMN_TEST_CASE.description);
 
     // Add tags to column test case
     await page.click('[data-testid="tags-selector"] input');
@@ -588,7 +594,10 @@ test(
       );
       await page.click(`[data-testid="edit-${testCaseName}"]`);
       await testDefinitionResponse;
-      await page.locator(descriptionBox).fill('Test case description');
+      await page
+        .getByTestId('edit-test-form')
+        .locator(descriptionBox)
+        .fill('Test case description');
       const updateTestCaseResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
