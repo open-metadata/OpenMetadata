@@ -6,9 +6,6 @@ ALTER TABLE tag_usage
 ADD COLUMN IF NOT EXISTS tagfqn_lower text
 GENERATED ALWAYS AS (lower(tagFQN)) STORED;
 
--- Using IF NOT EXISTS to handle both new installations and upgrades
-DROP INDEX IF EXISTS idx_tag_usage_target_composite;
-
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_usage_target_prefix_covering
 ON tag_usage (source, targetfqnhash_lower text_pattern_ops)
 INCLUDE (tagFQN, labelType, state)
@@ -59,11 +56,6 @@ ALTER TABLE tag_usage ALTER COLUMN source SET STATISTICS 100;
 -- The bulkGetTermCounts query uses: WHERE classificationHash IN (...) AND deleted = FALSE
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_classification_deleted
 ON tag (classificationHash, deleted);
-
--- These new indexes replace the basic ones with better filtering on deleted column
--- Using IF NOT EXISTS to handle both new installations and upgrades
-DROP INDEX IF EXISTS idx_entity_relationship_from_composite;
-DROP INDEX IF EXISTS idx_entity_relationship_to_composite;
 
 -- Create new indexes with deleted column for efficient filtering
 -- Using partial indexes (WHERE deleted = FALSE) for even better performance
