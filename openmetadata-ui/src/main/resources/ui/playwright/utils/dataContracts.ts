@@ -19,7 +19,7 @@ export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
 ): Promise<string | undefined> => {
-  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts');
+  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
   const responseData = await response.json();
@@ -39,6 +39,11 @@ export const saveAndTriggerDataContractValidation = async (
   await runNowResponse;
 
   await page.reload();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   return responseData;
 };

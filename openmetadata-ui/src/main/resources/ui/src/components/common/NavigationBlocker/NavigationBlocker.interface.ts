@@ -18,6 +18,6 @@ export interface NavigationBlockerProps {
   title?: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm?: () => void;
+  onConfirm?: () => Promise<void>;
   onCancel?: () => void;
 }

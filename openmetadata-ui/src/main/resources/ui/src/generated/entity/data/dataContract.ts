@@ -95,13 +95,25 @@ export interface DataContract {
      */
     schema?: Column[];
     /**
+     * Security and access policy expectations defined in the data contract.
+     */
+    security?: ContractSecurity;
+    /**
      * Semantics rules defined in the data contract.
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations defined in the data contract.
+     */
+    sla?: ContractSLA;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
+    /**
+     * Terms of use for the data contract for both human and AI agents consumption.
+     */
+    termsOfUse?: string;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -767,6 +779,57 @@ export interface Style {
 }
 
 /**
+ * Security and access policy expectations defined in the data contract.
+ *
+ * Security and access policy expectations
+ */
+export interface ContractSecurity {
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    consumers?: DataConsumers[];
+    /**
+     * Expected data classification (e.g. Confidential, PII, etc.)
+     */
+    dataClassification?: string;
+    [property: string]: any;
+}
+
+/**
+ * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+ */
+export interface DataConsumers {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * List of groups that are intended consumers of the data
+     */
+    identities?: string[];
+    /**
+     * List of filters that define what subset of the data is accessible to the consumers
+     */
+    rowFilters?: RowFilter[];
+    [property: string]: any;
+}
+
+/**
+ * Filter that defines what subset of the data is accessible to certain consumers
+ */
+export interface RowFilter {
+    /**
+     * Column to apply the filter
+     */
+    columnName?: string;
+    /**
+     * Values applied to the filter
+     */
+    values?: string[];
+    [property: string]: any;
+}
+
+/**
  * Semantics rule defined in the data contract.
  */
 export interface SemanticsRule {
@@ -811,4 +874,77 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * Service Level Agreement expectations defined in the data contract.
+ *
+ * Service Level Agreement expectations (timeliness, availability, etc.)
+ */
+export interface ContractSLA {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaximumLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: DataRetentionPeriod;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaximumLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface DataRetentionPeriod {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Month = "month",
+    Week = "week",
+    Year = "year",
 }
