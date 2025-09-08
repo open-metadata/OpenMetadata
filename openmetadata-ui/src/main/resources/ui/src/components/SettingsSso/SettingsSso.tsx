@@ -22,7 +22,10 @@ import OktaIcon from '../../assets/img/icon-okta.png';
 import SSOIcon from '../../assets/svg/sso-settings.svg';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import { getSecurityConfiguration } from '../../rest/securityConfigAPI';
+import {
+  getSecurityConfiguration,
+  patchSecurityConfiguration,
+} from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -252,24 +255,15 @@ const SettingsSso = () => {
     setSsoEnabled(checked);
 
     try {
-      const response = await getSecurityConfiguration();
-      const config = response.data;
+      const patches = [
+        {
+          op: 'replace' as const,
+          path: '/authenticationConfiguration/enableSelfSignup',
+          value: checked,
+        },
+      ];
 
-      if (config?.authenticationConfiguration) {
-        const updatedConfig = {
-          ...config,
-          authenticationConfiguration: {
-            ...config.authenticationConfiguration,
-            enableSelfSignup: checked,
-          },
-        };
-
-        // Apply the updated configuration
-        const { applySecurityConfiguration } = await import(
-          '../../rest/securityConfigAPI'
-        );
-        await applySecurityConfiguration(updatedConfig);
-      }
+      await patchSecurityConfiguration(patches);
     } catch (error) {
       setSsoEnabled(!checked);
     }
