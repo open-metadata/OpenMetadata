@@ -555,9 +555,9 @@ cache:
   provider: ${CACHE_PROVIDER:-none}
 
   # TTL (Time To Live) settings in seconds
-  entityTtlSeconds: ${CACHE_ENTITY_TTL:-3600}             # 1 hour for entities
-  relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-3600} # 1 hour for relationships
-  tagTtlSeconds: ${CACHE_TAG_TTL:-3600}                   # 1 hour for tags
+  entityTtlSeconds: ${CACHE_ENTITY_TTL:-172800}             # 48 hour for entities
+  relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-172800} # 48 hour for relationships
+  tagTtlSeconds: ${CACHE_TAG_TTL:-172800}                   # 48 hour for tags
 
   # Redis configuration
   redis:
