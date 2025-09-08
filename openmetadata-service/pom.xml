@@ -211,12 +211,6 @@
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
     </dependency>
-    <!-- AWS Advanced JDBC Driver for Aurora PostgreSQL with read/write splitting -->
-    <dependency>
-        <groupId>software.amazon.jdbc</groupId>
-        <artifactId>aws-advanced-jdbc-wrapper</artifactId>
-        <version>2.6.3</version>
-    </dependency>
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>

@@ -165,12 +165,8 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     String driverClassName = getDriverClass();
     if (driverClassName != null) {
-      if (driverClassName.contains("postgresql")
-          || driverClassName.equals("software.amazon.jdbc.Driver")) {
+      if (driverClassName.contains("postgresql")) {
         configurePostgreSQL(config);
-        if (driverClassName.equals("software.amazon.jdbc.Driver")) {
-          configureAWSJDBCDriver(config);
-        }
       } else if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
         configureMySQL(config);
       }
@@ -231,22 +227,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       }
       if (properties.containsKey("targetServerType")) {
         props.put("targetServerType", properties.get("targetServerType"));
-      }
-    }
-  }
-
-  private void configureAWSJDBCDriver(HikariConfig config) {
-    Properties props = config.getDataSourceProperties();
-
-    // AWS JDBC Driver specific properties for Aurora cluster discovery
-    props.put("wrapperPlugins", "readWriteSplitting,failover,efm2");
-
-    // Override properties from configuration if present
-    Map<String, String> properties = getProperties();
-    if (properties != null) {
-      for (Map.Entry<String, String> entry : properties.entrySet()) {
-        String key = entry.getKey();
-        props.put(key, entry.getValue());
       }
     }
   }

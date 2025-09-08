@@ -1547,11 +1547,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-    try {
-      DatasourceConfig.initialize(connType.label);
-    } catch (Exception e) {
-      DatasourceConfig.initialize(POSTGRES.label);
-    }
+    DatasourceConfig.initialize(connType.label);
   }
 
   private void promptUserForDelete() {
@@ -1575,11 +1571,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void validateAndRunSystemDataMigrations(boolean force) {
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-    try {
-      DatasourceConfig.initialize(connType.label);
-    } catch (Exception e) {
-      DatasourceConfig.initialize(POSTGRES.label);
-    }
+    DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
