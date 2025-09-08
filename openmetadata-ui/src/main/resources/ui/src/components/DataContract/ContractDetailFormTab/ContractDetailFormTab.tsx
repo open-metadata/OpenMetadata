@@ -72,10 +72,11 @@ export const ContractDetailFormTab: React.FC<{
       label: t('label.terms-of-service'),
       id: 'termsOfUse',
       name: 'termsOfUse',
-      type: FieldTypes.TEXT_AREA,
+      type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
         'data-testid': 'contract-terms-of-service',
+        initialValue: initialValues?.termsOfUse ?? '',
       },
     },
   ];

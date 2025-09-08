@@ -13,13 +13,11 @@
 import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 
@@ -34,33 +32,6 @@ export const ContractSecurityFormTab: React.FC<{
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
-  const { classificationInitialOptions, classificationInitialValue } =
-    useMemo(() => {
-      if (isEmpty(initialValues?.security?.dataClassification)) {
-        return {
-          classificationInitialOptions: [],
-          classificationInitialValue: [],
-        };
-      }
-
-      const tagArray =
-        initialValues?.security?.dataClassification?.split(',') ?? [];
-
-      return {
-        classificationInitialOptions: tagArray.map((item) => ({
-          label: item,
-          value: item,
-        })),
-        classificationInitialValue: tagArray.map((item) => ({
-          name: item,
-          tagFQN: item,
-          source: TagSource.Classification,
-          state: 'Confirmed',
-          labelType: 'Manual',
-        })),
-      };
-    }, [initialValues?.security]);
-
   const fields: FieldProp[] = useMemo(
     () => [
       {
@@ -74,27 +45,16 @@ export const ContractSecurityFormTab: React.FC<{
         label: t('label.data-classification'),
         id: 'dataClassification',
         name: 'dataClassification',
-        type: FieldTypes.TAG_SUGGESTION,
+        type: FieldTypes.TEXT,
         required: true,
-        props: {
-          'data-testid': 'tags-container',
-          initialOptions: classificationInitialOptions,
-          newLook: true,
-          initialValue: classificationInitialValue,
-        },
       },
     ],
-    [classificationInitialValue, classificationInitialOptions]
+    []
   );
 
   const handleFormChange: FormProps['onValuesChange'] = async (_, values) => {
     onChange({
-      security: {
-        ...values,
-        dataClassification: values.dataClassification
-          .map((item: TagLabel) => item.tagFQN)
-          .join(','),
-      },
+      security: values,
     });
   };
 
@@ -102,10 +62,10 @@ export const ContractSecurityFormTab: React.FC<{
     if (initialValues) {
       form.setFieldsValue({
         accessPolicy: initialValues.security?.accessPolicy,
-        dataClassification: classificationInitialValue,
+        dataClassification: initialValues.security?.dataClassification,
       });
     }
-  }, [initialValues, classificationInitialValue]);
+  }, [initialValues]);
 
   return (
     <>
