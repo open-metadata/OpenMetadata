@@ -19,6 +19,7 @@ import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { Worksheet } from '../generated/entity/data/worksheet';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import {
   DriveAssetEntityTypes,
@@ -200,6 +201,33 @@ export const updateDriveAssetVotes = async <
     `${BASE_URL}${API}/${id}/vote`,
     data
   );
+
+  return response.data;
+};
+
+export const getDriveAssetsVersions = async (
+  id: string,
+  entityType: DriveAssetEntityTypes
+) => {
+  const API = APIByEntityType[entityType];
+  const url = `${BASE_URL}${API}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDriveAssetsVersion = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
+  id: string,
+  entityType: DriveAssetEntityTypes,
+  version?: string
+) => {
+  const API = APIByEntityType[entityType];
+  const url = `${BASE_URL}${API}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<T>(url);
 
   return response.data;
 };
