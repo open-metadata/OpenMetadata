@@ -14,6 +14,36 @@
 @import (reference) '../../../styles/variables.less';
 @import (reference) '../../../styles/components/card.less';
 
+.entity-summary-panel-container {
+  // display: flex;
+  height: 100%;
+  background: #fff;
+
+  .entity-title-link {
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: none;
+    }
+
+    &:visited {
+      text-decoration: none;
+    }
+
+    &:active {
+      text-decoration: none;
+    }
+  }
+  .summary-panel-container {
+    flex: 1;
+    // padding:16px;
+
+    .entity-summary-panel-tab-content {
+      height: 100%;
+    }
+  }
+}
+
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
@@ -30,6 +60,9 @@
 
   .ant-card-body {
     padding-top: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
     .scrollable-card-body();
   }
 
@@ -101,4 +134,15 @@
 .summary-panel-card {
   background-color: @grey-9;
   border: 0.5px solid #eaecf5;
+}
+.title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 16px;
+  height: 49px;
+  border: 1px solid #d9d9d9;
+  background-color: #f9fafc;
+  border-top-right-radius: 10px;
+  border-top-left-radius: 10px;
 }

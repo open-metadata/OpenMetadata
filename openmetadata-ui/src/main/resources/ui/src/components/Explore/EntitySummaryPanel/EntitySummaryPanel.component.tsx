@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { get } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -35,6 +36,9 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import EntityRightPanelVerticalNav, {
+  EntityRightPanelTab,
+} from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
@@ -50,6 +54,9 @@ export default function EntitySummaryPanel({
     useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
+    EntityRightPanelTab.OVERVIEW
+  );
 
   const id = useMemo(() => {
     setIsPermissionLoading(true);
@@ -125,7 +132,7 @@ export default function EntitySummaryPanel({
   );
   const entityIcon = useMemo(() => {
     return (
-      <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle entity-icon">
+      <span className="w-6 h-4 m-r-xs d-inline-flex text-xl align-middle entity-icon">
         {searchClassBase.getEntityIcon(
           get(entityDetails, 'details.entityType') ?? ''
         )}
@@ -133,28 +140,108 @@ export default function EntitySummaryPanel({
     );
   }, [entityDetails]);
 
+  const handleTabChange = (tab: EntityRightPanelTab) => {
+    setActiveTab(tab);
+  };
+
+  const entityType =
+    get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case EntityRightPanelTab.OVERVIEW:
+        return summaryComponent;
+      case EntityRightPanelTab.SCHEMA:
+        return (
+          <div className="entity-summary-panel-tab-content">
+            <div className="text-center text-grey-muted p-lg">
+              {t('message.schema-content-placeholder')}
+            </div>
+          </div>
+        );
+      case EntityRightPanelTab.LINEAGE:
+        return (
+          <div className="entity-summary-panel-tab-content">
+            <div className="text-center text-grey-muted p-lg">
+              {t('message.lineage-content-placeholder')}
+            </div>
+          </div>
+        );
+      case EntityRightPanelTab.DATA_QUALITY:
+        return (
+          <div className="entity-summary-panel-tab-content">
+            <div className="text-center text-grey-muted p-lg">
+              {t('message.data-quality-content-placeholder')}
+            </div>
+          </div>
+        );
+      case EntityRightPanelTab.CUSTOM_PROPERTIES:
+        return (
+          <div className="entity-summary-panel-tab-content">
+            <div className="text-center text-grey-muted p-lg">
+              {t('message.custom-properties-content-placeholder')}
+            </div>
+          </div>
+        );
+      default:
+        return summaryComponent;
+    }
+  };
+
   return (
-    <Card
-      className="summary-panel-container"
-      title={
-        viewPermission && (
+    <div className="entity-summary-panel-container">
+      {viewPermission && (
+        <div className="title-container">
           <Link
-            className="no-underline"
+            className="entity-title-link"
             data-testid="entity-link"
             target={searchClassBase.getSearchEntityLinkTarget(
               entityDetails.details
             )}
             to={entityLink}>
-            <Typography.Text className="m-b-0 d-block summary-panel-title">
+            <Typography.Text style={{ fontSize: '13px', fontWeight: 700 }}>
               {entityIcon}
               {stringToHTML(
                 searchClassBase.getEntityName(entityDetails.details)
               )}
             </Typography.Text>
           </Link>
-        )
-      }>
-      {summaryComponent}
-    </Card>
+          <div style={{ paddingRight: '16px' }}>
+            <Button
+              className="entity-redirect-button"
+              icon={<IconExternalLinkOutlined />}
+              size="small"
+              type="text"
+              onClick={() => {
+                const target = searchClassBase.getSearchEntityLinkTarget(
+                  entityDetails.details
+                );
+                if (target === '_blank') {
+                  window.open(entityLink as string, '_blank');
+                } else {
+                  window.open(entityLink as string, '_blank');
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+      <div>
+        <Card
+          className="summary-panel-container"
+          style={{
+            borderRadius: '0px',
+            display: 'flex',
+            paddingLeft: '16px',
+          }}>
+          <div style={{ paddingTop: '16px' }}>{renderTabContent()}</div>
+          <EntityRightPanelVerticalNav
+            activeTab={activeTab}
+            entityType={entityType}
+            onTabChange={handleTabChange}
+          />
+        </Card>
+      </div>
+    </div>
   );
 }
