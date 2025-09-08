@@ -34,6 +34,7 @@ import {
   CLICKHOUSE,
   COCKROACH,
   COUCHBASE,
+  CUSTOM_DRIVE_DEFAULT,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -117,6 +118,7 @@ import {
   ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
+  DriveServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
   MetadataServiceTypeSmallCaseType,
   MlModelServiceTypeSmallCaseType,
@@ -175,6 +177,8 @@ class ServiceUtilClassBase {
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
+    DriveServiceType.GoogleDrive,
+    DriveServiceType.SharePoint,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -226,6 +230,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     SecurityServiceTypeSmallCaseType
   >(SecurityServiceType);
+
+  DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -661,6 +670,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Grafana:
         return GRAFANA;
+
+      case this.DriveServiceTypeSmallCase.CustomDrive:
+        return CUSTOM_DRIVE_DEFAULT;
 
       default: {
         let logo;
