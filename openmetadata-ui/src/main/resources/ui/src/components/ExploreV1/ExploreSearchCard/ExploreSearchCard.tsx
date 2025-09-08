@@ -18,6 +18,7 @@ import { ExtraInfo } from 'Models';
 import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -84,14 +85,43 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
-        ...(source?.domains
-          ? source.domains.map((domain) => ({
-              key: 'Domains',
-              value: getDomainPath(domain.fullyQualifiedName) ?? '',
-              placeholderText: getEntityName(domain),
-              isLink: true,
-              openInNewTab: false,
-            }))
+        ...(source?.domains && source.domains.length > 0
+          ? [
+              {
+                key: 'Domains',
+                value: (
+                  <div className="d-flex items-center gap-2">
+                    <div className="d-flex">
+                      <DomainIcon
+                        data-testid="domain-icon"
+                        height={18}
+                        name="domain"
+                        width={18}
+                      />
+                    </div>
+
+                    <div className="d-flex items-center gap-1">
+                      {source.domains.map((domain, index) => (
+                        <span key={domain.id}>
+                          <Link
+                            className="no-underline"
+                            to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
+                            <Typography.Text className="text-sm text-primary">
+                              {getEntityName(domain)}
+                            </Typography.Text>
+                          </Link>
+                          {index < (source.domains?.length ?? 0) - 1 && (
+                            <Typography.Text className="text-sm text-grey-muted">
+                              {', '}
+                            </Typography.Text>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ),
+              },
+            ]
           : !searchClassBase
               .getListOfEntitiesWithoutDomain()
               .includes(source?.entityType ?? '')
