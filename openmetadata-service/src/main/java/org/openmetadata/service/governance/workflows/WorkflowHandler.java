@@ -47,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserTaskType;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
@@ -238,7 +239,7 @@ public class WorkflowHandler {
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    LOG.info(
+    LOG.debug(
         "[WorkflowTrigger] START: processKey='{}' businessKey='{}' variables={}",
         processDefinitionKey,
         businessKey,
@@ -246,7 +247,7 @@ public class WorkflowHandler {
     try {
       ProcessInstance instance =
           runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
-      LOG.info(
+      LOG.debug(
           "[WorkflowTrigger] SUCCESS: processKey='{}' instanceId='{}' businessKey='{}'",
           processDefinitionKey,
           instance.getId(),
@@ -394,12 +395,12 @@ public class WorkflowHandler {
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
-    LOG.info("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
+    LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
       Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
         Task task = oTask.get();
-        LOG.info(
+        LOG.debug(
             "[WorkflowTask] Found task: flowableTaskId='{}' processInstanceId='{}' name='{}'",
             task.getId(),
             task.getProcessInstanceId(),
@@ -416,11 +417,11 @@ public class WorkflowHandler {
           boolean taskCompleted =
               handleMultiApproval(task, variables, approvalThreshold, rejectionThreshold);
           if (taskCompleted) {
-            LOG.info(
+            LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' completed with threshold met",
                 customTaskId);
           } else {
-            LOG.info(
+            LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
             // Update the Thread entity to remove the task from the current voter's feed
@@ -431,18 +432,18 @@ public class WorkflowHandler {
           Optional.ofNullable(variables)
               .ifPresentOrElse(
                   variablesValue -> {
-                    LOG.info(
+                    LOG.debug(
                         "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
                         task.getId(),
                         variablesValue);
                     taskService.complete(task.getId(), variablesValue);
                   },
                   () -> {
-                    LOG.info(
+                    LOG.debug(
                         "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
                     taskService.complete(task.getId());
                   });
-          LOG.info("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
+          LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
@@ -554,7 +555,7 @@ public class WorkflowHandler {
         if (!votedUsers.contains(currentUser)) {
           votedUsers.add(currentUser);
           taskService.setVariable(flowableTask.getId(), "votedUsers", votedUsers);
-          LOG.info(
+          LOG.debug(
               "[WorkflowTask] Added user '{}' to voted users list for Flowable task", currentUser);
         }
 
@@ -564,7 +565,7 @@ public class WorkflowHandler {
           String currentAssignee = flowableTask.getAssignee();
           if (currentUser.equals(currentAssignee)) {
             taskService.unclaim(flowableTask.getId());
-            LOG.info(
+            LOG.debug(
                 "[WorkflowTask] Unclaimed Flowable task '{}' from user '{}'",
                 flowableTask.getId(),
                 currentUser);
@@ -572,7 +573,7 @@ public class WorkflowHandler {
 
           // Remove from candidate users if present
           taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
-          LOG.info(
+          LOG.debug(
               "[WorkflowTask] Removed user '{}' from candidate users for Flowable task '{}'",
               currentUser,
               flowableTask.getId());
@@ -611,18 +612,6 @@ public class WorkflowHandler {
     return null;
   }
 
-  private Integer extractTaskIdFromCustomTaskId(UUID customTaskId) {
-    // The customTaskId might contain the integer task ID
-    // This is a fallback approach if direct UUID matching doesn't work
-    try {
-      // Check if we can extract an integer ID from somewhere
-      // This depends on how the task ID is generated and stored
-      return null; // Placeholder - actual implementation would depend on ID generation logic
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
   private boolean handleMultiApproval(
       Task task,
       Map<String, Object> variables,
@@ -638,79 +627,53 @@ public class WorkflowHandler {
       rejectionThreshold = 1;
     }
 
-    // Get current approval tracking variables
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> approvals =
-        (List<Map<String, Object>>) taskService.getVariable(task.getId(), "approvals");
-    if (approvals == null) {
-      approvals = new ArrayList<>();
+    List<String> approversList =
+        (List<String>) taskService.getVariable(task.getId(), "approversList");
+    if (approversList == null) {
+      approversList = new ArrayList<>();
     }
 
-    Integer approvalCount = (Integer) taskService.getVariable(task.getId(), "approvalCount");
-    if (approvalCount == null) {
-      approvalCount = 0;
-    }
-
-    Integer rejectionCount = (Integer) taskService.getVariable(task.getId(), "rejectionCount");
-    if (rejectionCount == null) {
-      rejectionCount = 0;
+    @SuppressWarnings("unchecked")
+    List<String> rejectersList =
+        (List<String>) taskService.getVariable(task.getId(), "rejectersList");
+    if (rejectersList == null) {
+      rejectersList = new ArrayList<>();
     }
 
     // Get the current user and approval decision
-    // Variables might be namespaced, so check both namespaced and global versions
-    String currentUser = (String) variables.get("updatedBy");
-    if (currentUser == null) {
-      // Try to find namespaced updatedBy (e.g., "ApproveGlossaryTerm_updatedBy")
-      for (String key : variables.keySet()) {
-        if (key.endsWith("_updatedBy")) {
-          currentUser = (String) variables.get(key);
-          break;
-        }
-      }
-    }
+    String nodeName = getParentActivityId(task.getExecutionId());
+    String updatedByVariable = getNamespacedVariableName(nodeName, "updatedBy");
+    String resultVariable = getNamespacedVariableName(nodeName, "result");
+    String currentUser = (String) variables.get(updatedByVariable);
+    Boolean approved = (Boolean) variables.get(resultVariable);
 
-    Boolean approved = (Boolean) variables.get("result");
-    if (approved == null) {
-      // Try to find namespaced result (e.g., "ApproveGlossaryTerm_result")
-      for (String key : variables.keySet()) {
-        if (key.endsWith("_result")) {
-          approved = (Boolean) variables.get(key);
-          break;
-        }
-      }
-    }
-
-    // Make variables final for lambda expression
-    final String finalCurrentUser = currentUser;
-    final Boolean finalApproved = approved;
-
-    // Check if this user has already voted
-    boolean alreadyVoted =
-        approvals.stream()
-            .anyMatch(a -> finalCurrentUser != null && finalCurrentUser.equals(a.get("user")));
-
-    if (alreadyVoted) {
-      LOG.warn("[MultiApproval] User '{}' has already voted on this task", finalCurrentUser);
+    if (currentUser == null || approved == null) {
+      LOG.warn(
+          "[MultiApproval] Cannot process approval - missing required variables. "
+              + "updatedBy: {}, result: {}. Task remains open.",
+          currentUser,
+          approved);
+      // DON'T complete the task, DON'T increment counts
       return false;
     }
 
-    // Record the approval/rejection
-    Map<String, Object> approval = new HashMap<>();
-    approval.put("user", finalCurrentUser);
-    approval.put("approved", finalApproved);
-    approval.put("timestamp", System.currentTimeMillis());
-    approvals.add(approval);
-
-    if (Boolean.TRUE.equals(finalApproved)) {
-      approvalCount++;
-    } else {
-      rejectionCount++;
+    if (approversList.contains(currentUser) || rejectersList.contains(currentUser)) {
+      LOG.warn("[MultiApproval] User '{}' has already voted on this task", currentUser);
+      return false;
     }
 
-    // Update task variables
-    taskService.setVariable(task.getId(), "approvals", approvals);
-    taskService.setVariable(task.getId(), "approvalCount", approvalCount);
-    taskService.setVariable(task.getId(), "rejectionCount", rejectionCount);
+    if (approved) {
+      approversList.add(currentUser);
+    } else {
+      rejectersList.add(currentUser);
+    }
+
+    taskService.setVariable(task.getId(), "approversList", approversList);
+    taskService.setVariable(task.getId(), "rejectersList", rejectersList);
+
+    int approvalCount = approversList.size();
+    int rejectionCount = rejectersList.size();
 
     LOG.debug(
         "[MultiApproval] Task '{}' - Approvals: {}/{}, Rejections: {}/{}",
@@ -727,14 +690,7 @@ public class WorkflowHandler {
           rejectionCount,
           rejectionThreshold);
       // Set the final result - need to check if result is namespaced
-      String resultKey = "result";
-      for (String key : variables.keySet()) {
-        if (key.endsWith("_result")) {
-          resultKey = key;
-          break;
-        }
-      }
-      variables.put(resultKey, false);
+      variables.put(resultVariable, false);
       taskService.complete(task.getId(), variables);
       return true;
     }
@@ -746,14 +702,7 @@ public class WorkflowHandler {
           approvalCount,
           approvalThreshold);
       // Set the final result - need to check if result is namespaced
-      String resultKey = "result";
-      for (String key : variables.keySet()) {
-        if (key.endsWith("_result")) {
-          resultKey = key;
-          break;
-        }
-      }
-      variables.put(resultKey, true);
+      variables.put(resultVariable, true);
       taskService.complete(task.getId(), variables);
       return true;
     }
@@ -888,12 +837,8 @@ public class WorkflowHandler {
       LOG.debug(
           "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
 
-      // Try both possible termination message patterns
-      // UserApprovalTask uses: subProcessId_terminateProcess
-      // DetailedUserApprovalTask uses: subProcessId_terminateDetailedProcess
-      String[] messagePatterns = {
-        subProcessId + "_terminateProcess", subProcessId + "_terminateDetailedProcess"
-      };
+      // Get all possible termination message patterns from the enum
+      List<String> messagePatterns = UserTaskType.getAllTerminationPatterns(subProcessId);
 
       for (String messageName : messagePatterns) {
         LOG.debug("Checking for message subscription: {}", messageName);

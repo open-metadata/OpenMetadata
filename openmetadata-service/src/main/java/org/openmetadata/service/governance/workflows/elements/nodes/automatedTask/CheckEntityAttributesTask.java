@@ -73,8 +73,8 @@ public class CheckEntityAttributesTask implements NodeInterface {
 
   private ServiceTask getCheckEntityAttributesServiceTask(
       String subProcessId, String rules, String inputNamespaceMap) {
-    LOG.info("CheckEntityAttributesTask: rules = {}", rules);
-    LOG.info("CheckEntityAttributesTask: inputNamespaceMap = {}", inputNamespaceMap);
+    LOG.debug("CheckEntityAttributesTask: rules = {}", rules);
+    LOG.debug("CheckEntityAttributesTask: inputNamespaceMap = {}", inputNamespaceMap);
     FieldExtension rulesExpr =
         new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
     FieldExtension inputNamespaceMapExpr =

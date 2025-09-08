@@ -4,7 +4,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
@@ -34,18 +33,21 @@ public class ApprovalTaskCompletionValidator implements TaskListener {
         return; // Single approval, allow completion
       }
 
-      // Get current vote counts
+      // Get current vote lists and calculate counts
       @SuppressWarnings("unchecked")
-      List<Map<String, Object>> approvals =
-          (List<Map<String, Object>>) delegateTask.getVariable("approvals");
-      if (approvals == null) {
-        approvals = new ArrayList<>();
+      List<String> approversList = (List<String>) delegateTask.getVariable("approversList");
+      if (approversList == null) {
+        approversList = new ArrayList<>();
       }
 
-      Integer approvalCount = (Integer) delegateTask.getVariable("approvalCount");
-      Integer rejectionCount = (Integer) delegateTask.getVariable("rejectionCount");
-      if (approvalCount == null) approvalCount = 0;
-      if (rejectionCount == null) rejectionCount = 0;
+      @SuppressWarnings("unchecked")
+      List<String> rejectersList = (List<String>) delegateTask.getVariable("rejectersList");
+      if (rejectersList == null) {
+        rejectersList = new ArrayList<>();
+      }
+
+      int approvalCount = approversList.size();
+      int rejectionCount = rejectersList.size();
 
       // Check if thresholds are met
       boolean approvalThresholdMet = approvalCount >= approvalThreshold;

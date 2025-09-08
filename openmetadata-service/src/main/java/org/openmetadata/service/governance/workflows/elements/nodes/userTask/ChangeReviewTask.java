@@ -197,10 +197,10 @@ public class ChangeReviewTask implements NodeInterface {
   }
 
   private BoundaryEvent getTerminationEvent(String subProcessId) {
-    // Use a consistent format that matches what getFlowableElementId produces
-    // This ensures uniqueness per node within the workflow definition
-    // ChangeReviewTask uses terminateChangeReviewProcess to distinguish from UserApprovalTask
-    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateChangeReviewProcess");
+    // Use the enum to get the termination message suffix for this task type
+    String uniqueMessageName =
+        getFlowableElementId(
+            subProcessId, UserTaskType.CHANGE_REVIEW_TASK.getTerminationMessageSuffix());
 
     Message terminationMessage = new Message();
     terminationMessage.setId(uniqueMessageName);

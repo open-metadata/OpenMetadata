@@ -79,9 +79,9 @@ public class CreateApprovalTaskImpl implements TaskListener {
       // Store approval and rejection thresholds and initialize approval tracking in task variables
       delegateTask.setVariable("approvalThreshold", approvalThreshold);
       delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
-      delegateTask.setVariable("approvals", new ArrayList<Map<String, Object>>());
-      delegateTask.setVariable("approvalCount", 0);
-      delegateTask.setVariable("rejectionCount", 0);
+      // Use separate lists for approvers and rejecters - simpler and cleaner
+      delegateTask.setVariable("approversList", new ArrayList<String>());
+      delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
       LOG.error(
           String.format(
