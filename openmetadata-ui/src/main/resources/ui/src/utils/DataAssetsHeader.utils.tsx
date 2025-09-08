@@ -760,18 +760,6 @@ export const getDataAssetsHeaderInfo = (
               />
             </>
           )}
-          {tableDetails.dataModel?.dbtSourceProject && (
-            <>
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
-              <ExtraInfoLabel
-                label={t('label.dbt-source-project')}
-                value={tableDetails.dataModel?.dbtSourceProject}
-              />
-            </>
-          )}
         </>
       );
 
