@@ -1341,7 +1341,7 @@ public class SearchRepository {
 
   protected final LoadingCache<String, Response> searchRequestCache =
       CacheBuilder.newBuilder()
-          .maximumSize(1000)
+          .maximumSize(100)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .build(new SearchRequestLoader());
 
@@ -1360,11 +1360,7 @@ public class SearchRepository {
           cacheKey,
           () -> {
             try {
-              LOG.debug(
-                  "Cache MISS - executing search for key: {}",
-                  cacheKey.substring(0, Math.min(32, cacheKey.length())) + "...");
-              Response res = searchClient.search(request, subjectContext);
-              return res;
+              return searchClient.search(request, subjectContext);
             } catch (IOException e) {
               throw new RuntimeException(e);
             }
@@ -1378,84 +1374,8 @@ public class SearchRepository {
   }
 
   protected String generateCacheKey(SearchRequest request, SubjectContext subjectContext) {
-    // Create a deterministic cache key based on request content, not object identity
-    StringBuilder keyBuilder = new StringBuilder();
-
-    // Core search parameters that affect results
-    keyBuilder.append("query:").append(request.getQuery() != null ? request.getQuery() : "*");
-    keyBuilder.append("|index:").append(request.getIndex() != null ? request.getIndex() : "");
-    keyBuilder.append("|from:").append(request.getFrom() != null ? request.getFrom() : 0);
-    keyBuilder.append("|size:").append(request.getSize() != null ? request.getSize() : 10);
-    keyBuilder
-        .append("|fieldName:")
-        .append(request.getFieldName() != null ? request.getFieldName() : "");
-
-    // Filters and query modifications
-    keyBuilder
-        .append("|queryFilter:")
-        .append(request.getQueryFilter() != null ? request.getQueryFilter() : "");
-    keyBuilder
-        .append("|postFilter:")
-        .append(request.getPostFilter() != null ? request.getPostFilter() : "");
-    keyBuilder
-        .append("|deleted:")
-        .append(request.getDeleted() != null ? request.getDeleted() : false);
-
-    // Sorting parameters
-    keyBuilder
-        .append("|sortField:")
-        .append(request.getSortFieldParam() != null ? request.getSortFieldParam() : "_score");
-    keyBuilder
-        .append("|sortOrder:")
-        .append(request.getSortOrder() != null ? request.getSortOrder() : "desc");
-
-    // Source field filtering
-    keyBuilder
-        .append("|fetchSource:")
-        .append(request.getFetchSource() != null ? request.getFetchSource() : true);
-    if (request.getIncludeSourceFields() != null && !request.getIncludeSourceFields().isEmpty()) {
-      keyBuilder
-          .append("|includeFields:")
-          .append(String.join(",", request.getIncludeSourceFields()));
-    }
-    if (request.getExcludeSourceFields() != null && !request.getExcludeSourceFields().isEmpty()) {
-      keyBuilder
-          .append("|excludeFields:")
-          .append(String.join(",", request.getExcludeSourceFields()));
-    }
-
-    // Domain filtering
-    keyBuilder
-        .append("|applyDomainFilter:")
-        .append(request.getApplyDomainFilter() != null ? request.getApplyDomainFilter() : false);
-    if (request.getDomains() != null && !request.getDomains().isEmpty()) {
-      keyBuilder
-          .append("|domains:")
-          .append(
-              request.getDomains().stream()
-                  .map(domain -> domain.getId().toString())
-                  .collect(java.util.stream.Collectors.joining(",")));
-    }
-
-    // Other parameters that affect results
-    keyBuilder
-        .append("|isHierarchy:")
-        .append(request.getIsHierarchy() != null ? request.getIsHierarchy() : false);
-    keyBuilder
-        .append("|fieldValue:")
-        .append(request.getFieldValue() != null ? request.getFieldValue() : "");
-    keyBuilder
-        .append("|trackTotalHits:")
-        .append(request.getTrackTotalHits() != null ? request.getTrackTotalHits() : false);
-    keyBuilder
-        .append("|semanticSearch:")
-        .append(request.getSemanticSearch() != null ? request.getSemanticSearch() : false);
-
-    // Include user context for security-sensitive results
-    keyBuilder.append("|user:").append(subjectContext.user().getName());
-
-    // Hash the final key for consistent length and avoid special characters
-    return EntityUtil.hash(keyBuilder.toString());
+    String key = request.toString() + subjectContext.user().getName();
+    return EntityUtil.hash(key);
   }
 
   public Response previewSearch(
