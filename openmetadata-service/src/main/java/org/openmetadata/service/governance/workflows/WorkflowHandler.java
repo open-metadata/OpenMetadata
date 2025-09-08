@@ -47,7 +47,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserTaskType;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
@@ -837,8 +836,12 @@ public class WorkflowHandler {
       LOG.debug(
           "Extracted subprocess ID: '{}' from task key '{}'", subProcessId, taskDefinitionKey);
 
-      // Get all possible termination message patterns from the enum
-      List<String> messagePatterns = UserTaskType.getAllTerminationPatterns(subProcessId);
+      // Try both possible termination message patterns
+      // UserApprovalTask uses: subProcessId_terminateProcess
+      // ChangeReviewTask uses: subProcessId_terminateChangeReviewProcess
+      String[] messagePatterns = {
+        subProcessId + "_terminateProcess", subProcessId + "_terminateChangeReviewProcess"
+      };
 
       for (String messageName : messagePatterns) {
         LOG.debug("Checking for message subscription: {}", messageName);

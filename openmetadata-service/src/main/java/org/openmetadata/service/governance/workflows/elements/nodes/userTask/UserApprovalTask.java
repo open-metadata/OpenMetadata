@@ -195,10 +195,10 @@ public class UserApprovalTask implements NodeInterface {
   }
 
   private BoundaryEvent getTerminationEvent(String subProcessId) {
-    // Use the enum to get the termination message suffix for this task type
-    String uniqueMessageName =
-        getFlowableElementId(
-            subProcessId, UserTaskType.USER_APPROVAL_TASK.getTerminationMessageSuffix());
+    // Use a consistent format that matches what getFlowableElementId produces
+    // This ensures uniqueness per node within the workflow definition
+    // Format: subProcessId.terminateProcess (where subProcessId is the node name)
+    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateProcess");
 
     Message terminationMessage = new Message();
     terminationMessage.setId(uniqueMessageName);
