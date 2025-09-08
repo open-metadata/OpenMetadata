@@ -2903,13 +2903,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Populate Glossary Tags on Read
-    List<TagLabel> tags = addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
-
-    // Try to cache the result if we have an entity ID
-    // Note: This method is also called from other contexts, so we need to be careful
-    // For now, caching happens in the getTags(T entity) method above
-
-    return tags;
+    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
