@@ -11,71 +11,55 @@
  *  limitations under the License.
  */
 /**
- * Create tag API request
+ * Create or Update Tag Request with Recognizer Configuration
  */
-export interface CreateTag {
-    /**
-     * Fully qualified names of tags associated with this tag
-     */
-    associatedTags?: string[];
+export interface CreateTagWithRecognizers {
     /**
      * Whether automatic classification is enabled for this tag
      */
     autoClassificationEnabled?: boolean;
     /**
-     * Priority for conflict resolution when multiple tags match (higher number = higher
-     * priority)
+     * Priority for conflict resolution when multiple tags match
      */
     autoClassificationPriority?: number;
     /**
-     * Name of the classification that this tag is part of.
+     * Fully qualified name of the classification that this tag is part of
      */
-    classification?: string;
+    classification: string;
     /**
-     * Unique name of the classification
+     * Description of the tag
      */
     description: string;
     /**
-     * Display Name that identifies this tag.
+     * Display name for the tag
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Tag belongs to.
+     * Name of the tag
      */
-    domains?: string[];
+    name: string;
     /**
-     * Children tags under this group are mutually exclusive. When mutually exclusive is `true`
-     * the tags from this group are used to **classify** an entity. An entity can only be in one
-     * class - example, it can only be either `tier1` or `tier2` and not both. When mutually
-     * exclusive is `false`, the tags from this group are used to **categorize** an entity. An
-     * entity can be in multiple categories simultaneously - example a customer can be
-     * `newCustomer` and `atRisk` simultaneously.
-     */
-    mutuallyExclusive?: boolean;
-    name:               string;
-    /**
-     * Owners of this glossary term.
+     * Owners of this tag
      */
     owners?: EntityReference[];
     /**
-     * Fully qualified name of the parent tag. When null, the term is at the root of the
-     * classification.
+     * Fully qualified name of the parent tag. When null, the tag is at the root of the
+     * classification
      */
-    parent?:   string;
-    provider?: ProviderType;
+    parent?: string;
     /**
-     * List of recognizers configured for automatic detection of this tag
+     * List of recognizers for automatic detection
      */
     recognizers?: Recognizer[];
     /**
-     * User references of the reviewers for this tag.
+     * Reviewers of this tag
      */
     reviewers?: EntityReference[];
     style?:     Style;
 }
 
 /**
- * Owners of this glossary term.
+ * Owners of this tag
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -130,18 +114,6 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
 }
 
 /**

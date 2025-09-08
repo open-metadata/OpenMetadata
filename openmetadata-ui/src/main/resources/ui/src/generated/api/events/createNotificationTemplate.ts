@@ -11,79 +11,38 @@
  *  limitations under the License.
  */
 /**
- * Create classification request
+ * Create request for Notification Template
  */
-export interface CreateClassification {
+export interface CreateNotificationTemplate {
     /**
-     * Configuration for automatic classification behavior
+     * Description of this notification template
      */
-    autoClassificationConfig?: AutoClassificationConfig;
+    description?: string;
     /**
-     * Description of the classification.
-     */
-    description: string;
-    /**
-     * Display Name that identifies this classification.
+     * Display name for this notification template
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Classification belongs to.
+     * Fully qualified names of the domains the template belongs to
      */
     domains?: string[];
     /**
-     * Tags under this classification are mutually exclusive. When mutually exclusive is `true`
-     * the tags from this classification are used to **classify** an entity. An entity can only
-     * be in one class - example, it can only be either `tier1` or `tier2` and not both. When
-     * mutually exclusive is `false`, the tags from this classification are used to
-     * **categorize** an entity. An entity can be in multiple categories simultaneously -
-     * example a customer can be `newCustomer` and `atRisk` simultaneously.
+     * Name that uniquely identifies this notification template (e.g., 'entity_change',
+     * 'test_change')
      */
-    mutuallyExclusive?: boolean;
-    name:               string;
+    name: string;
     /**
-     * Owners of this classification term.
+     * Owners of this template
      */
-    owners?:   EntityReference[];
-    provider?: ProviderType;
+    owners?: EntityReference[];
     /**
-     * User references of the reviewers for this tag.
+     * Handlebars template content for rendering notifications
      */
-    reviewers?: EntityReference[];
+    templateBody: string;
 }
 
 /**
- * Configuration for automatic classification behavior
- */
-export interface AutoClassificationConfig {
-    /**
-     * Strategy for resolving conflicts when multiple tags match
-     */
-    conflictResolution?: ConflictResolution;
-    /**
-     * Whether automatic classification is enabled for this classification
-     */
-    enabled?: boolean;
-    /**
-     * Minimum confidence score required to apply a tag
-     */
-    minimumConfidence?: number;
-    /**
-     * Only apply tags when recognizers explicitly match (no default tagging)
-     */
-    requireExplicitMatch?: boolean;
-}
-
-/**
- * Strategy for resolving conflicts when multiple tags match
- */
-export enum ConflictResolution {
-    HighestConfidence = "highest_confidence",
-    HighestPriority = "highest_priority",
-    MostSpecific = "most_specific",
-}
-
-/**
- * Owners of this classification term.
+ * Owners of this template
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -136,16 +95,4 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
 }
