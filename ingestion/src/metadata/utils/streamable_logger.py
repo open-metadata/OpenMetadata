@@ -63,7 +63,7 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
 
@@ -412,7 +412,7 @@ class StreamableLogHandlerManager:
         """Clean up the current handler"""
         if cls._instance:
             try:
-                metadata_logger = logging.getLogger("metadata")
+                metadata_logger = logging.getLogger(METADATA_LOGGER)
                 metadata_logger.removeHandler(cls._instance)
                 cls._instance.close()
                 logger.debug("Streamable logging handler cleaned up")
@@ -472,16 +472,13 @@ def setup_streamable_logging_for_workflow(
             enable_streaming=True,
         )
 
-        # Set formatter
-        formatter = logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+        # Use the same formatter as the base configuration for consistency
+        formatter = logging.Formatter(BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
         handler.setLevel(log_level)
 
         # Add handler to the metadata logger (parent of all ingestion loggers)
-        metadata_logger = logging.getLogger("metadata")
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
         metadata_logger.addHandler(handler)
 
         # Register with the manager
