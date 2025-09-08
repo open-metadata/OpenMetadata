@@ -11,25 +11,17 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../../constants/Customize.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  EntityReference,
-} from '../../../../generated/entity/data/directory';
+import { ChangeDescription } from '../../../../generated/entity/data/worksheet';
 import { TagSource } from '../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
@@ -41,17 +33,15 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import Table from '../../../common/Table/Table';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
-import { DirectoryVersionProps } from './DirectoryVersion.interface';
+import { WorksheetVersionProps } from './WorksheetVersion.interface';
 
-const DirectoryVersion = ({
+const WorksheetVersion = ({
   version,
   currentVersionData,
   isVersionLoading,
@@ -65,7 +55,7 @@ const DirectoryVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: DirectoryVersionProps) => {
+}: WorksheetVersionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
@@ -93,7 +83,7 @@ const DirectoryVersion = ({
   const handleTabChange = (activeKey: string) => {
     navigate(
       getVersionPath(
-        EntityType.DIRECTORY,
+        EntityType.WORKSHEET,
         entityFqn,
         String(version),
         activeKey
@@ -135,46 +125,6 @@ const DirectoryVersion = ({
     [changeDescription]
   );
 
-  const tableColumn: ColumnsType<EntityReference> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (text, record) => (
-          <Link target="_blank" to={text}>
-            <Space>
-              <span>{getEntityName(record)}</span>
-
-              <Icon
-                className="m-l-xs flex-none align-middle"
-                component={IconExternalLink}
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            </Space>
-          </Link>
-        ),
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'type',
-        key: 'type',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
-    ],
-    []
-  );
-
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -187,18 +137,8 @@ const DirectoryVersion = ({
                 <Col span={24}>
                   <DescriptionV1
                     description={description}
-                    entityType={EntityType.DIRECTORY}
+                    entityType={EntityType.WORKSHEET}
                     showActions={false}
-                  />
-                </Col>
-                <Col span={24}>
-                  <Table
-                    columns={tableColumn}
-                    data-testid="directory-children-table"
-                    dataSource={currentVersionData?.children}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
                   />
                 </Col>
               </Row>
@@ -218,7 +158,7 @@ const DirectoryVersion = ({
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     newLook
-                    entityType={EntityType.DIRECTORY}
+                    entityType={EntityType.WORKSHEET}
                     key={tagType}
                     permission={false}
                     selectedTags={tags}
@@ -241,7 +181,7 @@ const DirectoryVersion = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityType={EntityType.DIRECTORY}
+            entityType={EntityType.WORKSHEET}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
           />
@@ -272,7 +212,7 @@ const DirectoryVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
-                entityType={EntityType.DIRECTORY}
+                entityType={EntityType.WORKSHEET}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 serviceName={currentVersionData.service?.name}
@@ -286,7 +226,7 @@ const DirectoryVersion = ({
               currentVersionData={currentVersionData}
               data={currentVersionData}
               permissions={entityPermissions}
-              type={EntityType.DIRECTORY as CustomizeEntityType}
+              type={EntityType.WORKSHEET as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
@@ -303,7 +243,7 @@ const DirectoryVersion = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
-        entityType={EntityType.DIRECTORY}
+        entityType={EntityType.WORKSHEET}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
@@ -312,4 +252,4 @@ const DirectoryVersion = ({
   );
 };
 
-export default DirectoryVersion;
+export default WorksheetVersion;

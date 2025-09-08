@@ -32,6 +32,9 @@ import StoredProcedureVersion from '../../components/Database/StoredProcedureVer
 import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
 import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import DirectoryVersion from '../../components/DriveService/Directory/DirectoryVersion/DirectoryVersion';
+import FileVersion from '../../components/DriveService/File/FileVersion/FileVersion';
+import SpreadsheetVersion from '../../components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion';
+import WorksheetVersion from '../../components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion';
 import MetricVersion from '../../components/Metric/MetricVersion/MetricVersion';
 import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -846,6 +849,63 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as Directory}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.FILE: {
+        return (
+          <FileVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as File}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.SPREADSHEET: {
+        return (
+          <SpreadsheetVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as Spreadsheet}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.WORKSHEET: {
+        return (
+          <WorksheetVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as Worksheet}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domains={domains}

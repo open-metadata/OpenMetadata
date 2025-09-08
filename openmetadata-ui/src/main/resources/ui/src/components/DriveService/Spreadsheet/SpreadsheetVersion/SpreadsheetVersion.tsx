@@ -27,7 +27,7 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import {
   ChangeDescription,
   EntityReference,
-} from '../../../../generated/entity/data/directory';
+} from '../../../../generated/entity/data/spreadsheet';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
@@ -49,9 +49,9 @@ import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
-import { DirectoryVersionProps } from './DirectoryVersion.interface';
+import { SpreadsheetVersionProps } from './SpreadsheetVersion.interface';
 
-const DirectoryVersion = ({
+const SpreadsheetVersion = ({
   version,
   currentVersionData,
   isVersionLoading,
@@ -65,7 +65,7 @@ const DirectoryVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: DirectoryVersionProps) => {
+}: SpreadsheetVersionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
@@ -93,7 +93,7 @@ const DirectoryVersion = ({
   const handleTabChange = (activeKey: string) => {
     navigate(
       getVersionPath(
-        EntityType.DIRECTORY,
+        EntityType.SPREADSHEET,
         entityFqn,
         String(version),
         activeKey
@@ -187,15 +187,15 @@ const DirectoryVersion = ({
                 <Col span={24}>
                   <DescriptionV1
                     description={description}
-                    entityType={EntityType.DIRECTORY}
+                    entityType={EntityType.SPREADSHEET}
                     showActions={false}
                   />
                 </Col>
                 <Col span={24}>
                   <Table
                     columns={tableColumn}
-                    data-testid="directory-children-table"
-                    dataSource={currentVersionData?.children}
+                    data-testid="spreadsheet-children-table"
+                    dataSource={currentVersionData?.worksheets ?? []}
                     pagination={false}
                     rowKey="name"
                     size="small"
@@ -218,7 +218,7 @@ const DirectoryVersion = ({
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     newLook
-                    entityType={EntityType.DIRECTORY}
+                    entityType={EntityType.SPREADSHEET}
                     key={tagType}
                     permission={false}
                     selectedTags={tags}
@@ -241,7 +241,7 @@ const DirectoryVersion = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityType={EntityType.DIRECTORY}
+            entityType={EntityType.SPREADSHEET}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
           />
@@ -272,7 +272,7 @@ const DirectoryVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
-                entityType={EntityType.DIRECTORY}
+                entityType={EntityType.SPREADSHEET}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 serviceName={currentVersionData.service?.name}
@@ -286,7 +286,7 @@ const DirectoryVersion = ({
               currentVersionData={currentVersionData}
               data={currentVersionData}
               permissions={entityPermissions}
-              type={EntityType.DIRECTORY as CustomizeEntityType}
+              type={EntityType.SPREADSHEET as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
@@ -303,7 +303,7 @@ const DirectoryVersion = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
-        entityType={EntityType.DIRECTORY}
+        entityType={EntityType.SPREADSHEET}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
@@ -312,4 +312,4 @@ const DirectoryVersion = ({
   );
 };
 
-export default DirectoryVersion;
+export default SpreadsheetVersion;
