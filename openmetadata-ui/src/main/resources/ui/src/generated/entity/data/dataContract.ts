@@ -807,13 +807,47 @@ export interface Style {
  */
 export interface ContractSecurity {
     /**
-     * Reference to an access policy ID or name that should govern this data
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
      */
-    accessPolicy?: string;
+    consumers?: DataConsumers[];
     /**
      * Expected data classification (e.g. Confidential, PII, etc.)
      */
     dataClassification?: string;
+    [property: string]: any;
+}
+
+/**
+ * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+ */
+export interface DataConsumers {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * List of groups that are intended consumers of the data
+     */
+    identities?: string[];
+    /**
+     * List of filters that define what subset of the data is accessible to the consumers
+     */
+    rowFilters?: RowFilter[];
+    [property: string]: any;
+}
+
+/**
+ * Filter that defines what subset of the data is accessible to certain consumers
+ */
+export interface RowFilter {
+    /**
+     * Column to apply the filter
+     */
+    columnName?: string;
+    /**
+     * Values applied to the filter
+     */
+    values?: string[];
     [property: string]: any;
 }
 
