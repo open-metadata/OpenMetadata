@@ -381,8 +381,45 @@ class StreamableLogHandler(logging.Handler):
         super().close()
 
 
-# Global handler instance for cleanup
-_streamable_handler: Optional[StreamableLogHandler] = None
+class StreamableLogHandlerManager:
+    """
+    Manager class to handle StreamableLogHandler instances.
+    This provides better encapsulation than using global variables.
+
+    Note: This manager assumes single-threaded setup/teardown which is
+    typical for workflow initialization. The handler itself is thread-safe.
+    """
+
+    _instance: Optional["StreamableLogHandler"] = None
+
+    @classmethod
+    def get_handler(cls) -> Optional["StreamableLogHandler"]:
+        """Get the current handler instance"""
+        return cls._instance
+
+    @classmethod
+    def set_handler(cls, handler: Optional["StreamableLogHandler"]) -> None:
+        """Set or update the handler instance, closing any existing one"""
+        if cls._instance and cls._instance != handler:
+            try:
+                cls._instance.close()
+            except Exception as e:
+                logger.warning(f"Error closing previous handler: {e}")
+        cls._instance = handler
+
+    @classmethod
+    def cleanup(cls) -> None:
+        """Clean up the current handler"""
+        if cls._instance:
+            try:
+                metadata_logger = logging.getLogger("metadata")
+                metadata_logger.removeHandler(cls._instance)
+                cls._instance.close()
+                logger.debug("Streamable logging handler cleaned up")
+            except Exception as e:
+                logger.warning(f"Error during handler cleanup: {e}")
+            finally:
+                cls._instance = None
 
 
 def setup_streamable_logging_for_workflow(
@@ -409,8 +446,6 @@ def setup_streamable_logging_for_workflow(
     Returns:
         StreamableLogHandler instance if configured, None otherwise
     """
-    global _streamable_handler
-
     # Check if we have the required parameters
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
@@ -425,11 +460,12 @@ def setup_streamable_logging_for_workflow(
         # For now, we'll assume it's enabled if the env var is set
 
         # Clean up any existing handler
-        if _streamable_handler:
-            _streamable_handler.close()
+        existing_handler = StreamableLogHandlerManager.get_handler()
+        if existing_handler:
+            existing_handler.close()
 
         # Create and configure the handler
-        _streamable_handler = StreamableLogHandler(
+        handler = StreamableLogHandler(
             metadata=metadata,
             pipeline_fqn=pipeline_fqn,
             run_id=run_id,
@@ -441,18 +477,21 @@ def setup_streamable_logging_for_workflow(
             "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        _streamable_handler.setFormatter(formatter)
-        _streamable_handler.setLevel(log_level)
+        handler.setFormatter(formatter)
+        handler.setLevel(log_level)
 
         # Add handler to the metadata logger (parent of all ingestion loggers)
         metadata_logger = logging.getLogger("metadata")
-        metadata_logger.addHandler(_streamable_handler)
+        metadata_logger.addHandler(handler)
+
+        # Register with the manager
+        StreamableLogHandlerManager.set_handler(handler)
 
         logger.info(
             f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {run_id}"
         )
 
-        return _streamable_handler
+        return handler
 
     except Exception as e:
         logger.warning(f"Failed to setup streamable logging: {e}")
@@ -464,19 +503,4 @@ def cleanup_streamable_logging():
     Cleanup streamable logging handler.
     This should be called when the workflow completes.
     """
-    global _streamable_handler
-
-    if _streamable_handler:
-        try:
-            # Remove from logger
-            metadata_logger = logging.getLogger("metadata")
-            metadata_logger.removeHandler(_streamable_handler)
-
-            # Close the handler
-            _streamable_handler.close()
-
-            logger.debug("Streamable logging handler cleaned up")
-        except Exception as e:
-            logger.warning(f"Error cleaning up streamable logging: {e}")
-        finally:
-            _streamable_handler = None
+    StreamableLogHandlerManager.cleanup()
