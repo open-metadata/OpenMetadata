@@ -14,6 +14,7 @@
 import { LoadingState } from 'Models';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { Recognizer } from '../../generated/type/recognizer';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -35,6 +36,9 @@ export interface SubmitProps {
   mutuallyExclusive?: boolean;
   iconURL?: string;
   color?: string;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
+  recognizers?: Recognizer[];
 }
 
 export interface RenameFormProps {

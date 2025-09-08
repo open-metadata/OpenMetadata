@@ -79,6 +79,8 @@ const TagsPage = () => {
     useState<Classification>();
   const [isAddingClassification, setIsAddingClassification] =
     useState<boolean>(false);
+  const [isEditingClassification, setIsEditingClassification] =
+    useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
@@ -242,6 +244,11 @@ const TagsPage = () => {
     setEditTag(undefined);
     setIsAddingTag(false);
     setIsAddingClassification(false);
+    setIsEditingClassification(false);
+  }, []);
+
+  const handleEditClassificationClick = useCallback(() => {
+    setIsEditingClassification(true);
   }, []);
 
   const handleAfterDeleteAction = useCallback(() => {
@@ -723,6 +730,7 @@ const TagsPage = () => {
                 handleAfterDeleteAction={handleAfterDeleteAction}
                 handleEditTagClick={handleEditTagClick}
                 handleUpdateClassification={handleUpdateClassification}
+                handleEditClassificationClick={handleEditClassificationClick}
                 isAddingTag={isAddingTag}
                 ref={classificationDetailsRef}
               />
@@ -743,9 +751,29 @@ const TagsPage = () => {
                 />
               )}
 
+              {/* Edit Classification Form */}
+              {isEditingClassification && currentClassification && (
+                <TagsForm
+                  isClassification
+                  showMutuallyExclusive
+                  data={classifications}
+                  header={t('label.edit-entity', { entity: t('label.classification') })}
+                  initialValues={currentClassification}
+                  isEditing={true}
+                  isLoading={isButtonLoading}
+                  isSystemTag={currentClassification.provider === ProviderType.System}
+                  isTier={isTier}
+                  permissions={classificationPermissions}
+                  visible={isEditingClassification}
+                  onCancel={handleCancel}
+                  onSubmit={handleUpdateClassification}
+                />
+              )}
+
               {/* Tags Form */}
               {isAddingTag && (
                 <TagsForm
+                  isClassification={false}
                   header={tagsFormHeader}
                   initialValues={editTag}
                   isEditing={!isUndefined(editTag)}
