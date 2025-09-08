@@ -61,7 +61,7 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
     .getByTestId('widget-sort-by-dropdown')
     .click();
   const aToZFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword&sort_order=asc'
+    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=asc*'
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
@@ -71,13 +71,13 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
     .getByTestId('widget-sort-by-dropdown')
     .click();
   const zToAFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword&sort_order=desc'
+    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=desc*'
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
 
   const latestFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=updatedAt&sort_order=desc'
+    '/api/v1/search/query?q=*&index=all*&sort_field=updatedAt*&sort_order=desc*'
   );
   await page
     .getByTestId(widgetKey)
