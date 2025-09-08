@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityProfile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityProfile",
+  "description": "This schema defines the type to capture the full table Entity profile.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.EntityProfile",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "profileTypeEnum": {
+      "description": "profile type",
+      "enum": [
+        "column",
+        "table",
+        "system"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this profile instance",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "entityReference": {
+      "description": "Reference to the entity for which this profile is created.",
+      "$ref": "entityReference.json"
+    },
+    "timestamp": {
+      "description": "Data one which test case result is taken.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "profileData":{
+        "description": "Profile data specific to the entity type.",
+        "oneOf": [
+            { "$ref": "../entity/data/table.json#/definitions/tableProfile"},
+            { "$ref": "../entity/data/table.json#/definitions/columnProfile"},
+            { "$ref": "../entity/data/table.json#/definitions/systemProfile"}
+        ]
+    },
+    "profileType": {
+      "description": "type of profile",
+      "$ref": "#/definitions/profileTypeEnum"
+    }
+  },
+  "required": ["id", "entityReference", "timestamp", "profileData"],
+  "additionalProperties": false
+}
