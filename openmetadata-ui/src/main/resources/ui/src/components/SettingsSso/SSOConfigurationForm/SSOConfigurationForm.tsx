@@ -50,8 +50,7 @@ import {
   applySecurityConfiguration,
   getSecurityConfiguration,
   JsonPatchOperation,
-  patchAuthenticationConfiguration,
-  patchAuthorizerConfiguration,
+  patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
   validateSecurityConfiguration,
@@ -1032,29 +1031,9 @@ const SSOConfigurationFormRJSF = ({
           // Generate patches for existing configuration
           const allPatches = generatePatches(savedData, cleanedFormData);
 
-          const authPatches = allPatches.filter((patch) =>
-            patch.path.startsWith('/authenticationConfiguration')
-          );
-          const authorizerPatches = allPatches.filter((patch) =>
-            patch.path.startsWith('/authorizerConfiguration')
-          );
-
-          // Apply authentication patches if any
-          if (authPatches.length > 0) {
-            const cleanAuthPatches = authPatches.map((patch) => ({
-              ...patch,
-              path: patch.path.replace('/authenticationConfiguration', ''),
-            }));
-            await patchAuthenticationConfiguration(cleanAuthPatches);
-          }
-
-          // Apply authorizer patches if any
-          if (authorizerPatches.length > 0) {
-            const cleanAuthorizerPatches = authorizerPatches.map((patch) => ({
-              ...patch,
-              path: patch.path.replace('/authorizerConfiguration', ''),
-            }));
-            await patchAuthorizerConfiguration(cleanAuthorizerPatches);
+          // Apply security configuration patches using the new endpoint
+          if (allPatches.length > 0) {
+            await patchSecurityConfiguration(allPatches);
           }
         } else {
           // Use full PUT for new configurations

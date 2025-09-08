@@ -134,3 +134,21 @@ export const patchAuthorizerConfiguration = async (
     },
   });
 };
+
+/**
+ * Patch security configuration with partial updates
+ * @param patches - Array of JSON Patch operations
+ * @returns Promise with updated configuration
+ */
+export const patchSecurityConfiguration = async (
+  patches: JsonPatchOperation[]
+): Promise<AxiosResponse<SecurityConfiguration>> => {
+  return APIClient.patch<
+    JsonPatchOperation[],
+    AxiosResponse<SecurityConfiguration>
+  >('/system/security/config', patches, {
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};
