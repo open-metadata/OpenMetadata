@@ -11,87 +11,55 @@
  *  limitations under the License.
  */
 /**
- * Load classifications and tags
+ * Create or Update Tag Request with Recognizer Configuration
  */
-export interface LoadTags {
-    createClassification: CreateClassificationRequest;
-    createTags?:          CreateTagRequest[];
-}
-
-/**
- * Create classification request
- */
-export interface CreateClassificationRequest {
+export interface CreateTagWithRecognizers {
     /**
-     * Configuration for automatic classification behavior
+     * Whether automatic classification is enabled for this tag
      */
-    autoClassificationConfig?: AutoClassificationConfig;
+    autoClassificationEnabled?: boolean;
     /**
-     * Description of the classification.
+     * Priority for conflict resolution when multiple tags match
+     */
+    autoClassificationPriority?: number;
+    /**
+     * Fully qualified name of the classification that this tag is part of
+     */
+    classification: string;
+    /**
+     * Description of the tag
      */
     description: string;
     /**
-     * Display Name that identifies this classification.
+     * Display name for the tag
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Classification belongs to.
+     * Name of the tag
      */
-    domains?: string[];
+    name: string;
     /**
-     * Tags under this classification are mutually exclusive. When mutually exclusive is `true`
-     * the tags from this classification are used to **classify** an entity. An entity can only
-     * be in one class - example, it can only be either `tier1` or `tier2` and not both. When
-     * mutually exclusive is `false`, the tags from this classification are used to
-     * **categorize** an entity. An entity can be in multiple categories simultaneously -
-     * example a customer can be `newCustomer` and `atRisk` simultaneously.
+     * Owners of this tag
      */
-    mutuallyExclusive?: boolean;
-    name:               string;
+    owners?: EntityReference[];
     /**
-     * Owners of this classification term.
+     * Fully qualified name of the parent tag. When null, the tag is at the root of the
+     * classification
      */
-    owners?:   EntityReference[];
-    provider?: ProviderType;
+    parent?: string;
     /**
-     * User references of the reviewers for this tag.
+     * List of recognizers for automatic detection
+     */
+    recognizers?: Recognizer[];
+    /**
+     * Reviewers of this tag
      */
     reviewers?: EntityReference[];
+    style?:     Style;
 }
 
 /**
- * Configuration for automatic classification behavior
- */
-export interface AutoClassificationConfig {
-    /**
-     * Strategy for resolving conflicts when multiple tags match
-     */
-    conflictResolution?: ConflictResolution;
-    /**
-     * Whether automatic classification is enabled for this classification
-     */
-    enabled?: boolean;
-    /**
-     * Minimum confidence score required to apply a tag
-     */
-    minimumConfidence?: number;
-    /**
-     * Only apply tags when recognizers explicitly match (no default tagging)
-     */
-    requireExplicitMatch?: boolean;
-}
-
-/**
- * Strategy for resolving conflicts when multiple tags match
- */
-export enum ConflictResolution {
-    HighestConfidence = "highest_confidence",
-    HighestPriority = "highest_priority",
-    MostSpecific = "most_specific",
-}
-
-/**
- * Owners of this classification term.
+ * Owners of this tag
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -146,82 +114,6 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
- * Create tag API request
- */
-export interface CreateTagRequest {
-    /**
-     * Fully qualified names of tags associated with this tag
-     */
-    associatedTags?: string[];
-    /**
-     * Whether automatic classification is enabled for this tag
-     */
-    autoClassificationEnabled?: boolean;
-    /**
-     * Priority for conflict resolution when multiple tags match (higher number = higher
-     * priority)
-     */
-    autoClassificationPriority?: number;
-    /**
-     * Name of the classification that this tag is part of.
-     */
-    classification?: string;
-    /**
-     * Unique name of the classification
-     */
-    description: string;
-    /**
-     * Display Name that identifies this tag.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified names of the domains the Tag belongs to.
-     */
-    domains?: string[];
-    /**
-     * Children tags under this group are mutually exclusive. When mutually exclusive is `true`
-     * the tags from this group are used to **classify** an entity. An entity can only be in one
-     * class - example, it can only be either `tier1` or `tier2` and not both. When mutually
-     * exclusive is `false`, the tags from this group are used to **categorize** an entity. An
-     * entity can be in multiple categories simultaneously - example a customer can be
-     * `newCustomer` and `atRisk` simultaneously.
-     */
-    mutuallyExclusive?: boolean;
-    name:               string;
-    /**
-     * Owners of this glossary term.
-     */
-    owners?: EntityReference[];
-    /**
-     * Fully qualified name of the parent tag. When null, the term is at the root of the
-     * classification.
-     */
-    parent?:   string;
-    provider?: ProviderType;
-    /**
-     * List of recognizers configured for automatic detection of this tag
-     */
-    recognizers?: Recognizer[];
-    /**
-     * User references of the reviewers for this tag.
-     */
-    reviewers?: EntityReference[];
-    style?:     Style;
 }
 
 /**
