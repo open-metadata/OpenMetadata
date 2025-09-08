@@ -1,0 +1,279 @@
+{
+  "createClassification": {
+    "name": "PII",
+    "description": "Personally Identifiable Information that, when used alone or with other relevant data, can identify an individual.<br/><br/>_Note to Legal - This tag category is provided as a starting point. Please review and update the tags based on your company policy. Also, add a reference to your PII policy document in this description._",
+    "provider": "system",
+    "mutuallyExclusive": true,
+    "autoClassificationConfig": {
+      "enabled": true,
+      "conflictResolution": "highest_priority",
+      "minimumConfidence": 0.6,
+      "requireExplicitMatch": true
+    }
+  },
+  "createTags": [
+    {
+      "name": "None",
+      "description": "Non PII",
+      "autoClassificationEnabled": false,
+      "autoClassificationPriority": 0
+    },
+    {
+      "name": "NonSensitive",
+      "description": "PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.",
+      "autoClassificationEnabled": true,
+      "autoClassificationPriority": 50,
+      "recognizers": [
+        {
+          "name": "phone_number_recognizer",
+          "displayName": "Phone Number Recognizer",
+          "description": "Detects phone numbers in various formats",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "PHONE_NUMBER",
+            "patterns": [
+              {
+                "name": "us_phone",
+                "regex": "\\b(?:\\+?1[-.]?)?\\(?[2-9]\\d{2}\\)?[-.]?[2-9]\\d{2}[-.]?\\d{4}\\b",
+                "score": 0.7
+              },
+              {
+                "name": "international_phone",
+                "regex": "\\b\\+[1-9]\\d{1,14}\\b",
+                "score": 0.6
+              }
+            ]
+          },
+          "confidenceThreshold": 0.6
+        },
+        {
+          "name": "date_time_recognizer",
+          "displayName": "Date/Time Recognizer",
+          "description": "Detects dates and timestamps",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "DATE_TIME",
+            "patterns": [
+              {
+                "name": "iso_date",
+                "regex": "\\b\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}:\\d{2})?\\b",
+                "score": 0.8
+              },
+              {
+                "name": "us_date",
+                "regex": "\\b(?:0[1-9]|1[0-2])[/-](?:0[1-9]|[12]\\d|3[01])[/-](?:19|20)\\d{2}\\b",
+                "score": 0.7
+              }
+            ]
+          },
+          "confidenceThreshold": 0.5
+        },
+        {
+          "name": "location_recognizer",
+          "displayName": "Location Recognizer",
+          "description": "Detects geographic locations",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "context",
+            "supportedEntity": "LOCATION",
+            "contextWords": ["address", "city", "state", "country", "zip", "postal", "location", "geo"],
+            "minScore": 0.4,
+            "maxScore": 0.7
+          },
+          "confidenceThreshold": 0.5
+        }
+      ]
+    },
+    {
+      "name": "Sensitive",
+      "description": "PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.",
+      "autoClassificationEnabled": true,
+      "autoClassificationPriority": 100,
+      "recognizers": [
+        {
+          "name": "ssn_recognizer",
+          "displayName": "Social Security Number Recognizer",
+          "description": "Detects US Social Security Numbers",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "US_SSN",
+            "patterns": [
+              {
+                "name": "ssn_dashes",
+                "regex": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+                "score": 0.9
+              },
+              {
+                "name": "ssn_spaces",
+                "regex": "\\b\\d{3}\\s\\d{2}\\s\\d{4}\\b",
+                "score": 0.85
+              },
+              {
+                "name": "ssn_continuous",
+                "regex": "\\b\\d{9}\\b",
+                "score": 0.6
+              }
+            ]
+          },
+          "confidenceThreshold": 0.7
+        },
+        {
+          "name": "credit_card_recognizer",
+          "displayName": "Credit Card Number Recognizer",
+          "description": "Detects credit card numbers with Luhn validation",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "CREDIT_CARD",
+            "patterns": [
+              {
+                "name": "visa",
+                "regex": "\\b4[0-9]{12}(?:[0-9]{3})?\\b",
+                "score": 0.9
+              },
+              {
+                "name": "mastercard",
+                "regex": "\\b5[1-5][0-9]{14}\\b",
+                "score": 0.9
+              },
+              {
+                "name": "amex",
+                "regex": "\\b3[47][0-9]{13}\\b",
+                "score": 0.9
+              },
+              {
+                "name": "generic_16_digit",
+                "regex": "\\b[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}[\\s-]?[0-9]{4}\\b",
+                "score": 0.7
+              }
+            ]
+          },
+          "confidenceThreshold": 0.7
+        },
+        {
+          "name": "email_recognizer",
+          "displayName": "Email Address Recognizer",
+          "description": "Detects email addresses",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "EMAIL_ADDRESS",
+            "patterns": [
+              {
+                "name": "email_pattern",
+                "regex": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b",
+                "score": 0.9
+              }
+            ]
+          },
+          "confidenceThreshold": 0.8
+        },
+        {
+          "name": "bank_account_recognizer",
+          "displayName": "Bank Account Number Recognizer",
+          "description": "Detects bank account numbers",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "US_BANK_NUMBER",
+            "patterns": [
+              {
+                "name": "us_bank_account",
+                "regex": "\\b[0-9]{9,17}\\b",
+                "score": 0.5
+              }
+            ]
+          },
+          "confidenceThreshold": 0.6
+        },
+        {
+          "name": "ip_address_recognizer",
+          "displayName": "IP Address Recognizer",
+          "description": "Detects IPv4 and IPv6 addresses",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "IP_ADDRESS",
+            "patterns": [
+              {
+                "name": "ipv4",
+                "regex": "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b",
+                "score": 0.95
+              },
+              {
+                "name": "ipv6",
+                "regex": "\\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\\b",
+                "score": 0.95
+              }
+            ]
+          },
+          "confidenceThreshold": 0.9
+        },
+        {
+          "name": "person_name_recognizer",
+          "displayName": "Person Name Recognizer",
+          "description": "Detects person names using context",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "context",
+            "supportedEntity": "PERSON",
+            "contextWords": ["name", "person", "user", "customer", "patient", "employee", "contact", "owner"],
+            "minScore": 0.5,
+            "maxScore": 0.85
+          },
+          "confidenceThreshold": 0.6
+        },
+        {
+          "name": "passport_recognizer",
+          "displayName": "Passport Number Recognizer",
+          "description": "Detects passport numbers",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "US_PASSPORT",
+            "patterns": [
+              {
+                "name": "us_passport",
+                "regex": "\\b[A-Z]{1,2}[0-9]{6,9}\\b",
+                "score": 0.7
+              }
+            ]
+          },
+          "confidenceThreshold": 0.7
+        },
+        {
+          "name": "driver_license_recognizer",
+          "displayName": "Driver License Recognizer",
+          "description": "Detects driver license numbers",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "pattern",
+            "supportedEntity": "US_DRIVER_LICENSE",
+            "patterns": [
+              {
+                "name": "generic_dl",
+                "regex": "\\b[A-Z][0-9]{7,12}\\b",
+                "score": 0.6
+              }
+            ]
+          },
+          "confidenceThreshold": 0.6
+        }
+      ]
+    }
+  ]
+}

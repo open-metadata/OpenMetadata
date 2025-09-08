@@ -42,6 +42,36 @@
     "reviewers": {
       "description": "User references of the reviewers for this tag.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "autoClassificationConfig": {
+      "description": "Configuration for automatic classification behavior",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether automatic classification is enabled for this classification",
+          "type": "boolean",
+          "default": false
+        },
+        "conflictResolution": {
+          "description": "Strategy for resolving conflicts when multiple tags match",
+          "type": "string",
+          "enum": ["highest_confidence", "highest_priority", "most_specific"],
+          "default": "highest_confidence"
+        },
+        "minimumConfidence": {
+          "description": "Minimum confidence score required to apply a tag",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.6
+        },
+        "requireExplicitMatch": {
+          "description": "Only apply tags when recognizers explicitly match (no default tagging)",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["name", "description"],

@@ -1,0 +1,233 @@
+{
+  "$id": "https://open-metadata.org/schema/type/recognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Recognizer",
+  "description": "Configuration for automatic entity recognition and classification, supporting both pattern-based and context-aware detection methods.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Recognizer",
+  "definitions": {
+    "recognizerType": {
+      "description": "Type of recognizer to use for detection",
+      "type": "string",
+      "enum": ["pattern", "deny_list", "context", "custom"],
+      "default": "pattern"
+    },
+    "patternRecognizer": {
+      "description": "Pattern-based recognizer using regular expressions",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PatternRecognizer",
+      "properties": {
+        "type": {
+          "const": "pattern"
+        },
+        "patterns": {
+          "description": "List of regex patterns to match",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.Pattern",
+            "properties": {
+              "name": {
+                "description": "Name of the pattern",
+                "type": "string"
+              },
+              "regex": {
+                "description": "Regular expression pattern",
+                "type": "string"
+              },
+              "score": {
+                "description": "Confidence score for this pattern (0.0 to 1.0)",
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "default": 0.8
+              }
+            },
+            "required": ["name", "regex"]
+          },
+          "minItems": 1
+        },
+        "supportedEntity": {
+          "description": "Entity type this recognizer detects (e.g., EMAIL_ADDRESS, SSN)",
+          "type": "string"
+        }
+      },
+      "required": ["type", "patterns", "supportedEntity"]
+    },
+    "denyListRecognizer": {
+      "description": "Deny list recognizer that matches against a list of specific values",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.DenyListRecognizer",
+      "properties": {
+        "type": {
+          "const": "deny_list"
+        },
+        "denyList": {
+          "description": "List of values to match against",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "supportedEntity": {
+          "description": "Entity type this recognizer detects",
+          "type": "string"
+        },
+        "caseSensitive": {
+          "description": "Whether matching is case sensitive",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["type", "denyList", "supportedEntity"]
+    },
+    "contextRecognizer": {
+      "description": "Context-aware recognizer using surrounding text",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ContextRecognizer",
+      "properties": {
+        "type": {
+          "const": "context"
+        },
+        "contextWords": {
+          "description": "Words that indicate the presence of the entity",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "supportedEntity": {
+          "description": "Entity type this recognizer detects",
+          "type": "string"
+        },
+        "minScore": {
+          "description": "Minimum confidence score",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.4
+        },
+        "maxScore": {
+          "description": "Maximum confidence score",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8
+        },
+        "increaseFactorByCharLength": {
+          "description": "Factor to increase score based on entity length",
+          "type": "number",
+          "default": 0.05
+        }
+      },
+      "required": ["type", "contextWords", "supportedEntity"]
+    },
+    "customRecognizer": {
+      "description": "Custom recognizer with user-defined logic",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CustomRecognizer",
+      "properties": {
+        "type": {
+          "const": "custom"
+        },
+        "supportedEntity": {
+          "description": "Entity type this recognizer detects",
+          "type": "string"
+        },
+        "validatorFunction": {
+          "description": "Optional custom validation function (Python code)",
+          "type": "string"
+        },
+        "config": {
+          "description": "Custom configuration parameters",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["type", "supportedEntity"]
+    },
+    "recognizerConfig": {
+      "description": "Complete recognizer configuration",
+      "oneOf": [
+        {"$ref": "patternRecognizer.json"},
+        {"$ref": "denyListRecognizer.json"},
+        {"$ref": "contextRecognizer.json"},
+        {"$ref": "customRecognizer.json"}
+      ]
+    },
+    "patternRecognizerType": {
+      "$ref": "#/definitions/patternRecognizer"
+    },
+    "denyListRecognizerType": {
+      "$ref": "#/definitions/denyListRecognizer"
+    },
+    "contextRecognizerType": {
+      "$ref": "#/definitions/contextRecognizer"
+    },
+    "customRecognizerType": {
+      "$ref": "#/definitions/customRecognizer"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the recognizer",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the recognizer",
+      "$ref": "basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the recognizer",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what this recognizer detects",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "enabled": {
+      "description": "Whether this recognizer is enabled",
+      "type": "boolean",
+      "default": true
+    },
+    "isSystemDefault": {
+      "description": "Whether this is a system default recognizer",
+      "type": "boolean",
+      "default": false
+    },
+    "recognizerConfig": {
+      "$ref": "#/definitions/recognizerConfig"
+    },
+    "confidenceThreshold": {
+      "description": "Minimum confidence score required for detection",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.6
+    },
+    "supportedLanguages": {
+      "description": "Languages supported by this recognizer",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["en"]
+    },
+    "version": {
+      "description": "Version of the recognizer configuration",
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    }
+  },
+  "required": ["name", "recognizerConfig"],
+  "additionalProperties": false
+}
