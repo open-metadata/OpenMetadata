@@ -68,7 +68,6 @@ test.describe('Explore Sort Order Filter', () => {
       await page.waitForLoadState('networkidle');
 
       await page.getByTestId('search-dropdown-Data Assets').click();
-
       await page.waitForSelector(
         '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
@@ -76,17 +75,23 @@ test.describe('Explore Sort Order Filter', () => {
         }
       );
 
+      const dataAssetDropdownRequest = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+      );
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('search-input')
+        .fill(filter.toLowerCase());
+      await dataAssetDropdownRequest;
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.waitForSelector(
-        '[data-testid="drop-down-menu"] [role="menu"]',
+        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
         {
           state: 'visible',
         }
       );
 
-      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
-        state: 'visible',
-      });
-      await page.getByTestId(`${filter}-checkbox`).check();
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
@@ -102,16 +107,12 @@ test.describe('Explore Sort Order Filter', () => {
       );
 
       await page.waitForSelector(
-        '[data-testid="drop-down-menu"] [role="menu"]',
+        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
         {
           state: 'visible',
         }
       );
-
-      await page.waitForSelector(`[data-testid="${filter}-checkbox"]`, {
-        state: 'visible',
-      });
-      await page.getByTestId(`${filter}-checkbox`).uncheck();
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
       await page.getByTestId('update-btn').click();
 
       await afterAction();
