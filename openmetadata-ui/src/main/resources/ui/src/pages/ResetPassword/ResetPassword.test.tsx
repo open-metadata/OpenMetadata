@@ -75,7 +75,6 @@ describe('ResetPassword', () => {
   });
 
   it('confirm password alert should be visible', async () => {
-    jest.useFakeTimers();
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
@@ -87,7 +86,6 @@ describe('ResetPassword', () => {
       fireEvent.change(confirmPwd, { target: { value: 'Password@1234' } });
       fireEvent.click(submitButton);
     });
-    jest.advanceTimersByTime(20);
 
     expect(
       await screen.findByText('label.password-not-match')

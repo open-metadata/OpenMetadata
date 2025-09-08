@@ -62,19 +62,22 @@ describe('Test FileUploadWidget Component', () => {
     const file = new File([MOCK_SSL_FILE_CONTENT], 'ssl-certificate.crt.pem', {
       type: 'text/plain',
     });
-    const flushPromises = () => new Promise(setImmediate);
 
-    render(<FileUploadWidget {...mockProps}>ImportTableData</FileUploadWidget>);
+    act(() => {
+      render(
+        <FileUploadWidget {...mockProps}>ImportTableData</FileUploadWidget>
+      );
+    });
 
     const uploadDragger = screen.getByTestId('upload-file-widget');
 
     expect(uploadDragger).toBeInTheDocument();
 
+    // Simulate user selecting a file
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
+      fireEvent.change(uploadDragger, {
+        target: { files: [file] },
+      });
     });
 
     expect(mockOnChange).toHaveBeenCalled();

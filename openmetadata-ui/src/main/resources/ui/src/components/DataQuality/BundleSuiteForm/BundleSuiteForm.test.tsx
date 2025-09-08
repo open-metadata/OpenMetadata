@@ -119,8 +119,12 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 
 // Mock API calls
 jest.mock('../../../rest/testAPI', () => ({
-  createTestSuites: jest.fn().mockResolvedValue(mockTestSuite),
-  addTestCaseToLogicalTestSuite: jest.fn().mockResolvedValue({}),
+  createTestSuites: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestSuite)),
+  addTestCaseToLogicalTestSuite: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -620,9 +624,7 @@ describe('BundleSuiteForm Component', () => {
         fireEvent.click(submitBtn);
       });
 
-      await waitFor(() => {
-        expect(mockProps.onSuccess).not.toHaveBeenCalled();
-      });
+      expect(mockProps.onSuccess).not.toHaveBeenCalled();
     });
   });
 
