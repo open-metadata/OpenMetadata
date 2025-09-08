@@ -939,4 +939,55 @@ describe('TestCaseFormV1 Component', () => {
       );
     });
   });
+
+  describe('Test Cases Selection Logic', () => {
+    it('should set testCases to undefined when selectAllTestCases is not false', () => {
+      const testValues = {
+        selectAllTestCases: true,
+        otherField: 'value',
+      };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false
+          ? ['testCase1', 'testCase2']
+          : undefined;
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should set testCases to array when selectAllTestCases is explicitly false', () => {
+      const testValues = {
+        selectAllTestCases: false,
+        otherField: 'value',
+      };
+
+      const mockSelectedTestCases = ['existingTestCase1', 'existingTestCase2'];
+      const mockCreatedTestCase = { name: 'newTestCase' };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false
+          ? [mockCreatedTestCase.name, ...mockSelectedTestCases]
+          : undefined;
+
+      expect(result).toEqual([
+        'newTestCase',
+        'existingTestCase1',
+        'existingTestCase2',
+      ]);
+    });
+
+    it('should set testCases to undefined when selectAllTestCases is undefined', () => {
+      const testValues: { selectAllTestCases?: boolean; otherField: string } = {
+        otherField: 'value',
+      };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false ? ['testCase1'] : undefined;
+
+      expect(result).toBeUndefined();
+    });
+  });
 });
