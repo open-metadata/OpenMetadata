@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -618,6 +619,81 @@ public class SystemResource {
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
+    }
+  }
+
+  @PATCH
+  @Path("/security/config")
+  @Operation(
+      operationId = "patchSecurityConfig",
+      summary = "Patch security configuration",
+      description = "Update security configuration using JsonPatch with validation and reload",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchSecurityConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      // Get current configuration from SecurityConfigurationManager and create a deep copy
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+
+      // Create a deep copy to avoid modifying the singleton instance
+      String configJson = JsonUtils.pojoToJson(originalConfig);
+      SecurityConfiguration currentConfig =
+          JsonUtils.readValue(configJson, SecurityConfiguration.class);
+
+      // Apply patch to the copy
+      JsonValue patched = JsonUtils.applyPatch(currentConfig, patch);
+      String jsonString = patched.toString();
+      SecurityConfiguration updatedConfig =
+          JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+
+      // Validate the patched configuration
+      SecurityValidationResponse validationResponse =
+          systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
+
+      // Check if all components validated successfully
+      boolean isValidConfig = validationResponse.getStatus().equalsIgnoreCase("success");
+
+      if (!isValidConfig) {
+        return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
+      }
+      Settings authSettings =
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthenticationConfiguration());
+
+      Settings authzSettings =
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthorizerConfiguration());
+
+      systemRepository.createOrUpdate(authSettings);
+      systemRepository.createOrUpdate(authzSettings);
+
+      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      return Response.noContent().build();
+    } catch (Exception e) {
+      LOG.error("Failed to patch security configuration", e);
+      throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
     }
   }
 
