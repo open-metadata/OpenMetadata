@@ -229,25 +229,24 @@ export const AdvanceSearchProvider = ({
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, FieldOrGroup> = {};
 
-    try {
-      const res = await getAllCustomProperties();
+    const res = await getAllCustomProperties();
 
-      Object.entries(res).forEach(([resEntityType, fields]) => {
-        // If entityType is specified, only include custom properties for that entity type
-        if (
-          entityType &&
-          entityType !== EntityType.ALL &&
-          resEntityType !== entityType
-        ) {
-          return;
-        }
+    Object.entries(res).forEach(([resEntityType, fields]) => {
+      // If entityType is specified, only include custom properties for that entity type
+      if (
+        entityType &&
+        entityType !== EntityType.ALL &&
+        resEntityType !== entityType
+      ) {
+        return;
+      }
 
-        if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field) => {
-            if (field.name && field.type) {
-              const { subfieldsKey, dataObject } =
-                advancedSearchClassBase.getCustomPropertiesSubFields(field);
-
+      if (Array.isArray(fields)) {
+        fields.forEach((field) => {
+          if (field.name && field.type) {
+            const cpSubfields =
+              advancedSearchClassBase.getCustomPropertiesSubFields(field);
+            cpSubfields.forEach(({ subfieldsKey, dataObject }) => {
               // If entityType is specified, return subfields directly without entityType wrapper
               if (entityType) {
                 subfields[subfieldsKey] = {
@@ -277,13 +276,11 @@ export const AdvanceSearchProvider = ({
                   };
                 }
               }
-            }
-          });
-        }
-      });
-    } catch {
-      return subfields;
-    }
+            });
+          }
+        });
+      }
+    });
 
     return subfields;
   };
