@@ -150,3 +150,7 @@ jest.mock('./utils/AdvancedSearchClassBase', () => {
     },
   };
 });
+
+jest.mock('./utils/EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue('test'),
+}));

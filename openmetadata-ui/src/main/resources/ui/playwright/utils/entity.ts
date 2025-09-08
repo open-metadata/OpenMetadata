@@ -164,6 +164,51 @@ export const addOwner = async ({
   ).toBeVisible();
 };
 
+export const addOwnerWithoutValidation = async ({
+  page,
+  owner,
+  type = 'Users',
+  initiatorId = 'edit-owner',
+}: {
+  page: Page;
+  owner: string;
+  type?: 'Teams' | 'Users';
+  initiatorId?: string;
+}) => {
+  await page.getByTestId(initiatorId).click();
+  if (type === 'Users') {
+    const userListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
+    await page.getByRole('tab', { name: type }).click();
+    await userListResponse;
+  }
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const ownerSearchBar = await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .isVisible();
+
+  if (!ownerSearchBar) {
+    await page.getByRole('tab', { name: type }).click();
+  }
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
+  await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .fill(owner);
+  await searchUser;
+
+  if (type === 'Teams') {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByTestId('selectable-list-update-btn').click();
+  }
+};
+
 export const updateOwner = async ({
   page,
   owner,

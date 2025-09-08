@@ -1,0 +1,71 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { SaveOutlined } from '@ant-design/icons';
+import { Button, Modal, Typography } from 'antd';
+import React from 'react';
+import './unsaved-changes-modal.less';
+import { UnsavedChangesModalProps } from './UnsavedChangesModal.interface';
+
+export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
+  open,
+  onDiscard,
+  onSave,
+  onCancel,
+  title = 'Unsaved changes',
+  description = 'Do you want to save or discard changes?',
+  discardText = 'Discard',
+  saveText = 'Save changes',
+  loading = false,
+}) => {
+  return (
+    <Modal
+      centered
+      closable
+      className="unsaved-changes-modal-container"
+      footer={null}
+      open={open}
+      width={400}
+      onCancel={onCancel}>
+      <div className="unsaved-changes-modal">
+        <div className="unsaved-changes-modal-body">
+          <div className="unsaved-changes-modal-icon">
+            <SaveOutlined />
+          </div>
+
+          <div className="unsaved-changes-modal-content">
+            <Typography.Title className="unsaved-changes-modal-title" level={5}>
+              {title}
+            </Typography.Title>
+            <Typography.Text className="unsaved-changes-modal-description">
+              {description}
+            </Typography.Text>
+          </div>
+        </div>
+
+        <div className="unsaved-changes-modal-actions">
+          <Button className="unsaved-changes-modal-discard" onClick={onDiscard}>
+            {discardText}
+          </Button>
+          <Button
+            className="unsaved-changes-modal-save"
+            loading={loading}
+            type="primary"
+            onClick={onSave}>
+            {saveText}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

@@ -378,6 +378,7 @@ export const getWidgetFromKey = ({
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
   handleRemoveWidget,
+  handleSaveLayout,
   isEditView,
   personaName,
   widgetConfig,
@@ -387,6 +388,7 @@ export const getWidgetFromKey = ({
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
   handleRemoveWidget?: (key: string) => void;
+  handleSaveLayout?: () => Promise<void>;
   isEditView?: boolean;
   personaName?: string;
   widgetConfig: WidgetConfig;
@@ -413,6 +415,7 @@ export const getWidgetFromKey = ({
       currentLayout={currentLayout}
       handleLayoutUpdate={handleLayoutUpdate}
       handleRemoveWidget={handleRemoveWidget}
+      handleSaveLayout={handleSaveLayout}
       isEditView={isEditView}
       selectedGridSize={widgetConfig.w}
       widgetKey={widgetConfig.i}
@@ -486,8 +489,8 @@ export const getLandingPageLayoutWithEmptyWidgetPlaceholder = (
  * Filters out empty widget placeholders and only keeps knowledge panels
  */
 export const getUniqueFilteredLayout = (layout: WidgetConfig[]) => {
-  // Handle empty or null layout
-  if (!layout || layout.length === 0) {
+  // Handle empty, null, or non-array layout
+  if (!layout || !Array.isArray(layout) || layout.length === 0) {
     return [];
   }
 
