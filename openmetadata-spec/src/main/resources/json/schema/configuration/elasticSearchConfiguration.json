@@ -21,19 +21,11 @@
   },
   "properties": {
     "host": {
-      "description": "Elastic Search Host (deprecated - use 'hosts' for multiple hosts support)",
+      "description": "Elastic Search Host",
       "type": "string"
     },
-    "hosts": {
-      "description": "List of Elastic Search hosts with format host:port. If not provided, falls back to 'host' and 'port'",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^[^:]+:[0-9]+$"
-      }
-    },
     "port": {
-      "description": "Elastic Search port (deprecated - use 'hosts' for multiple hosts support)",
+      "description": "Elastic Search port",
       "type": "integer"
     },
     "scheme": {

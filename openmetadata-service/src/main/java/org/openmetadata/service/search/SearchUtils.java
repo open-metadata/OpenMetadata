@@ -9,7 +9,6 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import java.security.KeyStoreException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -46,46 +45,6 @@ public final class SearchUtils {
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
   private SearchUtils() {}
-
-  public static HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig) {
-    var httpHosts = new ArrayList<HttpHost>();
-
-    var hosts =
-        (esConfig.getHosts() != null && !esConfig.getHosts().isEmpty())
-            ? esConfig.getHosts()
-            : (esConfig.getHost() != null)
-                ? List.of("%s:%d".formatted(esConfig.getHost(), esConfig.getPort()))
-                : List.<String>of();
-
-    hosts.stream()
-        .map(hostPort -> hostPort.split(":", 2))
-        .filter(
-            parts -> {
-              if (parts.length != 2) {
-                LOG.warn(
-                    "Invalid host format: {}. Expected format: host:port", String.join(":", parts));
-                return false;
-              }
-              return true;
-            })
-        .forEach(
-            parts -> {
-              try {
-                var host = parts[0].trim();
-                var port = Integer.parseInt(parts[1].trim());
-                httpHosts.add(new HttpHost(host, port, esConfig.getScheme()));
-              } catch (NumberFormatException e) {
-                LOG.warn("Invalid port number in host configuration: {}:{}", parts[0], parts[1]);
-              }
-            });
-
-    if (httpHosts.isEmpty()) {
-      throw new IllegalArgumentException("No valid ElasticSearch/OpenSearch hosts configured");
-    }
-
-    LOG.info("Configured search client with {} host(s)", httpHosts.size());
-    return httpHosts.toArray(HttpHost[]::new);
-  }
 
   public static RelationshipRef getRelationshipRef(Map<String, Object> entityMap) {
     // This assumes these keys exists in the map, use it with caution

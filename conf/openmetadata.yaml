@@ -379,13 +379,8 @@ jwtTokenConfiguration:
 
 elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"}
-  # Legacy single host configuration (deprecated - use 'hosts' for multiple hosts support)
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
-  # Multi-host configuration - list of host:port entries
-  # This takes precedence over host/port if provided
-  # For environment variable, use JSON array: ELASTICSEARCH_HOSTS='["host1:9200","host2:9200"]'
-  hosts: ${ELASTICSEARCH_HOSTS:-["localhost:9200"]}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
   password: ${ELASTICSEARCH_PASSWORD:-""}

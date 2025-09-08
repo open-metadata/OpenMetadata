@@ -2429,9 +2429,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        // Use helper method to build HttpHost array
-        HttpHost[] httpHosts = SearchUtils.buildHttpHosts(esConfig);
-        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+        RestClientBuilder restClientBuilder =
+            RestClient.builder(
+                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
         // Configure connection pooling
         restClientBuilder.setHttpClientConfigCallback(
