@@ -92,6 +92,8 @@ export const LDAP_UI_SCHEMA = {
   // Hide other provider configs for LDAP
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide universal settings managed in overview tab
+  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -262,6 +264,8 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     prompt: { 'ui:title': 'OIDC Prompt' },
     sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
   },
+  // Hide universal settings managed in overview tab
+  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Common field titles
@@ -301,7 +305,7 @@ export const COMMON_FIELD_TITLES = {
     'ui:placeholder':
       'Enter username:claim_name (e.g. username:preferred_username) and press ENTER. Both username and email mappings required.',
   },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -374,23 +378,49 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
 
 // Provider-specific field removal mapping for cleanup
 export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
-  ldap: ['samlConfiguration', 'oidcConfiguration'],
+  ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
   saml: [
     'ldapConfiguration',
     'oidcConfiguration',
     'tokenValidationAlgorithm',
     'enableSelfSignup',
   ],
-  customoidc: ['ldapConfiguration', 'samlConfiguration'],
-  google: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
-  auth0: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
-  azure: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
-  okta: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
-  basic: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  customoidc: ['ldapConfiguration', 'samlConfiguration', 'enableSelfSignup'],
+  google: [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+    'enableSelfSignup',
+  ],
+  auth0: [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+    'enableSelfSignup',
+  ],
+  azure: [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+    'enableSelfSignup',
+  ],
+  okta: [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+    'enableSelfSignup',
+  ],
+  basic: [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+    'enableSelfSignup',
+  ],
   'aws-cognito': [
     'ldapConfiguration',
     'samlConfiguration',
     'oidcConfiguration',
+    'enableSelfSignup',
   ],
 };
 
