@@ -81,8 +81,6 @@ interface UISchemaField {
   'ui:widget'?: string;
   'ui:hideError'?: boolean;
   'ui:options'?: Record<string, unknown>;
-  'ui:disabled'?: boolean;
-  'ui:classNames'?: string;
 }
 
 interface UISchemaObject {
@@ -726,51 +724,6 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
-
-      // For existing SSO, only show fields that have values and disable them
-      const authData = savedData.authenticationConfiguration;
-
-      // Handle authority field
-      if (authData.authority && authData.authority.trim() !== '') {
-        authConfig.authority = {
-          ...authConfig.authority,
-          'ui:disabled': true,
-          'ui:classNames': 'disabled-field',
-        };
-      } else {
-        authConfig.authority = {
-          'ui:widget': 'hidden',
-          'ui:hideError': true,
-        };
-      }
-
-      // Handle callbackUrl field
-      if (authData.callbackUrl && authData.callbackUrl.trim() !== '') {
-        authConfig.callbackUrl = {
-          ...authConfig.callbackUrl,
-          'ui:disabled': true,
-          'ui:classNames': 'disabled-field',
-        };
-      } else {
-        authConfig.callbackUrl = {
-          'ui:widget': 'hidden',
-          'ui:hideError': true,
-        };
-      }
-
-      // Handle clientId field
-      if (authData.clientId && authData.clientId.trim() !== '') {
-        authConfig.clientId = {
-          ...authConfig.clientId,
-          'ui:disabled': true,
-          'ui:classNames': 'disabled-field',
-        };
-      } else {
-        authConfig.clientId = {
-          'ui:widget': 'hidden',
-          'ui:hideError': true,
-        };
-      }
     }
 
     // Show oidcConfiguration for confidential clients, hide for public clients
@@ -795,92 +748,6 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
-    }
-
-    // Handle OIDC fields for existing SSO configurations - only show fields with values
-    if (
-      hasExistingConfig &&
-      savedData &&
-      currentClientType === ClientType.Confidential
-    ) {
-      const oidcConfig = authConfig.oidcConfiguration as UISchemaObject;
-      const oidcData = savedData.authenticationConfiguration
-        .oidcConfiguration as Record<string, unknown>;
-
-      if (oidcConfig && typeof oidcConfig === 'object' && oidcData) {
-        // Handle OIDC type field
-        if (oidcData.type && String(oidcData.type).trim() !== '') {
-          oidcConfig.type = {
-            ...oidcConfig.type,
-            'ui:disabled': true,
-            'ui:classNames': 'disabled-field',
-          };
-        } else {
-          oidcConfig.type = {
-            'ui:widget': 'hidden',
-            'ui:hideError': true,
-          };
-        }
-
-        // Handle OIDC id field
-        if (oidcData.id && String(oidcData.id).trim() !== '') {
-          oidcConfig.id = {
-            ...oidcConfig.id,
-            'ui:disabled': true,
-            'ui:classNames': 'disabled-field',
-          };
-        } else {
-          oidcConfig.id = {
-            'ui:widget': 'hidden',
-            'ui:hideError': true,
-          };
-        }
-
-        // Handle OIDC secret field
-        if (oidcData.secret && String(oidcData.secret).trim() !== '') {
-          oidcConfig.secret = {
-            ...oidcConfig.secret,
-            'ui:disabled': true,
-            'ui:classNames': 'disabled-field',
-          };
-        } else {
-          oidcConfig.secret = {
-            'ui:widget': 'hidden',
-            'ui:hideError': true,
-          };
-        }
-
-        // Handle OIDC discoveryUri field
-        if (
-          oidcData.discoveryUri &&
-          String(oidcData.discoveryUri).trim() !== ''
-        ) {
-          oidcConfig.discoveryUri = {
-            ...oidcConfig.discoveryUri,
-            'ui:disabled': true,
-            'ui:classNames': 'disabled-field',
-          };
-        } else {
-          oidcConfig.discoveryUri = {
-            'ui:widget': 'hidden',
-            'ui:hideError': true,
-          };
-        }
-
-        // Handle OIDC tenant field
-        if (oidcData.tenant && String(oidcData.tenant).trim() !== '') {
-          oidcConfig.tenant = {
-            ...oidcConfig.tenant,
-            'ui:disabled': true,
-            'ui:classNames': 'disabled-field',
-          };
-        } else {
-          oidcConfig.tenant = {
-            'ui:widget': 'hidden',
-            'ui:hideError': true,
-          };
-        }
-      }
     }
 
     return {
