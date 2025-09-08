@@ -27,14 +27,9 @@ export interface ElasticSearchConfiguration {
      */
     connectionTimeoutSecs: number;
     /**
-     * Elastic Search Host (deprecated - use 'hosts' for multiple hosts support)
+     * Elastic Search Host
      */
     host?: string;
-    /**
-     * List of Elastic Search hosts with format host:port. If not provided, falls back to 'host'
-     * and 'port'
-     */
-    hosts?: string[];
     /**
      * Keep Alive Timeout in Seconds
      */
@@ -60,7 +55,7 @@ export interface ElasticSearchConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port (deprecated - use 'hosts' for multiple hosts support)
+     * Elastic Search port
      */
     port?: number;
     /**
