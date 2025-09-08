@@ -14,7 +14,7 @@
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import MetricIcon from '../assets/svg/metric.svg';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
@@ -125,6 +125,7 @@ import {
   SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
 import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -172,6 +173,8 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
+    DriveServiceType.GoogleDrive,
+    PipelineServiceType.Snowplow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -368,7 +371,7 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string) {
+  public getServiceLogo(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.CustomDatabase:
@@ -681,7 +684,7 @@ class ServiceUtilClassBase {
 
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  ): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
