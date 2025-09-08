@@ -53,21 +53,14 @@ handler = setup_streamable_logging_for_workflow(
 ```
 """
 
-import base64
-import gzip
-import json
 import logging
 import os
 import queue
-import socket
 import threading
 import time
 from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID
-
-import requests
-from requests.adapters import HTTPAdapter, Retry
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
@@ -204,8 +197,8 @@ class StreamableLogHandler(logging.Handler):
         self.stop_event = threading.Event()
         self.worker_thread = None
 
-        # HTTP session with retries
-        self.session = self._create_session()
+        # Session ID for log streaming (if server supports it)
+        self.session_id = None
 
         # Metrics tracking
         self.metrics = {
@@ -218,27 +211,15 @@ class StreamableLogHandler(logging.Handler):
 
         # Start worker thread if streaming is enabled
         if self.enable_streaming:
+            self._initialize_log_stream()
             self._start_worker()
 
-    def _create_session(self) -> requests.Session:
-        """Create HTTP session with retry configuration and cookie persistence"""
-        session = requests.Session()
-        retry_strategy = Retry(
-            total=3,
-            backoff_factor=2,  # Exponential backoff: 2, 4, 8 seconds
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["POST", "GET"],  # Allow retries on POST
-        )
-        adapter = HTTPAdapter(
-            max_retries=retry_strategy,
-            pool_connections=10,  # Connection pooling
-            pool_maxsize=10,
-        )
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-
-        # Session will maintain cookies for ALB stickiness
-        return session
+    def _initialize_log_stream(self):
+        """Initialize log stream with the server"""
+        if hasattr(self.metadata, "create_log_stream"):
+            self.session_id = self.metadata.create_log_stream(
+                self.pipeline_fqn, self.run_id
+            )
 
     def _start_worker(self):
         """Start the background worker thread for log shipping"""
@@ -309,62 +290,77 @@ class StreamableLogHandler(logging.Handler):
                 print(f"[FALLBACK] {log}")
 
     def _send_logs_to_server(self, log_content: str):
-        """Send logs to the OpenMetadata server with optional compression"""
+        """Send logs to the OpenMetadata server using the logs mixin"""
         try:
-            # Build the API endpoint using FQN directly as the Java endpoint expects
-            # The endpoint expects: /api/v1/services/ingestionPipelines/logs/{fqn}/{runId}
-            url = f"{self.metadata.config.host_port}/api/v1/services/ingestionPipelines/logs/{self.pipeline_fqn}/{self.run_id}"
+            # Use the logs mixin method if available, otherwise fallback to direct API call
+            if hasattr(self.metadata, "send_logs_to_s3"):
+                # Use the centralized logs mixin method
+                enable_compression = (
+                    os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
+                )
 
-            # Prepare log batch data that matches the Java LogBatch structure
-            log_batch = {
-                "logs": log_content,
-                "timestamp": int(time.time() * 1000),  # milliseconds since epoch
-                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
-                "compressed": False,
-                "lineCount": log_content.count("\n") + 1,
-            }
+                success = self.metadata.send_logs_to_s3(
+                    pipeline_fqn=self.pipeline_fqn,
+                    run_id=self.run_id,
+                    log_content=log_content,
+                    compress=enable_compression and len(log_content) > 10240,
+                )
 
-            # Optional: compress for large payloads
-            enable_compression = (
-                os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
-            )
+                if success:
+                    # Update metrics
+                    line_count = log_content.count("\n") + 1
+                    self.metrics["logs_sent"] += line_count
+                    self.metrics["bytes_sent"] += len(log_content)
 
-            if enable_compression and len(log_content) > 10240:  # Compress if > 10KB
-                # Compress with gzip and base64 encode as expected by LogBatch
-                compressed = gzip.compress(log_content.encode("utf-8"))
-                log_batch["logs"] = base64.b64encode(compressed).decode("utf-8")
-                log_batch["compressed"] = True
+                    logger.debug(
+                        f"Successfully shipped {line_count} log lines to server"
+                    )
+                else:
+                    raise Exception("Failed to send logs via mixin")
+            else:
+                # Fallback: Direct API call using the OpenMetadata client
+                # This maintains backward compatibility
+                logger.warning("Logs mixin not available, using direct API call")
 
-            # The endpoint expects JSON format
-            headers = {
-                "Content-Type": "application/json",
-            }
+                # Use the existing OpenMetadata client's REST interface
+                enable_compression = (
+                    os.getenv("ENABLE_LOG_COMPRESSION", "false").lower() == "true"
+                )
 
-            # Add auth header if available
-            auth_header = self.metadata._auth_header()
-            if auth_header:
-                headers.update(auth_header)
+                # Build payload
+                import base64
+                import gzip
+                import json
+                import socket
 
-            data = json.dumps(log_batch)
+                log_batch = {
+                    "logs": log_content,
+                    "timestamp": int(time.time() * 1000),
+                    "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                    "compressed": False,
+                    "lineCount": log_content.count("\n") + 1,
+                }
 
-            # Send logs - session maintains cookies for ALB stickiness
-            response = self.session.post(url, data=data, headers=headers, timeout=10)
-            response.raise_for_status()
+                if enable_compression and len(log_content) > 10240:
+                    compressed = gzip.compress(log_content.encode("utf-8"))
+                    log_batch["logs"] = base64.b64encode(compressed).decode("utf-8")
+                    log_batch["compressed"] = True
 
-            # Update metrics
-            self.metrics["logs_sent"] += log_batch["lineCount"]
-            self.metrics["bytes_sent"] += len(data)
+                # Use the metadata client's REST interface directly
+                response = self.metadata.client.post(
+                    f"/services/ingestionPipelines/logs/{self.pipeline_fqn}/{self.run_id}",
+                    data=json.dumps(log_batch),
+                )
 
-            # Log successful shipment for debugging
-            logger.debug(
-                f"Successfully shipped {log_batch['lineCount']} log lines to server"
-            )
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to send logs to server: {e}")
-            raise
+                # Update metrics
+                self.metrics["logs_sent"] += log_batch["lineCount"]
+                self.metrics["bytes_sent"] += len(json.dumps(log_batch))
+                # Log successful shipment for debugging
+                logger.debug(
+                    f"Successfully shipped {log_batch['lineCount']} log lines to server"
+                )
         except Exception as e:
-            logger.error(f"Unexpected error sending logs: {e}")
+            logger.error(f"Failed to send logs to server: {e}")
             raise
 
     def emit(self, record: logging.LogRecord):
@@ -431,8 +427,11 @@ class StreamableLogHandler(logging.Handler):
             if self.worker_thread.is_alive():
                 self.worker_thread.join(timeout=5.0)
 
-            # Close the session
-            self.session.close()
+            # Close the log stream if we have a session
+            if self.session_id and hasattr(self.metadata, "close_log_stream"):
+                self.metadata.close_log_stream(
+                    self.pipeline_fqn, self.run_id, self.session_id
+                )
 
         # Close fallback handler
         self.fallback_handler.close()
