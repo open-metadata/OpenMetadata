@@ -68,6 +68,16 @@ export const ContractDetailFormTab: React.FC<{
         initialValue: initialValues?.description ?? '',
       },
     },
+    {
+      label: t('label.terms-of-service'),
+      id: 'termsOfUse',
+      name: 'termsOfUse',
+      type: FieldTypes.TEXT_AREA,
+      required: false,
+      props: {
+        'data-testid': 'contract-terms-of-service',
+      },
+    },
   ];
 
   useEffect(() => {
@@ -76,6 +86,7 @@ export const ContractDetailFormTab: React.FC<{
         name: getEntityName(initialValues),
         description: initialValues.description,
         owners: initialValues.owners,
+        termsOfUse: initialValues.termsOfUse,
       });
     }
   }, [initialValues]);
@@ -102,11 +113,7 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button className="contract-prev-button" type="default">
-          {t('label.contract-detail-plural')}
-        </Button>
-
+      <div className="d-flex justify-end  m-t-md">
         <Button
           className="contract-next-button"
           htmlType="submit"

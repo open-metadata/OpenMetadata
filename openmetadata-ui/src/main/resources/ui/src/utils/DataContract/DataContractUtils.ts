@@ -308,3 +308,13 @@ export const getSematicRuleFields = () => {
 
   return allFields;
 };
+
+// Utility function to convert string enum to options array for Ant Design Select
+export const enumToSelectOptions = <T extends Record<string, string>>(
+  enumObject: T
+): Array<{ label: string; value: string }> => {
+  return Object.values(enumObject).map((value) => ({
+    label: t(`label.${value}`),
+    value: value, // Use the enum value as the actual value (hour, day, week, etc.)
+  }));
+};

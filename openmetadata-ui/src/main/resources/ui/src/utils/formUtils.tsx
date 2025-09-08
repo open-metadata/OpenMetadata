@@ -43,6 +43,7 @@ import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.i
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
+import SanitizedTextArea from '../components/common/SanitizedTextArea/SanitizedTextArea';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
@@ -110,6 +111,14 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
+    case FieldTypes.TEXT_AREA:
+      fieldElement = (
+        <SanitizedTextArea {...props} id={id} placeholder={placeholder} />
+      );
+
+      break;
+
     case FieldTypes.PASSWORD:
       fieldElement = (
         <Input.Password
