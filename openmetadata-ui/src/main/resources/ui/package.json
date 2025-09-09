@@ -80,7 +80,7 @@
     "autoprefixer": "^10.0.0",
     "axios": "1.8.3",
     "classnames": "^2.3.1",
-    "codemirror": "^5.65.16",
+    "codemirror": "^6.0.0",
     "cookie-storage": "^6.1.0",
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
