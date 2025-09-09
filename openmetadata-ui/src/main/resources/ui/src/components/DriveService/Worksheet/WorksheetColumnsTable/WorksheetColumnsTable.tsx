@@ -12,6 +12,7 @@
  */
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import classNames from 'classnames';
 import {
   cloneDeep,
   groupBy,
@@ -44,6 +45,7 @@ import {
 } from '../../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
+  prepareConstraintIcon,
   pruneEmptyChildren,
   updateFieldDescription,
   updateFieldTags,
@@ -141,11 +143,34 @@ function WorksheetColumnsTable() {
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
-        render: (_, record: Column) => (
-          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Tooltip>
-        ),
+        render: (name: Column['name'], record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+              <div className="d-inline-flex items-baseline">
+                {prepareConstraintIcon({
+                  columnName: name,
+                  columnConstraint: record.constraint,
+                })}
+                <Typography.Text
+                  className={classNames('m-b-0 d-block break-word', {
+                    'text-grey-600': !isEmpty(displayName),
+                  })}
+                  data-testid="column-name">
+                  {name}
+                </Typography.Text>
+              </div>
+              {!isEmpty(displayName) ? (
+                <Typography.Text
+                  className="m-b-0 d-block break-word"
+                  data-testid="column-display-name">
+                  {getEntityName(record)}
+                </Typography.Text>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         title: t('label.type'),

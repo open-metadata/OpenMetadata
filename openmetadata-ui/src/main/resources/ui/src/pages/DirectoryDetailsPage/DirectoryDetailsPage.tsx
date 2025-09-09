@@ -157,7 +157,7 @@ const DirectoryDetailsPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-details-fetch-error', {
-            entityType: t('label.pipeline'),
+            entityType: t('label.directory'),
             entityName: directoryFQN,
           })
         );

@@ -157,7 +157,7 @@ const WorksheetDetailsPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-details-fetch-error', {
-            entityType: t('label.pipeline'),
+            entityType: t('label.worksheet'),
             entityName: worksheetFQN,
           })
         );

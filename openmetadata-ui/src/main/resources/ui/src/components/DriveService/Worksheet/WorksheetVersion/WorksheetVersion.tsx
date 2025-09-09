@@ -13,22 +13,29 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { CustomizeEntityType } from '../../../../constants/Customize.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { ChangeDescription } from '../../../../generated/entity/data/worksheet';
-import { TagSource } from '../../../../generated/type/tagLabel';
+import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import {
+  ChangeDescription,
+  Column,
+} from '../../../../generated/entity/data/worksheet';
+import { TagSource } from '../../../../generated/type/tagLabel';
+import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
+import {
+  getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
+import { pruneEmptyChildren } from '../../../../utils/TableUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -38,6 +45,7 @@ import { GenericProvider } from '../../../Customization/GenericProvider/GenericP
 import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import VersionTable from '../../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { WorksheetVersionProps } from './WorksheetVersion.interface';
 
@@ -125,6 +133,18 @@ const WorksheetVersion = ({
     [changeDescription]
   );
 
+  const columns = useMemo(() => {
+    const colList = cloneDeep(
+      pruneEmptyChildren(currentVersionData?.columns ?? [])
+    );
+
+    return getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      colList,
+      true
+    );
+  }, [currentVersionData, changeDescription]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -139,6 +159,19 @@ const WorksheetVersion = ({
                     description={description}
                     entityType={EntityType.WORKSHEET}
                     showActions={false}
+                  />
+                </Col>
+                <Col span={24}>
+                  <VersionTable
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
+                    columnName={getPartialNameFromTableFQN(
+                      entityFqn,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={columns}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
+                    joins={[]}
                   />
                 </Col>
               </Row>

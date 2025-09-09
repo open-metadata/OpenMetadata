@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../../constants/Customize.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import {
   ChangeDescription,
   EntityReference,
+  Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
 import { TagSource } from '../../../../generated/type/tagLabel';
+import { useFqn } from '../../../../hooks/useFqn';
+import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -37,6 +38,7 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -69,9 +71,13 @@ const SpreadsheetVersion = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
+  const { fqn: spreadsheetFQN } = useFqn();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
+  const [spreadsheetDetails, setSpreadsheetDetails] =
+    useState<Spreadsheet>(currentVersionData);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const entityFqn = useMemo(
     () => currentVersionData.fullyQualifiedName ?? '',
@@ -100,12 +106,6 @@ const SpreadsheetVersion = ({
       )
     );
   };
-
-  useEffect(() => {
-    setChangeDescription(
-      currentVersionData.changeDescription as ChangeDescription
-    );
-  }, [currentVersionData]);
 
   const tags = useMemo(() => {
     return getEntityVersionTags(currentVersionData, changeDescription);
@@ -141,24 +141,9 @@ const SpreadsheetVersion = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (text, record) => (
-          <Link target="_blank" to={text}>
-            <Space>
-              <span>{getEntityName(record)}</span>
-
-              <Icon
-                className="m-l-xs flex-none align-middle"
-                component={IconExternalLink}
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
-            </Space>
-          </Link>
+        render: (_, record) => (
+          <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'type',
-        key: 'type',
       },
       {
         title: t('label.description'),
@@ -195,7 +180,7 @@ const SpreadsheetVersion = ({
                   <Table
                     columns={tableColumn}
                     data-testid="spreadsheet-children-table"
-                    dataSource={currentVersionData?.worksheets ?? []}
+                    dataSource={spreadsheetDetails.worksheets}
                     pagination={false}
                     rowKey="name"
                     size="small"
@@ -255,12 +240,47 @@ const SpreadsheetVersion = ({
       entityPermissions,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
+      spreadsheetDetails,
     ]
   );
 
+  const fetchSpreadsheetDetails = async (spreadsheetFQN: string) => {
+    setIsLoading(true);
+    try {
+      const res = await getDriveAssetByFqn<Spreadsheet>(
+        spreadsheetFQN,
+        EntityType.SPREADSHEET,
+        'worksheets'
+      );
+      const { worksheets } = res;
+
+      setSpreadsheetDetails((prev) => ({ ...prev, worksheets }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.spreadsheet'),
+          entityName: spreadsheetFQN,
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpreadsheetDetails(spreadsheetFQN);
+  }, []);
+
+  useEffect(() => {
+    setChangeDescription(
+      currentVersionData.changeDescription as ChangeDescription
+    );
+  }, [currentVersionData]);
+
   return (
     <>
-      {isVersionLoading ? (
+      {isVersionLoading || isLoading ? (
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
