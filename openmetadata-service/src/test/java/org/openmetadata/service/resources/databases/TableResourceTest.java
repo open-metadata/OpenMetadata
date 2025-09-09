@@ -116,6 +116,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -126,6 +127,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
@@ -180,6 +182,7 @@ import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -5211,5 +5214,116 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
     schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testTableSoftDeleteAndRestoreWithDataProducts(TestInfo test) throws IOException {
+    // This test verifies the fix for the issue where restoring a soft-deleted table
+    // with dataProducts fails with "Domain cannot be empty when data products are provided"
+
+    // Step 1: Create a domain
+    DomainResourceTest domainTest = new DomainResourceTest();
+    CreateDomain createDomain = domainTest.createRequest("test_domain_" + test.getDisplayName());
+    Domain domain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create a data product in that domain
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        new CreateDataProduct()
+            .withName("test_dataproduct_" + test.getDisplayName())
+            .withDescription("Test data product for soft delete/restore")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = dataProductTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Create a database
+    DatabaseResourceTest dbTest = new DatabaseResourceTest();
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest("test_restore_db_" + test.getDisplayName()), ADMIN_AUTH_HEADERS);
+
+    // Step 4: Create a schema with the domain (schema inherits domain)
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema =
+        schemaTest
+            .createRequest("test_restore_schema_" + test.getDisplayName())
+            .withDatabase(db.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Step 5: Create a table (inherits domain from schema)
+    // Use minimal table configuration - we only care about domain inheritance
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table inherited the domain from schema
+    Table tableWithDomain = getEntity(table.getId(), "domains,dataProducts", ADMIN_AUTH_HEADERS);
+    assertNotNull(tableWithDomain.getDomains());
+    assertEquals(1, tableWithDomain.getDomains().size());
+    assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
+
+    // Step 6: Add the table to the dataProduct
+    String originalJson = JsonUtils.pojoToJson(dataProduct);
+    dataProduct.setAssets(List.of(table.getEntityReference()));
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldAdded(change, "assets", List.of(table.getEntityReference()));
+    dataProduct =
+        dataProductTest.patchEntityAndCheck(
+            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify table has the dataProduct
+    Table tableWithDataProduct =
+        getEntity(table.getId(), "domains,dataProducts", ADMIN_AUTH_HEADERS);
+    assertNotNull(tableWithDataProduct.getDataProducts());
+    assertEquals(1, tableWithDataProduct.getDataProducts().size());
+    assertEquals(dataProduct.getId(), tableWithDataProduct.getDataProducts().getFirst().getId());
+
+    // Step 7: Soft delete the table
+    deleteEntity(table.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    // Verify table is soft deleted
+    assertResponse(
+        () -> getEntity(table.getId(), "domains,dataProducts", ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, table.getId()));
+
+    // Step 8: Restore the table
+    // The issue was that during restore, the table has dataProducts but domains are not loaded
+    // (since domains are inherited from schema), causing validation to fail with:
+    // "Domain cannot be empty when data products are provided"
+    RestoreEntity restoreRequest = new RestoreEntity().withId(table.getId());
+    Table restoredTable = restoreEntity(restoreRequest, Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Step 9: Verify the table is successfully restored with both domain and dataProducts
+    assertNotNull(restoredTable);
+    assertFalse(restoredTable.getDeleted());
+
+    Table fullyRestoredTable = getEntity(table.getId(), "domains,dataProducts", ADMIN_AUTH_HEADERS);
+
+    // Verify domain is still present (inherited from schema)
+    assertNotNull(fullyRestoredTable.getDomains());
+    assertEquals(1, fullyRestoredTable.getDomains().size());
+    assertEquals(domain.getId(), fullyRestoredTable.getDomains().getFirst().getId());
+
+    // Verify dataProduct relationship is preserved
+    assertNotNull(fullyRestoredTable.getDataProducts());
+    assertEquals(1, fullyRestoredTable.getDataProducts().size());
+    assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
+
+    // Additional verification: Check that the dataProduct still lists the table as an asset
+    DataProduct verifyDataProduct =
+        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyDataProduct.getAssets());
+    assertTrue(
+        verifyDataProduct.getAssets().stream()
+            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        "Table should still be an asset of the data product after restore");
+
+    // Cleanup: Hard delete all test entities
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+    schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
+    dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
+    dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
+    domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

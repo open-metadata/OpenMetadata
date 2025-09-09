@@ -23,7 +23,7 @@ const useImage = (fileName: string) => {
   useEffect(() => {
     const fetchImage = async () => {
       try {
-        const response = await import(`../assets/img/${fileName}`);
+        const response = await import(`../assets/img/${fileName}.png`);
         setImage(response.default);
       } catch (err) {
         setError(err);

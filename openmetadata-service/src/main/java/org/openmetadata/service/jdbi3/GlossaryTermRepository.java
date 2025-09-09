@@ -74,13 +74,13 @@ import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -92,6 +92,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -232,10 +233,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
-    if (!update || entity.getStatus() == null) {
+    if (!update || entity.getEntityStatus() == null) {
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
-      entity.setStatus(!nullOrEmpty(parentReviewers) ? Status.DRAFT : Status.APPROVED);
+      entity.setEntityStatus(
+          !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
     }
     if (!update) {
       checkDuplicateTerms(entity);
@@ -612,10 +614,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
-    if (original.getStatus() == Status.IN_REVIEW) {
-      if (updated.getStatus() == Status.APPROVED) {
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
-      } else if (updated.getStatus() == Status.REJECTED) {
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
         closeApprovalTask(updated, "Rejected the glossary term");
       }
     }
@@ -625,7 +627,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Glossary Term goes back to DRAFT.
-    if (updated.getStatus() == Status.DRAFT) {
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
@@ -636,7 +638,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void preDelete(GlossaryTerm entity, String deletedBy) {
     // A glossary term in `Draft` state can only be deleted by the reviewers
-    if (Status.IN_REVIEW.equals(entity.getStatus())) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
   }
@@ -1142,17 +1144,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     private void updateStatus(
         GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
-      if (origTerm.getStatus() == updatedTerm.getStatus()) {
+      if (origTerm.getEntityStatus() == updatedTerm.getEntityStatus()) {
         return;
       }
       // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
       if (!consolidatingChanges
-          && origTerm.getStatus() == Status.IN_REVIEW
-          && (updatedTerm.getStatus() == Status.APPROVED
-              || updatedTerm.getStatus() == Status.REJECTED)) {
+          && origTerm.getEntityStatus() == EntityStatus.IN_REVIEW
+          && (updatedTerm.getEntityStatus() == EntityStatus.APPROVED
+              || updatedTerm.getEntityStatus() == EntityStatus.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());
       }
-      recordChange("status", origTerm.getStatus(), updatedTerm.getStatus());
+      recordChange("entityStatus", origTerm.getEntityStatus(), updatedTerm.getEntityStatus());
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -1332,6 +1334,106 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  public ResultList<GlossaryTerm> searchGlossaryTermsById(
+      UUID glossaryId, String query, int limit, int offset, String fieldsParam, Include include) {
+    Glossary glossary =
+        Entity.getEntity(GLOSSARY, glossaryId, "id,name,fullyQualifiedName", include);
+    return searchGlossaryTermsInternal(
+        glossary.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByFQN(
+      String glossaryFqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include) {
+    return searchGlossaryTermsInternal(glossaryFqn, query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByParentId(
+      UUID parentId, String query, int limit, int offset, String fieldsParam, Include include) {
+    GlossaryTerm parentTerm =
+        Entity.getEntity(GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", include);
+    return searchGlossaryTermsInternal(
+        parentTerm.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+  }
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsByParentFQN(
+      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
+    return searchGlossaryTermsInternal(parentFqn, query, limit, offset, fieldsParam, include);
+  }
+
+  private String prepareSearchTerm(String query) {
+    // For LIKE queries, add wildcards
+    return "%" + query.trim() + "%";
+  }
+
+  private ResultList<GlossaryTerm> searchGlossaryTermsInternal(
+      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
+
+    CollectionDAO.GlossaryTermDAO dao = daoCollection.glossaryTermDAO();
+
+    // Build the parent hash for filtering
+    String parentHash = parentFqn != null ? FullyQualifiedName.buildHash(parentFqn) + ".%" : "%";
+
+    // If no search query, use regular listing
+    if (query == null || query.trim().isEmpty()) {
+      ListFilter filter = new ListFilter(include);
+      if (parentFqn != null) {
+        filter.addQueryParam("parent", parentFqn);
+      }
+
+      // Use cursor-based pagination with limit and convert offset to cursor
+      String afterCursor = offset > 0 ? String.valueOf(offset) : null;
+      ResultList<GlossaryTerm> result =
+          listAfter(null, getFields(fieldsParam), filter, limit, afterCursor);
+
+      // Convert pagination info
+      String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+      String after =
+          result.getPaging() != null && result.getPaging().getAfter() != null
+              ? String.valueOf(offset + limit)
+              : null;
+      int total =
+          result.getPaging() != null ? result.getPaging().getTotal() : result.getData().size();
+
+      return new ResultList<>(result.getData(), before, after, total);
+    }
+
+    // For search queries, fetch limit+1 to determine if there are more pages
+    // Prepare search term for full-text search
+    String searchTerm = prepareSearchTerm(query.trim());
+
+    // Fetch limit+1 records to check if there's a next page
+    List<String> jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+
+    // Check if we have more than limit results
+    boolean hasMore = jsons.size() > limit;
+    if (hasMore) {
+      // Remove the extra record
+      jsons = jsons.subList(0, limit);
+    }
+
+    List<GlossaryTerm> terms = new ArrayList<>();
+    for (String json : jsons) {
+      GlossaryTerm term = JsonUtils.readValue(json, GlossaryTerm.class);
+      setFields(term, getFields(fieldsParam));
+      terms.add(term);
+    }
+
+    // Set up pagination info
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = hasMore ? String.valueOf(offset + limit) : null;
+
+    // For the total count, we only know it's at least offset + terms.size() + (hasMore ? 1 : 0)
+    // This is sufficient for pagination without the expensive COUNT query
+    int knownTotal = offset + terms.size() + (hasMore ? 1 : 0);
+
+    return new ResultList<>(terms, before, after, knownTotal);
+  }
+
   /**
    * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
    */
@@ -1343,7 +1445,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         Entity.getEntity(
             GLOSSARY_TERM,
             id,
-            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,status",
+            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus",
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
 
