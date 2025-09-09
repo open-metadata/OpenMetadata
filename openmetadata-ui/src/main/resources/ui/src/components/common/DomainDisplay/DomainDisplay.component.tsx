@@ -29,10 +29,9 @@ const DomainLink: React.FC<{
   <>
     <Link
       className="no-underline"
+      data-testid="domain-link"
       to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-      <Typography.Text
-        className="text-sm text-primary"
-        data-testid="domain-link">
+      <Typography.Text className="text-sm text-primary">
         {getEntityName(domain)}
       </Typography.Text>
     </Link>
