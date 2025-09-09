@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -66,6 +67,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -92,6 +94,7 @@ import org.openmetadata.service.util.EntityUtil;
 public class TagResource extends EntityResource<Tag, TagRepository> {
   private final ClassificationMapper classificationMapper = new ClassificationMapper();
   private final TagMapper mapper = new TagMapper();
+  private final RecognizerFeedbackRepository feedbackRepository;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS =
       "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
@@ -102,6 +105,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   public TagResource(Authorizer authorizer, Limits limits) {
     super(Entity.TAG, authorizer, limits);
+    this.feedbackRepository = new RecognizerFeedbackRepository(Entity.getCollectionDAO());
   }
 
   @Override
@@ -590,5 +594,97 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     Entity.withHref(uriInfo, tag.getClassification());
     Entity.withHref(uriInfo, tag.getParent());
     return tag;
+  }
+
+  @POST
+  @Path("/name/{fqn}/feedback")
+  @Operation(
+      operationId = "submitRecognizerFeedback",
+      summary = "Submit feedback on auto-applied tag",
+      description = "Submit user feedback when a recognizer incorrectly applies this tag",
+      responses = {
+        @ApiResponse(
+            responseCode = "201",
+            description = "Feedback submitted successfully",
+            content = @Content(schema = @Schema(implementation = RecognizerFeedback.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "404", description = "Tag not found")
+      })
+  public Response submitRecognizerFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid RecognizerFeedback feedback) {
+    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("recognizers"));
+    feedback.setTagFQN(tag.getFullyQualifiedName());
+    String userName = securityContext.getUserPrincipal().getName();
+    feedback.setCreatedBy(Entity.getEntityReferenceByName(Entity.USER, userName, null));
+    RecognizerFeedback result = feedbackRepository.processFeedback(feedback, userName);
+    return Response.status(Response.Status.CREATED).entity(result).build();
+  }
+
+  @GET
+  @Path("/feedback/{id}")
+  @Operation(
+      operationId = "getRecognizerFeedback",
+      summary = "Get feedback by ID",
+      description = "Get a specific feedback entry by its ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Feedback retrieved successfully",
+            content = @Content(schema = @Schema(implementation = RecognizerFeedback.class))),
+        @ApiResponse(responseCode = "404", description = "Feedback not found")
+      })
+  public RecognizerFeedback getRecognizerFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the feedback", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+
+    return feedbackRepository.get(id);
+  }
+
+  @GET
+  @Path("/name/{fqn}/feedback")
+  @Operation(
+      operationId = "getTagFeedback",
+      summary = "Get all feedback for a tag",
+      description = "Get all feedback entries for a specific tag",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Feedback list retrieved successfully")
+      })
+  public List<RecognizerFeedback> getTagFeedback(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+
+    // Verify the tag exists
+    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+
+    // Get feedback for this tag
+    return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName());
+  }
+
+  @GET
+  @Path("/feedback/pending")
+  @Operation(
+      operationId = "getPendingFeedback",
+      summary = "Get all pending feedback",
+      description = "Get all feedback entries pending review across all tags",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pending feedback list retrieved successfully")
+      })
+  public List<RecognizerFeedback> getPendingFeedback(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+
+    return feedbackRepository.getPendingFeedback();
   }
 }

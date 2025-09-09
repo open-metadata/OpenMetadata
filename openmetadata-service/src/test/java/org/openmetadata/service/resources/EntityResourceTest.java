@@ -187,6 +187,8 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -2461,6 +2463,181 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
           "Tags should not contain: " + unexpected.getTagFQN());
     }
+  }
+
+  @Test
+  void test_recognizerFeedback_autoAppliedTags(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return; // Skip if entity doesn't support tags
+    }
+
+    // Create an entity with auto-applied tags (simulating recognizer output)
+    TagLabel autoAppliedTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withState(TagLabel.State.SUGGESTED)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel manualTag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(autoAppliedTag, manualTag));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify both tags are present
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Submit feedback for false positive on auto-applied tag
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This field contains product IDs, not personal information");
+
+    // Submit feedback via API
+    RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+    assertNotNull(submittedFeedback.getId());
+
+    // Verify the auto-applied tag is removed after feedback processing
+    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertEquals(1, entity.getTags().size());
+    assertTagsDoNotContain(entity.getTags(), listOf(autoAppliedTag));
+    assertTagsContain(entity.getTags(), listOf(manualTag));
+  }
+
+  @Test
+  void test_recognizerFeedback_exceptionList(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Create entity with auto-applied tag
+    TagLabel autoTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(autoTag));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Submit feedback
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.INTERNAL_IDENTIFIER);
+
+    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+
+    // Get the tag and verify the entity is in the exception list
+    // Create TagResourceTest instance to access tag operations
+    org.openmetadata.service.resources.tags.TagResourceTest tagResourceTest =
+        new org.openmetadata.service.resources.tags.TagResourceTest();
+    Tag tag = tagResourceTest.getEntityByName("PII.Sensitive", "recognizers", ADMIN_AUTH_HEADERS);
+    if (tag.getRecognizers() != null && !tag.getRecognizers().isEmpty()) {
+      for (Recognizer recognizer : tag.getRecognizers()) {
+        assertNotNull(recognizer.getExceptionList());
+        assertTrue(
+            recognizer.getExceptionList().stream()
+                .anyMatch(e -> e.getEntityLink().equals(getEntityLink(entity))),
+            "Entity should be in recognizer exception list after feedback");
+      }
+    }
+  }
+
+  @Test
+  void test_recognizerFeedback_multipleEntities(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Create multiple entities with same auto-applied tag
+    List<T> entities = new ArrayList<>();
+    TagLabel autoTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+
+    for (int i = 0; i < 3; i++) {
+      CreateEntity create = createRequest(getEntityName(test) + i);
+      create.setTags(listOf(autoTag));
+      entities.add(createEntity(create, ADMIN_AUTH_HEADERS));
+    }
+
+    // Submit feedback for only the first entity
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entities.get(0)))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.TEST_DATA);
+
+    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+
+    // Verify only the first entity has the tag removed
+    T firstEntity = getEntity(entities.get(0).getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertTrue(firstEntity.getTags().isEmpty(), "First entity should have tag removed");
+
+    // Other entities should still have the tag
+    for (int i = 1; i < entities.size(); i++) {
+      T otherEntity = getEntity(entities.get(i).getId(), "tags", ADMIN_AUTH_HEADERS);
+      assertEquals(1, otherEntity.getTags().size());
+      assertTagsContain(otherEntity.getTags(), listOf(autoTag));
+    }
+  }
+
+  @Test
+  void test_recognizerFeedback_invalidFeedback(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+
+    // Try to submit feedback for non-existent entity
+    RecognizerFeedback invalidFeedback =
+        new RecognizerFeedback()
+            .withEntityLink("<#E::table::non_existent::columns::id>")
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
+
+    assertResponseContains(
+        () -> submitRecognizerFeedback(invalidFeedback, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        "instance for non_existent not found");
+
+    // Try to submit feedback for non-auto-applied tag
+    CreateEntity create = createRequest(getEntityName(test));
+    TagLabel manualTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withLabelType(TagLabel.LabelType.MANUAL);
+    create.setTags(listOf(manualTag));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    RecognizerFeedback feedbackForManualTag =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity))
+            .withTagFQN("Tier.Tier1")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
+
+    assertResponseContains(
+        () -> submitRecognizerFeedback(feedbackForManualTag, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Feedback can only be submitted for auto-applied tags");
+  }
+
+  private RecognizerFeedback submitRecognizerFeedback(
+      RecognizerFeedback feedback, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("tags/name/" + feedback.getTagFQN() + "/feedback");
+    return TestUtils.post(target, feedback, RecognizerFeedback.class, authHeaders);
+  }
+
+  private String getEntityLink(T entity) {
+    // Build entity link in the format: <#E::entityType::fqn>
+    return String.format("<#E::%s::%s>", entityType, entity.getFullyQualifiedName());
   }
 
   @Test

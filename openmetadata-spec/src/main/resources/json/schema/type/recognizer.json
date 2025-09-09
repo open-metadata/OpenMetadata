@@ -6,6 +6,34 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.type.Recognizer",
   "definitions": {
+    "recognizerException": {
+      "description": "Exception entry for entities where recognizer should not run",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.RecognizerException",
+      "properties": {
+        "entityLink": {
+          "description": "Entity link to exclude from recognition",
+          "$ref": "basic.json#/definitions/entityLink"
+        },
+        "reason": {
+          "description": "Reason for exclusion",
+          "type": "string"
+        },
+        "addedBy": {
+          "description": "User who added this exception",
+          "$ref": "entityReference.json"
+        },
+        "addedAt": {
+          "$ref": "basic.json#/definitions/timestamp"
+        },
+        "feedbackId": {
+          "description": "ID of the feedback that triggered this exception",
+          "$ref": "basic.json#/definitions/uuid"
+        }
+      },
+      "required": ["entityLink"],
+      "additionalProperties": false
+    },
     "recognizerType": {
       "description": "Type of recognizer to use for detection",
       "type": "string",
@@ -74,6 +102,14 @@
       "minimum": 0.0,
       "maximum": 1.0,
       "default": 0.6
+    },
+    "exceptionList": {
+      "description": "Entity links where this recognizer should NOT run (based on user feedback)",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/recognizerException"
+      },
+      "default": []
     },
     "version": {
       "description": "Version of the recognizer configuration",
