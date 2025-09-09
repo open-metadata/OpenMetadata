@@ -298,46 +298,66 @@ public class DomainAccessTest {
   }
 
   @Test
-  @DisplayName("User with multiple domains should match resource with multiple domains if any overlap")
+  @DisplayName(
+      "User with multiple domains should match resource with multiple domains if any overlap")
   void testBothWithMultipleDomains() {
     // Given: User has multiple domains
-    EntityReference userDomain1 = createDomain("finance-domain", "11111111-1111-1111-1111-111111111111");
-    EntityReference userDomain2 = createDomain("marketing-domain", "22222222-2222-2222-2222-222222222222");
-    EntityReference userDomain3 = createDomain("engineering-domain", "33333333-3333-3333-3333-333333333333");
+    EntityReference userDomain1 =
+        createDomain("finance-domain", "11111111-1111-1111-1111-111111111111");
+    EntityReference userDomain2 =
+        createDomain("marketing-domain", "22222222-2222-2222-2222-222222222222");
+    EntityReference userDomain3 =
+        createDomain("engineering-domain", "33333333-3333-3333-3333-333333333333");
     when(user.getDomains()).thenReturn(Arrays.asList(userDomain1, userDomain2, userDomain3));
 
     // And: Resource has multiple domains with partial overlap
-    EntityReference resourceDomain1 = createDomain("hr-domain", "44444444-4444-4444-4444-444444444444");
-    EntityReference resourceDomain2 = createDomain("marketing-domain", "22222222-2222-2222-2222-222222222222"); // Matches user's domain2
-    EntityReference resourceDomain3 = createDomain("sales-domain", "55555555-5555-5555-5555-555555555555");
-    when(resourceContext.getDomains()).thenReturn(Arrays.asList(resourceDomain1, resourceDomain2, resourceDomain3));
+    EntityReference resourceDomain1 =
+        createDomain("hr-domain", "44444444-4444-4444-4444-444444444444");
+    EntityReference resourceDomain2 =
+        createDomain(
+            "marketing-domain", "22222222-2222-2222-2222-222222222222"); // Matches user's domain2
+    EntityReference resourceDomain3 =
+        createDomain("sales-domain", "55555555-5555-5555-5555-555555555555");
+    when(resourceContext.getDomains())
+        .thenReturn(Arrays.asList(resourceDomain1, resourceDomain2, resourceDomain3));
 
     // When: Checking domain access
     boolean hasAccess = ruleEvaluator.hasDomain();
 
     // Then: Access should be granted because marketing-domain matches
-    assertTrue(hasAccess, "User should access resource when at least one domain matches between multiple domains");
+    assertTrue(
+        hasAccess,
+        "User should access resource when at least one domain matches between multiple domains");
   }
 
   @Test
-  @DisplayName("User with multiple domains should NOT access resource with multiple non-matching domains")
+  @DisplayName(
+      "User with multiple domains should NOT access resource with multiple non-matching domains")
   void testBothWithMultipleDomainsNoMatch() {
     // Given: User has multiple domains
-    EntityReference userDomain1 = createDomain("finance-domain", "11111111-1111-1111-1111-111111111111");
-    EntityReference userDomain2 = createDomain("marketing-domain", "22222222-2222-2222-2222-222222222222");
+    EntityReference userDomain1 =
+        createDomain("finance-domain", "11111111-1111-1111-1111-111111111111");
+    EntityReference userDomain2 =
+        createDomain("marketing-domain", "22222222-2222-2222-2222-222222222222");
     when(user.getDomains()).thenReturn(Arrays.asList(userDomain1, userDomain2));
 
     // And: Resource has multiple domains with NO overlap
-    EntityReference resourceDomain1 = createDomain("hr-domain", "44444444-4444-4444-4444-444444444444");
-    EntityReference resourceDomain2 = createDomain("engineering-domain", "33333333-3333-3333-3333-333333333333");
-    EntityReference resourceDomain3 = createDomain("sales-domain", "55555555-5555-5555-5555-555555555555");
-    when(resourceContext.getDomains()).thenReturn(Arrays.asList(resourceDomain1, resourceDomain2, resourceDomain3));
+    EntityReference resourceDomain1 =
+        createDomain("hr-domain", "44444444-4444-4444-4444-444444444444");
+    EntityReference resourceDomain2 =
+        createDomain("engineering-domain", "33333333-3333-3333-3333-333333333333");
+    EntityReference resourceDomain3 =
+        createDomain("sales-domain", "55555555-5555-5555-5555-555555555555");
+    when(resourceContext.getDomains())
+        .thenReturn(Arrays.asList(resourceDomain1, resourceDomain2, resourceDomain3));
 
     // When: Checking domain access
     boolean hasAccess = ruleEvaluator.hasDomain();
 
     // Then: Access should be denied because no domains match
-    assertFalse(hasAccess, "User should NOT access resource when no domains match between multiple domains");
+    assertFalse(
+        hasAccess,
+        "User should NOT access resource when no domains match between multiple domains");
   }
 
   /**
