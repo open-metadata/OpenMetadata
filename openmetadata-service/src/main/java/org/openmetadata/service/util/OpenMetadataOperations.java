@@ -71,6 +71,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -1399,15 +1400,43 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Dropping all indexes from search engine...");
       parseConfig();
+
+      // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
         searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
       }
+
+      // Drop data streams and data quality indexes created by DataInsightsApp
+      dropDataInsightsIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
       return 1;
+    }
+  }
+
+  private void dropDataInsightsIndexes() {
+    try {
+      LOG.info("Dropping Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Dropping data assets data streams...");
+      dataInsightsApp.deleteDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Dropping data quality indexes...");
+      dataInsightsApp.deleteDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams dropped successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index cleanup error details: ", e);
     }
   }
 
