@@ -483,6 +483,13 @@ export const AuthProvider = ({
         // Escape special characters for exact matching
         const domainStatement = escapeESReservedCharacters(activeDomain);
 
+        // Create domain filter using term query for exact matching
+        const domainFilter = {
+          term: {
+            'domains.fullyQualifiedName': domainStatement,
+          },
+        };
+
         // Move domain filter to proper queryFilter structure
         if (queryParams.query_filter) {
           // Merge with existing query_filter
@@ -490,32 +497,18 @@ export const AuthProvider = ({
           queryParams.query_filter = JSON.stringify({
             query: {
               bool: {
-                must: [
-                  existingFilter.query || existingFilter,
-                  {
-                    match: {
-                      'domains.fullyQualifiedName': domainStatement,
-                    },
-                  },
-                ],
+                must: [existingFilter.query || existingFilter, domainFilter],
               },
             },
           });
         } else {
           // Create new query_filter with proper structure
           queryParams.query_filter = JSON.stringify({
-            query: {
-              match: {
-                'domains.fullyQualifiedName': domainStatement,
-              },
-            },
+            query: domainFilter,
           });
         }
 
-        // Clear the q parameter if it exists since we're using query_filter
-        if (queryParams.q === '') {
-          delete queryParams.q;
-        }
+        // Don't clear the q parameter - let it contain search text only
 
         // Update the URL with the modified query parameter
         config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;

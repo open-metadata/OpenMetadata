@@ -29,7 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import {
   escapeESReservedCharacters,
@@ -62,20 +62,24 @@ const DataProductsTab = forwardRef(
       try {
         setLoading(true);
         const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
-        const res = await searchData(
-          '',
-          1,
-          PAGE_SIZE_LARGE,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DATA_PRODUCT
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          queryFilter: {
+            query: {
+              term: {
+                'domains.fullyQualifiedName': encodedFqn,
+              },
+            },
+          },
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
 
-        const data = formatDataProductResponse(res.data.hits.hits);
+        const data = formatDataProductResponse(res.hits.hits);
         setDataProducts({
           data: data,
-          paging: { total: res.data.hits.total.value ?? 0 },
+          paging: { total: res.hits.total.value ?? 0 },
         });
         if (data.length > 0) {
           setSelectedCard(data[0]);

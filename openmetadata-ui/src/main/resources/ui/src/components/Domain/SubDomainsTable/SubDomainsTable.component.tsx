@@ -21,7 +21,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
@@ -60,20 +60,23 @@ const SubDomainsTable = ({
     try {
       setIsLoading(true);
 
-      const res = await searchData(
-        '',
-        currentPage,
+      const res = await searchQuery({
+        query: '',
+        pageNumber: currentPage,
         pageSize,
-        `(parent.fullyQualifiedName:"${encodedFqn}")`,
-        '',
-        '',
-        SearchIndex.DOMAIN,
-        false,
-        true
-      );
+        queryFilter: {
+          query: {
+            term: {
+              'parent.fullyQualifiedName.keyword': encodedFqn,
+            },
+          },
+        },
+        searchIndex: SearchIndex.DOMAIN,
+        includeDeleted: false,
+      });
 
-      const data = formatDomainsResponse(res.data.hits.hits);
-      const totalCount = res.data.hits.total.value ?? 0;
+      const data = formatDomainsResponse(res.hits.hits);
+      const totalCount = res.hits.total.value ?? 0;
       setSubDomains(data);
 
       handlePagingChange({
