@@ -96,55 +96,13 @@ export const fetchFilterOptions = async (
   filters: string,
   searchIndex: SearchIndex | SearchIndex[]
 ) => {
-  // Check if filters contains AND operators and convert to proper queryFilter
-  if (filters && filters.includes(' AND ')) {
-    const terms = filters.split(' AND ').map((term) => {
-      const trimmedTerm = term.trim();
-      if (trimmedTerm.startsWith('!')) {
-        // Handle negation - e.g., "!classification.name:Tier"
-        const [field, value] = trimmedTerm.substring(1).split(':');
+  const response = await searchQuery({
+    query: `*${searchText}*`,
+    filters,
+    pageNumber: 1,
+    pageSize: PAGE_SIZE_BASE,
+    searchIndex,
+  });
 
-        return { bool: { must_not: [{ term: { [field]: value } }] } };
-      } else {
-        // Regular term - e.g., "disabled:false"
-        const [field, value] = trimmedTerm.split(':');
-
-        return {
-          term: {
-            [field]:
-              value === 'false' ? false : value === 'true' ? true : value,
-          },
-        };
-      }
-    });
-
-    const queryFilterObj = {
-      query: {
-        bool: {
-          must: terms,
-        },
-      },
-    };
-
-    const response = await searchQuery({
-      query: `*${searchText}*`,
-      queryFilter: queryFilterObj,
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_BASE,
-      searchIndex,
-    });
-
-    return response;
-  } else {
-    // Use original filters parameter for non-AND filters
-    const response = await searchQuery({
-      query: `*${searchText}*`,
-      filters,
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_BASE,
-      searchIndex,
-    });
-
-    return response;
-  }
+  return response;
 };

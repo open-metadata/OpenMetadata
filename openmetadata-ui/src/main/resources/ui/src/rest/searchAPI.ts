@@ -176,14 +176,49 @@ export const rawSearchQuery = <
 
   const queryWithSlash = getQueryWithSlash(query || '');
 
-  const apiQuery =
-    query && query !== '**'
-      ? filters
-        ? `${queryWithSlash} AND `
-        : queryWithSlash
-      : '';
+  // Build structured queryFilter instead of concatenating with AND
+  let structuredQueryFilter = queryFilter;
 
-  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
+  if (filters && queryFilter) {
+    // If both filters and queryFilter exist, combine them
+    structuredQueryFilter = {
+      query: {
+        bool: {
+          must: [
+            queryFilter.query || queryFilter,
+            // Parse the filters string into proper query structure
+            // This assumes filters are in the format "field:value" or more complex expressions
+            ...(filters.includes(':')
+              ? [
+                  {
+                    query_string: {
+                      query: filters,
+                      default_field: '*',
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    };
+  } else if (filters && !queryFilter) {
+    // If only filters exist, create queryFilter from filters
+    if (filters.includes(':')) {
+      structuredQueryFilter = {
+        query: {
+          query_string: {
+            query: filters,
+            default_field: '*',
+          },
+        },
+      };
+    }
+  }
+
+  // Use only the query part for the q parameter, no concatenation with AND
+  const apiQuery = query && query !== '**' ? queryWithSlash : '';
+  const apiUrl = `/search/query?q=${apiQuery}`;
 
   return APIClient.get<
     SearchResponse<
@@ -196,7 +231,7 @@ export const rawSearchQuery = <
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
       deleted: includeDeleted,
-      query_filter: JSON.stringify(queryFilter),
+      query_filter: JSON.stringify(structuredQueryFilter),
       post_filter: JSON.stringify(postFilter),
       sort_field: sortField,
       sort_order: sortOrder,

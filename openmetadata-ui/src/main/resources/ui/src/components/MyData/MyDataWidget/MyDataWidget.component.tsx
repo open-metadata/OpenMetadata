@@ -126,7 +126,6 @@ const MyDataWidgetInternal = ({
         const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
         const ownerIds = [...teamsIds, currentUser.id];
 
-        // Create proper queryFilter structure instead of filter string
         const queryFilterObj = {
           query: {
             bool: {

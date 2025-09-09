@@ -32,7 +32,6 @@ import {
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
-import { searchQuery } from './searchAPI';
 
 interface ServiceRequestParams {
   limit?: number;
@@ -194,49 +193,18 @@ export const searchService = async ({
   filters?: string;
   deleted?: boolean;
 }) => {
-  // Check if filters contains OR operators and convert to proper queryFilter
-  if (filters && filters.includes(' OR ')) {
-    const cleanFilter = filters.replace(/[()]/g, '');
-    const terms = cleanFilter.split(' OR ').map((term) => {
-      const [field, value] = term.split(':');
+  const response = await searchData(
+    search ?? WILD_CARD_CHAR,
+    currentPage,
+    limit,
+    filters ?? '',
+    '',
+    '',
+    searchIndex,
+    deleted
+  );
 
-      return { term: { [field]: value } };
-    });
-
-    const queryFilterObj = {
-      query: {
-        bool: {
-          should: terms,
-          minimum_should_match: 1,
-        },
-      },
-    };
-
-    const response = await searchQuery({
-      query: search ?? WILD_CARD_CHAR,
-      pageNumber: currentPage,
-      pageSize: limit,
-      queryFilter: queryFilterObj,
-      searchIndex,
-      includeDeleted: deleted,
-    });
-
-    return response;
-  } else {
-    // Use original searchData for non-OR filters
-    const response = await searchData(
-      search ?? WILD_CARD_CHAR,
-      currentPage,
-      limit,
-      filters ?? '',
-      '',
-      '',
-      searchIndex,
-      deleted
-    );
-
-    return response.data;
-  }
+  return response.data;
 };
 
 export const restoreService = async (serviceCategory: string, id: string) => {

@@ -232,67 +232,13 @@ const AssetsTabs = forwardRef(
         try {
           setIsLoading(true);
 
-          // Convert filter string with OR/AND to proper queryFilter structure
-          let structuredQueryFilter = queryFilter;
-          let filterString = queryParam as string;
-
-          if (
-            filterString &&
-            (filterString.includes(' OR ') || filterString.includes(' AND '))
-          ) {
-            // Parse the filter string to create a proper query structure
-            if (filterString.includes(' OR ')) {
-              // Handle OR case - e.g., "(owners.id:1 OR owners.id:2)"
-              const cleanFilter = filterString.replace(/[()]/g, '');
-              const terms = cleanFilter.split(' OR ').map((term) => {
-                const [field, value] = term.split(':');
-
-                return { term: { [field]: value } };
-              });
-
-              structuredQueryFilter = {
-                query: {
-                  bool: {
-                    should: terms,
-                    minimum_should_match: 1,
-                  },
-                },
-              };
-              filterString = ''; // Clear the filter string since we're using queryFilter
-            } else if (filterString.includes(' AND ')) {
-              // Handle AND case - e.g., "disabled:false AND !classification.name:Tier"
-              const terms = filterString.split(' AND ').map((term) => {
-                const trimmedTerm = term.trim();
-                if (trimmedTerm.startsWith('!')) {
-                  // Handle negation
-                  const [field, value] = trimmedTerm.substring(1).split(':');
-
-                  return { bool: { must_not: [{ term: { [field]: value } }] } };
-                } else {
-                  const [field, value] = trimmedTerm.split(':');
-
-                  return { term: { [field]: value } };
-                }
-              });
-
-              structuredQueryFilter = {
-                query: {
-                  bool: {
-                    must: terms,
-                  },
-                },
-              };
-              filterString = ''; // Clear the filter string since we're using queryFilter
-            }
-          }
-
           const res = await searchQuery({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
-            filters: filterString,
-            queryFilter: structuredQueryFilter,
+            filters: queryParam as string,
+            queryFilter: queryFilter,
           });
           const hits = res.hits.hits as SearchedDataProps['data'];
           handlePagingChange({ total: res.hits.total.value ?? 0 });
