@@ -96,9 +96,9 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
       session.setAttribute(SESSION_REFRESH_TOKEN, jwtResponse.getRefreshToken());
       session.setAttribute(SESSION_USER_ID, loginRequest.getEmail());
 
-      String callbackUrl =
-          "/auth/callback?id_token="
-              + URLEncoder.encode(jwtResponse.getAccessToken(), StandardCharsets.UTF_8);
+      String redirectUri = req.getParameter("redirectUri");
+      String idToken = URLEncoder.encode(jwtResponse.getAccessToken(), StandardCharsets.UTF_8);
+      String callbackUrl = String.format("%s?id_token=%s", redirectUri, idToken);
       resp.sendRedirect(callbackUrl);
 
     } catch (Exception e) {
@@ -189,17 +189,23 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
           sb.append(line);
         }
       }
-      return JsonUtils.readValue(sb.toString(), LoginRequest.class);
-    } else {
-      // For GET requests, parse from query parameters
-      LoginRequest request = new LoginRequest();
-      request.setEmail(req.getParameter("email"));
-      String password = req.getParameter("password");
-      if (password != null) {
-        // Encode to base64 as expected by BasicAuthenticator
-        request.setPassword(Base64.getEncoder().encodeToString(password.getBytes()));
+      LoginRequest loginRequest = JsonUtils.readValue(sb.toString(), LoginRequest.class);
+
+      // Decode base64 password as per existing api/v1/users/login behavior
+      if (loginRequest.getPassword() != null) {
+        byte[] decodedBytes;
+        try {
+          decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+        } catch (Exception ex) {
+          throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
+        }
+        loginRequest.withPassword(new String(decodedBytes));
       }
-      return request;
+
+      return loginRequest;
+    } else {
+      // GET requests are not supported for security reasons
+      throw new IllegalArgumentException("GET method not supported for login. Use POST method.");
     }
   }
 
