@@ -6,9 +6,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -75,20 +77,101 @@ public class RuleEvaluator {
       name = "hasDomain",
       input = "none",
       description =
-          "Returns true if the logged in user is the has domain access of the entity being accessed",
+          "Returns true if the logged in user has domain access to the entity being accessed. "
+              + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
+              + "For entities without domains, users without domains can access them.",
       examples = {"hasDomain()", "!hasDomain()"})
   public boolean hasDomain() {
     if (expressionValidation) {
       return false;
     }
-    if (subjectContext == null || resourceContext == null) {
+    if (subjectContext == null || resourceContext == null || subjectContext.user() == null) {
       return false;
     }
-    // If the Entity belongs to a domain , then user needs to be part of that domain
-    if (!nullOrEmpty(resourceContext.getDomains())) {
-      return subjectContext.hasDomains(resourceContext.getDomains());
+
+    // Special handling for list operations where no specific resource is being accessed
+    // In list operations, resourceContext.getEntity() might be null or a placeholder
+    if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
+      // For list operations, we allow access and rely on post-filtering
+      // This is because we can't check domain match without a specific resource
+      LOG.info(
+          "hasDomain() - List operation detected (no specific resource), returning true for post-filtering");
+      return true;
     }
-    return true;
+
+    // Get user's domains and resource's domains (including inherited domains)
+    List<EntityReference> userDomains = subjectContext.user().getDomains();
+    List<EntityReference> resourceDomains = resourceContext.getDomains();
+
+    // Log for debugging (including whether domains are inherited)
+    String userName = subjectContext.user().getName();
+    String userDomainNames =
+        nullOrEmpty(userDomains)
+            ? "none"
+            : userDomains.stream()
+                .map(EntityReference::getFullyQualifiedName)
+                .collect(Collectors.joining(","));
+    String resourceDomainInfo = "none";
+    if (!nullOrEmpty(resourceDomains)) {
+      resourceDomainInfo =
+          resourceDomains.stream()
+              .map(
+                  d ->
+                      d.getFullyQualifiedName()
+                          + (Boolean.TRUE.equals(d.getInherited()) ? "(inherited)" : ""))
+              .collect(Collectors.joining(","));
+    }
+
+    LOG.info(
+        "hasDomain() check - User: {}, UserDomains: {}, ResourceDomains: {}, Entity: {}",
+        userName,
+        userDomainNames,
+        resourceDomainInfo,
+        resourceContext.getEntity() != null
+            ? resourceContext.getEntity().getFullyQualifiedName()
+            : "unknown");
+
+    // Both null or empty - allow access (no domain restrictions)
+    if (nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
+      LOG.info("hasDomain() - Both have no domains, returning true");
+      return true;
+    }
+
+    // User has domains but resource doesn't - deny access
+    // (domain-restricted users can't access non-domain resources)
+    if (!nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
+      LOG.info("hasDomain() - User has domains but resource doesn't, returning false");
+      return false;
+    }
+
+    // Resource has domains but user doesn't - deny access
+    if (nullOrEmpty(userDomains) && !nullOrEmpty(resourceDomains)) {
+      LOG.info("hasDomain() - Resource has domains but user doesn't, returning false");
+      return false;
+    }
+
+    // Both have domains - check for match
+    // We need to check if any user domain matches any resource domain
+    for (EntityReference userDomain : userDomains) {
+      for (EntityReference resourceDomain : resourceDomains) {
+        if (userDomain.getId() != null && userDomain.getId().equals(resourceDomain.getId())) {
+          LOG.info(
+              "hasDomain() - Domain match found by ID: {}, returning true", userDomain.getId());
+          return true;
+        }
+        // Also check by name if IDs are not available
+        if (userDomain.getFullyQualifiedName() != null
+            && userDomain.getFullyQualifiedName().equals(resourceDomain.getFullyQualifiedName())) {
+          LOG.info(
+              "hasDomain() - Domain match found by FQN: {}, returning true",
+              userDomain.getFullyQualifiedName());
+          return true;
+        }
+      }
+    }
+
+    LOG.info("hasDomain() - No matching domains found, returning false");
+    return false; // No matching domains found
   }
 
   @Function(
