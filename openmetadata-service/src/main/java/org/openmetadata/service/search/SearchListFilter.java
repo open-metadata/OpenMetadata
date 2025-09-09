@@ -23,6 +23,25 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   @Override
   public String getCondition(String entityType) {
+    String conditionFilter = buildConditionFilter(entityType);
+    String sourceFilter = getExcludeIncludeFields();
+    return buildQueryFilter(conditionFilter, sourceFilter);
+  }
+
+  /**
+   * Get only the query part (without _source) for use in filter aggregations.
+   * Filter aggregations expect just the query structure, not the full query document.
+   */
+  public String getFilterQuery(String entityType) {
+    String conditionFilter = buildConditionFilter(entityType);
+    return buildQueryOnly(conditionFilter);
+  }
+
+  /**
+   * Shared method to build condition filter - implements DRY principle.
+   * This method contains the core logic for building query conditions.
+   */
+  private String buildConditionFilter(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
@@ -39,9 +58,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               ? getTestCaseResolutionStatusCondition()
               : null);
     }
-    String conditionFilter = addCondition(conditions);
-    String sourceFilter = getExcludeIncludeFields();
-    return buildQueryFilter(conditionFilter, sourceFilter);
+    return addCondition(conditions);
   }
 
   @Override
@@ -136,15 +153,35 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
+    String queryPart = buildQueryPart(conditionFilter);
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
+    
     if (!conditionFilter.isEmpty()) {
-      return String.format(
-          "{%s,\"query\": {\"bool\": {\"filter\": [%s]}}}", sourceFilter, conditionFilter);
+      return String.format("{%s,\"query\": %s}", sourceFilter, queryPart);
     } else if (!isQEmpty) {
       return String.format("{%s}", sourceFilter);
     } else {
-      return String.format("{%s,\"query\": {\"match_all\": {}}}", sourceFilter);
+      return String.format("{%s,\"query\": %s}", sourceFilter, queryPart);
+    }
+  }
+
+  /**
+   * Helper method to build query-only format (without _source) for filter aggregations.
+   */
+  private String buildQueryOnly(String conditionFilter) {
+    return buildQueryPart(conditionFilter);
+  }
+
+  /**
+   * Core method to build the query part - implements DRY principle for query construction.
+   * This method contains the shared logic for building the actual query structure.
+   */
+  private String buildQueryPart(String conditionFilter) {
+    if (!conditionFilter.isEmpty()) {
+      return String.format("{\"bool\": {\"filter\": [%s]}}", conditionFilter);
+    } else {
+      return "{\"match_all\": {}}";
     }
   }
 
