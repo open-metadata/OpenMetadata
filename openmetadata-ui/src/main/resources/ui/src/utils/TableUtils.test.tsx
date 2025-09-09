@@ -971,7 +971,7 @@ describe('TableUtils', () => {
   };
 
   describe('TableDetailPage Tabs', () => {
-    it('dbt tab should render dbtSourceProject with No data placeholder', () => {
+    it('dbt tab should render dbtSourceProject with value', () => {
       const result = getTableDetailPageBaseTabs(mockProps);
       const stringifyResult = JSON.stringify(result[7].children);
 
@@ -981,7 +981,7 @@ describe('TableUtils', () => {
       );
     });
 
-    it('dbt tab should render dbtSourceProject with value', () => {
+    it('dbt tab should render dbtSourceProject with value No data placeholder', () => {
       const result = getTableDetailPageBaseTabs({
         ...mockProps,
         tableDetails: {
