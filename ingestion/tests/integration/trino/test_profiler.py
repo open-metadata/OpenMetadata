@@ -132,6 +132,32 @@ class ProfilerTestParameters:
             ],
             lambda x: x.useStatistics == True,
         ),
+        ProfilerTestParameters(
+            "{database_service}.minio.my_schema.complex_and_simple",  # complex types ignored
+            TableProfile(timestamp=Timestamp(0), rowCount=2),
+            [
+                ColumnProfile(
+                    name="promotiontransactionid",
+                    timestamp=Timestamp(0),
+                    valuesCount=2,
+                    nullCount=0,
+                ),
+                ColumnProfile(
+                    name="validto", timestamp=Timestamp(0), valuesCount=2, nullCount=0
+                ),
+                ColumnProfile(
+                    name="vouchercode",
+                    timestamp=Timestamp(0),
+                    valuesCount=2,
+                    nullCount=0,
+                ),
+            ],
+        ),
+        ProfilerTestParameters(
+            "{database_service}.minio.my_schema.only_complex",  # complex types ignored
+            TableProfile(timestamp=Timestamp(0), rowCount=2),
+            [],
+        ),
     ],
     ids=lambda x: x.table_fqn.split(".")[-1],
 )
@@ -144,7 +170,7 @@ def test_profiler(
         )
     ):
         pytest.skip(
-            "Skipping test becuase its not supported for this profiler configuation"
+            "Skipping test because it's not supported for this profiler configuration"
         )
     table: Table = metadata.get_latest_table_profile(
         parameters.table_fqn.format(database_service=db_service.fullyQualifiedName.root)
