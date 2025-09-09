@@ -139,7 +139,7 @@ import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -961,8 +961,9 @@ export const getTableDetailPageBaseTabs = ({
                 <Typography.Text className="text-grey-muted">
                   {`${t('label.dbt-source-project')}: `}
                 </Typography.Text>
-                <Typography.Text>
-                  {tableDetails?.dataModel?.dbtSourceProject}
+                <Typography.Text data-testid="dbt-source-project-id">
+                  {tableDetails?.dataModel?.dbtSourceProject ??
+                    NO_DATA_PLACEHOLDER}
                 </Typography.Text>
               </div>
 
