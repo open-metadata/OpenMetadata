@@ -475,6 +475,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public RecognizerFeedbackDAO recognizerFeedbackDAO() {
+    return delegate.recognizerFeedbackDAO();
+  }
+
+  @Override
   public IndexMappingVersionDAO indexMappingVersionDAO() {
     return delegate.indexMappingVersionDAO();
   }

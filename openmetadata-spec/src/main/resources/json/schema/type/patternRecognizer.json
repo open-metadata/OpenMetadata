@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/type/patternRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PatternRecognizer",
+  "description": "Pattern-based recognizer using regular expressions",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PatternRecognizer",
+  "properties": {
+    "type": {
+      "const": "pattern"
+    },
+    "patterns": {
+      "description": "List of regex patterns to match",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the pattern",
+            "type": "string"
+          },
+          "regex": {
+            "description": "Regular expression pattern",
+            "type": "string"
+          },
+          "score": {
+            "description": "Confidence score for this pattern (0.0 to 1.0)",
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 0.8
+          }
+        },
+        "required": ["name", "regex"]
+      },
+      "minItems": 1
+    },
+    "supportedEntity": {
+      "description": "Entity type this recognizer detects (e.g., EMAIL_ADDRESS, SSN)",
+      "type": "string"
+    }
+  },
+  "required": ["type", "patterns", "supportedEntity"],
+  "additionalProperties": false
+}

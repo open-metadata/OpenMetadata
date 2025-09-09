@@ -17,6 +17,15 @@
  */
 export interface Tag {
     /**
+     * Whether automatic classification is enabled for this tag
+     */
+    autoClassificationEnabled?: boolean;
+    /**
+     * Priority for conflict resolution when multiple tags match (higher number = higher
+     * priority)
+     */
+    autoClassificationPriority?: number;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -99,6 +108,10 @@ export interface Tag {
      */
     parent?:   EntityReference;
     provider?: ProviderType;
+    /**
+     * List of recognizers configured for automatic detection of this tag
+     */
+    recognizers?: Recognizer[];
     /**
      * User references of the reviewers for this tag.
      */
@@ -204,6 +217,8 @@ export interface FieldChange {
  * Reference to the classification that this tag is part of.
  *
  * Reference to the parent tag. When null, the term is at the root of the Classification.
+ *
+ * User who added this exception
  */
 export interface EntityReference {
     /**
@@ -272,6 +287,158 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * Configuration for automatic entity recognition and classification, supporting both
+ * pattern-based and context-aware detection methods.
+ */
+export interface Recognizer {
+    /**
+     * Minimum confidence score required for detection
+     */
+    confidenceThreshold?: number;
+    /**
+     * Description of what this recognizer detects
+     */
+    description?: string;
+    /**
+     * Display name for the recognizer
+     */
+    displayName?: string;
+    /**
+     * Whether this recognizer is enabled
+     */
+    enabled?: boolean;
+    /**
+     * Entity links where this recognizer should NOT run (based on user feedback)
+     */
+    exceptionList?: RecognizerException[];
+    /**
+     * Unique identifier of the recognizer
+     */
+    id?: string;
+    /**
+     * Whether this is a system default recognizer
+     */
+    isSystemDefault?: boolean;
+    /**
+     * Name of the recognizer
+     */
+    name:             string;
+    recognizerConfig: RecognizerConfig;
+    /**
+     * Languages supported by this recognizer
+     */
+    supportedLanguages?: string[];
+    /**
+     * Last update time in Unix epoch time milliseconds
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update
+     */
+    updatedBy?: string;
+    /**
+     * Version of the recognizer configuration
+     */
+    version?: number;
+}
+
+/**
+ * Exception entry for entities where recognizer should not run
+ */
+export interface RecognizerException {
+    addedAt?: number;
+    /**
+     * User who added this exception
+     */
+    addedBy?: EntityReference;
+    /**
+     * Entity link to exclude from recognition
+     */
+    entityLink: string;
+    /**
+     * ID of the feedback that triggered this exception
+     */
+    feedbackId?: string;
+    /**
+     * Reason for exclusion
+     */
+    reason?: string;
+}
+
+/**
+ * Complete recognizer configuration
+ *
+ * Pattern-based recognizer using regular expressions
+ *
+ * Deny list recognizer that matches against a list of specific values
+ *
+ * Context-aware recognizer using surrounding text
+ *
+ * Custom recognizer with user-defined logic
+ */
+export interface RecognizerConfig {
+    /**
+     * List of regex patterns to match
+     */
+    patterns?: Pattern[];
+    /**
+     * Entity type this recognizer detects (e.g., EMAIL_ADDRESS, SSN)
+     *
+     * Entity type this recognizer detects
+     */
+    supportedEntity: string;
+    type:            any;
+    /**
+     * Whether matching is case sensitive
+     */
+    caseSensitive?: boolean;
+    /**
+     * List of values to match against
+     */
+    denyList?: string[];
+    /**
+     * Words that indicate the presence of the entity
+     */
+    contextWords?: string[];
+    /**
+     * Factor to increase score based on entity length
+     */
+    increaseFactorByCharLength?: number;
+    /**
+     * Maximum confidence score
+     */
+    maxScore?: number;
+    /**
+     * Minimum confidence score
+     */
+    minScore?: number;
+    /**
+     * Custom configuration parameters
+     */
+    config?: { [key: string]: any };
+    /**
+     * Optional custom validation function (Python code)
+     */
+    validatorFunction?: string;
+}
+
+export interface Pattern {
+    /**
+     * Name of the pattern
+     */
+    name: string;
+    /**
+     * Regular expression pattern
+     */
+    regex: string;
+    /**
+     * Confidence score for this pattern (0.0 to 1.0)
+     */
+    score?: number;
+    [property: string]: any;
 }
 
 /**
