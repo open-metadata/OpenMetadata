@@ -467,7 +467,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return SearchAggregation.fromTree(root);
   }
 
-
   public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)
       throws IOException {
     setIncludeSearchFields(searchListFilter);

@@ -156,7 +156,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String queryPart = buildQueryPart(conditionFilter);
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
-    
+
     if (!conditionFilter.isEmpty()) {
       return String.format("{%s,\"query\": %s}", sourceFilter, queryPart);
     } else if (!isQEmpty) {
