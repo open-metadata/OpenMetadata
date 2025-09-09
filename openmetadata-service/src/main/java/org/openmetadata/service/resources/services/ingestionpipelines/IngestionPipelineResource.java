@@ -73,8 +73,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1296,7 +1296,10 @@ public class IngestionPipelineResource
       return Response.ok().header("Set-Cookie", sessionCookie).build();
     } catch (Exception e) {
       LOG.error("Failed to write logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.serverError().entity(e.getMessage()).build();
+      return Response.serverError()
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
     }
   }
 
@@ -1347,7 +1350,10 @@ public class IngestionPipelineResource
       return Response.ok(logs, MediaType.APPLICATION_JSON_TYPE).build();
     } catch (Exception e) {
       LOG.error("Failed to get logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND).entity(e.getMessage()).build();
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
     }
   }
 
@@ -1390,7 +1396,10 @@ public class IngestionPipelineResource
       return Response.ok(Map.of("runs", runIds), MediaType.APPLICATION_JSON_TYPE).build();
     } catch (Exception e) {
       LOG.error("Failed to list runs for pipeline: {}", fqn, e);
-      return Response.status(Response.Status.NOT_FOUND).entity(e.getMessage()).build();
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
     }
   }
 
@@ -1428,7 +1437,10 @@ public class IngestionPipelineResource
       return repository.streamLogs(fqn, runId);
     } catch (Exception e) {
       LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND).entity(e.getMessage()).build();
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
     }
   }
 }
