@@ -28,7 +28,6 @@ export enum FormItemLayout {
 
 export enum FieldTypes {
   TEXT = 'text',
-  TEXT_AREA = 'textarea',
   PASSWORD = 'password',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',

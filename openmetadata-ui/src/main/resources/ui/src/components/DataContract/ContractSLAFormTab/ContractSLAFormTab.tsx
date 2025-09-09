@@ -15,7 +15,7 @@ import {
   Card,
   Col,
   Form,
-  Input,
+  InputNumber,
   Row,
   Select,
   TimePicker,
@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { SLA_AVAILABILITY_TIME_FORMAT } from '../../../constants/DataContract.constants';
 import {
+  ContractSLA,
   DataContract,
   MaxLatencyUnit,
   RefreshFrequencyUnit,
@@ -58,26 +59,37 @@ export const ContractSLAFormTab: React.FC<{
   }, []);
 
   const handleFormChange: FormProps['onValuesChange'] = async (_, values) => {
-    onChange({
-      sla: {
-        // Convert dayjs object to "HH:mm" format string for storage
-        availabilityTime: values.availabilityTime
-          ? values.availabilityTime.format('HH:mm')
-          : undefined,
-        maxLatency: {
-          unit: values.max_latency_unit,
-          value: values.max_latency_value,
-        },
-        refreshFrequency: {
-          interval: values.refresh_frequency_interval,
-          unit: values.refresh_frequency_unit,
-        },
-        retention: {
-          period: values.retention_period,
-          unit: values.retention_unit,
-        },
-      },
-    });
+    const slaData: ContractSLA = {};
+
+    if (values.availabilityTime) {
+      slaData.availabilityTime = values.availabilityTime;
+    }
+
+    if (values.max_latency_unit && values.max_latency_value >= 0) {
+      slaData.maxLatency = {
+        unit: values.max_latency_unit,
+        value: values.max_latency_value,
+      };
+    }
+
+    if (
+      values.refresh_frequency_interval >= 0 &&
+      values.refresh_frequency_unit
+    ) {
+      slaData.refreshFrequency = {
+        interval: values.refresh_frequency_interval,
+        unit: values.refresh_frequency_unit,
+      };
+    }
+
+    if (values.retention_period >= 0 && values.retention_unit) {
+      slaData.retention = {
+        period: values.retention_period,
+        unit: values.retention_unit,
+      };
+    }
+
+    onChange({ sla: slaData });
   };
 
   useEffect(() => {
@@ -129,13 +141,20 @@ export const ContractSLAFormTab: React.FC<{
                 <Row gutter={12}>
                   <Col span={12}>
                     <Form.Item
-                      required
                       label={t('label.interval')}
-                      name="refresh_frequency_interval">
-                      <Input
+                      name="refresh_frequency_interval"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
                         data-testid="refresh-frequency-interval-input"
-                        min={0}
-                        type="number"
                       />
                     </Form.Item>
                   </Col>
@@ -145,6 +164,7 @@ export const ContractSLAFormTab: React.FC<{
                       label={t('label.unit')}
                       name="refresh_frequency_unit">
                       <Select
+                        // allowClear
                         data-testid="refresh-frequency-unit-select"
                         options={REFRESH_FREQUENCY_UNIT_OPTIONS}
                         popupClassName="refresh-frequency-unit-select"
@@ -165,13 +185,20 @@ export const ContractSLAFormTab: React.FC<{
                 <Row gutter={24}>
                   <Col span={12}>
                     <Form.Item
-                      required
                       label={t('label.value')}
-                      name="max_latency_value">
-                      <Input
+                      name="max_latency_value"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
                         data-testid="max-latency-value-input"
-                        min={0}
-                        type="number"
                       />
                     </Form.Item>
                   </Col>
@@ -201,7 +228,7 @@ export const ContractSLAFormTab: React.FC<{
                 <Typography.Text className="text-grey-muted text-xs m-b-xs" />
                 <Form.Item label={t('label.time')} name="availabilityTime">
                   <TimePicker
-                    className="availability-time-picker"
+                    className="availability-time-picker w-full"
                     data-testid="availability"
                     format={`${SLA_AVAILABILITY_TIME_FORMAT} [UTC]`}
                     placeholder="09:00 UTC"
@@ -222,13 +249,20 @@ export const ContractSLAFormTab: React.FC<{
                 <Row gutter={24}>
                   <Col span={12}>
                     <Form.Item
-                      required
                       label={t('label.period')}
-                      name="retention_period">
-                      <Input
+                      name="retention_period"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
                         data-testid="retention-period-input"
-                        min={0}
-                        type="number"
                       />
                     </Form.Item>
                   </Col>
