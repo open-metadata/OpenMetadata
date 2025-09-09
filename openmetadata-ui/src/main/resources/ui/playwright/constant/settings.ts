@@ -31,6 +31,7 @@ export enum ServiceTypes {
   STORAGE_SERVICES = 'storageServices',
   METADATA_SERVICES = 'metadataServices',
   SEARCH_SERVICES = 'searchServices',
+  DRIVE_SERVICES = 'driveServices',
 }
 
 export enum GlobalSettingOptions {
@@ -92,6 +93,7 @@ export enum GlobalSettingOptions {
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
   CHARTS = 'charts',
+  DRIVES = 'drives',
 }
 
 export const SETTINGS_OPTIONS_PATH = {

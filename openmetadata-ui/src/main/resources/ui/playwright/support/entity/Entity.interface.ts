@@ -46,6 +46,10 @@ export enum EntityTypeEndpoint {
   User = 'users',
   Classification = 'classifications',
   Tag = 'tags',
+  Directory = 'drives/directories',
+  File = 'drives/files',
+  Spreadsheet = 'drives/spreadsheets',
+  Worksheet = 'drives/worksheets',
 }
 
 export type EntityDataType = {
