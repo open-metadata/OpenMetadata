@@ -223,6 +223,8 @@ export interface FieldChange {
  * Reference to the data contract that this test suite is associated with.
  *
  * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+ *
+ * Link to the ingestion pipeline that ingested this entity.
  */
 export interface EntityReference {
     /**
@@ -557,6 +559,10 @@ export interface TestSuite {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Link to the ingestion pipeline that ingested this entity.
+     */
+    ingestionRunner?: EntityReference;
     /**
      * Indicates if the test suite is inherited from a parent entity.
      */

@@ -11,35 +11,66 @@
  *  limitations under the License.
  */
 /**
- * Schema corresponding to a table profile that belongs to a table
+ * Request schema for creating an entity profile for a table.
  */
-export interface CreateTableProfile {
+export interface CreateEntityProfile {
     /**
-     * List of local column profiles of the table.
+     * Type of entity for which the profile is created. For example, 'table'.
      */
-    columnProfile?: ColumnProfile[];
+    entityType:  string;
+    profileData: Profile;
     /**
-     * List of system profiles for the table.
+     * type of profile
      */
-    systemProfile?: SystemProfile[];
+    profileType?: ProfileTypeEnum;
     /**
-     * Table Profile.
+     * Timestamp when the profile is created.
      */
-    tableProfile: TableProfile;
+    timestamp?: number;
 }
 
 /**
+ * This schema defines the type to capture the table's data profile.
+ *
  * This schema defines the type to capture the table's column profile.
+ *
+ * This schema defines the System Profile object holding profile data from system tables.
  */
-export interface ColumnProfile {
+export interface Profile {
     /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
+     * No.of columns in the table.
      */
-    cardinalityDistribution?: CardinalityDistribution;
+    columnCount?: number;
+    /**
+     * Table creation time.
+     */
+    createDateTime?: Date;
     /**
      * Custom Metrics profile list bound to a column.
      */
     customMetrics?: CustomMetricProfile[];
+    /**
+     * Percentage of data or no. of rows we want to execute the profiler and tests on
+     */
+    profileSample?:     number;
+    profileSampleType?: ProfileSampleType;
+    /**
+     * No.of rows in the table. This is always executed on the whole table.
+     */
+    rowCount?:           number;
+    samplingMethodType?: SamplingMethodType;
+    /**
+     * Table size in GB
+     */
+    sizeInByte?: number;
+    /**
+     * Timestamp on which profile is taken.
+     */
+    timestamp?: number;
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
     /**
      * Number of values that contain distinct values.
      */
@@ -99,7 +130,7 @@ export interface ColumnProfile {
     /**
      * Column Name.
      */
-    name: string;
+    name?: string;
     /**
      * Non parametric skew of a column.
      */
@@ -125,10 +156,6 @@ export interface ColumnProfile {
      */
     thirdQuartile?: number;
     /**
-     * Timestamp on which profile is taken.
-     */
-    timestamp: number;
-    /**
      * No. of unique values in the column.
      */
     uniqueCount?: number;
@@ -152,6 +179,15 @@ export interface ColumnProfile {
      * Variance of a column.
      */
     variance?: number;
+    /**
+     * Operation performed.
+     */
+    operation?: DMLOperationType;
+    /**
+     * Number of rows affected.
+     */
+    rowsAffected?: number;
+    [property: string]: any;
 }
 
 /**
@@ -198,25 +234,6 @@ export interface HistogramClass {
 }
 
 /**
- * This schema defines the System Profile object holding profile data from system tables.
- */
-export interface SystemProfile {
-    /**
-     * Operation performed.
-     */
-    operation?: DMLOperationType;
-    /**
-     * Number of rows affected.
-     */
-    rowsAffected?: number;
-    /**
-     * Timestamp on which profile is taken.
-     */
-    timestamp?: number;
-    [property: string]: any;
-}
-
-/**
  * Operation performed.
  *
  * This schema defines the type of DML operation.
@@ -226,44 +243,6 @@ export enum DMLOperationType {
     Insert = "INSERT",
     Update = "UPDATE",
     Write = "WRITE",
-}
-
-/**
- * Table Profile.
- *
- * This schema defines the type to capture the table's data profile.
- */
-export interface TableProfile {
-    /**
-     * No.of columns in the table.
-     */
-    columnCount?: number;
-    /**
-     * Table creation time.
-     */
-    createDateTime?: Date;
-    /**
-     * Custom Metrics profile list bound to a column.
-     */
-    customMetrics?: CustomMetricProfile[];
-    /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
-    /**
-     * No.of rows in the table. This is always executed on the whole table.
-     */
-    rowCount?:           number;
-    samplingMethodType?: SamplingMethodType;
-    /**
-     * Table size in GB
-     */
-    sizeInByte?: number;
-    /**
-     * Timestamp on which profile is taken.
-     */
-    timestamp: number;
 }
 
 /**
@@ -280,4 +259,15 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
+}
+
+/**
+ * type of profile
+ *
+ * profile type
+ */
+export enum ProfileTypeEnum {
+    Column = "column",
+    System = "system",
+    Table = "table",
 }
