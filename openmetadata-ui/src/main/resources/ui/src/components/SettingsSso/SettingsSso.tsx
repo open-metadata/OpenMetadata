@@ -377,6 +377,21 @@ const SettingsSso = () => {
     ),
   });
 
+  // Group Mapping tab - only for Azure and Okta with SCIM (Collate-specific feature)
+  const ScimGroupMappingComponent =
+    ssoUtilClassBase.getScimGroupMappingComponent?.();
+  if (
+    ScimGroupMappingComponent &&
+    (currentProvider === AuthProvider.Azure ||
+      currentProvider === AuthProvider.Okta)
+  ) {
+    tabItems.push({
+      key: 'group-mapping',
+      label: 'Group Mapping',
+      children: <ScimGroupMappingComponent />,
+    });
+  }
+
   return (
     <PageLayoutV1 className="sso-settings-page" pageTitle={t('label.sso')}>
       <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />

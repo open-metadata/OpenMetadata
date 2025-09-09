@@ -18,6 +18,11 @@ class SSOUtilClassBase {
   > | null {
     return null;
   }
+  public getScimGroupMappingComponent(): ComponentType<
+    Record<string, never>
+  > | null {
+    return null;
+  }
 }
 
 const ssoUtilClassBase = new SSOUtilClassBase();
