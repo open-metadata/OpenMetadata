@@ -29,11 +29,7 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../../assets/svg/ic-domain.svg', () => ({
-  ReactComponent: () => (
-    <div data-testid="domain-icon" {...props}>
-      Domain Icon
-    </div>
-  ),
+  ReactComponent: () => <div data-testid="domain-icon">Domain Icon</div>,
 }));
 
 const mockDomain1: EntityReference = {
