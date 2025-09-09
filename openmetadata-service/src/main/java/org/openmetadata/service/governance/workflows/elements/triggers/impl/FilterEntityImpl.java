@@ -17,6 +17,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
 import org.slf4j.Logger;
@@ -45,10 +46,14 @@ public class FilterEntityImpl implements JavaDelegate {
     if (passesFilter) {
       String triggerWorkflowDefinitionKey =
           WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+      // Convert trigger workflow key to main workflow name (e.g.,
+      // "GlossaryTermApprovalWorkflowTrigger" → "GlossaryTermApprovalWorkflow")
+      String mainWorkflowDefinitionName =
+          TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
       String currentProcessInstanceId = execution.getProcessInstanceId();
       WorkflowHandler.getInstance()
           .terminateDuplicateInstances(
-              triggerWorkflowDefinitionKey, entityLinkStr, currentProcessInstanceId);
+              mainWorkflowDefinitionName, entityLinkStr, currentProcessInstanceId);
     }
 
     log.debug("Trigger Glossary Term Approval Workflow: {}", passesFilter);

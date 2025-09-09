@@ -281,13 +281,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
               return refreshed.getEntityStatus() == EntityStatus.IN_REVIEW;
             });
 
-    // Approve the term as reviewerUser
-    String json = JsonUtils.pojoToJson(term);
-    term.setEntityStatus(EntityStatus.APPROVED);
-
+    // Get reviewer headers for resolving the task
     Map<String, String> reviewerHeaders =
         authHeaders(reviewerUser.getName() + "@open-metadata.org");
-    term = glossaryTermTest.patchEntity(term.getId(), json, term, reviewerHeaders);
 
     // Find the open approval task for the term via API
     String about = String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName());
@@ -340,7 +336,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             "CheckGlossaryTermHasReviewers",
             "CheckIfGlossaryTermUpdatedByIsReviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
-            "CheckIfEntityIsFirstVersion",
+            "CheckIfGlossaryTermIsNew",
             "SetGlossaryTermStatusToInReviewForUpdate",
             "ChangeReviewForUpdates",
             "SetGlossaryTermStatusToApprovedDetailed",
@@ -356,7 +352,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
                 "Check if Glossary Term Updated By is Reviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
                 "Check if Glossary Term is Ready to be Reviewed",
-            "CheckIfEntityIsFirstVersion", "Check if Entity is First Version",
+            "CheckIfGlossaryTermIsNew", "Check if Glossary Term is New",
             "SetGlossaryTermStatusToInReviewForUpdate", "Set Status to 'In Review' (Update)",
             "ChangeReviewForUpdates", "Review Changes for Updates",
             "SetGlossaryTermStatusToApprovedDetailed",

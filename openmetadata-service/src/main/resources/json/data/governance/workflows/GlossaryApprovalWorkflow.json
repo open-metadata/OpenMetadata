@@ -148,10 +148,10 @@
     {
       "type": "automatedTask",
       "subType": "checkEntityAttributesTask",
-      "name": "CheckIfEntityIsFirstVersion",
-      "displayName": "Check if Entity is First Version",
+      "name": "CheckIfGlossaryTermIsNew",
+      "displayName": "Check if Glossary Term is New",
       "config": {
-        "rules": "{\"<\":[{\"var\":\"version\"},0.2]}"
+        "rules": "{\"==\":[{\"var\":\"version\"},0.1]}"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -307,16 +307,16 @@
     },
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
-      "to": "CheckIfEntityIsFirstVersion",
+      "to": "CheckIfGlossaryTermIsNew",
       "condition": "true"
     },
     {
-      "from": "CheckIfEntityIsFirstVersion",
+      "from": "CheckIfGlossaryTermIsNew",
       "to": "SetGlossaryTermStatusToInReview",
       "condition": "true"
     },
     {
-      "from": "CheckIfEntityIsFirstVersion",
+      "from": "CheckIfGlossaryTermIsNew",
       "to": "SetGlossaryTermStatusToInReviewForUpdate",
       "condition": "false"
     },

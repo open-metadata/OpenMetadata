@@ -434,8 +434,8 @@ public class MigrationUtil {
   private static boolean addVersionRoutingNodes(List<WorkflowNodeDefinitionInterface> nodes) {
     boolean nodesAdded = false;
 
-    // Check and add CheckIfEntityIsFirstVersion node
-    if (nodes.stream().noneMatch(node -> "CheckIfEntityIsFirstVersion".equals(node.getName()))) {
+    // Check and add CheckIfGlossaryTermIsNew node
+    if (nodes.stream().noneMatch(node -> "CheckIfGlossaryTermIsNew".equals(node.getName()))) {
       try {
         WorkflowNodeDefinitionInterface versionCheckNode =
             JsonUtils.readValue(
@@ -443,10 +443,10 @@ public class MigrationUtil {
                                     {
                                       "type": "automatedTask",
                                       "subType": "checkEntityAttributesTask",
-                                      "name": "CheckIfEntityIsFirstVersion",
-                                      "displayName": "Check if Entity is First Version",
+                                      "name": "CheckIfGlossaryTermIsNew",
+                                      "displayName": "Check if Glossary Term is New",
                                       "config": {
-                                        "rules": "{\\"<\\":[{\\"var\\":\\"version\\"},0.2]}"
+                                        "rules": "{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}"
                                       },
                                       "inputNamespaceMap": {
                                         "relatedEntity": "global"
@@ -455,10 +455,10 @@ public class MigrationUtil {
                                     """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(versionCheckNode);
-        LOG.info("Added new node: CheckIfEntityIsFirstVersion");
+        LOG.info("Added new node: CheckIfGlossaryTermIsNew");
         nodesAdded = true;
       } catch (Exception e) {
-        LOG.error("Failed to add CheckIfEntityIsFirstVersion node", e);
+        LOG.error("Failed to add CheckIfGlossaryTermIsNew node", e);
       }
     }
 
@@ -644,13 +644,13 @@ public class MigrationUtil {
                         && "SetGlossaryTermStatusToInReview".equals(edge.getTo())
                         && "true".equals(edge.getCondition()));
 
-    // Check if we already have the new routing through CheckIfEntityIsFirstVersion
+    // Check if we already have the new routing through CheckIfGlossaryTermIsNew
     boolean hasNewRouting =
         edges.stream()
             .anyMatch(
                 edge ->
                     "CheckGlossaryTermIsReadyToBeReviewed".equals(edge.getFrom())
-                        && "CheckIfEntityIsFirstVersion".equals(edge.getTo())
+                        && "CheckIfGlossaryTermIsNew".equals(edge.getTo())
                         && "true".equals(edge.getCondition()));
 
     // Only modify if we have the old routing and don't have the new routing
@@ -666,27 +666,24 @@ public class MigrationUtil {
           "Removed edge: CheckGlossaryTermIsReadyToBeReviewed -> SetGlossaryTermStatusToInReview (true)");
       edgesModified = true;
 
-      // Add new routing through CheckIfEntityIsFirstVersion
+      // Add new routing through CheckIfGlossaryTermIsNew
       EdgeDefinition newRoutingEdge =
           new EdgeDefinition()
               .withFrom("CheckGlossaryTermIsReadyToBeReviewed")
-              .withTo("CheckIfEntityIsFirstVersion")
+              .withTo("CheckIfGlossaryTermIsNew")
               .withCondition("true");
       edges.add(newRoutingEdge);
       LOG.info(
-          "Added edge: CheckGlossaryTermIsReadyToBeReviewed -> CheckIfEntityIsFirstVersion (true)");
+          "Added edge: CheckGlossaryTermIsReadyToBeReviewed -> CheckIfGlossaryTermIsNew (true)");
     }
 
-    // Add edges from CheckIfEntityIsFirstVersion to both review status nodes
+    // Add edges from CheckIfGlossaryTermIsNew to both review status nodes
     edgesModified |=
         addEdgeIfNotExists(
-            edges, "CheckIfEntityIsFirstVersion", "SetGlossaryTermStatusToInReview", "true");
+            edges, "CheckIfGlossaryTermIsNew", "SetGlossaryTermStatusToInReview", "true");
     edgesModified |=
         addEdgeIfNotExists(
-            edges,
-            "CheckIfEntityIsFirstVersion",
-            "SetGlossaryTermStatusToInReviewForUpdate",
-            "false");
+            edges, "CheckIfGlossaryTermIsNew", "SetGlossaryTermStatusToInReviewForUpdate", "false");
 
     // Add edge from SetGlossaryTermStatusToInReviewForUpdate to ChangeReviewForUpdates
     edgesModified |=
