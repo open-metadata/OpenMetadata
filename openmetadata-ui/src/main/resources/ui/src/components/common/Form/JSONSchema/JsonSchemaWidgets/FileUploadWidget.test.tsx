@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { Registry, WidgetProps } from '@rjsf/utils';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import {
   MOCK_FILE_SELECT_WIDGET,
   MOCK_SSL_FILE_CONTENT,
@@ -63,6 +69,20 @@ describe('Test FileUploadWidget Component', () => {
       type: 'text/plain',
     });
 
+    const mockFileReader = {
+      readAsText: jest.fn(),
+      addEventListener: jest.fn((event, callback) => {
+        if (event === 'load') {
+          callback({ target: { result: MOCK_SSL_FILE_CONTENT } });
+        }
+      }),
+      result: MOCK_SSL_FILE_CONTENT,
+    };
+
+    global.FileReader = jest.fn(
+      () => mockFileReader
+    ) as unknown as typeof FileReader;
+
     act(() => {
       render(
         <FileUploadWidget {...mockProps}>ImportTableData</FileUploadWidget>
@@ -73,13 +93,13 @@ describe('Test FileUploadWidget Component', () => {
 
     expect(uploadDragger).toBeInTheDocument();
 
-    // Simulate user selecting a file
-    await act(async () => {
-      fireEvent.change(uploadDragger, {
-        target: { files: [file] },
-      });
+    fireEvent.drop(uploadDragger, {
+      dataTransfer: {
+        files: [file],
+      },
     });
-
-    expect(mockOnChange).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(MOCK_SSL_FILE_CONTENT);
+    });
   });
 });

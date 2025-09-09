@@ -600,8 +600,9 @@ describe('BundleSuiteForm Component', () => {
     });
 
     it('should handle form submission errors gracefully', async () => {
-      (createTestSuites as jest.Mock).mockRejectedValueOnce(
-        new Error('API Error')
+      const mockCreateTestSuites = createTestSuites as jest.Mock;
+      mockCreateTestSuites.mockImplementationOnce(() =>
+        Promise.reject(new Error('API Error'))
       );
 
       render(<BundleSuiteForm {...mockProps} />);
@@ -624,7 +625,9 @@ describe('BundleSuiteForm Component', () => {
         fireEvent.click(submitBtn);
       });
 
-      expect(mockProps.onSuccess).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockProps.onSuccess).not.toHaveBeenCalled();
+      });
     });
   });
 
