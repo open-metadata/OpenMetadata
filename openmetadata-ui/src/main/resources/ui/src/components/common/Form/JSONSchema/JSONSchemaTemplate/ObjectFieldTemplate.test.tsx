@@ -182,6 +182,44 @@ describe('ObjectFieldTemplate', () => {
 
       expect(collapseHeader).toBeInTheDocument();
     });
+
+    it('should remove advanced property fields from DOM when collapse panel is closed', () => {
+      render(<ObjectFieldTemplate {...propsWithAdvanced} />);
+
+      // Initially, advanced properties should not be in DOM (collapsed by default)
+      expect(
+        screen.queryByText('connectionArguments content')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('connectionOptions content')
+      ).not.toBeInTheDocument();
+
+      // Open the collapse panel
+      const collapseHeader = screen.getByRole('button', {
+        name: /Test Title label.advanced-config/,
+      });
+      fireEvent.click(collapseHeader);
+
+      // After opening, advanced properties should be in DOM
+      expect(
+        screen.getByText('connectionArguments content')
+      ).toBeInTheDocument();
+      expect(screen.getByText('connectionOptions content')).toBeInTheDocument();
+
+      // Close the collapse panel again
+      fireEvent.click(collapseHeader);
+
+      // After closing, advanced properties should be removed from DOM due to destroyInactivePanel
+      expect(
+        screen.queryByText('connectionArguments content')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('connectionOptions content')
+      ).not.toBeInTheDocument();
+
+      // Normal properties should remain visible throughout
+      expect(screen.getByText('field1 content')).toBeInTheDocument();
+    });
   });
 
   describe('Additional Properties', () => {
