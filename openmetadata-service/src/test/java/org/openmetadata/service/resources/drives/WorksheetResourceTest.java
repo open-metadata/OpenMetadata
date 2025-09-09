@@ -497,6 +497,93 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     assertEquals("col1", worksheet.getColumns().getFirst().getName());
   }
 
+  @Test
+  void test_worksheetColumnFQN(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForColumnFQN")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create spreadsheet
+    SpreadsheetResourceTest spreadsheetResourceTest = new SpreadsheetResourceTest();
+    CreateSpreadsheet createSpreadsheet =
+        spreadsheetResourceTest
+            .createRequest("testSpreadsheet")
+            .withService(service.getFullyQualifiedName());
+    Spreadsheet spreadsheet =
+        spreadsheetResourceTest.createEntity(createSpreadsheet, ADMIN_AUTH_HEADERS);
+
+    // Create worksheet with columns
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("employee_id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Employee identifier"));
+    columns.add(
+        new Column()
+            .withName("employee_name")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Employee name"));
+    columns.add(
+        new Column()
+            .withName("department")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Department"));
+    columns.add(
+        new Column()
+            .withName("base_salary")
+            .withDataType(ColumnDataType.DECIMAL)
+            .withDescription("Base salary"));
+
+    CreateWorksheet create =
+        createRequest("salaries")
+            .withSpreadsheet(spreadsheet.getFullyQualifiedName())
+            .withColumns(columns);
+
+    // Create and retrieve the worksheet with columns field
+    Worksheet worksheet = createEntity(create, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns", ADMIN_AUTH_HEADERS);
+
+    // Validate worksheet FQN
+    String expectedWorksheetFQN = spreadsheet.getFullyQualifiedName() + ".salaries";
+    assertEquals(expectedWorksheetFQN, worksheet.getFullyQualifiedName());
+
+    // Validate column FQNs
+    assertNotNull(worksheet.getColumns());
+    assertEquals(4, worksheet.getColumns().size());
+
+    // Check that each column has the correct FQN
+    for (Column column : worksheet.getColumns()) {
+      assertNotNull(
+          column.getFullyQualifiedName(),
+          "Column " + column.getName() + " should have a fullyQualifiedName");
+      String expectedColumnFQN = worksheet.getFullyQualifiedName() + "." + column.getName();
+      assertEquals(
+          expectedColumnFQN,
+          column.getFullyQualifiedName(),
+          "Column FQN should be worksheet.FQN + column.name");
+    }
+
+    // Verify specific column FQNs
+    assertEquals(
+        expectedWorksheetFQN + ".employee_id",
+        worksheet.getColumns().get(0).getFullyQualifiedName());
+    assertEquals(
+        expectedWorksheetFQN + ".employee_name",
+        worksheet.getColumns().get(1).getFullyQualifiedName());
+    assertEquals(
+        expectedWorksheetFQN + ".department",
+        worksheet.getColumns().get(2).getFullyQualifiedName());
+    assertEquals(
+        expectedWorksheetFQN + ".base_salary",
+        worksheet.getColumns().get(3).getFullyQualifiedName());
+  }
+
   @Override
   public CreateWorksheet createRequest(String name) {
     if (DEFAULT_SPREADSHEET == null) {

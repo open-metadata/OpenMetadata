@@ -71,6 +71,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     Spreadsheet spreadsheet = Entity.getEntity(worksheet.getSpreadsheet(), "", Include.NON_DELETED);
     worksheet.setFullyQualifiedName(
         FullyQualifiedName.add(spreadsheet.getFullyQualifiedName(), worksheet.getName()));
+    ColumnUtil.setColumnFQN(worksheet.getFullyQualifiedName(), worksheet.getColumns());
   }
 
   @Override
