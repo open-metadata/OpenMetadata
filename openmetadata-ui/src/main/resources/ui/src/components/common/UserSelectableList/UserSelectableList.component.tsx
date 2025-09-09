@@ -22,7 +22,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
@@ -48,18 +48,22 @@ export const UserSelectableList = ({
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
       try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER
-        );
+        const res = await searchQuery({
+          query: searchText,
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          queryFilter: {
+            query: {
+              term: {
+                isBot: false,
+              },
+            },
+          },
+          searchIndex: SearchIndex.USER,
+        });
 
         const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.data.hits.hits),
+          formatUsersResponse(res.hits.hits),
           EntityType.USER
         );
 
@@ -70,7 +74,7 @@ export const UserSelectableList = ({
           }
         }
 
-        return { data, paging: { total: res.data.hits.total.value } };
+        return { data, paging: { total: res.hits.total.value } };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
       }

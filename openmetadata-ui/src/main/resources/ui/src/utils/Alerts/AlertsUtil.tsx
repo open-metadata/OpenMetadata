@@ -103,7 +103,7 @@ import {
   ModifiedDestination,
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
@@ -218,31 +218,51 @@ export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const searchEntity = async ({
   searchText,
   searchIndex,
-  filters,
+  queryFilter,
   showDisplayNameAsLabel = true,
   setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
-  filters?: string;
+  queryFilter?: {
+    query: {
+      term?: Record<string, string | number | boolean>;
+      match?: Record<string, string | number>;
+      bool?: {
+        must?: Array<
+          | { term: Record<string, string | number | boolean> }
+          | { match: Record<string, string | number> }
+        >;
+        should?: Array<
+          | { term: Record<string, string | number | boolean> }
+          | { match: Record<string, string | number> }
+        >;
+        must_not?: Array<
+          | { term: Record<string, string | number | boolean> }
+          | { match: Record<string, string | number> }
+        >;
+      };
+      query_string?: {
+        query: string;
+      };
+    };
+  };
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
 }) => {
   try {
-    const response = await searchData(
-      searchText,
-      1,
-      PAGE_SIZE_LARGE,
-      filters ?? '',
-      '',
-      '',
-      searchIndex
-    );
+    const response = await searchQuery({
+      query: searchText,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter,
+      searchIndex,
+    });
     const searchIndexEntityTypeMapping =
       searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
-      response.data.hits.hits.map((d) => {
+      response.hits.hits.map((d) => {
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
@@ -297,7 +317,13 @@ const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    filters: 'isBot:false',
+    queryFilter: {
+      query: {
+        term: {
+          isBot: false,
+        },
+      },
+    },
   });
 };
 
@@ -305,7 +331,13 @@ const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
-    filters: 'isBot:false',
+    queryFilter: {
+      query: {
+        term: {
+          isBot: false,
+        },
+      },
+    },
   });
 };
 

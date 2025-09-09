@@ -33,7 +33,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -116,19 +116,22 @@ const OnlineUsersPage = () => {
     async (value: string) => {
       setIsDataLoading(true);
       try {
-        // For search, we still need to use searchData API and filter client-side
+        // For search, we still need to use searchQuery API and filter client-side
         // as the online users endpoint doesn't support search yet
-        const res = await searchData(
-          value,
-          currentPage,
+        const res = await searchQuery({
+          query: value,
+          pageNumber: currentPage,
           pageSize,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER,
-          false
-        );
-        const data = res.data.hits.hits.map(({ _source }) => _source);
+          queryFilter: {
+            query: {
+              term: {
+                isBot: false,
+              },
+            },
+          },
+          searchIndex: SearchIndex.USER,
+        });
+        const data = res.hits.hits.map(({ _source }) => _source);
 
         // Filter users based on lastLoginTime
         const onlineUsers = data.filter((user: User) => {
