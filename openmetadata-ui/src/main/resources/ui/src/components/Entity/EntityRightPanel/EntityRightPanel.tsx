@@ -38,6 +38,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editCustomAttributePermission?: boolean;
   editDataProductPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
+  entityDetails?: React.ReactNode;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -55,6 +56,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
+  entityDetails,
 }: EntityRightPanelProps<T>) => {
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
@@ -75,6 +77,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         editDataProductPermission={editDataProductPermission}
         editGlossaryTermsPermission={editGlossaryTermsPermission}
         editTagPermission={editTagPermission}
+        entityDetails={entityDetails}
         entityType={entityType}
         selectedTags={selectedTags}
         showDataProductContainer={showDataProductContainer}

@@ -33,9 +33,11 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav, {
   EntityRightPanelTab,
 } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
@@ -126,6 +128,42 @@ export default function EntitySummaryPanel({
     );
   }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
+  const summaryComponentV1 = useMemo(() => {
+    if (isPermissionLoading) {
+      return <Loader />;
+    }
+    if (!viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-asset'),
+          })}
+          size={SIZE.MEDIUM}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const entity = entityDetails.details;
+
+    return (
+      <DataAssetSummaryPanelV1
+        componentType={
+          tab === DRAWER_NAVIGATION_OPTIONS.lineage
+            ? tab
+            : DRAWER_NAVIGATION_OPTIONS.explore
+        }
+        dataAsset={
+          entity as SearchedDataProps['data'][number]['_source'] & {
+            dataProducts: DataProduct[];
+          }
+        }
+        entityType={type}
+        highlights={highlights}
+      />
+    );
+  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
@@ -150,13 +188,16 @@ export default function EntitySummaryPanel({
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
-        return summaryComponent;
+        return summaryComponentV1;
       case EntityRightPanelTab.SCHEMA:
         return (
           <div className="entity-summary-panel-tab-content">
-            <div className="text-center text-grey-muted p-lg">
-              {t('message.schema-content-placeholder')}
-            </div>
+            <EntityDetailsSection
+              dataAsset={entityDetails.details}
+              entityType={entityType}
+              highlights={highlights}
+              isLoading={isPermissionLoading}
+            />
           </div>
         );
       case EntityRightPanelTab.LINEAGE:

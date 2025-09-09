@@ -51,28 +51,46 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-
-      items.push({
-        key: EntityRightPanelTab.SCHEMA,
-        icon: <BarChartOutlined height={13} width={13} />,
-        label: t('label.schema'),
-      });
-
+      if (
+        [
+          EntityType.TABLE,
+          EntityType.TOPIC,
+          EntityType.DASHBOARD,
+          EntityType.CHART,
+        ].includes(entityType)
+      ) {
+        items.push({
+          key: EntityRightPanelTab.SCHEMA,
+          icon: <BarChartOutlined height={13} width={13} />,
+          label: t('label.schema'),
+        });
+      }
       // Add lineage tab for most entities
-
-      items.push({
-        key: EntityRightPanelTab.LINEAGE,
-        icon: <SwapOutlined height={13} width={13} />,
-        label: t('label.lineage'),
-      });
+      if (
+        [
+          EntityType.TABLE,
+          EntityType.TOPIC,
+          EntityType.DASHBOARD,
+          EntityType.CHART,
+          EntityType.PIPELINE,
+          EntityType.MLMODEL,
+        ].includes(entityType)
+      ) {
+        items.push({
+          key: EntityRightPanelTab.LINEAGE,
+          icon: <SwapOutlined height={13} width={13} />,
+          label: t('label.lineage'),
+        });
+      }
 
       // Add data quality tab for tables
-
-      items.push({
-        key: EntityRightPanelTab.DATA_QUALITY,
-        icon: <SafetyCertificateOutlined height={13} width={13} />,
-        label: t('label.data-quality'),
-      });
+      if (entityType === EntityType.TABLE) {
+        items.push({
+          key: EntityRightPanelTab.DATA_QUALITY,
+          icon: <SafetyCertificateOutlined height={13} width={13} />,
+          label: t('label.data-quality'),
+        });
+      }
 
       // Add custom properties tab
       items.push({

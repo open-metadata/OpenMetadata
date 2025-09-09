@@ -48,6 +48,7 @@ interface EntityRightPanelContentProps<T extends ExtentionEntitiesKeys> {
   editCustomAttributePermission?: boolean;
   editDataProductPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
+  entityDetails?: React.ReactNode;
 }
 
 const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
@@ -66,6 +67,7 @@ const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
+  entityDetails,
 }: EntityRightPanelContentProps<T>) => {
   const { t } = useTranslation();
   const KnowledgeArticles =
@@ -132,8 +134,7 @@ const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
 
   const renderSchemaContent = () => (
     <div className="entity-right-panel-tab-content">
-      <PartitionedKeys />
-      {/* Add more schema-related content here */}
+      {entityDetails || <PartitionedKeys />}
     </div>
   );
 
