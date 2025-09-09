@@ -1,8 +1,18 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -28,6 +38,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
     getEntityName: jest.fn().mockReturnValue('Test Domain'),
     getSearchEntityLinkTarget: jest.fn().mockReturnValue('_self'),
   },
+}));
+
+jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
+  DomainDisplay: jest
+    .fn()
+    .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
 
 const baseSource: ExploreSearchCardProps['source'] = {
@@ -62,16 +78,12 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders single domain with icon and name', () => {
-    (getDomainPath as jest.Mock).mockReturnValue('/domain/test');
-    (getEntityName as jest.Mock).mockReturnValue('Test Domain');
-
+  it('renders  DomainDisplay component', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });
 
-    expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
-    expect(screen.getByText('Test Domain')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-display')).toBeInTheDocument();
   });
 
   it('renders empty Domain row when no domains exist and entity requires domain', () => {
@@ -94,35 +106,5 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
-  });
-
-  it('renders multiple domains with one icon and comma-separated names', () => {
-    (getDomainPath as jest.Mock).mockImplementation(
-      (fqdn: string) => `/domain/${fqdn}`
-    );
-    (getEntityName as jest.Mock).mockImplementation(
-      (domain: { fullyQualifiedName: string }) => domain.fullyQualifiedName
-    );
-
-    renderCard({
-      domains: [
-        { id: '1', fullyQualifiedName: 'domain.one', type: 'domain' },
-        { id: '2', fullyQualifiedName: 'domain.two', type: 'domain' },
-        { id: '3', fullyQualifiedName: 'domain.three', type: 'domain' },
-      ],
-    });
-
-    // Only one icon
-    expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);
-
-    // Domain names are rendered
-    ['domain.one', 'domain.two', 'domain.three'].forEach((d) =>
-      expect(screen.getByText(d)).toBeInTheDocument()
-    );
-
-    // Verify comma separation
-    const container = screen.getByText('domain.one').closest('div');
-
-    expect(container).toHaveTextContent('domain.one, domain.two, domain.three');
   });
 });
