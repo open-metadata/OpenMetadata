@@ -40,17 +40,9 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await persona.delete(apiContext);
-  await afterAction();
-});
-
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-
   await page.waitForLoadState('networkidle');
   await getPersonas;
 
@@ -85,7 +77,6 @@ test.describe('Settings Navigation Page Tests', () => {
       .locator('.ant-switch');
 
     await exploreSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     // Check save is enabled and click save
     await expect(page.getByTestId('save-button')).toBeEnabled();
@@ -93,11 +84,9 @@ test.describe('Settings Navigation Page Tests', () => {
     const saveResponse = page.waitForResponse('api/v1/docStore');
     await page.getByTestId('save-button').click();
     await saveResponse;
-    await page.waitForLoadState('networkidle');
 
     // Check the navigation bar if the changes reflect
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
 
     // Verify the navigation change is reflected in the sidebar
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
@@ -105,12 +94,10 @@ test.describe('Settings Navigation Page Tests', () => {
     // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
     await exploreSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     const restoreResponse = page.waitForResponse('api/v1/docStore/*');
     await page.getByTestId('save-button').click();
     await restoreResponse;
-    await page.waitForLoadState('networkidle');
   });
 
   test('should show navigation blocker when leaving with unsaved changes', async ({
@@ -127,7 +114,6 @@ test.describe('Settings Navigation Page Tests', () => {
       .locator('.ant-switch');
 
     await navigateSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
@@ -154,10 +140,10 @@ test.describe('Settings Navigation Page Tests', () => {
 
     // Test discard changes
     await page.getByTestId('unsaved-changes-modal-discard').click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should navigate away and changes should be discarded
-    expect(page.url()).toContain('settings');
+    await expect(page).toHaveURL(/.*settings.*/);
   });
 
   test('should save changes and navigate when "Save changes" is clicked in blocker', async ({
@@ -174,7 +160,6 @@ test.describe('Settings Navigation Page Tests', () => {
       .locator('.ant-switch');
 
     await navigateSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     // Try to navigate away
     await page
@@ -186,14 +171,13 @@ test.describe('Settings Navigation Page Tests', () => {
     const saveResponse = page.waitForResponse('api/v1/docStore');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should navigate to settings page
-    expect(page.url()).toContain('settings');
+    await expect(page).toHaveURL(/.*settings.*/);
 
     //   Verify changes were saved by checking navigation bar
     await redirectToHomePage(page);
-    await page.waitForLoadState('networkidle');
 
     // Check if Insights navigation item visibility changed
     const insightsVisible = await page
@@ -206,12 +190,10 @@ test.describe('Settings Navigation Page Tests', () => {
     // Clean up: Restore original state
     await navigateToPersonaNavigation(page);
     await navigateSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     const restoreResponse = page.waitForResponse('api/v1/docStore/*');
     await page.getByTestId('save-button').click();
     await restoreResponse;
-    await page.waitForLoadState('networkidle');
   });
 
   test('should handle reset functionality and prevent navigation blocker after save', async ({
@@ -228,12 +210,9 @@ test.describe('Settings Navigation Page Tests', () => {
       .locator('.ant-switch');
 
     await domainSwitch.click();
-    await page.waitForLoadState('networkidle');
 
     // Verify save button is enabled
     await expect(page.getByTestId('save-button')).toBeEnabled();
-
-    await page.waitForLoadState('networkidle');
 
     expect(await domainSwitch.isChecked()).toBeFalsy();
 
