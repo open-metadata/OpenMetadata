@@ -176,47 +176,53 @@ export const rawSearchQuery = <
 
   const queryWithSlash = getQueryWithSlash(query || '');
 
-  // Build structured queryFilter instead of concatenating with AND
+  // Build structured queryFilter to handle filters properly
   let structuredQueryFilter = queryFilter;
 
-  if (filters && queryFilter) {
-    // If both filters and queryFilter exist, combine them
-    structuredQueryFilter = {
-      query: {
-        bool: {
-          must: [
-            queryFilter.query || queryFilter,
-            // Parse the filters string into proper query structure
-            // This assumes filters are in the format "field:value" or more complex expressions
-            ...(filters.includes(':')
-              ? [
-                  {
-                    query_string: {
-                      query: filters,
-                      default_field: '*',
-                    },
-                  },
-                ]
-              : []),
-          ],
-        },
-      },
-    };
-  } else if (filters && !queryFilter) {
-    // If only filters exist, create queryFilter from filters
-    if (filters.includes(':')) {
-      structuredQueryFilter = {
-        query: {
-          query_string: {
-            query: filters,
-            default_field: '*',
-          },
+  // If filters is provided (for backward compatibility with simple field:value filters)
+  // Combine it with the existing queryFilter
+  if (filters) {
+    // Check if filters contains AND or OR operators (which shouldn't happen in new code)
+    if (filters.includes(' AND ') || filters.includes(' OR ')) {
+      // For backward compatibility, handle complex filters with AND/OR using query_string
+      const filterQuery = {
+        query_string: {
+          query: filters,
+          default_field: '*',
         },
       };
+
+      structuredQueryFilter = queryFilter
+        ? {
+            query: {
+              bool: {
+                must: [queryFilter.query || queryFilter, filterQuery],
+              },
+            },
+          }
+        : { query: filterQuery };
+    } else if (filters.includes(':')) {
+      // Simple field:value filters (backward compatibility)
+      const filterQuery = {
+        query_string: {
+          query: filters,
+          default_field: '*',
+        },
+      };
+
+      structuredQueryFilter = queryFilter
+        ? {
+            query: {
+              bool: {
+                must: [queryFilter.query || queryFilter, filterQuery],
+              },
+            },
+          }
+        : { query: filterQuery };
     }
   }
 
-  // Use only the query part for the q parameter, no concatenation with AND
+  // The q parameter should only contain the search text, no filters
   const apiQuery = query && query !== '**' ? queryWithSlash : '';
   const apiUrl = `/search/query?q=${apiQuery}`;
 
