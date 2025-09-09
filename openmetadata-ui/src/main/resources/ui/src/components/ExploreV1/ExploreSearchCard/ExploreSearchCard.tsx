@@ -106,7 +106,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                           <Link
                             className="no-underline"
                             to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-                            <Typography.Text className="text-sm text-primary">
+                            <Typography.Text
+                              className="text-sm text-primary"
+                              data-testid="domain-link">
                               {getEntityName(domain)}
                             </Typography.Text>
                           </Link>
