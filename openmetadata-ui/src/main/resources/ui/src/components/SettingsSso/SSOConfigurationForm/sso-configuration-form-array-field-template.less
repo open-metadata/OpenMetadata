@@ -51,6 +51,7 @@
   .ant-select-selection-overflow {
     padding-right: @size-md;
     gap: @size-xxs;
+    padding-bottom: 0;
   }
 
   .ant-select-selection-item {
@@ -60,17 +61,33 @@
     background: @blue-29;
     border: 1px solid @blue-30;
     border-radius: @border-rad-xs;
-    margin: 0;
-    height: @size-xl;
+    margin: 0 0 @size-xxs 0;
+    min-height: @size-xl;
+    height: auto;
     color: @grey-900;
     font-size: @size-sm;
     font-weight: @font-medium;
+    word-break: break-all;
+    word-wrap: break-word;
+    white-space: normal;
+    padding: @size-xxs @size-xs;
+
+    .ant-select-selection-item-content {
+      flex: 1;
+      word-break: break-all;
+      word-wrap: break-word;
+      white-space: normal;
+      line-height: 1.4;
+    }
 
     .ant-select-selection-item-remove {
       margin-left: @size-xxs;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
+      align-self: flex-start;
+      margin-top: 2px;
+      flex-shrink: 0;
 
       background-color: transparent;
       border: none;
@@ -85,7 +102,7 @@
     background: @grey-50;
     border: 1px solid @grey-200;
     border-radius: @border-rad-xs;
-    padding: @size-xxs 14px @size-xxs 14px;
+    padding: @size-xxs 14px 0 14px;
 
     .ant-select-selection-search {
       margin: 0;
@@ -110,6 +127,7 @@
   // Override Ant Design's default input positioning for tags mode
   .ant-select-selection-overflow {
     padding-left: 0;
+    padding-bottom: 0;
   }
 
   .ant-select-selection-search-input {

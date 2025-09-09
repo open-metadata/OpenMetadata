@@ -936,7 +936,7 @@ const SSOConfigurationFormRJSF = ({
         setIsLoading(false);
         setIsEditMode(false);
 
-        onLogoutHandler();
+        await onLogoutHandler();
       } else {
         // For existing configs, just update the saved data and stay in edit mode
         setSavedData(cleanedFormData);

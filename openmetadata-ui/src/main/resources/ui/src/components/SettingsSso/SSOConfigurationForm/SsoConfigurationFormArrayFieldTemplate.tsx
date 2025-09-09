@@ -27,7 +27,7 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
 
   return (
     <span className="ant-select-selection-item" title={(label as string) ?? ''}>
-      {label}
+      <span className="ant-select-selection-item-content">{label}</span>
       {closable && (
         <button className="ant-select-selection-item-remove" onClick={onClose}>
           <CloseIcon width={8} />
