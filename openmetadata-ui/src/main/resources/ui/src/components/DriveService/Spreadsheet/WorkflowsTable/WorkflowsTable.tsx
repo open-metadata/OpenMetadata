@@ -29,7 +29,7 @@ import { useGenericContext } from '../../../Customization/GenericProvider/Generi
 
 function WorkflowsTable() {
   const { t } = useTranslation();
-  const { data: containerData } = useGenericContext<Spreadsheet>();
+  const { data: spreadsheetDetails } = useGenericContext<Spreadsheet>();
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [
@@ -79,7 +79,7 @@ function WorkflowsTable() {
     <Table
       columns={columns}
       data-testid="container-list-table"
-      dataSource={containerData.worksheets}
+      dataSource={spreadsheetDetails.worksheets}
       locale={{
         emptyText: <ErrorPlaceHolder className="p-y-md" />,
       }}

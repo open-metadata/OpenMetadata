@@ -51,6 +51,7 @@ export enum DetailPageWidgetKeys {
   CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
   DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
   WORKSHEETS = 'KnowledgePanel.Worksheets',
+  WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

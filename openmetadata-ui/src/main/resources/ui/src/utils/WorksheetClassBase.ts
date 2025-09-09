@@ -16,6 +16,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { WORKSHEET_DUMMY_DATA } from '../constants/Worksheet.constant';
@@ -25,6 +26,7 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import i18n from './i18next/LocalUtil';
 import {
   getWorksheetDetailsPageTabs,
   getWorksheetWidgetsFromKey,
@@ -43,6 +45,7 @@ export interface WorksheetDetailPageTabProps {
 
 type WorksheetWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.WORKSHEET_COLUMNS
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
@@ -54,6 +57,7 @@ class WorksheetClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.WORKSHEET_COLUMNS]: 8,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -89,7 +93,10 @@ class WorksheetClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.WORKSHEET_COLUMNS] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -101,6 +108,14 @@ class WorksheetClassBase {
             w: 1,
             x: 0,
             y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.WORKSHEET_COLUMNS],
+            i: DetailPageWidgetKeys.WORKSHEET_COLUMNS,
+            w: 1,
+            x: 0,
+            y: 1,
             static: false,
           },
         ],
@@ -152,6 +167,13 @@ class WorksheetClassBase {
   public getCommonWidgetList() {
     return [
       DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.WORKSHEET_COLUMNS,
+        name: i18n.t('label.column-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
@@ -167,6 +189,8 @@ class WorksheetClassBase {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.WORKSHEET_COLUMNS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.WORKSHEET_COLUMNS];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:

@@ -14,6 +14,8 @@
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import WorksheetColumnsTable from '../components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -29,6 +31,7 @@ export const defaultFields = [
   TabSpecificField.VOTES,
   TabSpecificField.EXTENSION,
   TabSpecificField.ROW_COUNT,
+  TabSpecificField.COLUMNS,
 ].join(',');
 
 export const getWorksheetDetailsPageTabs = ({
@@ -83,6 +86,10 @@ export const getWorksheetDetailsPageTabs = ({
 };
 
 export const getWorksheetWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.WORKSHEET_COLUMNS)) {
+    return <WorksheetColumnsTable />;
+  }
+
   return (
     <CommonWidgets
       entityType={EntityType.WORKSHEET}
