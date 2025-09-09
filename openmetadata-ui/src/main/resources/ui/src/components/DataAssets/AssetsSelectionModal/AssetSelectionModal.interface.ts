@@ -21,15 +21,19 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
@@ -80,7 +84,11 @@ export type AssetsUnion =
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
   | EntityType.API_ENDPOINT
-  | EntityType.METRIC;
+  | EntityType.METRIC
+  | EntityType.DIRECTORY
+  | EntityType.FILE
+  | EntityType.SPREADSHEET
+  | EntityType.WORKSHEET;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -115,4 +123,8 @@ export type MapPatchAPIResponse = {
   [EntityType.CHART]: Chart;
   [EntityType.SECURITY_SERVICE]: SecurityService;
   [EntityType.DRIVE_SERVICE]: DriveService;
+  [EntityType.DIRECTORY]: Directory;
+  [EntityType.FILE]: File;
+  [EntityType.SPREADSHEET]: Spreadsheet;
+  [EntityType.WORKSHEET]: Worksheet;
 };
