@@ -102,6 +102,8 @@ export enum ConflictResolution {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * User who added this exception
  */
 export interface EntityReference {
     /**
@@ -244,6 +246,10 @@ export interface Recognizer {
      */
     enabled?: boolean;
     /**
+     * Entity links where this recognizer should NOT run (based on user feedback)
+     */
+    exceptionList?: RecognizerException[];
+    /**
      * Unique identifier of the recognizer
      */
     id?: string;
@@ -272,6 +278,29 @@ export interface Recognizer {
      * Version of the recognizer configuration
      */
     version?: number;
+}
+
+/**
+ * Exception entry for entities where recognizer should not run
+ */
+export interface RecognizerException {
+    addedAt?: number;
+    /**
+     * User who added this exception
+     */
+    addedBy?: EntityReference;
+    /**
+     * Entity link to exclude from recognition
+     */
+    entityLink: string;
+    /**
+     * ID of the feedback that triggered this exception
+     */
+    feedbackId?: string;
+    /**
+     * Reason for exclusion
+     */
+    reason?: string;
 }
 
 /**
