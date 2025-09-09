@@ -17,12 +17,17 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -32,6 +37,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -59,6 +65,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -67,11 +75,13 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -1066,6 +1076,94 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           String.format(
               "A data contract already exists for entity '%s' with ID %s",
               entity.getType(), entity.getId()));
+    }
+  }
+
+  @Override
+  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
+    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      DataContract dataContract = (DataContract) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(dataContract, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+
+      // Check if this is a simple approval/rejection or contains edited content
+      String newValue = resolveTask.getNewValue();
+      boolean isApproved = false;
+      boolean hasEditedContent = false;
+
+      // Check if it's a simple approval/rejection
+      if (newValue.equalsIgnoreCase("approved") || newValue.equalsIgnoreCase("approve")) {
+        isApproved = true;
+        hasEditedContent = false;
+      } else if (newValue.equalsIgnoreCase("rejected") || newValue.equalsIgnoreCase("reject")) {
+        isApproved = false;
+        hasEditedContent = false;
+      } else {
+        // Treat as edited content that implies approval
+        isApproved = true;
+        hasEditedContent = true;
+      }
+
+      variables.put(RESULT_VARIABLE, isApproved);
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      // If user provided edited content, apply it to the entity
+      if (hasEditedContent && isApproved) {
+        applyEditedChanges(dataContract, newValue, threadContext.getThread().getTask(), user);
+      }
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return dataContract;
+    }
+
+    private void applyEditedChanges(
+        DataContract dataProduct, String editedValue, TaskDetails task, String user) {
+      try {
+        String entityType = DATA_PRODUCT;
+
+        // Check if the task has old/new value format (for DetailedUserApprovalTask)
+        if (task.getOldValue() != null && task.getOldValue().contains(":")) {
+          // Parse the edited value using field-specific format
+          EntityFieldUtils.applyFieldBasedEdits(dataProduct, entityType, user, editedValue);
+        } else {
+          // Fallback: assume it's a description edit for backward compatibility
+          EntityFieldUtils.setEntityField(
+              dataProduct, entityType, user, "description", editedValue, false);
+        }
+        EntityFieldUtils.updateEntityMetadata(dataProduct, user);
+
+      } catch (Exception e) {
+        LOG.error("Failed to apply edited changes to data product", e);
+        // Don't throw - just log the error and continue with approval
+      }
+    }
+
+    private void checkUpdatedByReviewer(DataContract dataProduct, String user) {
+      // Add any DataProduct-specific validation logic here if needed
+      // For now, this can be empty or use existing validation patterns
     }
   }
 }

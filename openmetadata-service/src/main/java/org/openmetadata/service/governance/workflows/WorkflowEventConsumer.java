@@ -80,7 +80,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.QUERY,
           Entity.REPORT,
           Entity.METRIC,
-          Entity.DATA_INSIGHT_CHART);
+          Entity.DATA_INSIGHT_CHART,
+          Entity.DATA_CONTRACT);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {

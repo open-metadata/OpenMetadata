@@ -101,7 +101,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       for (IdentityLink candidate : candidates) {
         assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
       }
-    } else {
+    } else if (delegateTask.getAssignee() != null) {
       assignees.add(getEntityReferenceFromLinkString(delegateTask.getAssignee()));
     }
     return assignees;
