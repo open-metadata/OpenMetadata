@@ -79,14 +79,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      // For unified auth flow, backend expects plain password
-      // It will redirect to /auth/callback on success
       await basicAuthSignIn({
         email,
-        password, // Plain text password - backend handles encoding
+        password,
       });
-      // If we reach here and no redirect happened, wait a moment
-      // The redirect might be processing
     } catch (error) {
       const err = error as Error;
 
