@@ -39,14 +39,20 @@ export const ContractSecurityFormTab: React.FC<{
         id: 'accessPolicy',
         name: 'accessPolicy',
         type: FieldTypes.TEXT,
-        required: true,
+        required: false,
+        props: {
+          'data-testid': 'access-policy-input',
+        },
       },
       {
         label: t('label.data-classification'),
         id: 'dataClassification',
         name: 'dataClassification',
         type: FieldTypes.TEXT,
-        required: true,
+        required: false,
+        props: {
+          'data-testid': 'data-classification-input',
+        },
       },
     ],
     []

@@ -132,7 +132,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.interval')}
                       name="refresh_frequency_interval">
-                      <Input min={0} type="number" />
+                      <Input
+                        data-testid="refresh-frequency-interval-input"
+                        min={0}
+                        type="number"
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -140,7 +144,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.unit')}
                       name="refresh_frequency_unit">
-                      <Select options={REFRESH_FREQUENCY_UNIT_OPTIONS} />
+                      <Select
+                        data-testid="refresh-frequency-unit-select"
+                        options={REFRESH_FREQUENCY_UNIT_OPTIONS}
+                        popupClassName="refresh-frequency-unit-select"
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -160,7 +168,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.value')}
                       name="max_latency_value">
-                      <Input min={0} type="number" />
+                      <Input
+                        data-testid="max-latency-value-input"
+                        min={0}
+                        type="number"
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -168,7 +180,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.unit')}
                       name="max_latency_unit">
-                      <Select options={MAX_LATENCY_OPTIONS} />
+                      <Select
+                        data-testid="max-latency-unit-select"
+                        options={MAX_LATENCY_OPTIONS}
+                        popupClassName="max-latency-unit-select"
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -186,6 +202,7 @@ export const ContractSLAFormTab: React.FC<{
                 <Form.Item label={t('label.time')} name="availabilityTime">
                   <TimePicker
                     className="availability-time-picker"
+                    data-testid="availability"
                     format={`${SLA_AVAILABILITY_TIME_FORMAT} [UTC]`}
                     placeholder="09:00 UTC"
                     showNow={false}
@@ -208,7 +225,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.period')}
                       name="retention_period">
-                      <Input min={0} type="number" />
+                      <Input
+                        data-testid="retention-period-input"
+                        min={0}
+                        type="number"
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -216,7 +237,11 @@ export const ContractSLAFormTab: React.FC<{
                       required
                       label={t('label.unit')}
                       name="retention_unit">
-                      <Select options={RETENTION_UNIT_OPTIONS} />
+                      <Select
+                        data-testid="retention-unit-select"
+                        options={RETENTION_UNIT_OPTIONS}
+                        popupClassName="retention-unit-select"
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
