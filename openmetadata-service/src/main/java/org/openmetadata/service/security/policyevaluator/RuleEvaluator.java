@@ -25,7 +25,6 @@ public class RuleEvaluator {
   private final SubjectContext subjectContext;
   private final ResourceContextInterface resourceContext;
 
-  // When true, RuleEvaluator is only used for validating the expression and not for access control
   private final boolean expressionValidation;
 
   public RuleEvaluator() {
@@ -50,7 +49,7 @@ public class RuleEvaluator {
       input = "none",
       description = "Returns true if the entity being accessed has no owner",
       examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean noOwner() {
     if (expressionValidation) {
       return false;
@@ -89,21 +88,15 @@ public class RuleEvaluator {
       return false;
     }
 
-    // Special handling for list operations where no specific resource is being accessed
-    // In list operations, resourceContext.getEntity() might be null or a placeholder
     if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
-      // For list operations, we allow access and rely on post-filtering
-      // This is because we can't check domain match without a specific resource
       LOG.info(
           "hasDomain() - List operation detected (no specific resource), returning true for post-filtering");
       return true;
     }
 
-    // Get user's domains and resource's domains (including inherited domains)
     List<EntityReference> userDomains = subjectContext.user().getDomains();
     List<EntityReference> resourceDomains = resourceContext.getDomains();
 
-    // Log for debugging (including whether domains are inherited)
     String userName = subjectContext.user().getName();
     String userDomainNames =
         nullOrEmpty(userDomains)
@@ -131,27 +124,21 @@ public class RuleEvaluator {
             ? resourceContext.getEntity().getFullyQualifiedName()
             : "unknown");
 
-    // Both null or empty - allow access (no domain restrictions)
     if (nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
       LOG.info("hasDomain() - Both have no domains, returning true");
       return true;
     }
 
-    // User has domains but resource doesn't - deny access
-    // (domain-restricted users can't access non-domain resources)
     if (!nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
       LOG.info("hasDomain() - User has domains but resource doesn't, returning false");
       return false;
     }
 
-    // Resource has domains but user doesn't - deny access
     if (nullOrEmpty(userDomains) && !nullOrEmpty(resourceDomains)) {
       LOG.info("hasDomain() - Resource has domains but user doesn't, returning false");
       return false;
     }
 
-    // Both have domains - check for match
-    // We need to check if any user domain matches any resource domain
     for (EntityReference userDomain : userDomains) {
       for (EntityReference resourceDomain : resourceDomains) {
         if (userDomain.getId() != null && userDomain.getId().equals(resourceDomain.getId())) {
@@ -159,7 +146,6 @@ public class RuleEvaluator {
               "hasDomain() - Domain match found by ID: {}, returning true", userDomain.getId());
           return true;
         }
-        // Also check by name if IDs are not available
         if (userDomain.getFullyQualifiedName() != null
             && userDomain.getFullyQualifiedName().equals(resourceDomain.getFullyQualifiedName())) {
           LOG.info(
@@ -171,7 +157,7 @@ public class RuleEvaluator {
     }
 
     LOG.info("hasDomain() - No matching domains found, returning false");
-    return false; // No matching domains found
+    return false;
   }
 
   @Function(
@@ -185,7 +171,7 @@ public class RuleEvaluator {
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED); // Validate tag exists
+        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
       }
       return false;
     }
@@ -219,11 +205,11 @@ public class RuleEvaluator {
       examples = {
         "matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"
       })
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED); // Validate tag exists
+        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
       }
       return false;
     }
@@ -253,11 +239,11 @@ public class RuleEvaluator {
       description =
           "Returns true if the entity being accessed has any of the Certification given as input",
       examples = {"matchAnyCertification('Certification.Silver', 'Certification.Gold')"})
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean matchAnyCertification(String... tagFQNs) {
     if (expressionValidation) {
       for (String tagFqn : tagFQNs) {
-        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED); // Validate tag exists
+        Entity.getEntityReferenceByName(Entity.TAG, tagFqn, NON_DELETED);
       }
       return false;
     }
@@ -291,16 +277,16 @@ public class RuleEvaluator {
           "Returns true if the user and the resource belongs to the team hierarchy where this policy is"
               + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
       examples = {"matchTeam()"})
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean matchTeam() {
     if (expressionValidation) {
       return false;
     }
     if (resourceContext == null || nullOrEmpty(resourceContext.getOwners())) {
-      return false; // No ownership information
+      return false;
     }
     if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
-      return false; // Policy must be attached to a team for this function to work
+      return false;
     }
     return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwners())
         && subjectContext.isUserUnderTeam(policyContext.getEntityName());
@@ -312,7 +298,7 @@ public class RuleEvaluator {
       description =
           "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
       examples = {"inAnyTeam('marketing')"})
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
       for (String team : teams) {
@@ -342,11 +328,11 @@ public class RuleEvaluator {
           "Returns true if the user (either direct or inherited from the parent teams) has one or more roles "
               + "from the list.",
       examples = {"hasAnyRole('DataSteward', 'DataEngineer')"})
-  @SuppressWarnings("unused") // Used in SpelExpressions
+  @SuppressWarnings("unused")
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {
       for (String role : roles) {
-        Entity.getEntityReferenceByName(Entity.ROLE, role, NON_DELETED); // Validate role exists
+        Entity.getEntityReferenceByName(Entity.ROLE, role, NON_DELETED);
       }
       return false;
     }
