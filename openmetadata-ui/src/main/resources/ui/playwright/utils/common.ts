@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Page, request } from '@playwright/test';
+import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
@@ -411,26 +411,13 @@ export const generateRandomUsername = (prefix = '') => {
   };
 };
 
-export const verifyDomainPropagation = async (
-  page: Page,
-  domain: Domain['responseData'],
-  childFqnSearchTerm: string
+export const verifyDomainLinkInCard = async (
+  entityCard: Locator,
+  domain: Domain['responseData']
 ) => {
-  let domainLink;
-
-  if (childFqnSearchTerm) {
-    await page.getByTestId('searchBox').fill(childFqnSearchTerm);
-    await page.getByTestId('searchBox').press('Enter');
-    await page.waitForSelector(`[data-testid*="table-data-card"]`);
-
-    const entityCard = page.getByTestId(
-      `table-data-card_${childFqnSearchTerm}`
-    );
-
-    domainLink = entityCard.getByTestId('domain-link').first();
-  } else {
-    domainLink = page.getByTestId('domain-link').first();
-  }
+  const domainLink = entityCard.getByTestId('domain-link').filter({
+    hasText: domain.displayName,
+  });
 
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
@@ -438,8 +425,22 @@ export const verifyDomainPropagation = async (
   const href = await domainLink.getAttribute('href');
 
   expect(href).toContain('/domain/');
-
   await expect(domainLink).toBeEnabled();
+};
+
+export const verifyDomainPropagation = async (
+  page: Page,
+  domains: Domain['responseData'][],
+  childFqnSearchTerm: string
+) => {
+  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
+  await page.getByTestId('searchBox').press('Enter');
+  await page.waitForSelector(`[data-testid*="table-data-card"]`);
+
+  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+  for (const domain of domains) {
+    await verifyDomainLinkInCard(entityCard, domain);
+  }
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
