@@ -28,7 +28,10 @@ import {
   addIngestionPipeline,
   deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
-import { createTestSuites } from '../../../rest/testAPI';
+import {
+  addTestCaseToLogicalTestSuite,
+  createTestSuites,
+} from '../../../rest/testAPI';
 import BundleSuiteForm from './BundleSuiteForm';
 import { BundleSuiteFormProps } from './BundleSuiteForm.interface';
 
@@ -600,7 +603,12 @@ describe('BundleSuiteForm Component', () => {
     });
 
     it('should handle form submission errors gracefully', async () => {
-      (createTestSuites as jest.Mock).mockRejectedValueOnce(
+      const mockCreateTestSuites = createTestSuites as jest.Mock;
+      const mockAddTestCaseToLogicalTestSuite =
+        addTestCaseToLogicalTestSuite as jest.Mock;
+
+      mockCreateTestSuites.mockRejectedValueOnce(new Error('API Error'));
+      mockAddTestCaseToLogicalTestSuite.mockRejectedValueOnce(
         new Error('API Error')
       );
 
@@ -624,7 +632,13 @@ describe('BundleSuiteForm Component', () => {
         fireEvent.click(submitBtn);
       });
 
-      expect(mockProps.onSuccess).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockProps.onSuccess).not.toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-message')).toBeInTheDocument();
+      });
     });
   });
 
