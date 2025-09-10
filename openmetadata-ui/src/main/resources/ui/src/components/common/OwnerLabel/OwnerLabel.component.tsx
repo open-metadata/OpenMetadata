@@ -102,8 +102,8 @@ export const OwnerLabel = ({
     .slice(maxVisibleOwners);
   const renderMultipleType = useMemo(() => {
     return (
-      <div className="flex-wrap w-max-full d-flex relative items-center">
-        <div className="flex w-full gap-2 flex-wrap relative">
+      <div className="w-max-full d-flex relative items-center">
+        <div className="flex w-full gap-2 relative">
           {showMultipleTypeTeam.map((owner, index) => (
             <div className="w-max-full" key={owner.id}>
               <OwnerItem
@@ -261,18 +261,16 @@ export const OwnerLabel = ({
           </div>
 
           {showMoreButton && !isCompactView && (
-            <div className="m-l-xs">
-              <OwnerReveal
-                avatarSize={isCompactView ? 24 : avatarSize}
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            </div>
+            <OwnerReveal
+              avatarSize={isCompactView ? 24 : avatarSize}
+              isCompactView={isCompactView}
+              isDropdownOpen={isDropdownOpen}
+              owners={owners.slice(maxVisibleOwners)}
+              remainingCount={remainingOwnersCount}
+              setIsDropdownOpen={setIsDropdownOpen}
+              setShowAllOwners={setShowAllOwners}
+              showAllOwners={showAllOwners}
+            />
           )}
         </div>
         {isCompactView && onUpdate && (

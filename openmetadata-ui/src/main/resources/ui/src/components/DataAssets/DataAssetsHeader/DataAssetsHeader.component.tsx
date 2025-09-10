@@ -59,7 +59,6 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
-  getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
@@ -322,14 +321,6 @@ export const DataAssetsHeader = ({
         parentContainers
       ),
     [entityType, dataAsset, entityName, parentContainers]
-  );
-
-  const showCompressedExtraInfoItems = useMemo(
-    () =>
-      entityType === EntityType.METRIC
-        ? false
-        : getEntityExtraInfoLength(extraInfo) <= 1,
-    [extraInfo, entityType]
   );
 
   const handleOpenTaskClick = () => {
@@ -663,9 +654,7 @@ export const DataAssetsHeader = ({
 
         <Col span={24}>
           <div
-            className={classNames('data-asset-header-metadata', {
-              'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}
+            className="data-asset-header-metadata"
             data-testid="data-asset-header-metadata">
             {showDomain && (
               <>
@@ -687,6 +676,7 @@ export const DataAssetsHeader = ({
               </>
             )}
             <OwnerLabel
+              avatarSize={24}
               hasPermission={editOwnerPermission}
               isCompactView={false}
               maxVisibleOwners={4}
@@ -697,7 +687,7 @@ export const DataAssetsHeader = ({
             {tierSuggestionRender ?? (
               <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Space
-                  className="d-flex tier-container align-start"
+                  className="d-flex align-start"
                   data-testid="header-tier-container">
                   {tier ? (
                     <div className="d-flex flex-col gap-2">
