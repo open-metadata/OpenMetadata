@@ -118,6 +118,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
         ))}
         {!isEmpty(advancedProperties) && (
           <Collapse
+            destroyInactivePanel
             className="advanced-properties-collapse"
             expandIconPosition="end">
             <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
