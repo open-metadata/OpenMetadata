@@ -406,7 +406,7 @@ const SettingsSso = () => {
                     <img
                       alt={getProviderDisplayName(currentProvider)}
                       height="22"
-                      src={getProviderIcon(currentProvider)}
+                      src={getProviderIcon(currentProvider) as string}
                       width="22"
                     />
                   )}

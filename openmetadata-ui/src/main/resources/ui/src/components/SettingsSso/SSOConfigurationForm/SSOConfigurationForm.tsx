@@ -123,6 +123,8 @@ const SSOConfigurationFormRJSF = ({
   const [showForm, setShowForm] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
+  const [isModalSave, setIsModalSave] = useState<boolean>(false);
 
   const getProviderDisplayName = (provider: string) => {
     return provider === AuthProvider.Azure
@@ -858,7 +860,10 @@ const SSOConfigurationFormRJSF = ({
   }, [showForm]);
 
   const handleSave = async () => {
-    setIsLoading(true);
+    // Only set main form loading if not saving through modal
+    if (!isModalSave) {
+      setIsLoading(true);
+    }
 
     try {
       const currentFormData = internalData;
@@ -933,16 +938,32 @@ const SSOConfigurationFormRJSF = ({
           showErrorToast(error as AxiosError);
         }
 
-        setIsLoading(false);
-        setIsEditMode(false);
+        // Only update main form loading state if not modal save
+        if (!isModalSave) {
+          setIsLoading(false);
+          setIsEditMode(false);
+        }
 
-        await onLogoutHandler();
+        try {
+          await onLogoutHandler();
+        } catch (logoutError) {
+          // Clear client-side storage as fallback when server logout fails
+          sessionStorage.clear();
+          localStorage.clear();
+        }
+
+        // Force navigation to signin page to test new SSO configuration
+        window.location.replace('/signin');
       } else {
         // For existing configs, just update the saved data and stay in edit mode
         setSavedData(cleanedFormData);
-        setIsLoading(false);
-        // Keep edit mode enabled so user can continue editing
 
+        // Only update main form loading state if not modal save
+        if (!isModalSave) {
+          setIsLoading(false);
+        }
+
+        // Keep edit mode enabled so user can continue editing
         // Show success toast for existing config save
         showSuccessToast(t('message.configuration-save-success'));
       }
@@ -952,9 +973,16 @@ const SSOConfigurationFormRJSF = ({
           ? error.message
           : t('message.configuration-save-failed');
       showErrorToast(errorMessage);
-      setIsLoading(false);
+
+      // Only update main form loading state if not modal save
+      if (!isModalSave) {
+        setIsLoading(false);
+      }
     } finally {
-      setIsLoading(false);
+      // Only update main form loading state if not modal save
+      if (!isModalSave) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -994,12 +1022,17 @@ const SSOConfigurationFormRJSF = ({
   };
 
   const handleSaveAndExit = async () => {
+    setModalSaveLoading(true);
+    setIsModalSave(true);
+
     try {
       if (internalData) {
         await handleSave();
       }
 
       setShowCancelModal(false);
+      setModalSaveLoading(false);
+      setIsModalSave(false);
 
       // If existing config is present, just save and do nothing (stay on form)
       if (hasExistingConfig) {
@@ -1012,6 +1045,8 @@ const SSOConfigurationFormRJSF = ({
       handleCancelConfirm();
     } catch (error) {
       setShowCancelModal(false);
+      setModalSaveLoading(false);
+      setIsModalSave(false);
     }
   };
 
@@ -1144,6 +1179,7 @@ const SSOConfigurationFormRJSF = ({
       <>
         <UnsavedChangesModal
           discardText={t('label.discard')}
+          loading={modalSaveLoading}
           open={showCancelModal}
           saveText={t('label.save')}
           title={t('message.unsaved-changes')}
@@ -1213,7 +1249,7 @@ const SSOConfigurationFormRJSF = ({
                 <img
                   alt={getProviderDisplayName(currentProvider)}
                   height={22}
-                  src={getProviderIcon(currentProvider)}
+                  src={getProviderIcon(currentProvider) as string}
                   width={22}
                 />
               )}
@@ -1240,6 +1276,7 @@ const SSOConfigurationFormRJSF = ({
     <>
       <UnsavedChangesModal
         discardText={t('label.discard')}
+        loading={modalSaveLoading}
         open={showCancelModal}
         saveText={t('label.save')}
         title={t('message.unsaved-changes')}
