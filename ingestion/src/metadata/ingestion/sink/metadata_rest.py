@@ -88,6 +88,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_profiler_source import (
+    TablePipelineObservability,
+)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -470,6 +473,23 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         table = self.metadata.ingest_profile_data(
             table=record.table, profile_request=record.profile
         )
+        return Either(right=table)
+
+    @_run_dispatch.register
+    def write_pipeline_observability(
+        self, record: TablePipelineObservability
+    ) -> Either[Table]:
+        """
+        Use the /tables/{id}/pipelineObservability/{pipelineFqn} endpoint to ingest pipeline observability data
+        This approach ensures proper append/update logic: same pipeline updates, different pipelines append
+        """
+        table = None
+        # Send each pipeline observability individually to ensure proper append/update logic
+        for observability in record.observability_data:
+            table = self.metadata.add_single_pipeline_observability(
+                table_id=record.table.id, 
+                pipeline_observability=observability
+            )
         return Either(right=table)
 
     @_run_dispatch.register

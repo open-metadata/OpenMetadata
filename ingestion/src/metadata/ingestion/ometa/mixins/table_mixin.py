@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
@@ -152,6 +153,76 @@ class OMetaTableMixin:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
+                )
+
+        return None
+
+    def add_pipeline_observability(
+        self, table_id: Uuid, pipeline_observability: List[PipelineObservability]
+    ) -> Optional[Table]:
+        """
+        PUT pipeline observability data for a table (bulk method)
+
+        :param table_id: Table ID to update
+        :param pipeline_observability: Pipeline observability data to add
+        """
+        resp = None
+        try:
+            data = [obs.model_dump() for obs in pipeline_observability]
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability",
+                data=data,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Table(**resp)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}"
+                )
+
+        return None
+
+    def add_single_pipeline_observability(
+        self, table_id: Uuid, pipeline_observability: PipelineObservability
+    ) -> Optional[Table]:
+        """
+        PUT single pipeline observability data for a table (individual method for append/update logic)
+
+        :param table_id: Table ID to update  
+        :param pipeline_observability: Single pipeline observability data to add/update
+        """
+        resp = None
+        try:
+            if pipeline_observability.pipeline and pipeline_observability.pipeline.fullyQualifiedName:
+                pipeline_fqn = pipeline_observability.pipeline.fullyQualifiedName.root
+                data = pipeline_observability.model_dump()
+                resp = self.client.put(
+                    f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability/{pipeline_fqn}",
+                    data=data,
+                )
+            else:
+                logger.warning(f"Pipeline FQN missing in observability data for table {table_id.root}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Table(**resp)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse single pipeline observability results for table {table_id.root}: {exc}"
                 )
 
         return None
