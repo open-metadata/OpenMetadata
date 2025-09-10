@@ -23,6 +23,15 @@ import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
+/**
+ * Ensures widget width doesn't exceed the maximum allowed width of 2
+ */
+export const getConstrainedWidgetWidth = (width: number): number => {
+  const maxWidth = 2;
+
+  return Math.min(width, maxWidth);
+};
+
 export const getNewWidgetPlacement = (
   currentLayout: WidgetConfig[],
   widgetWidth: number
@@ -284,16 +293,18 @@ export const getAddWidgetHandler =
     );
 
     if (!currentLayout || currentLayout.length === 0) {
+      const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
+
       return [
         {
-          w: widgetWidth,
+          w: constrainedWidth,
           h: widgetHeight,
           i: widgetFQN,
           static: false,
           x: 0,
           y: 0,
         },
-        createPlaceholderWidget(widgetWidth, 0),
+        createPlaceholderWidget(constrainedWidth, 0),
       ];
     }
 
@@ -306,8 +317,9 @@ export const getAddWidgetHandler =
       // Calculate position at the end of all existing widgets
       const placement = getNewWidgetPlacement(regularWidgets, widgetWidth);
 
+      const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
       const newWidget = {
-        w: widgetWidth,
+        w: constrainedWidth,
         h: widgetHeight,
         i: widgetFQN,
         static: false,
@@ -319,14 +331,15 @@ export const getAddWidgetHandler =
     }
 
     // Replace specific placeholder
+    const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
     const updatedWidgets = currentLayout.map((widget: WidgetConfig) => {
       if (widget.i === placeholderWidgetKey) {
         return {
           ...widget,
           i: widgetFQN,
           h: widgetHeight,
-          w: widgetWidth,
-          x: Math.min(widget.x, maxGridSize - widgetWidth),
+          w: constrainedWidth,
+          x: Math.min(widget.x, maxGridSize - constrainedWidth),
           static: false,
         };
       }
