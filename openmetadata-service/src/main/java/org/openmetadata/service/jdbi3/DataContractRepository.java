@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
@@ -459,7 +461,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return dataContract.getId().toString();
   }
 
-  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
+  private void createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
     try {
       if (update) { // If we're running an update, fetch the existing test suite information
         restoreExistingDataContract(dataContract);
@@ -468,28 +470,37 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       // If we don't have quality expectations or a test suite, we don't need to create one
       if (nullOrEmpty(dataContract.getQualityExpectations())
           && !contractHasTestSuite(dataContract)) {
-        return null;
+        return;
       }
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
         deleteTestSuite(dataContract);
         dataContract.setTestSuite(null);
-        return null;
+        return;
       }
 
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
-      updateTestSuiteTests(dataContract, testSuite);
+      // Create the test suite with only the tests pending to be executed
+      List<TestCase> tests = getTestsWithResults(dataContract);
+      List<TestCase> testsWithoutResults = filterTestsWithoutResults(tests);
 
-      // Add the test suite to the data contract
-      dataContract.setTestSuite(
-          new EntityReference()
-              .withId(testSuite.getId())
-              .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-              .withType(Entity.TEST_SUITE));
+      if (!nullOrEmpty(testsWithoutResults)) {
+        TestSuite testSuite = getOrCreateTestSuite(dataContract);
+        updateTestSuiteTests(dataContract, testSuite, testsWithoutResults);
 
-      return testSuite;
+        // Add the test suite to the data contract
+        dataContract.setTestSuite(
+            new EntityReference()
+                .withId(testSuite.getId())
+                .withFullyQualifiedName(testSuite.getFullyQualifiedName())
+                .withType(Entity.TEST_SUITE));
+      }
 
+      // If we already have a test suite but no tests pending to execute, remove it
+      if (contractHasTestSuite(dataContract) && nullOrEmpty(testsWithoutResults)) {
+        deleteTestSuite(dataContract);
+        dataContract.setTestSuite(null);
+      }
     } catch (Exception e) {
       LOG.error("Error creating/updating test suite for data contract", e);
       throw e;
@@ -510,7 +521,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     dataContract.setId(existing.map(DataContract::getId).orElse(dataContract.getId()));
   }
 
-  private void updateTestSuiteTests(DataContract dataContract, TestSuite testSuite) {
+  private void updateTestSuiteTests(
+      DataContract dataContract, TestSuite testSuite, List<TestCase> testsWithoutResults) {
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
 
@@ -521,17 +533,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTests() != null
             ? testSuite.getTests().stream().map(EntityReference::getId).toList()
             : Collections.emptyList();
+    List<UUID> testsToAdd = testsWithoutResults.stream().map(TestCase::getId).toList();
 
-    // Add only new tests to the test suite
-    List<UUID> newTestCases =
-        testCaseRefs.stream().filter(testCaseRef -> !currentTests.contains(testCaseRef)).toList();
-    if (!nullOrEmpty(newTestCases)) {
-      testCaseRepository.addTestCasesToLogicalTestSuite(testSuite, newTestCases);
+    if (!nullOrEmpty(testsWithoutResults)) {
+      testCaseRepository.addTestCasesToLogicalTestSuite(testSuite, testsToAdd);
     }
 
-    // Then, remove any tests that are no longer in the quality expectations
+    // Remove tests that are no longer in the quality expectations or already have results
     List<UUID> testsToRemove =
-        currentTests.stream().filter(testId -> !testCaseRefs.contains(testId)).toList();
+        currentTests.stream()
+            .filter(testId -> !testCaseRefs.contains(testId) || !testsToAdd.contains(testId))
+            .toList();
     if (!nullOrEmpty(testsToRemove)) {
       testsToRemove.forEach(
           test -> {
@@ -656,20 +668,41 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // If we don't have quality expectations, flag the results based on schema and semantics
-    // Otherwise, keep it Running and wait for the DQ results to kick in
+    // Otherwise, check if we need to run tests or use existing results
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      try {
-        deployAndTriggerDQValidation(dataContract);
-        compileResult(result, ContractExecutionStatus.Running);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to trigger DQ validation for data contract {}: {}",
-            dataContract.getFullyQualifiedName(),
-            e.getMessage());
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
-            .withResult("Failed to trigger DQ validation: " + e.getMessage());
-        compileResult(result, ContractExecutionStatus.Aborted);
+      // Check if all tests already have results
+      List<TestCase> tests = getTestsWithResults(dataContract);
+      List<TestCase> testsWithoutResults = filterTestsWithoutResults(tests);
+      List<TestCase> testsWithResults = filterTestsWithResults(tests);
+
+      // Initialize the quality validation results
+      result.withQualityValidation(initDQValidation(dataContract));
+
+      if (!nullOrEmpty(testsWithoutResults)) {
+        try {
+          deployAndTriggerDQValidation(dataContract);
+          compileResult(result, ContractExecutionStatus.Running);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to trigger DQ validation for data contract {}: {}",
+              dataContract.getFullyQualifiedName(),
+              e.getMessage());
+          result
+              .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+              .withResult("Failed to trigger DQ validation: " + e.getMessage());
+          compileResult(result, ContractExecutionStatus.Aborted);
+        }
+      }
+      if (!nullOrEmpty(testsWithResults)) {
+        QualityValidation qualityValidation =
+            getExistingTestResults(dataContract, testsWithResults);
+        result.withQualityValidation(qualityValidation);
+        // Fallback to running if we're still waiting to some tests to report back their status
+        compileResult(
+            result,
+            !nullOrEmpty(testsWithoutResults)
+                ? ContractExecutionStatus.Running
+                : ContractExecutionStatus.Success);
       }
     } else {
       compileResult(result, ContractExecutionStatus.Success);
@@ -734,6 +767,84 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
+  private QualityValidation initDQValidation(DataContract dataContract) {
+    QualityValidation validation = new QualityValidation();
+    int totalTests = dataContract.getQualityExpectations().size();
+    validation.withTotal(totalTests).withPassed(0).withFailed(0).withQualityScore(0.0);
+    return validation;
+  }
+
+  private List<TestCase> getTestsWithResults(DataContract dataContract) {
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    return dataContract.getQualityExpectations().stream()
+        .map(
+            testRef -> {
+              try {
+                return testCaseRepository.get(
+                    null, testRef.getId(), new Fields(Set.of(TEST_CASE_RESULT)));
+              } catch (EntityNotFoundException e) {
+                LOG.warn("Test case {} not found: {}", testRef.getId(), e.getMessage());
+                return null;
+              }
+            })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
+  }
+
+  private List<TestCase> filterTestsWithoutResults(List<TestCase> tests) {
+    return tests.stream()
+        .filter(
+            test ->
+                test.getTestCaseResult() == null
+                    || test.getTestCaseResult().getTestCaseStatus() == null)
+        .collect(Collectors.toList());
+  }
+
+  private List<TestCase> filterTestsWithResults(List<TestCase> tests) {
+    return tests.stream()
+        .filter(
+            test ->
+                test.getTestCaseResult() != null
+                    && test.getTestCaseResult().getTestCaseStatus() != null)
+        .collect(Collectors.toList());
+  }
+
+  private QualityValidation getExistingTestResults(
+      DataContract dataContract, List<TestCase> testsWithResults) {
+    QualityValidation validation = new QualityValidation();
+
+    if (nullOrEmpty(testsWithResults)) {
+      return validation;
+    }
+
+    int totalTests = dataContract.getQualityExpectations().size();
+    int passedTests = 0;
+    int failedTests = 0;
+
+    for (TestCase test : testsWithResults) {
+      try {
+        if (FAILED_DQ_STATUSES.contains(test.getTestCaseResult().getTestCaseStatus())) {
+          failedTests++;
+        } else {
+          passedTests++;
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to get test result for test {}: {}", test.getId(), e.getMessage());
+      }
+    }
+
+    double qualityScore = totalTests > 0 ? (passedTests / (double) totalTests) * 100 : 0.0;
+
+    validation
+        .withTotal(totalTests)
+        .withPassed(passedTests)
+        .withFailed(failedTests)
+        .withQualityScore(qualityScore);
+
+    return validation;
+  }
+
   private SemanticsValidation validateSemantics(DataContract dataContract) {
     SemanticsValidation validation = new SemanticsValidation();
 
@@ -772,10 +883,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return validation;
   }
 
-  private QualityValidation validateDQ(TestSuite testSuite) {
-    QualityValidation validation = new QualityValidation();
+  private QualityValidation validateDQ(TestSuite testSuite, QualityValidation existingValidation) {
+    if (existingValidation == null) {
+      existingValidation = new QualityValidation();
+    }
     if (nullOrEmpty(testSuite.getTestCaseResultSummary())) {
-      return validation; // return the existing result without updates
+      return existingValidation; // return the existing result without updates
     }
 
     List<String> currentTests =
@@ -791,14 +904,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
 
-    validation
-        .withFailed(failedTests.size())
-        .withPassed(testSummary.size() - failedTests.size())
-        .withTotal(testSummary.size())
-        .withQualityScore(
-            (((testSummary.size() - failedTests.size()) / (double) testSummary.size())) * 100);
+    existingValidation
+        .withFailed(existingValidation.getFailed() + failedTests.size())
+        .withPassed(existingValidation.getPassed() + (testSummary.size() - failedTests.size()));
 
-    return validation;
+    existingValidation.withQualityScore(
+        (((existingValidation.getPassed() - existingValidation.getFailed())
+                / (double) existingValidation.getTotal()))
+            * 100);
+
+    return existingValidation;
   }
 
   public void compileResult(DataContractResult result, ContractExecutionStatus fallbackStatus) {
@@ -880,7 +995,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    QualityValidation validation = validateDQ(testSuite);
+    QualityValidation validation = validateDQ(testSuite, result.getQualityValidation());
 
     result.withQualityValidation(validation);
 
