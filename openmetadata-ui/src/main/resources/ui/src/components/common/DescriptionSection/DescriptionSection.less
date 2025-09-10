@@ -20,9 +20,8 @@
 
     .description-title {
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       color: #262626;
-      text-transform: uppercase;
     }
 
     .edit-button {
@@ -39,7 +38,11 @@
       }
     }
   }
-
+  .edit-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
   .description-content {
     .inline-edit-container {
       .description-textarea {
@@ -68,8 +71,7 @@
 
       .edit-actions {
         display: flex;
-        justify-content: flex-end;
-        gap: 8px;
+        gap: 16px;
         margin-top: 8px;
 
         .cancel-button {

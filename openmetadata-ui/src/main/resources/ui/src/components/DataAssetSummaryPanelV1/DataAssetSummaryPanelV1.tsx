@@ -210,16 +210,22 @@ export const DataAssetSummaryPanelV1 = ({
                 // Handle edit functionality
               }}
             />
-            {isLineageView && (
-              <OwnersSection
-                owners={dataAsset.owners as EntityReference[]}
-                onEdit={() => {
-                  // Handle edit functionality
-                }}
-              />
-            )}
+
+            <OwnersSection
+              hasPermission={
+                entityPermissions?.EditAll || entityPermissions?.EditTags
+              }
+              owners={dataAsset.owners as EntityReference[]}
+            />
+
             <DomainsSection
               domains={dataAsset.domains}
+              entityFqn={dataAsset.fullyQualifiedName}
+              entityId={dataAsset.id}
+              entityType={entityType}
+              hasPermission={
+                entityPermissions?.EditAll || entityPermissions?.EditTags
+              }
               onEdit={() => {
                 // Handle edit functionality
               }}
@@ -330,11 +336,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(dataAsset)}>
-      <div className="d-flex flex-col gap-5">
-        {commonEntitySummaryInfo}
-
-        {/* {entityDetails} */}
-      </div>
+      <div className="d-flex flex-col gap-4">{commonEntitySummaryInfo}</div>
     </SummaryPanelSkeleton>
   );
 };

@@ -74,6 +74,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           EntityType.CHART,
           EntityType.PIPELINE,
           EntityType.MLMODEL,
+          EntityType.DATABASE,
         ].includes(entityType)
       ) {
         items.push({

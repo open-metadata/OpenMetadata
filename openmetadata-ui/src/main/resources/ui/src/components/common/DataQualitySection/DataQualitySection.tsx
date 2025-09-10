@@ -72,6 +72,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
               color: '#364254',
               marginLeft: '8px',
               fontWeight: 500,
+              border: '1px solid #E3E8F0',
               fontSize: '10px',
             }}
           />
@@ -87,6 +88,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             percent={100}
             showInfo={false}
             strokeColor={strokeColor}
+            strokeLinecap="square"
             strokeWidth={8}
           />
         </div>

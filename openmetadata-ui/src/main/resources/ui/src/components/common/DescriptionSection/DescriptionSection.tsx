@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './DescriptionSection.less';
-
 interface DescriptionSectionProps {
   description?: string;
   onDescriptionUpdate?: (description: string) => Promise<void>;
@@ -69,13 +70,22 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       <div className="description-section">
         <div className="description-header">
           <span className="description-title">{t('label.description')}</span>
-          {showEditButton && onDescriptionUpdate && (
-            <Button
-              className="edit-button"
-              type="text"
-              onClick={handleEditDescription}>
-              {t('label.edit')}
-            </Button>
+          {showEditButton && onDescriptionUpdate && !isEditDescription && (
+            <span className="cursor-pointer" onClick={handleEditDescription}>
+              <EditIcon />
+            </span>
+          )}
+          {isEditDescription && (
+            <div className="edit-actions">
+              <span
+                className="cursor-pointer"
+                onClick={handleCancelEditDescription}>
+                <CloseIcon />
+              </span>
+              <span className="cursor-pointer" onClick={handleSaveDescription}>
+                <TickIcon />
+              </span>
+            </div>
           )}
         </div>
         <div className="description-content">
@@ -90,20 +100,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
               />
-              <div className="edit-actions">
-                <Button
-                  className="cancel-button"
-                  type="text"
-                  onClick={handleCancelEditDescription}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="save-button"
-                  type="primary"
-                  onClick={handleSaveDescription}>
-                  {t('label.save')}
-                </Button>
-              </div>
             </div>
           ) : (
             <span className="no-data-placeholder">
@@ -119,13 +115,22 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
     <div className="description-section">
       <div className="description-header">
         <span className="description-title">{t('label.description')}</span>
-        {showEditButton && onDescriptionUpdate && (
-          <Button
-            className="edit-button"
-            type="text"
-            onClick={handleEditDescription}>
-            {t('label.edit')}
-          </Button>
+        {showEditButton && onDescriptionUpdate && !isEditDescription && (
+          <span className="cursor-pointer" onClick={handleEditDescription}>
+            <EditIcon />
+          </span>
+        )}
+        {isEditDescription && (
+          <div className="edit-actions">
+            <span
+              className="cursor-pointer"
+              onClick={handleCancelEditDescription}>
+              <CloseIcon />
+            </span>
+            <span className="cursor-pointer" onClick={handleSaveDescription}>
+              <TickIcon />
+            </span>
+          </div>
         )}
       </div>
       <div className="description-content">
@@ -140,20 +145,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
             />
-            <div className="edit-actions">
-              <Button
-                className="cancel-button"
-                type="text"
-                onClick={handleCancelEditDescription}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                className="save-button"
-                type="primary"
-                onClick={handleSaveDescription}>
-                {t('label.save')}
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="description-display">
