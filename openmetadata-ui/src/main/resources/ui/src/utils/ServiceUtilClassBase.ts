@@ -55,6 +55,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
   HIVE,
@@ -673,6 +674,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.CustomDrive:
         return CUSTOM_DRIVE_DEFAULT;
+
+      case this.DriveServiceTypeSmallCase.GoogleDrive:
+        return GOOGLE_DRIVE;
 
       default: {
         let logo;
