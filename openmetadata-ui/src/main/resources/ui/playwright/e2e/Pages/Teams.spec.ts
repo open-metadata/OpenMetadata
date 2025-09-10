@@ -391,12 +391,20 @@ test.describe('Teams Page', () => {
       .getByTestId('manage-button')
       .click();
 
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
+
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'true'
     );
 
     await clickOutside(page);
+
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).not.toBeVisible();
 
     await hardDeleteTeam(page);
   });

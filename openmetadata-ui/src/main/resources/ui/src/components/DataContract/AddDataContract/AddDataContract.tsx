@@ -13,6 +13,7 @@
 
 import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,6 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
-import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -73,28 +73,49 @@ const AddDataContract: React.FC<{
     setActiveTab(key);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    setIsSubmitting(true);
-
+  const { validSemantics, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
+    return {
+      validSemantics,
+      isSaveDisabled: isEmpty(
+        compare(contract ?? {}, {
+          ...contract,
+          ...formValues,
+          semantics: validSemantics,
+        })
+      ),
+    };
+  }, [contract, formValues]);
+
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
+
     try {
-      await (contract
-        ? updateContract({
-            ...getUpdatedContractDetails(contract, formValues),
-            semantics: validSemantics,
-          })
-        : createContract({
+      if (contract) {
+        await updateContract(
+          contract?.id,
+          compare(contract, {
+            ...contract,
             ...formValues,
-            entity: {
-              id: table.id,
-              type: EntityType.TABLE,
-            },
             semantics: validSemantics,
-            entityStatus: EntityStatus.Approved,
-          }));
+            displayName: formValues.name,
+          })
+        );
+      } else {
+        await createContract({
+          ...formValues,
+          displayName: formValues.name,
+          entity: {
+            id: table.id,
+            type: EntityType.TABLE,
+          },
+          semantics: validSemantics,
+          entityStatus: EntityStatus.Approved,
+        });
+      }
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
       onSave();
@@ -103,7 +124,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id]);
+  }, [contract, formValues, table?.id, validSemantics]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -151,9 +172,7 @@ const AddDataContract: React.FC<{
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
             prevLabel={t('label.contract-detail-plural')}
-            selectedSchema={
-              contract?.schema?.map((column) => column.name) || []
-            }
+            selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -229,6 +248,7 @@ const AddDataContract: React.FC<{
           <Button
             className="add-contract-save-button"
             data-testid="save-contract-btn"
+            disabled={isSaveDisabled}
             loading={isSubmitting}
             type="primary"
             onClick={handleSave}>
@@ -237,7 +257,14 @@ const AddDataContract: React.FC<{
         </div>
       </div>
     );
-  }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
+  }, [
+    mode,
+    isSubmitting,
+    isSaveDisabled,
+    handleModeChange,
+    onCancel,
+    handleSave,
+  ]);
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
