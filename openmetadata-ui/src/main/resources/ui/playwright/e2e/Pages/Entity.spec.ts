@@ -24,13 +24,16 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DriveAssetsClass } from '../../support/entity/DriveAssetsClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -65,6 +68,9 @@ const entities = [
   MetricClass,
   ChartClass,
   DriveAssetsClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -288,7 +294,14 @@ entities.forEach((EntityClass) => {
     });
 
     if (
-      !['Store Procedure', 'Metric', 'Chart', 'Directory'].includes(entity.type)
+      ![
+        'Store Procedure',
+        'Metric',
+        'Chart',
+        'Directory',
+        'File',
+        'Spreadsheet',
+      ].includes(entity.type)
     ) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
