@@ -119,7 +119,10 @@
           "chart",
           "user",
           "testCase",
-          "directory"
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet"
         ]
       },
       "default": ["all"],

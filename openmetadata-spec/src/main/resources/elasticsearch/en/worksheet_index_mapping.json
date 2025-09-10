@@ -132,7 +132,9 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "similarity": "boolean",
+        "term_vector": "with_positions_offsets"
       },
       "serviceType": {
         "type": "keyword"
@@ -140,7 +142,13 @@
       "service": {
         "properties": {
           "id": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "type": {
             "type": "keyword"
@@ -150,6 +158,17 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -159,15 +178,6 @@
           },
           "description": {
             "type": "text"
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           },
           "deleted": {
             "type": "boolean"
@@ -252,9 +262,14 @@
                 "type": "keyword",
                 "ignore_above": 256,
                 "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },
+
           "displayName": {
             "type": "text",
             "analyzer": "om_analyzer",
@@ -265,30 +280,43 @@
               }
             }
           },
-          "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
-          },
           "dataType": {
-            "type": "keyword"
+            "type": "text"
           },
           "dataTypeDisplay": {
-            "type": "keyword"
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fqnParts": {
+            "type": "keyword"
           },
           "tags": {
             "properties": {
               "tagFQN": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer"
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
               },
               "labelType": {
                 "type": "keyword"
               },
               "description": {
-                "type": "text"
+                "type": "text",
+                "similarity": "boolean"
               },
               "source": {
                 "type": "keyword"
@@ -378,16 +406,33 @@
       "owners": {
         "properties": {
           "id": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "type": {
             "type": "keyword"
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -397,15 +442,6 @@
           },
           "description": {
             "type": "text"
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           },
           "deleted": {
             "type": "boolean"
@@ -418,7 +454,13 @@
       "domains": {
         "properties": {
           "id": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
           },
           "type": {
             "type": "keyword"
@@ -432,20 +474,21 @@
               }
             }
           },
-          "fullyQualifiedName": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
           "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
           },
           "deleted": {
             "type": "boolean"
@@ -468,7 +511,13 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -545,11 +594,13 @@
               }
             }
           },
-          "updatedBy": {
-            "type": "keyword"
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           },
-          "updatedAt": {
-            "type": "date"
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },
