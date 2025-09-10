@@ -4048,7 +4048,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCase create =
         createRequest(testInfo)
             .withEntityLink(TABLE_LINK)
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
                 List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
