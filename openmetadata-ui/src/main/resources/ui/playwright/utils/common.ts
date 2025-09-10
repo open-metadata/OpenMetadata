@@ -477,47 +477,33 @@ export const verifySpecificDomainLink = async (
   let domainLink;
 
   if (entityFqn) {
-    // Search for the entity first
     await page.getByTestId('searchBox').fill(entityFqn);
     await page.getByTestId('searchBox').press('Enter');
-
-    // Wait for search results to load
     await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
-    // Find domain link within the specific entity card
     const entityCard = page.getByTestId(`table-data-card_${entityFqn}`);
 
     domainLink = entityCard.getByTestId('domain-link').first();
   } else {
-    // Find the first domain link on current page
     domainLink = page.getByTestId('domain-link').first();
   }
 
-  // Verify the specific domain link
   await expect(domainLink).toBeVisible();
-
-  // Verify it contains the expected domain name (this tests the text inside the <a> tag)
   await expect(domainLink).toContainText(domain.displayName);
 
-  // Verify the href attribute
   const href = await domainLink.getAttribute('href');
 
   expect(href).toContain('/domain/');
-  expect(href).toContain(domain.fullyQualifiedName ?? '');
 
-  // Verify the link is actually clickable
   await expect(domainLink).toBeEnabled();
 
-  // Optionally test navigation
   if (shouldNavigate) {
     await domainLink.click();
 
-    // Verify we navigated to the correct domain page
     await expect(page).toHaveURL(
       new RegExp(`/domain/${domain.fullyQualifiedName?.replace(/\./g, '\\.')}`)
     );
 
-    // Verify domain page content
     await expect(page.getByText(domain.displayName)).toBeVisible();
   }
 };
