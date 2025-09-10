@@ -474,7 +474,16 @@ test.describe('Data Contracts', () => {
 
         await page.getByTestId('contract-edit-button').click();
 
+        const qualityResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list**'
+        );
+
         await page.getByRole('tab', { name: 'Quality' }).click();
+
+        await qualityResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
