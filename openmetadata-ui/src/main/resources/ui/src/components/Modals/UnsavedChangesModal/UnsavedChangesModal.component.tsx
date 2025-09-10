@@ -33,6 +33,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
       centered
       closable
       className="unsaved-changes-modal-container"
+      data-testid="unsaved-changes-modal"
       footer={null}
       open={open}
       width={400}
@@ -44,21 +45,30 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
           </div>
 
           <div className="unsaved-changes-modal-content">
-            <Typography.Title className="unsaved-changes-modal-title" level={5}>
+            <Typography.Title
+              className="unsaved-changes-modal-title"
+              data-testid="unsaved-changes-modal-title"
+              level={5}>
               {title}
             </Typography.Title>
-            <Typography.Text className="unsaved-changes-modal-description">
+            <Typography.Text
+              className="unsaved-changes-modal-description"
+              data-testid="unsaved-changes-modal-description">
               {description}
             </Typography.Text>
           </div>
         </div>
 
         <div className="unsaved-changes-modal-actions">
-          <Button className="unsaved-changes-modal-discard" onClick={onDiscard}>
+          <Button
+            className="unsaved-changes-modal-discard"
+            data-testid="unsaved-changes-modal-discard"
+            onClick={onDiscard}>
             {discardText}
           </Button>
           <Button
             className="unsaved-changes-modal-save"
+            data-testid="unsaved-changes-modal-save"
             loading={loading}
             type="primary"
             onClick={onSave}>
