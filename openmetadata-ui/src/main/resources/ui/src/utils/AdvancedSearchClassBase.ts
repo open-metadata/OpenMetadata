@@ -894,6 +894,37 @@ class AdvancedSearchClassBase {
               }),
               useAsyncSearch: true,
             },
+            elasticSearchFormatValue: (_queryType, value, operator, fieldName) => {
+              const columnValue = value[0];
+              
+              // For column fields, search both name and displayName
+              if (fieldName === 'columns.name.keyword' || fieldName === 'columns.displayName.keyword') {
+                const baseQuery = {
+                  bool: {
+                    should: [
+                      { term: { 'columns.name.keyword': columnValue } },
+                      { term: { 'columns.displayName.keyword': columnValue } }
+                    ],
+                    minimum_should_match: 1
+                  }
+                };
+                
+                switch (operator) {
+                  case 'not_equal':
+                    return {
+                      bool: {
+                        must_not: [baseQuery]
+                      }
+                    };
+                  case 'equal':
+                  default:
+                    return baseQuery;
+                }
+              }
+              
+              // Fallback for non-column fields
+              return { term: { [fieldName]: columnValue } };
+            },
           },
         }
       : {};

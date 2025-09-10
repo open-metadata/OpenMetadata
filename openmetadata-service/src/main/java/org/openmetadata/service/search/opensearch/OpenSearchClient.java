@@ -1570,6 +1570,10 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
             .includeExclude(new IncludeExclude(includeValue, null))
             .order(BucketOrder.key(true));
 
+    if (!nullOrEmpty(request.getScript())) {
+      termsAgg.script(new Script(request.getScript()));
+    }
+
     if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
       request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
 
