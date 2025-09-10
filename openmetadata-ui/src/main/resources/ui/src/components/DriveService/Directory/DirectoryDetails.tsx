@@ -156,7 +156,8 @@ function DirectoryDetails({
   const handleRestoreDirectory = async () => {
     try {
       const { version: newVersion } = await restoreDriveAsset<Directory>(
-        directoryDetails.id
+        directoryDetails.id,
+        EntityType.DIRECTORY
       );
       showSuccessToast(
         t('message.restore-entities-success', {

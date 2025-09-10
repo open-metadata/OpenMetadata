@@ -22,6 +22,7 @@ import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DriveAssetsClass } from '../../support/entity/DriveAssetsClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -63,6 +64,7 @@ const entities = [
   DashboardDataModelClass,
   MetricClass,
   ChartClass,
+  DriveAssetsClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -285,7 +287,9 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (!['Store Procedure', 'Metric', 'Chart'].includes(entity.type)) {
+    if (
+      !['Store Procedure', 'Metric', 'Chart', 'Directory'].includes(entity.type)
+    ) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {

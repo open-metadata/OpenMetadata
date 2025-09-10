@@ -138,7 +138,8 @@ function WorksheetDetails({
   const handleRestoreWorksheet = async () => {
     try {
       const { version: newVersion } = await restoreDriveAsset<Worksheet>(
-        worksheetDetails.id
+        worksheetDetails.id,
+        EntityType.WORKSHEET
       );
       showSuccessToast(
         t('message.restore-entities-success', {

@@ -136,7 +136,8 @@ function FileDetails({
   const handleRestoreFile = async () => {
     try {
       const { version: newVersion } = await restoreDriveAsset<File>(
-        fileDetails.id
+        fileDetails.id,
+        EntityType.FILE
       );
       showSuccessToast(
         t('message.restore-entities-success', {
