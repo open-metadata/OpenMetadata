@@ -660,6 +660,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     TaskType taskType = threadContext.getThread().getTask().getType();
     if (EntityUtil.isApprovalTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
+    } else if (taskType == TaskType.ChangeReview) {
+      return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
   }
@@ -821,15 +823,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void closeApprovalTask(GlossaryTerm entity, String comment) {
     EntityLink about = new EntityLink(GLOSSARY_TERM, entity.getFullyQualifiedName());
     FeedRepository feedRepository = Entity.getFeedRepository();
+
+    // Close User Tasks
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+      return;
+    } catch (EntityNotFoundException ex) {
+      // No ChangeReview task found, try RequestApproval
+    }
     try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       feedRepository.closeTask(
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     } catch (EntityNotFoundException ex) {
-      LOG.info(
-          "{} Task not found for glossary term {}",
-          TaskType.RequestApproval,
-          entity.getFullyQualifiedName());
+      LOG.info("No approval task found for glossary term {}", entity.getFullyQualifiedName());
     }
   }
 

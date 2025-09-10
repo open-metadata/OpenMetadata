@@ -306,9 +306,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     Thread taskThread =
         threads.getData().stream()
             .filter(t -> t.getTask() != null) // First ensure the thread has a task
-            .filter(t -> t.getTask().getType() == TaskType.RequestApproval) // Then check task type
+            .filter(t -> t.getTask().getType() == TaskType.ChangeReview) // Then check task type
             .findFirst()
-            .orElseThrow(() -> new AssertionError("No open approval task found"));
+            .orElseThrow(() -> new AssertionError("No open change review task found"));
 
     // Prepare the resolve payload
     ResolveTask resolveTask = new ResolveTask().withNewValue("approved");

@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -36,16 +38,21 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -53,12 +60,15 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -359,6 +369,26 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   protected void postUpdate(DataProduct original, DataProduct updated) {
     super.postUpdate(original, updated);
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
+        closeApprovalTask(updated, "Approved the data product");
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
+        closeApprovalTask(updated, "Rejected the data product");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Data Product goes back to DRAFT.
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+      try {
+        closeApprovalTask(updated, "Closed due to data product going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
     Map<String, EntityReference> assetsMap = new HashMap<>();
     listOrEmpty(original.getAssets())
         .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
@@ -479,6 +509,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (taskType == TaskType.ChangeReview) {
+      // ChangeReview tasks use the approval workflow for data products
+      return new ApprovalTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
@@ -493,7 +526,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       DataProduct dataProduct = (DataProduct) threadContext.getAboutEntity();
-      checkUpdatedByReviewer(dataProduct, user);
+      DataProductRepository.checkUpdatedByReviewer(dataProduct, user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
@@ -552,10 +585,65 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         // Don't throw - just log the error and continue with approval
       }
     }
+  }
 
-    private void checkUpdatedByReviewer(DataProduct dataProduct, String user) {
-      // Add any DataProduct-specific validation logic here if needed
-      // For now, this can be empty or use existing validation patterns
+  @Override
+  protected void preDelete(DataProduct entity, String deletedBy) {
+    // A data product in `Draft` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  public static void checkUpdatedByReviewer(DataProduct dataProduct, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = dataProduct.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void closeApprovalTask(DataProduct entity, String comment) {
+    EntityLink about = new EntityLink(DATA_PRODUCT, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+
+    // Try to close ChangeReview task first (higher priority)
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+      return;
+    } catch (EntityNotFoundException ex) {
+      // No ChangeReview task found, try RequestApproval
+    }
+
+    // Try to close RequestApproval task
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for data product {}", entity.getFullyQualifiedName());
     }
   }
 }

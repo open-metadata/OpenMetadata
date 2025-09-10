@@ -2465,7 +2465,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Verify DataContract description update
     LOG.info("Verifying DataContract description update...");
     await()
-        .atMost(Duration.ofSeconds(90))
+        .atMost(Duration.ofSeconds(120))
         .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {

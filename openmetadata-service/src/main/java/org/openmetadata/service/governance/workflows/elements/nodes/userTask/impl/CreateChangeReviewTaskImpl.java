@@ -104,7 +104,7 @@ public class CreateChangeReviewTaskImpl implements TaskListener {
       for (IdentityLink candidate : candidates) {
         assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
       }
-    } else {
+    } else if (delegateTask.getAssignee() != null) {
       assignees.add(getEntityReferenceFromLinkString(delegateTask.getAssignee()));
     }
     return assignees;
@@ -125,13 +125,24 @@ public class CreateChangeReviewTaskImpl implements TaskListener {
 
     Thread thread;
 
+    // Check for existing ChangeReview tasks
     try {
-      thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      thread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
       // If there's a Task already opened, we resolve the Flowable task before creating a new
       // UserTask in the new WorkflowInstance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
     } catch (EntityNotFoundException ex) {
+      // No existing ChangeReview task, also check for RequestApproval tasks to avoid conflicts
+      try {
+        Thread approvalTask =
+            feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+        // If there's an approval task open, terminate it
+        WorkflowHandler.getInstance()
+            .terminateTaskProcessInstance(approvalTask.getId(), "Superseded by ChangeReview task.");
+      } catch (EntityNotFoundException ignore) {
+        // No conflict, proceed with creating the new task
+      }
       // Build detailed change message
       String changeInformation = buildDetailedChangeMessage(entity);
 
@@ -145,7 +156,7 @@ public class CreateChangeReviewTaskImpl implements TaskListener {
       TaskDetails taskDetails =
           new TaskDetails()
               .withAssignees(FeedMapper.formatAssignees(assignees))
-              .withType(TaskType.RequestApproval)
+              .withType(TaskType.ChangeReview)
               .withStatus(TaskStatus.Open)
               .withOldValue(oldValue)
               .withNewValue(newValue)

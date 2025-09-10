@@ -18,6 +18,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
@@ -40,27 +42,36 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
+import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -563,7 +574,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       Tag tag = (Tag) threadContext.getAboutEntity();
-      checkUpdatedByReviewer(tag, user);
+      TagRepository.checkUpdatedByReviewer(tag, user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
@@ -619,11 +630,6 @@ public class TagRepository extends EntityRepository<Tag> {
         LOG.error("Failed to apply edited changes to tag", e);
         // Don't throw - just log the error and continue with approval
       }
-    }
-
-    private void checkUpdatedByReviewer(Tag tag, String user) {
-      // Add any Tag-specific validation logic here if needed
-      // For now, this can be empty or use existing validation patterns
     }
   }
 
@@ -742,6 +748,96 @@ public class TagRepository extends EntityRepository<Tag> {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
+      }
+    }
+  }
+
+  @Override
+  public void postUpdate(Tag original, Tag updated) {
+    super.postUpdate(original, updated);
+    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
+      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
+        closeApprovalTask(updated, "Approved the tag");
+      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
+        closeApprovalTask(updated, "Rejected the tag");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Tag goes back to DRAFT.
+    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
+      try {
+        closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+  }
+
+  @Override
+  protected void preDelete(Tag entity, String deletedBy) {
+    // A tag in `Draft` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  private void closeApprovalTask(Tag entity, String comment) {
+    MessageParser.EntityLink about =
+        new MessageParser.EntityLink(TAG, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+
+    // Skip closing tasks if updatedBy is null (e.g., during tests)
+    if (entity.getUpdatedBy() == null) {
+      LOG.debug(
+          "Skipping task closure for tag {} - updatedBy is null", entity.getFullyQualifiedName());
+      return;
+    }
+
+    // Close User Tasks
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+      return;
+    } catch (EntityNotFoundException ex) {
+      // No ChangeReview task found, try RequestApproval
+    }
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for tag {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = tag.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
       }
     }
   }
