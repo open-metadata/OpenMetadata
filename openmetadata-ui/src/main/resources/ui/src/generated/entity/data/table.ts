@@ -819,6 +819,11 @@ export interface DataModel {
      */
     columns?: Column[];
     /**
+     * The DBT project name that served as the source for ingesting this table's metadata and
+     * lineage information.
+     */
+    dbtSourceProject?: string;
+    /**
      * Description of the Table from the model.
      */
     description?: string;

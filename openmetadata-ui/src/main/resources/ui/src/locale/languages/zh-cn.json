@@ -437,6 +437,7 @@
     "dbt-run-result-file-path": "dbt 运行结果文件路径",
     "dbt-run-result-http-path": "dbt 运行结果 HTTP 路径",
     "dbt-source": "dbt 源",
+    "dbt-source-project": "dbt 源项目",
     "deactivated": "已停用",
     "december": "十二月",
     "decision": "Decision",
