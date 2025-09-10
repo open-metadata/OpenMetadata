@@ -172,7 +172,7 @@ public class MetricsErrorHandlingTest {
         "", "/unknown"); // Empty string returns /unknown to avoid blank endpoints
     testEndpointNormalization("/", "/");
     testEndpointNormalization(
-        "/api/v1/tables/123e4567-e89b-12d3-a456-426614174000", "/api/v1/tables/{name}");
+        "/api/v1/tables/550e8400-e29b-41d4-a716-446655440000", "/api/v1/tables/{name}");
     testEndpointNormalization("/api/v1/tables/test%20table", "/api/v1/tables/{name}");
     testEndpointNormalization("/api/v1/tables/123456", "/api/v1/tables/{name}");
     testEndpointNormalization("/api/v1/tables?query=test&limit=10", "/api/v1/tables");
