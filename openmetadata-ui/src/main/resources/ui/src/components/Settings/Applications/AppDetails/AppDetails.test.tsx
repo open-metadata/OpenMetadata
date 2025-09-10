@@ -154,6 +154,9 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
 jest.mock('./ApplicationsClassBase', () => ({
   importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
   getJSONUISchema: jest.fn().mockReturnValue({}),
+  getApplicationConfigurationComponent: jest
+    .fn()
+    .mockReturnValue(() => <div>MockApplicationConfiguration</div>),
 }));
 
 jest.mock('react-router-dom', () => ({
