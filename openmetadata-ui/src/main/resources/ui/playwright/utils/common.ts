@@ -416,71 +416,16 @@ export const verifyDomainPropagation = async (
   domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
-  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
-  await page.getByTestId('searchBox').press('Enter');
-
-  await expect(
-    page
-      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domains-link')
-  ).toContainText(domain.displayName);
-};
-
-export const verifyDomainLinkAndName = async (
-  page: Page,
-  domain: Domain['responseData'],
-  searchTerm?: string,
-  shouldNavigate = true
-) => {
-  if (searchTerm) {
-    await page.getByTestId('searchBox').fill(searchTerm);
-    await page.getByTestId('searchBox').press('Enter');
-
-    await page.waitForSelector(`[data-testid*="table-data-card"]`);
-  }
-
-  const firstDomainLink = page.getByTestId('domain-link').first();
-
-  await expect(firstDomainLink).toBeVisible();
-  await expect(firstDomainLink).toContainText(domain.displayName);
-
-  const href = await firstDomainLink.getAttribute('href');
-
-  expect(href).toContain('/domain/');
-  expect(href).toContain(domain.fullyQualifiedName ?? '');
-
-  if (shouldNavigate) {
-    await firstDomainLink.click();
-
-    await expect(page).toHaveURL(
-      new RegExp(`/domain/${domain.fullyQualifiedName?.replace(/\./g, '\\.')}`)
-    );
-
-    await expect(page.getByText(domain.displayName)).toBeVisible();
-  }
-};
-
-export const verifyDomainLinkOnly = async (
-  page: Page,
-  domain: Domain['responseData'],
-  searchTerm?: string
-) => {
-  await verifyDomainLinkAndName(page, domain, searchTerm, false);
-};
-
-export const verifySpecificDomainLink = async (
-  page: Page,
-  domain: Domain['responseData'],
-  entityFqn?: string
-) => {
   let domainLink;
 
-  if (entityFqn) {
-    await page.getByTestId('searchBox').fill(entityFqn);
+  if (childFqnSearchTerm) {
+    await page.getByTestId('searchBox').fill(childFqnSearchTerm);
     await page.getByTestId('searchBox').press('Enter');
     await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
-    const entityCard = page.getByTestId(`table-data-card_${entityFqn}`);
+    const entityCard = page.getByTestId(
+      `table-data-card_${childFqnSearchTerm}`
+    );
 
     domainLink = entityCard.getByTestId('domain-link').first();
   } else {

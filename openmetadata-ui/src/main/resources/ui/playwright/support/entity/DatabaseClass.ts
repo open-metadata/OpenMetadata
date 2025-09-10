@@ -256,11 +256,17 @@ export class DatabaseClass extends EntityClass {
     await page.getByTestId('searchBox').fill(searchTerm);
     await page.getByTestId('searchBox').press('Enter');
 
-    await expect(
-      page
-        .getByTestId(`table-data-card_${searchTerm}`)
-        .getByTestId('domains-link')
-    ).toContainText(domain.displayName);
+    const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
+
+    const domainLink = entityCard.getByTestId('domain-link').first();
+
+    await expect(domainLink).toBeVisible();
+    await expect(domainLink).toContainText(domain.displayName);
+
+    const href = await domainLink.getAttribute('href');
+
+    expect(href).toContain('/domain/');
+    await expect(domainLink).toBeEnabled();
 
     await page.getByTestId('searchBox').clear();
   }

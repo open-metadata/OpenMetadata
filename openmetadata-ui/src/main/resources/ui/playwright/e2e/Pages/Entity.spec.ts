@@ -40,7 +40,7 @@ import {
   getToken,
   redirectToHomePage,
   removeDomain,
-  verifySpecificDomainLink,
+  verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
@@ -146,7 +146,7 @@ entities.forEach((EntityClass) => {
         );
 
         await assignDomain(page, EntityDataClass.domain1.responseData);
-        await verifySpecificDomainLink(
+        await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName']
