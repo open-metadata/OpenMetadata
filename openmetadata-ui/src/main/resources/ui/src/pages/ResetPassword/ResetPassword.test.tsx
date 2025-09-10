@@ -36,6 +36,20 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'label.reset-your-password': 'Reset Your Password',
+        'label.password-not-match': 'Passwords do not match',
+        'message.field-text-is-required': 'Password is required',
+      };
+
+      return translations[key] || key;
+    },
+  }),
+}));
+
 describe('ResetPassword', () => {
   it('should render correctly', async () => {
     render(<ResetPassword />);
@@ -47,9 +61,7 @@ describe('ResetPassword', () => {
     expect(await screen.findByTestId('password')).toBeInTheDocument();
     expect(await screen.findByTestId('confirm-password')).toBeInTheDocument();
     expect(await screen.findByTestId('submit-button')).toBeInTheDocument();
-    expect(
-      await screen.findByText('label.reset-your-password')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Reset Your Password')).toBeInTheDocument();
   });
 
   it('form submit should work', async () => {
@@ -88,7 +100,7 @@ describe('ResetPassword', () => {
     });
 
     expect(
-      await screen.findByText('label.password-not-match')
+      await screen.findByText('Passwords do not match')
     ).toBeInTheDocument();
   });
 
@@ -103,8 +115,6 @@ describe('ResetPassword', () => {
     });
     jest.advanceTimersByTime(20);
 
-    expect(
-      await screen.findAllByText('message.field-text-is-required')
-    ).toHaveLength(2);
+    expect(await screen.findAllByText('Password is required')).toHaveLength(2);
   });
 });
