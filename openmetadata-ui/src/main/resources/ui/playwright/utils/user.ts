@@ -589,6 +589,16 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     state: 'detached',
   });
 
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('table');
+  await dataAssetDropdownRequest;
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
