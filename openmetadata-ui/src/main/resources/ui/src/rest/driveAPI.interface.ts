@@ -27,7 +27,7 @@ export interface GetDirectoriesParams {
   fields?: string;
   service?: string;
   parent?: string;
-  root?: string;
+  root?: boolean;
   include?: Include;
   paging?: Omit<Paging, 'total'>;
 }

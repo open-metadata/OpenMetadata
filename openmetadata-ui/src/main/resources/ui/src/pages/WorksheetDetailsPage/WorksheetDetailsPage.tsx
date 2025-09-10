@@ -261,9 +261,9 @@ const WorksheetDetailsPage = () => {
     (data: DataAssetWithDomains) => {
       const updatedData = data as Worksheet;
 
-      setWorksheetDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
+      setWorksheetDetails((prevData) => ({
+        ...prevData,
+        ...updatedData,
       }));
     },
     []

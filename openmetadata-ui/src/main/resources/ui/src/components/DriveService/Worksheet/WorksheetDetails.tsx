@@ -79,7 +79,7 @@ function WorksheetDetails({
 }: WorksheetDetailsProps) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.OVERVIEW } =
+  const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedWorksheetFQN } = useFqn();
   const navigate = useNavigate();

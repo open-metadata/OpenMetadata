@@ -243,6 +243,8 @@ export enum EntityTabs {
   CONTRACT = 'contract',
   DIRECTORIES = 'directories',
   WORKSHEETS = 'worksheets',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
 }
 
 export enum EntityAction {

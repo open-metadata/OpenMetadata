@@ -240,9 +240,9 @@ function FileDetailsPage() {
   const updateFileDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as File;
 
-    setFileDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
+    setFileDetails((prevData) => ({
+      ...prevData,
+      ...updatedData,
     }));
   }, []);
 

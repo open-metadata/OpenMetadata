@@ -40,55 +40,20 @@ const APIByEntityType = {
   [EntityType.WORKSHEET]: '/worksheets',
 };
 
-export const getFiles = async (params: GetFilesParams) => {
+export const getDriveAssets = async <
+  T extends Directory | File | Spreadsheet | Worksheet
+>(
+  entityType: DriveAssetEntityTypes,
+  params:
+    | GetDirectoriesParams
+    | GetFilesParams
+    | GetSpreadsheetParams
+    | GetWorksheetsParams
+) => {
+  const API = APIByEntityType[entityType];
   const { paging, ...restParams } = params;
-  const response = await APIClient.get<PagingResponse<File[]>>(
-    `${BASE_URL}/files`,
-    {
-      params: {
-        ...restParams,
-        ...paging,
-      },
-    }
-  );
-
-  return response.data;
-};
-
-export const getDirectories = async (params: GetDirectoriesParams) => {
-  const { paging, ...restParams } = params;
-  const response = await APIClient.get<PagingResponse<Directory[]>>(
-    `${BASE_URL}/directories`,
-    {
-      params: {
-        ...restParams,
-        ...paging,
-      },
-    }
-  );
-
-  return response.data;
-};
-
-export const getSpreadsheets = async (params: GetSpreadsheetParams) => {
-  const { paging, ...restParams } = params;
-  const response = await APIClient.get<PagingResponse<Spreadsheet[]>>(
-    `${BASE_URL}/spreadsheets`,
-    {
-      params: {
-        ...restParams,
-        ...paging,
-      },
-    }
-  );
-
-  return response.data;
-};
-
-export const getWorksheets = async (params: GetWorksheetsParams) => {
-  const { paging, ...restParams } = params;
-  const response = await APIClient.get<PagingResponse<Worksheet[]>>(
-    `${BASE_URL}/worksheets`,
+  const response = await APIClient.get<PagingResponse<T[]>>(
+    `${BASE_URL}${API}`,
     {
       params: {
         ...restParams,

@@ -265,9 +265,9 @@ const SpreadsheetDetailsPage = () => {
     (data: DataAssetWithDomains) => {
       const updatedData = data as Spreadsheet;
 
-      setSpreadsheetDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
+      setSpreadsheetDetails((prevData) => ({
+        ...prevData,
+        ...updatedData,
       }));
     },
     []

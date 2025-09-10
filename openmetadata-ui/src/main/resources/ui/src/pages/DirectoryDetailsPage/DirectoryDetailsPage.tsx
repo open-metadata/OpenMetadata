@@ -261,9 +261,9 @@ const DirectoryDetailsPage = () => {
     (data: DataAssetWithDomains) => {
       const updatedData = data as Directory;
 
-      setDirectoryDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
+      setDirectoryDetails((prevData) => ({
+        ...prevData,
+        ...updatedData,
       }));
     },
     []

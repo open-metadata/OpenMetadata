@@ -45,12 +45,12 @@ export const getWorksheetDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          id={EntityTabs.OVERVIEW}
-          isActive={activeTab === EntityTabs.OVERVIEW}
-          name={i18n.t('label.overview')}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={i18n.t('label.schema')}
         />
       ),
-      key: EntityTabs.OVERVIEW,
+      key: EntityTabs.SCHEMA,
       children: <GenericTab type={PageType.Worksheet} />,
     },
     {

@@ -30,8 +30,9 @@ import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Directory } from '../../generated/entity/data/directory';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -42,7 +43,7 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getDirectories } from '../../rest/driveAPI';
+import { getDriveAssets } from '../../rest/driveAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
@@ -281,7 +282,7 @@ function ServiceVersionPage() {
 
   const fetchDirectories = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const response = await getDirectories({
+      const response = await getDriveAssets<Directory>(EntityType.DIRECTORY, {
         service: decodedServiceFQN,
         fields: commonTableFields,
         paging,

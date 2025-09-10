@@ -73,7 +73,7 @@ class WorksheetClassBase {
 
   public getWorksheetDetailPageTabsIds(): Tab[] {
     return [
-      EntityTabs.OVERVIEW,
+      EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
@@ -82,12 +82,12 @@ class WorksheetClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: tab === EntityTabs.OVERVIEW,
+      editable: tab === EntityTabs.SCHEMA,
     }));
   }
 
   public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
-    if (tab && tab !== EntityTabs.OVERVIEW) {
+    if (tab && tab !== EntityTabs.SCHEMA) {
       return [];
     }
 
