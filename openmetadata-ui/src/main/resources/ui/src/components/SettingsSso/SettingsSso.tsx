@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Switch, Tabs, Typography } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import Auth0Icon from '../../assets/img/icon-auth0.png';
@@ -25,6 +25,7 @@ import { AuthProvider } from '../../generated/settings/settings';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
+  SecurityConfiguration,
 } from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -47,6 +48,9 @@ const SettingsSso = () => {
   const [showProviderSelector, setShowProviderSelector] =
     useState<boolean>(false);
   const [ssoEnabled, setSsoEnabled] = useState<boolean>(true);
+  const [securityConfig, setSecurityConfig] =
+    useState<SecurityConfiguration | null>(null);
+  const configFetched = useRef<boolean>(false);
 
   const getProviderDisplayName = (provider: string) => {
     return provider === AuthProvider.Azure
@@ -168,9 +172,16 @@ const SettingsSso = () => {
 
     // Check for existing SSO configuration
     const checkExistingConfig = async () => {
+      // Prevent duplicate API calls
+      if (configFetched.current) {
+        return;
+      }
+      configFetched.current = true;
+
       try {
         const response = await getSecurityConfiguration();
         const config = response.data;
+        setSecurityConfig(config);
 
         if (config?.authenticationConfiguration?.provider) {
           if (
@@ -220,6 +231,7 @@ const SettingsSso = () => {
           }
         }
       } catch (error) {
+        configFetched.current = false; // Reset on error to allow retry
         setHasExistingConfig(false);
         setActiveTab('configure');
         // Only show provider selector if no specific provider in URL
@@ -306,6 +318,7 @@ const SettingsSso = () => {
         <TitleBreadcrumb className="m-b-xs" titleLinks={breadcrumb} />
 
         <SSOConfigurationForm
+          securityConfig={securityConfig}
           selectedProvider={currentProvider}
           onChangeProvider={handleChangeProvider}
           onProviderSelect={handleProviderSelect}
@@ -371,6 +384,7 @@ const SettingsSso = () => {
         <SSOConfigurationForm
           hideBorder
           forceEditMode={activeTab === 'configure'}
+          securityConfig={securityConfig}
           onChangeProvider={handleChangeProvider}
         />
       </div>

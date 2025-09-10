@@ -98,6 +98,7 @@ interface SSOConfigurationFormProps {
   onProviderSelect?: (provider: AuthProvider) => void;
   selectedProvider?: string;
   hideBorder?: boolean;
+  securityConfig?: SecurityConfiguration | null;
 }
 
 const SSOConfigurationFormRJSF = ({
@@ -106,6 +107,7 @@ const SSOConfigurationFormRJSF = ({
   onProviderSelect,
   selectedProvider,
   hideBorder = false,
+  securityConfig,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const { setAuthConfig, setAuthorizerConfig } = useApplicationStore();
@@ -161,7 +163,7 @@ const SSOConfigurationFormRJSF = ({
     }
   };
 
-  // Fetch existing configuration on mount (only if no selectedProvider is passed)
+  // Fetch existing configuration on mount (only if no selectedProvider is passed and no securityConfig provided)
   useEffect(() => {
     const fetchExistingConfig = async () => {
       try {
@@ -171,29 +173,32 @@ const SSOConfigurationFormRJSF = ({
           return;
         }
 
-        const response = await getSecurityConfiguration();
-        const config = response.data;
+        // Only fetch if no securityConfig is provided
+        if (!securityConfig) {
+          const response = await getSecurityConfiguration();
+          const config = response.data;
 
-        if (
-          config?.authenticationConfiguration?.provider &&
-          config.authenticationConfiguration.provider !== AuthProvider.Basic
-        ) {
-          setHasExistingConfig(true);
-          setCurrentProvider(config.authenticationConfiguration.provider);
-          const configData = {
-            authenticationConfiguration: config.authenticationConfiguration,
-            authorizerConfiguration: config.authorizerConfiguration,
-          };
-          setSavedData(configData);
-          setInternalData(configData);
-          setShowForm(true);
-
-          if (forceEditMode) {
-            setIsEditMode(true);
+          if (
+            config?.authenticationConfiguration?.provider &&
+            config.authenticationConfiguration.provider !== AuthProvider.Basic
+          ) {
+            setHasExistingConfig(true);
+            setCurrentProvider(config.authenticationConfiguration.provider);
+            const configData = {
+              authenticationConfiguration: config.authenticationConfiguration,
+              authorizerConfiguration: config.authorizerConfiguration,
+            };
+            setSavedData(configData);
+            setInternalData(configData);
             setShowForm(true);
+
+            if (forceEditMode) {
+              setIsEditMode(true);
+              setShowForm(true);
+            }
+          } else {
+            setShowProviderSelector(true);
           }
-        } else {
-          setShowProviderSelector(true);
         }
       } catch (error) {
         // No existing configuration, show provider selector
@@ -203,8 +208,42 @@ const SSOConfigurationFormRJSF = ({
       }
     };
 
-    fetchExistingConfig();
-  }, [selectedProvider]);
+    // Only run if no securityConfig is provided by parent
+    if (!securityConfig) {
+      fetchExistingConfig();
+    } else {
+      setIsInitializing(false);
+    }
+  }, [selectedProvider, forceEditMode]);
+
+  // Separate effect to handle securityConfig changes
+  useEffect(() => {
+    if (securityConfig && !selectedProvider) {
+      if (
+        securityConfig.authenticationConfiguration?.provider &&
+        securityConfig.authenticationConfiguration.provider !==
+          AuthProvider.Basic
+      ) {
+        setHasExistingConfig(true);
+        setCurrentProvider(securityConfig.authenticationConfiguration.provider);
+        const configData = {
+          authenticationConfiguration:
+            securityConfig.authenticationConfiguration,
+          authorizerConfiguration: securityConfig.authorizerConfiguration,
+        };
+        setSavedData(configData);
+        setInternalData(configData);
+        setShowForm(true);
+
+        if (forceEditMode) {
+          setIsEditMode(true);
+          setShowForm(true);
+        }
+      } else {
+        setShowProviderSelector(true);
+      }
+    }
+  }, [securityConfig, forceEditMode]);
 
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
