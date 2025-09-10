@@ -68,6 +68,18 @@ from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestio
 logger = ingestion_logger()
 
 
+class CircuitBreakerError(Exception):
+    """Base exception for circuit breaker errors"""
+
+
+class CircuitOpenError(CircuitBreakerError):
+    """Raised when circuit breaker is in OPEN state"""
+
+
+class ServiceCallError(Exception):
+    """Raised when the underlying service call fails"""
+
+
 class CircuitState(Enum):
     """Circuit breaker states"""
 
@@ -105,15 +117,17 @@ class CircuitBreaker:
                     self.state = CircuitState.HALF_OPEN
                     self.success_count = 0
                 else:
-                    raise Exception("Circuit breaker is OPEN")
+                    raise CircuitOpenError("Circuit breaker is OPEN")
 
         try:
             result = func(*args, **kwargs)
             self._on_success()
             return result
+        except (CircuitBreakerError, ServiceCallError):
+            raise
         except Exception as e:
             self._on_failure()
-            raise e
+            raise ServiceCallError(f"Service call failed: {str(e)}") from e
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset"""
@@ -143,6 +157,7 @@ class CircuitBreaker:
                 self.state = CircuitState.OPEN
 
 
+# pylint: disable=too-many-instance-attributes
 class StreamableLogHandler(logging.Handler):
     """
     Custom logging handler that streams logs to OpenMetadata server.
@@ -154,6 +169,7 @@ class StreamableLogHandler(logging.Handler):
     - Configurable batch size and flush intervals
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         metadata: OpenMetadata,
@@ -275,19 +291,24 @@ class StreamableLogHandler(logging.Handler):
         try:
             # Try to send logs with circuit breaker
             self.circuit_breaker.call(self._send_logs_to_server, log_content)
-        except Exception as e:
-            # Update metrics
+        except CircuitOpenError:
+            # Circuit is open, update metrics
             self.metrics["logs_failed"] += len(logs)
-            if self.circuit_breaker.state == CircuitState.OPEN:
-                self.metrics["circuit_trips"] += 1
+            self.metrics["circuit_trips"] += 1
+            self.metrics["fallback_count"] += 1
+
+            logger.debug("Circuit breaker is OPEN, falling back to local logging")
+            for log in logs:
+                logger.info(f"[FALLBACK] {log}")
+        except (ServiceCallError, Exception) as e:
+            # Service call failed, update metrics
+            self.metrics["logs_failed"] += len(logs)
             self.metrics["fallback_count"] += 1
 
             # Fallback to local logging
-            logger.debug(
-                f"Failed to ship logs to server (circuit breaker state: {self.circuit_breaker.state}): {e}"
-            )
+            logger.debug(f"Failed to ship logs to server: {e}")
             for log in logs:
-                print(f"[FALLBACK] {log}")
+                logger.info(f"[FALLBACK] {log}")
 
     def _send_logs_to_server(self, log_content: str):
         """Send logs to the OpenMetadata server using the logs mixin"""

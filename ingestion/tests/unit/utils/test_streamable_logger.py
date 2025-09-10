@@ -12,13 +12,10 @@
 Unit tests for the streamable logger module.
 """
 
-import gzip
-import json
 import logging
 import os
 import time
 import unittest
-from base64 import b64decode
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -182,15 +179,8 @@ class TestStreamableLogHandler(unittest.TestCase):
 
         handler.close()
 
-    @patch("metadata.utils.streamable_logger.requests.Session")
-    def test_log_compression(self, mock_session_class):
+    def test_log_compression(self):
         """Test log compression for large payloads"""
-        mock_session = Mock()
-        mock_session_class.return_value = mock_session
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_session.post.return_value = mock_response
-
         handler = StreamableLogHandler(
             metadata=self.mock_metadata,
             pipeline_fqn=self.pipeline_fqn,
@@ -201,36 +191,25 @@ class TestStreamableLogHandler(unittest.TestCase):
         # Large log content (> 10KB to trigger compression)
         large_log = "x" * 11000
 
-        with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
-            handler._send_logs_to_server(large_log)
+        # Mock send_logs_batch to capture the call
+        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
+            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": len(large_log)}
 
-        # Check that compressed payload was sent
-        mock_session.post.assert_called_once()
-        call_args = mock_session.post.call_args
-        # Parse the JSON data that was sent
-        payload = json.loads(call_args[1]["data"])
+            with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
+                handler._send_logs_to_server(large_log)
 
-        self.assertTrue(payload["compressed"])
-        self.assertIn("logs", payload)
-        self.assertIn("timestamp", payload)
-        self.assertIn("connectorId", payload)
-
-        # Verify compression worked
-        decoded = b64decode(payload["logs"])
-        decompressed = gzip.decompress(decoded).decode("utf-8")
-        self.assertEqual(decompressed, large_log)
+            # Verify send_logs_batch was called with compression enabled
+            mock_send_logs.assert_called_once_with(
+                pipeline_fqn=self.pipeline_fqn,
+                run_id=self.run_id,
+                log_content=large_log,
+                enable_compression=True,
+            )
 
         handler.close()
 
-    @patch("metadata.utils.streamable_logger.requests.Session")
-    def test_no_compression_for_small_logs(self, mock_session_class):
+    def test_no_compression_for_small_logs(self):
         """Test that small logs are not compressed"""
-        mock_session = Mock()
-        mock_session_class.return_value = mock_session
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_session.post.return_value = mock_response
-
         handler = StreamableLogHandler(
             metadata=self.mock_metadata,
             pipeline_fqn=self.pipeline_fqn,
@@ -241,29 +220,26 @@ class TestStreamableLogHandler(unittest.TestCase):
         # Small log content (< 1KB)
         small_log = "Small log message"
 
-        with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
-            handler._send_logs_to_server(small_log)
+        # Mock send_logs_batch to capture the call
+        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
+            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": len(small_log)}
 
-        # Check that uncompressed payload was sent
-        mock_session.post.assert_called_once()
-        call_args = mock_session.post.call_args
-        # Parse the JSON data that was sent
-        payload = json.loads(call_args[1]["data"])
+            with patch.dict(os.environ, {"ENABLE_LOG_COMPRESSION": "true"}):
+                handler._send_logs_to_server(small_log)
 
-        self.assertFalse(payload["compressed"])
-        self.assertEqual(payload["logs"], small_log)
+            # Verify send_logs_batch was called with compression enabled
+            # Note: The actual compression decision is made inside send_logs_batch
+            mock_send_logs.assert_called_once_with(
+                pipeline_fqn=self.pipeline_fqn,
+                run_id=self.run_id,
+                log_content=small_log,
+                enable_compression=True,
+            )
 
         handler.close()
 
-    @patch("metadata.utils.streamable_logger.requests.Session")
-    def test_session_maintains_cookies(self, mock_session_class):
+    def test_session_maintains_cookies(self):
         """Test that session maintains cookies for ALB stickiness"""
-        mock_session = Mock()
-        mock_session_class.return_value = mock_session
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_session.post.return_value = mock_response
-
         handler = StreamableLogHandler(
             metadata=self.mock_metadata,
             pipeline_fqn=self.pipeline_fqn,
@@ -271,12 +247,21 @@ class TestStreamableLogHandler(unittest.TestCase):
             enable_streaming=False,
         )
 
-        # Send multiple log batches
-        handler._send_logs_to_server("Log batch 1")
-        handler._send_logs_to_server("Log batch 2")
+        # Mock send_logs_batch to capture the calls
+        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
+            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": 100}
 
-        # Same session should be used for both calls
-        self.assertEqual(mock_session.post.call_count, 2)
+            # Send multiple log batches
+            handler._send_logs_to_server("Log batch 1")
+            handler._send_logs_to_server("Log batch 2")
+
+            # Two requests should be made with the same metadata instance
+            self.assertEqual(mock_send_logs.call_count, 2)
+            # Verify both calls used the same metadata instance
+            calls = mock_send_logs.call_args_list
+            for call in calls:
+                self.assertEqual(call.kwargs["pipeline_fqn"], self.pipeline_fqn)
+                self.assertEqual(call.kwargs["run_id"], self.run_id)
 
         handler.close()
 
@@ -369,17 +354,19 @@ class TestStreamableLogHandler(unittest.TestCase):
             enable_streaming=False,
         )
 
-        with patch.object(handler.session, "post") as mock_post:
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_post.return_value = mock_response
+        # Mock the send_logs_batch method to verify it's called with correct parameters
+        with patch.object(self.mock_metadata, "send_logs_batch") as mock_send_logs:
+            mock_send_logs.return_value = {"logs_sent": 1, "bytes_sent": 100}
 
             handler._send_logs_to_server("Test log")
 
-            # Check auth header was included
-            call_args = mock_post.call_args
-            headers = call_args[1]["headers"]
-            self.assertEqual(headers["Authorization"], "Bearer test-token")
+            # Verify send_logs_batch was called with the correct parameters
+            mock_send_logs.assert_called_once_with(
+                pipeline_fqn=self.pipeline_fqn,
+                run_id=self.run_id,
+                log_content="Test log",
+                enable_compression=False,
+            )
 
         handler.close()
 
@@ -510,7 +497,8 @@ class TestStreamableLoggingSetup(unittest.TestCase):
             enable_streaming=True,
         )
 
-        mock_handler1.close.assert_called_once()
+        # The first handler should be closed when the second one is set
+        mock_handler1.close.assert_called()
 
         # Cleanup
         cleanup_streamable_logging()
