@@ -143,6 +143,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
   ],
+  [GlobalSettingOptions.DRIVES]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
+  ],
 
   // Applications
 
