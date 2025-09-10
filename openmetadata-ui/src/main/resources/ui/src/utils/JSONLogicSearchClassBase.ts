@@ -34,7 +34,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { searchData } from '../rest/miscAPI';
+import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
@@ -401,7 +401,33 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
-    queryFilter?: string;
+    queryFilter?: {
+      query: {
+        term?: Record<string, string | number | boolean>;
+        match?: Record<string, string | number>;
+        wildcard?: Record<string, string>;
+        bool?: {
+          must?: Array<
+            | { term: Record<string, string | number | boolean> }
+            | { match: Record<string, string | number> }
+            | { wildcard: Record<string, string> }
+          >;
+          should?: Array<
+            | { term: Record<string, string | number | boolean> }
+            | { match: Record<string, string | number> }
+            | { wildcard: Record<string, string> }
+          >;
+          must_not?: Array<
+            | { term: Record<string, string | number | boolean> }
+            | { match: Record<string, string | number> }
+            | { wildcard: Record<string, string> }
+          >;
+        };
+        query_string?: {
+          query: string;
+        };
+      };
+    };
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,
@@ -409,19 +435,14 @@ class JSONLogicSearchClassBase {
     queryFilter,
   }) => {
     return (search) => {
-      return searchData(
-        Array.isArray(search) ? search.join(',') : search ?? '',
-        1,
-        PAGE_SIZE_BASE,
-        queryFilter ?? '',
-        '',
-        '',
-        searchIndex ?? SearchIndex.DATA_ASSET,
-        false,
-        false,
-        true
-      ).then((response) => {
-        const data = response.data.hits.hits;
+      return searchQuery({
+        query: Array.isArray(search) ? search.join(',') : search ?? '',
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        queryFilter,
+        searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
+      }).then((response) => {
+        const data = response.hits.hits;
 
         return {
           values: data.map((item) => ({

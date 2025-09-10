@@ -245,8 +245,24 @@ export const getSematicRuleFields = () => {
             searchIndex: SearchIndex.TAG,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
-            queryFilter:
-              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+            queryFilter: {
+              query: {
+                bool: {
+                  must_not: [
+                    {
+                      wildcard: {
+                        fullyQualifiedName: 'Certification.*',
+                      },
+                    },
+                    {
+                      wildcard: {
+                        fullyQualifiedName: 'Tier.*',
+                      },
+                    },
+                  ],
+                },
+              },
+            },
           }),
           useAsyncSearch: true,
         },
