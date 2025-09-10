@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import ResetPassword from './ResetPassword.component';
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -36,14 +42,32 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('../../hooks/useAlertStore', () => ({
+  useAlertStore: jest.fn().mockReturnValue({
+    alert: null,
+  }),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: any) => {
       const translations: Record<string, string> = {
         'label.reset-your-password': 'Reset Your Password',
         'label.password-not-match': 'Passwords do not match',
-        'message.field-text-is-required': 'Password is required',
+        'label.password': 'Password',
+        'label.confirm-new-password': 'Confirm New Password',
+        'label.new-password': 'New Password',
+        'label.enter-entity': 'Enter {{entity}}',
+        'label.save': 'Save',
+        'message.field-text-is-required': '{{fieldText}} is required.',
       };
+
+      if (options && translations[key]) {
+        return translations[key].replace(
+          '{{fieldText}}',
+          options.fieldText || ''
+        );
+      }
 
       return translations[key] || key;
     },
@@ -105,7 +129,6 @@ describe('ResetPassword', () => {
   });
 
   it('required field validation should work', async () => {
-    jest.useFakeTimers();
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
@@ -113,8 +136,12 @@ describe('ResetPassword', () => {
     await act(async () => {
       fireEvent.click(submitButton);
     });
-    jest.advanceTimersByTime(20);
 
-    expect(await screen.findAllByText('Password is required')).toHaveLength(2);
+    await waitFor(() => {
+      expect(screen.getByText('Password is required.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Confirm New Password is required.')
+      ).toBeInTheDocument();
+    });
   });
 });
