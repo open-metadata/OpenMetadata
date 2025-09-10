@@ -31,6 +31,10 @@ export interface ManifestMetadataEntry {
      */
     dataPath: string;
     /**
+     * Depth level in the storage path hierarchy where data files reside.
+     */
+    depth?: number;
+    /**
      * Flag indicating whether the container's data is partitioned
      */
     isPartitioned?: boolean;
