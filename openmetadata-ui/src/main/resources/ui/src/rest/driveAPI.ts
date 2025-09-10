@@ -21,6 +21,7 @@ import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import {
   DriveAssetEntityTypes,
   GetDirectoriesParams,
@@ -114,7 +115,7 @@ export const getDriveAssetByFqn = async <
     {
       params: {
         ...(fieldsStr && { fields: fieldsStr }),
-        ...(include && { include }),
+        include: include ?? Include.All,
       },
     }
   );
@@ -179,10 +180,12 @@ export const removeDriveAssetFollower = async (
 export const restoreDriveAsset = async <
   T extends Directory | File | Spreadsheet | Worksheet
 >(
-  id: string
+  id: string,
+  entityType: DriveAssetEntityTypes
 ) => {
+  const API = APIByEntityType[entityType];
   const response = await APIClient.put<RestoreRequestType, AxiosResponse<T>>(
-    `${BASE_URL}/restore`,
+    `${BASE_URL}${API}/restore`,
     { id }
   );
 

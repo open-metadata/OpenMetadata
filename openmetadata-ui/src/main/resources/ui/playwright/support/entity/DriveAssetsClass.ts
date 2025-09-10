@@ -174,13 +174,16 @@ export class DriveAssetsClass extends EntityClass {
     this.spreadsheetResponseData = await spreadsheetResponse.json();
 
     // Create worksheet in spreadsheet
-    const worksheetResponse = await apiContext.post('/api/v1/data/worksheets', {
-      data: {
-        name: this.worksheetName,
-        spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
-        columns: this.worksheetColumns,
-      },
-    });
+    const worksheetResponse = await apiContext.post(
+      '/api/v1/drives/worksheets',
+      {
+        data: {
+          name: this.worksheetName,
+          spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
+          columns: this.worksheetColumns,
+        },
+      }
+    );
     this.worksheetResponseData = await worksheetResponse.json();
 
     return {
