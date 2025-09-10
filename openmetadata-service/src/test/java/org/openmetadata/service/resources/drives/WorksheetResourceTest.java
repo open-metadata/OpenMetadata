@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -495,6 +497,321 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
     worksheet = updateEntity(create.withColumns(columns), OK, ADMIN_AUTH_HEADERS);
     assertEquals(1, worksheet.getColumns().size());
     assertEquals("col1", worksheet.getColumns().getFirst().getName());
+  }
+
+  @Test
+  void patch_worksheetColumnTagsAndDescription_200() throws IOException {
+    // Create worksheet with columns
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("customer_id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Customer identifier"));
+    columns.add(
+        new Column()
+            .withName("customer_name")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer full name"));
+    columns.add(
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer email address"));
+    columns.add(
+        new Column()
+            .withName("phone")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Contact phone number"));
+
+    CreateWorksheet create = createRequest("customerData").withColumns(columns);
+    Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Add tags to specific columns
+    String originalJson = JsonUtils.pojoToJson(worksheet);
+    worksheet.getColumns().get(0).setTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    worksheet
+        .getColumns()
+        .get(1)
+        .setTags(List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+    worksheet.getColumns().get(2).setTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+
+    // Fetch the worksheet with columns,tags fields to get full column details including
+    // column-level tags
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify tags were added - column 0 should have 1 tag
+    assertEquals(1, worksheet.getColumns().get(0).getTags().size());
+    assertEquals(
+        PERSONAL_DATA_TAG_LABEL.getTagFQN(),
+        worksheet.getColumns().get(0).getTags().get(0).getTagFQN());
+
+    // Column 1 should have 2 tags - check both are present regardless of order
+    assertEquals(2, worksheet.getColumns().get(1).getTags().size());
+    List<String> column1TagFQNs =
+        worksheet.getColumns().get(1).getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toList());
+    assertTrue(column1TagFQNs.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(column1TagFQNs.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    assertEquals(1, worksheet.getColumns().get(2).getTags().size());
+    assertEquals(
+        PII_SENSITIVE_TAG_LABEL.getTagFQN(),
+        worksheet.getColumns().get(2).getTags().get(0).getTagFQN());
+
+    // Test 2: Update column descriptions
+    originalJson = JsonUtils.pojoToJson(worksheet);
+    worksheet.getColumns().get(0).setDescription("Updated: Unique customer identifier");
+    worksheet.getColumns().get(2).setDescription("Updated: Primary email for communication");
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify descriptions were updated
+    assertEquals(
+        "Updated: Unique customer identifier", worksheet.getColumns().get(0).getDescription());
+    assertEquals("Customer full name", worksheet.getColumns().get(1).getDescription()); // Unchanged
+    assertEquals(
+        "Updated: Primary email for communication", worksheet.getColumns().get(2).getDescription());
+    assertEquals(
+        "Contact phone number", worksheet.getColumns().get(3).getDescription()); // Unchanged
+
+    // Test 3: Remove tags from a column
+    originalJson = JsonUtils.pojoToJson(worksheet);
+    worksheet.getColumns().get(1).setTags(List.of(PERSONAL_DATA_TAG_LABEL)); // Remove PII_SENSITIVE
+    worksheet.getColumns().get(2).setTags(new ArrayList<>()); // Remove all tags
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify tags were removed
+    assertEquals(1, worksheet.getColumns().get(1).getTags().size());
+    assertEquals(
+        PERSONAL_DATA_TAG_LABEL.getTagFQN(),
+        worksheet.getColumns().get(1).getTags().get(0).getTagFQN());
+    assertTrue(
+        worksheet.getColumns().get(2).getTags() == null
+            || worksheet.getColumns().get(2).getTags().isEmpty());
+
+    // Test 4: Simultaneous update of tags and description
+    originalJson = JsonUtils.pojoToJson(worksheet);
+    worksheet.getColumns().get(3).setDescription("Updated: Customer contact phone");
+    worksheet
+        .getColumns()
+        .get(3)
+        .setTags(List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify both updates
+    assertEquals("Updated: Customer contact phone", worksheet.getColumns().get(3).getDescription());
+    assertEquals(2, worksheet.getColumns().get(3).getTags().size());
+    // Check both tags are present regardless of order
+    List<String> column3TagFQNs =
+        worksheet.getColumns().get(3).getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toList());
+    assertTrue(column3TagFQNs.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(column3TagFQNs.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+  }
+
+  @Test
+  void patch_worksheetAddRemoveColumns_200() throws IOException {
+    // Create worksheet with initial columns
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Record ID")
+            .withTags(List.of(PERSONAL_DATA_TAG_LABEL)));
+    columns.add(
+        new Column()
+            .withName("name")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Full name")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL)));
+
+    CreateWorksheet create = createRequest("columnPatchTest").withColumns(columns);
+    Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify initial setup has 2 columns
+    assertEquals(2, worksheet.getColumns().size());
+    assertEquals("id", worksheet.getColumns().get(0).getName());
+    assertEquals("name", worksheet.getColumns().get(1).getName());
+
+    // Test 1: Modify columns by patching with a new column added
+    String originalJson = JsonUtils.pojoToJson(worksheet);
+    List<Column> updatedColumns = new ArrayList<>();
+    // Keep existing columns
+    updatedColumns.add(worksheet.getColumns().get(0));
+    updatedColumns.add(worksheet.getColumns().get(1));
+    // Add new column
+    updatedColumns.add(
+        new Column()
+            .withName("created_at")
+            .withDataType(ColumnDataType.TIMESTAMP)
+            .withDescription("Record creation timestamp")
+            .withTags(List.of(TIER1_TAG_LABEL)));
+    worksheet.setColumns(updatedColumns);
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Debug: Check what columns are actually present
+    assertNotNull(worksheet.getColumns(), "Columns should not be null after patch");
+    for (int i = 0; i < worksheet.getColumns().size(); i++) {
+      Column col = worksheet.getColumns().get(i);
+      System.out.println("Column " + i + ": " + col.getName() + " - " + col.getDataType());
+    }
+
+    // Verify new column was added
+    assertEquals(3, worksheet.getColumns().size(), "Expected 3 columns after adding 'created_at'");
+    Column addedColumn = worksheet.getColumns().get(2);
+    assertEquals("created_at", addedColumn.getName());
+    assertEquals(ColumnDataType.TIMESTAMP, addedColumn.getDataType());
+    assertEquals("Record creation timestamp", addedColumn.getDescription());
+    assertEquals(1, addedColumn.getTags().size());
+    assertEquals(TIER1_TAG_LABEL.getTagFQN(), addedColumn.getTags().get(0).getTagFQN());
+
+    // Test 2: Remove a column
+    originalJson = JsonUtils.pojoToJson(worksheet);
+    // Create a new list without the middle column
+    List<Column> remainingColumns = new ArrayList<>();
+    remainingColumns.add(worksheet.getColumns().get(0)); // Keep "id"
+    remainingColumns.add(worksheet.getColumns().get(2)); // Keep "created_at"
+    worksheet.setColumns(remainingColumns);
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify column was removed
+    assertEquals(2, worksheet.getColumns().size());
+    assertEquals("id", worksheet.getColumns().get(0).getName());
+    assertEquals("created_at", worksheet.getColumns().get(1).getName());
+
+    // Test 3: Replace all columns
+    originalJson = JsonUtils.pojoToJson(worksheet);
+    List<Column> newColumns = new ArrayList<>();
+    newColumns.add(
+        new Column()
+            .withName("user_id")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("User identifier")
+            .withTags(List.of(PERSONAL_DATA_TAG_LABEL)));
+    newColumns.add(
+        new Column()
+            .withName("status")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("User status"));
+    worksheet.setColumns(newColumns);
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify columns were replaced
+    assertEquals(2, worksheet.getColumns().size());
+    assertEquals("user_id", worksheet.getColumns().get(0).getName());
+    assertEquals("status", worksheet.getColumns().get(1).getName());
+    assertEquals(1, worksheet.getColumns().get(0).getTags().size());
+    assertTrue(
+        worksheet.getColumns().get(1).getTags() == null
+            || worksheet.getColumns().get(1).getTags().isEmpty());
+  }
+
+  @Test
+  void patch_worksheetComplexColumnOperations_200() throws IOException {
+    // Create worksheet with complex column structure
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("order_id")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Order identifier"));
+    columns.add(
+        new Column()
+            .withName("customer_email")
+            .withDataType(ColumnDataType.STRING)
+            .withDescription("Customer email"));
+    columns.add(
+        new Column()
+            .withName("order_date")
+            .withDataType(ColumnDataType.DATE)
+            .withDescription("Order date"));
+    columns.add(
+        new Column()
+            .withName("total_amount")
+            .withDataType(ColumnDataType.DECIMAL)
+            .withDescription("Total order amount"));
+
+    CreateWorksheet create = createRequest("ordersWorksheet").withColumns(columns);
+    Worksheet worksheet = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test: Complex patch with multiple operations
+    String originalJson = JsonUtils.pojoToJson(worksheet);
+
+    // 1. Add tags to multiple columns
+    worksheet.getColumns().get(0).setTags(List.of(TIER1_TAG_LABEL));
+    worksheet
+        .getColumns()
+        .get(1)
+        .setTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    // 2. Update descriptions
+    worksheet.getColumns().get(2).setDescription("Date when order was placed");
+    worksheet.getColumns().get(3).setDescription("Total amount including taxes and shipping");
+
+    // 3. Add new columns with tags and descriptions
+    worksheet
+        .getColumns()
+        .add(
+            new Column()
+                .withName("shipping_address")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Customer shipping address")
+                .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL)));
+    worksheet
+        .getColumns()
+        .add(
+            new Column()
+                .withName("payment_method")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Payment method used")
+                .withTags(List.of(PII_SENSITIVE_TAG_LABEL)));
+
+    worksheet = patchEntity(worksheet.getId(), originalJson, worksheet, ADMIN_AUTH_HEADERS);
+    worksheet = getEntity(worksheet.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Verify all changes
+    assertEquals(6, worksheet.getColumns().size());
+
+    // Verify tags
+    assertEquals(1, worksheet.getColumns().get(0).getTags().size());
+    assertEquals(
+        TIER1_TAG_LABEL.getTagFQN(), worksheet.getColumns().get(0).getTags().get(0).getTagFQN());
+
+    assertEquals(2, worksheet.getColumns().get(1).getTags().size());
+
+    // Verify updated descriptions
+    assertEquals("Date when order was placed", worksheet.getColumns().get(2).getDescription());
+    assertEquals(
+        "Total amount including taxes and shipping",
+        worksheet.getColumns().get(3).getDescription());
+
+    // Verify new columns
+    Column shippingColumn = worksheet.getColumns().get(4);
+    assertEquals("shipping_address", shippingColumn.getName());
+    assertEquals(2, shippingColumn.getTags().size());
+    assertEquals("Customer shipping address", shippingColumn.getDescription());
+
+    Column paymentColumn = worksheet.getColumns().get(5);
+    assertEquals("payment_method", paymentColumn.getName());
+    assertEquals(1, paymentColumn.getTags().size());
+    assertEquals("Payment method used", paymentColumn.getDescription());
   }
 
   @Test

@@ -242,10 +242,9 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getSpreadsheetCondition(String tableName) {
     String spreadsheetFqn = queryParams.get("spreadsheet");
-    if (spreadsheetFqn == null) {
-      return "";
-    }
-    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+    return spreadsheetFqn == null
+        ? ""
+        : getFqnPrefixCondition(tableName, spreadsheetFqn, "spreadsheet");
   }
 
   public String getFileTypeCondition(String tableName) {
