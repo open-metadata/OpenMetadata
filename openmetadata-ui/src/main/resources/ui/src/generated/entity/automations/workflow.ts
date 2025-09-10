@@ -536,7 +536,7 @@ export enum VerifySSL {
  * Apply a set of operations on a service
  *
  * Query Runner Request
- * 
+ *
  * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
