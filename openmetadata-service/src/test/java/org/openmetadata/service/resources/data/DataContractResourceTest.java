@@ -5880,12 +5880,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Final update and validation
     DataContract finalContract = updateDataContract(create);
-    TestSuite finalSuite =
-        testSuiteResourceTest.getEntity(
-            finalContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
-    assertTrue(
-        finalSuite.getTests() == null || finalSuite.getTests().isEmpty(),
-        "Test suite should be empty when all tests have results");
+    assertNull(
+        finalContract.getTestSuite(), "Test suite should be null when all tests have results");
 
     // Final validation - should compile all existing results
     DataContractResult finalResult = runValidate(finalContract);
