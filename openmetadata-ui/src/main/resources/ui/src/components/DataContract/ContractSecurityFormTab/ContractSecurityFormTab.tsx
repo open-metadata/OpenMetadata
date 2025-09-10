@@ -58,7 +58,7 @@ export const ContractSecurityFormTab: React.FC<{
     []
   );
 
-  const handleFormChange: FormProps['onValuesChange'] = async (_, values) => {
+  const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
     onChange({
       security: values,
     });

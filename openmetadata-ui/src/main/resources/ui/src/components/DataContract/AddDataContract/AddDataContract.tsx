@@ -137,7 +137,7 @@ const AddDataContract: React.FC<{
     [setFormValues]
   );
 
-  const onNext = useCallback(async () => {
+  const onNext = useCallback(() => {
     setActiveTab((prev) => (Number(prev) + 1).toString());
   }, [setActiveTab]);
 

@@ -58,11 +58,13 @@ export const ContractSLAFormTab: React.FC<{
     };
   }, []);
 
-  const handleFormChange: FormProps['onValuesChange'] = async (_, values) => {
+  const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
     const slaData: ContractSLA = {};
 
     if (values.availabilityTime) {
-      slaData.availabilityTime = values.availabilityTime;
+      slaData.availabilityTime = values.availabilityTime.format(
+        SLA_AVAILABILITY_TIME_FORMAT
+      );
     }
 
     if (values.max_latency_unit && values.max_latency_value >= 0) {
