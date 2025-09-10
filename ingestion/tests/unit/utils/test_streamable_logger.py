@@ -374,18 +374,44 @@ class TestStreamableLogHandler(unittest.TestCase):
 class TestStreamableLoggingSetup(unittest.TestCase):
     """Test the setup and cleanup functions"""
 
+    def tearDown(self):
+        """Clean up any handlers that were added to loggers during tests"""
+        # Clean up any handlers from the metadata logger
+        import logging
+
+        from metadata.utils.logger import METADATA_LOGGER
+        from metadata.utils.streamable_logger import StreamableLogHandlerManager
+
+        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        # Remove any mock handlers
+        metadata_logger.handlers = [
+            h for h in metadata_logger.handlers if not isinstance(h, Mock)
+        ]
+
+        # Also clean up the manager
+        StreamableLogHandlerManager._instance = None
+
+    @patch("logging.getLogger")
+    @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_with_valid_config(self, mock_handler_class):
+    def test_setup_with_valid_config(
+        self, mock_handler_class, mock_logger, mock_get_logger
+    ):
         """Test setup with valid configuration"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
         mock_metadata.config.host_port = "http://localhost:8585"
 
         mock_handler = Mock()
+        mock_handler.level = logging.INFO  # Add level attribute
         mock_handler_class.return_value = mock_handler
 
         pipeline_fqn = "test.pipeline"
         run_id = uuid4()
+
+        # Setup mock logger to prevent handler from being added to real logger
+        mock_metadata_logger = Mock()
+        mock_get_logger.return_value = mock_metadata_logger
 
         # Test with enable_streaming=True (from IngestionPipeline config)
         result = setup_streamable_logging_for_workflow(
@@ -442,15 +468,24 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         )
         self.assertIsNone(result)
 
+    @patch("logging.getLogger")
+    @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_cleanup_removes_handler(self, mock_handler_class):
+    def test_cleanup_removes_handler(
+        self, mock_handler_class, mock_logger, mock_get_logger
+    ):
         """Test that cleanup properly removes the handler"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
         mock_metadata.config.host_port = "http://localhost:8585"
 
         mock_handler = Mock()
+        mock_handler.level = logging.INFO  # Add level attribute to prevent TypeError
         mock_handler_class.return_value = mock_handler
+
+        # Setup mock logger to prevent handler from being added to real logger
+        mock_metadata_logger = Mock()
+        mock_get_logger.return_value = mock_metadata_logger
 
         # Setup
         handler = setup_streamable_logging_for_workflow(
@@ -461,25 +496,31 @@ class TestStreamableLoggingSetup(unittest.TestCase):
         )
 
         # Cleanup
-        with patch("logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_get_logger.return_value = mock_logger
+        cleanup_streamable_logging()
 
-            cleanup_streamable_logging()
+        mock_metadata_logger.removeHandler.assert_called_once_with(mock_handler)
+        mock_handler.close.assert_called_once()
 
-            mock_logger.removeHandler.assert_called_once_with(mock_handler)
-            mock_handler.close.assert_called_once()
-
+    @patch("logging.getLogger")
+    @patch("metadata.utils.streamable_logger.logger")
     @patch("metadata.utils.streamable_logger.StreamableLogHandler")
-    def test_setup_replaces_existing_handler(self, mock_handler_class):
+    def test_setup_replaces_existing_handler(
+        self, mock_handler_class, mock_logger, mock_get_logger
+    ):
         """Test that setup properly replaces existing handler"""
         mock_metadata = Mock(spec=OpenMetadata)
         mock_metadata.config = Mock()
         mock_metadata.config.host_port = "http://localhost:8585"
 
         mock_handler1 = Mock()
+        mock_handler1.level = logging.INFO  # Add level attribute
         mock_handler2 = Mock()
+        mock_handler2.level = logging.INFO  # Add level attribute
         mock_handler_class.side_effect = [mock_handler1, mock_handler2]
+
+        # Setup mock logger to prevent handler from being added to real logger
+        mock_metadata_logger = Mock()
+        mock_get_logger.return_value = mock_metadata_logger
 
         # First setup
         handler1 = setup_streamable_logging_for_workflow(
