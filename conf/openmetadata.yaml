@@ -63,8 +63,8 @@ server:
   gzip:
     enabled: false
 
-  maxThreads: ${SERVER_MAX_THREADS:-50}
-  minThreads: ${SERVER_MIN_THREADS:-10}
+  maxThreads: ${SERVER_MAX_THREADS:-150}
+  minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
   maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
