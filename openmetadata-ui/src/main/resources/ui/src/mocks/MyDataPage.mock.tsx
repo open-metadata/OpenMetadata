@@ -38,7 +38,7 @@ export const mockDefaultLayout: Array<WidgetConfig> = [
   {
     h: 6,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 3,
+    w: 2,
     x: 0,
     y: 0,
     static: false,
@@ -62,7 +62,7 @@ export const mockDefaultLayout: Array<WidgetConfig> = [
   {
     h: 3,
     i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-    w: 3,
+    w: 2,
     x: 0,
     y: 9,
     static: false,
@@ -89,7 +89,7 @@ export const mockCustomizedLayout: Array<WidgetConfig> = [
   {
     h: 6,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 3,
+    w: 2,
     x: 0,
     y: 0,
     static: false,
