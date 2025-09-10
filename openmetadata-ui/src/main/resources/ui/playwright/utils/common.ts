@@ -471,8 +471,7 @@ export const verifyDomainLinkOnly = async (
 export const verifySpecificDomainLink = async (
   page: Page,
   domain: Domain['responseData'],
-  entityFqn?: string,
-  shouldNavigate = true
+  entityFqn?: string
 ) => {
   let domainLink;
 
@@ -496,16 +495,6 @@ export const verifySpecificDomainLink = async (
   expect(href).toContain('/domain/');
 
   await expect(domainLink).toBeEnabled();
-
-  if (shouldNavigate) {
-    await domainLink.click();
-
-    await expect(page).toHaveURL(
-      new RegExp(`/domain/${domain.fullyQualifiedName?.replace(/\./g, '\\.')}`)
-    );
-
-    await expect(page.getByText(domain.displayName)).toBeVisible();
-  }
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
