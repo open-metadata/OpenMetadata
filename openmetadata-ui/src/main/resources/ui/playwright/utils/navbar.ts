@@ -16,92 +16,112 @@ export const navbarSearchItems = [
   {
     label: 'All',
     searchIndex: 'dataAsset',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Database',
     searchIndex: 'database_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Database Schema',
     searchIndex: 'database_schema_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Table',
     searchIndex: 'table_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Topic',
     searchIndex: 'topic_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Dashboard',
     searchIndex: 'dashboard_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Pipeline',
     searchIndex: 'pipeline_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'ML Model',
     searchIndex: 'mlmodel_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Container',
     searchIndex: 'container_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Stored Procedure',
     searchIndex: 'stored_procedure_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Data Model',
     searchIndex: 'dashboard_data_model_search_index',
-    isScrollRequired: false,
+    scrollValue: 0,
   },
   {
     label: 'Glossary',
     searchIndex: 'glossary_term_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'Tag',
     searchIndex: 'tag_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'Search Index',
     searchIndex: 'search_entity_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'Data Product',
     searchIndex: 'data_product_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'API Endpoint',
     searchIndex: 'api_endpoint_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'API Collection',
     searchIndex: 'api_collection_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
   },
   {
     label: 'Metric',
     searchIndex: 'metric_search_index',
-    isScrollRequired: true,
+    scrollValue: 100,
+  },
+  {
+    label: 'Directory',
+    searchIndex: 'directory_search_index',
+    scrollValue: 200,
+  },
+  {
+    label: 'File',
+    searchIndex: 'file_search_index',
+    scrollValue: 200,
+  },
+  {
+    label: 'Spreadsheet',
+    searchIndex: 'spreadsheet_search_index',
+    scrollValue: 200,
+  },
+  {
+    label: 'Worksheet',
+    searchIndex: 'worksheet_search_index',
+    scrollValue: 200,
   },
 ];
 
@@ -109,7 +129,7 @@ export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string,
-  isScrollNeeded: boolean
+  scrollValue: number
 ) => {
   // moving out side left menu bar to avoid random failure due to left menu bar
   await page.mouse.move(1280, 0);
@@ -118,9 +138,9 @@ export const selectOption = async (
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  if (isScrollNeeded) {
+  if (scrollValue) {
     await page.getByTestId('global-search-select-option-Container').hover();
-    await page.mouse.wheel(0, 300);
+    await page.mouse.wheel(0, scrollValue);
   }
   await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
 };
