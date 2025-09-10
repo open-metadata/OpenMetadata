@@ -4461,4 +4461,5 @@ export enum WorkflowType {
     QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }

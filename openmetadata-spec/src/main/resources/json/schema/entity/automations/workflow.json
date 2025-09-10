@@ -16,7 +16,8 @@
       "enum": [
         "TEST_CONNECTION",
         "REVERSE_INGESTION",
-        "QUERY_RUNNER"
+        "QUERY_RUNNER",
+        "TEST_SPARK_ENGINE_CONNECTION"
       ]
     },
     "workflowStatus": {
@@ -72,6 +73,9 @@
         },
         {
           "$ref": "queryRunnerRequest.json"
+        },
+        {
+          "$ref": "testSparkEngineConnection.json"
         }
       ]
     },

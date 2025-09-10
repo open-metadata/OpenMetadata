@@ -56,7 +56,10 @@ def get_connection_args_common(connection) -> Dict[str, Any]:
 
 
 def create_generic_db_connection(
-    connection, get_connection_url_fn: Callable, get_connection_args_fn: Callable
+    connection,
+    get_connection_url_fn: Callable,
+    get_connection_args_fn: Callable,
+    **kwargs,
 ) -> Engine:
     """
     Generic Engine creation from connection object
@@ -75,6 +78,7 @@ def create_generic_db_connection(
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=False,
         max_overflow=-1,
+        **kwargs,
     )
 
     attach_query_tracker(engine)
