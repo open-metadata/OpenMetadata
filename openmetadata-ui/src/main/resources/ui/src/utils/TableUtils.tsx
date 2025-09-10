@@ -12,7 +12,7 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import {
@@ -139,7 +139,7 @@ import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityL
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
@@ -953,11 +953,30 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss">
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.path')}:`}
-              </Typography.Text>
-              <Typography.Text>{tableDetails?.dataModel?.path}</Typography.Text>
+            <Space className="p-y-xss" size="small">
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.dbt-source-project')}: `}
+                </Typography.Text>
+                <Typography.Text data-testid="dbt-source-project-id">
+                  {tableDetails?.dataModel?.dbtSourceProject ??
+                    NO_DATA_PLACEHOLDER}
+                </Typography.Text>
+              </div>
+
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}: `}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </div>
             </Space>
           }
         />

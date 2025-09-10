@@ -22,7 +22,7 @@ export interface MetadataExporterAppConfig {
     /**
      * Connection details for the Metadata Exporter Application.
      */
-    connectionConfig: SnowflakeConnection;
+    connectionConfig: Connection;
     /**
      * List of event types to export.
      */
@@ -46,13 +46,15 @@ export interface MetadataExporterAppConfig {
  * Connection details for the Metadata Exporter Application.
  *
  * Snowflake Connection Config
+ *
+ * Databricks Connection Config
  */
-export interface SnowflakeConnection {
+export interface Connection {
     /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      */
-    account: string;
+    account?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
@@ -86,7 +88,7 @@ export interface SnowflakeConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?: SnowflakeScheme;
+    scheme?: Scheme;
     /**
      * Snowflake Passphrase Key used with Private Key
      */
@@ -94,22 +96,53 @@ export interface SnowflakeConnection {
     /**
      * Service Type
      */
-    type?: SnowflakeType;
+    type?: Type;
     /**
      * Username to connect to Snowflake. This user should have privileges to read all the
      * metadata in Snowflake.
      */
-    username: string;
+    username?: string;
     /**
      * Snowflake warehouse.
      */
-    warehouse: string;
+    warehouse?: string;
+    /**
+     * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
+     * would like to restrict the metadata reading to a single catalog. When left blank,
+     * OpenMetadata Ingestion attempts to scan all the catalog.
+     */
+    catalog?: string;
+    /**
+     * The maximum amount of time (in seconds) to wait for a successful connection to the data
+     * source. If the connection attempt takes longer than this timeout period, an error will be
+     * returned.
+     */
+    connectionTimeout?: number;
+    /**
+     * Database Schema of the data source. This is optional parameter, if you would like to
+     * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the schemas.
+     */
+    databaseSchema?: string;
+    /**
+     * Host and port of the Databricks service.
+     */
+    hostPort?: string;
+    /**
+     * Databricks compute resources URL.
+     */
+    httpPath?: string;
+    /**
+     * Generated Token to connect to Databricks.
+     */
+    token?: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
-export enum SnowflakeScheme {
+export enum Scheme {
+    DatabricksConnector = "databricks+connector",
     Snowflake = "snowflake",
 }
 
@@ -118,7 +151,8 @@ export enum SnowflakeScheme {
  *
  * Service type.
  */
-export enum SnowflakeType {
+export enum Type {
+    Databricks = "Databricks",
     Snowflake = "Snowflake",
 }
 
