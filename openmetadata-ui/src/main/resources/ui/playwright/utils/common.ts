@@ -430,7 +430,7 @@ export const verifyDomainLinkInCard = async (
 
 export const verifyDomainPropagation = async (
   page: Page,
-  domains: Domain['responseData'][],
+  domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
   await page.getByTestId('searchBox').fill(childFqnSearchTerm);
@@ -438,9 +438,13 @@ export const verifyDomainPropagation = async (
   await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  for (const domain of domains) {
-    await verifyDomainLinkInCard(entityCard, domain);
-  }
+
+  await expect(entityCard).toBeVisible();
+
+  const domainLink = entityCard.getByTestId('domain-link').first();
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
