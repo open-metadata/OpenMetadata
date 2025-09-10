@@ -26,6 +26,7 @@ from typing import Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -76,8 +77,8 @@ class OMetaLogsMixin:
 
             # Apply compression if requested and content is large enough
             if compress and len(log_content) > 10240:  # Compress if > 10KB
-                compressed_data = gzip.compress(log_content.encode("utf-8"))
-                log_batch["logs"] = base64.b64encode(compressed_data).decode("utf-8")
+                compressed_data = gzip.compress(log_content.encode(UTF_8))
+                log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
                 log_batch["compressed"] = True
 
             # Send logs using the existing client
@@ -124,30 +125,24 @@ class OMetaLogsMixin:
         metrics = {"logs_sent": 0, "bytes_sent": 0}
 
         try:
-            # Check if send_logs_to_s3 method exists (new approach)
-            if hasattr(self, "send_logs_to_s3"):
-                success = self.send_logs_to_s3(
-                    pipeline_fqn=pipeline_fqn,
-                    run_id=run_id,
-                    log_content=log_content,
-                    compress=enable_compression and len(log_content) > 10240,
-                )
+            success = self.send_logs_to_s3(
+                pipeline_fqn=pipeline_fqn,
+                run_id=run_id,
+                log_content=log_content,
+                compress=enable_compression and len(log_content) > 10240,
+            )
 
-                if success:
-                    # Update metrics
-                    line_count = log_content.count("\n") + 1
-                    metrics["logs_sent"] = line_count
-                    metrics["bytes_sent"] = len(log_content)
+            if success:
+                # Update metrics
+                line_count = log_content.count("\n") + 1
+                metrics["logs_sent"] = line_count
+                metrics["bytes_sent"] = len(log_content)
 
-                    logger.debug(
-                        f"Successfully shipped {line_count} log lines to server"
-                    )
-                else:
-                    logger.error("Failed to send logs via mixin")
+                logger.debug(f"Successfully shipped {line_count} log lines to server")
                 return metrics
             else:
-                # Fallback: Direct API call for backward compatibility
-                logger.warning("Using fallback direct API call for log shipping")
+                # If send_logs_to_s3 fails, try fallback method
+                logger.warning("Primary log shipping failed, trying fallback method")
 
                 # Build payload
                 log_batch = {
@@ -159,10 +154,8 @@ class OMetaLogsMixin:
                 }
 
                 if enable_compression and len(log_content) > 10240:
-                    compressed_data = gzip.compress(log_content.encode("utf-8"))
-                    log_batch["logs"] = base64.b64encode(compressed_data).decode(
-                        "utf-8"
-                    )
+                    compressed_data = gzip.compress(log_content.encode(UTF_8))
+                    log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
                     log_batch["compressed"] = True
 
                 # Use the metadata client's REST interface directly
@@ -310,7 +303,7 @@ class OMetaLogsMixin:
                 if response.get("compressed"):
                     try:
                         decoded = base64.b64decode(log_data)
-                        log_data = gzip.decompress(decoded).decode("utf-8")
+                        log_data = gzip.decompress(decoded).decode(UTF_8)
                     except Exception as e:
                         logger.error(f"Failed to decompress logs: {e}")
                         return None
