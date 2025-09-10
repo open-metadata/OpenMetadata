@@ -53,13 +53,13 @@ class AppRunner(Step, ABC):
         self.metadata = metadata
         self.private_config = self._retrieve_app_private_config(
             config.appPrivateConfig.root if config.appPrivateConfig else None,
-            config.ingestionPipelineFQN,
+            config.applicationFqn,
         )
 
         super().__init__()
 
     def _retrieve_app_private_config(
-        self, private_config: Any, ingestion_pipeline_fqn: Optional[str]
+        self, private_config: Any, applicationFqn: Optional[str]
     ) -> Optional[Dict[str, Any]]:
         """
         Retrieve private config from the API using the bot token.
@@ -76,22 +76,10 @@ class AppRunner(Step, ABC):
             if isinstance(private_config, dict):
                 logger.debug("Private config is already a dictionary")
                 return private_config
-            # Extract app name from ingestion pipeline FQN
-            # Format: "OpenMetadata.AppName" -> "AppName"
-            if not isinstance(ingestion_pipeline_fqn, str):
-                logger.debug(
-                    f"ingestion_pipeline_fqn is not a string: {type(ingestion_pipeline_fqn)}"
-                )
-                return None
-            app_name = (
-                ingestion_pipeline_fqn.split(".")[-1]
-                if "." in ingestion_pipeline_fqn
-                else ingestion_pipeline_fqn
-            )
             # Use the bot to fetch the app from the API (bots get unmasked data)
             app: App = self.metadata.get_by_name(
                 entity=App,
-                fqn=app_name,
+                fqn=applicationFqn,
             )
             if app and app.privateConfiguration:
                 # The bot gets the unmasked private config from the API
