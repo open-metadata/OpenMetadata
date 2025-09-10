@@ -549,7 +549,7 @@
     "enable-partition": "Enable Partition",
     "enable-roles-polices-in-search": "Enable Roles & Policies in Search",
     "enable-smtp-server": "Enable SMTP Server",
-    "enable-sso": "Enable SSO",
+    "enable-sso": "Enable Self Signup",
     "enabled": "Enabled",
     "end-date": "End Date",
     "end-date-time-zone": "End Date: ({{timeZone}})",
