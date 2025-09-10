@@ -49,6 +49,7 @@ import {
   ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
+import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -70,7 +71,6 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import ApplicationConfiguration from '../ApplicationConfiguration/ApplicationConfiguration';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
@@ -233,13 +233,19 @@ const AppDetails = () => {
         ]),
   ];
 
-  const onConfigSave = async (data: IChangeEvent) => {
+  const onConfigSave = async (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => {
     if (appData) {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
-      const updatedFormData = formatFormDataForSubmit(data.formData);
+
+      const { formData, ingestionRunner } = data;
+
+      const updatedFormData = formatFormDataForSubmit(formData);
       const updatedData = {
         ...appData,
         appConfiguration: updatedFormData,
+        ...(ingestionRunner && { ingestionRunner }),
       };
 
       const jsonPatch = compare(appData, updatedData);
@@ -324,6 +330,9 @@ const AppDetails = () => {
   };
 
   const tabs = useMemo(() => {
+    const ApplicationConfigurationComponent =
+      applicationsClassBase.getApplicationConfigurationComponent();
+
     const tabConfiguration =
       appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
@@ -336,7 +345,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <ApplicationConfiguration
+                <ApplicationConfigurationComponent
                   appData={appData}
                   isLoading={loadingState.isSaveLoading}
                   jsonSchema={jsonSchema}
