@@ -86,12 +86,12 @@ class OMetaLogsMixin:
                 url,
                 data=json.dumps(log_batch),
             )
-
-            logger.debug(
-                f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}"
-            )
-
-            return True
+            if response.status_code == 200:
+                logger.debug(
+                    f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}"
+                )
+                return True
+            return False
 
         except Exception as e:
             logger.error(f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}")
@@ -140,38 +140,38 @@ class OMetaLogsMixin:
 
                 logger.debug(f"Successfully shipped {line_count} log lines to server")
                 return metrics
-            else:
-                # If send_logs_to_s3 fails, try fallback method
-                logger.warning("Primary log shipping failed, trying fallback method")
 
-                # Build payload
-                log_batch = {
-                    "logs": log_content,
-                    "timestamp": int(time.time() * 1000),
-                    "connectorId": f"{socket.gethostname()}-{os.getpid()}",
-                    "compressed": False,
-                    "lineCount": log_content.count("\n") + 1,
-                }
+            # If send_logs_to_s3 fails, try fallback method
+            logger.warning("Primary log shipping failed, trying fallback method")
 
-                if enable_compression and len(log_content) > 10240:
-                    compressed_data = gzip.compress(log_content.encode(UTF_8))
-                    log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
-                    log_batch["compressed"] = True
+            # Build payload
+            log_batch = {
+                "logs": log_content,
+                "timestamp": int(time.time() * 1000),
+                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
+                "compressed": False,
+                "lineCount": log_content.count("\n") + 1,
+            }
 
-                # Use the metadata client's REST interface directly
-                self.client.post(
-                    f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}",
-                    data=json.dumps(log_batch),
-                )
+            if enable_compression and len(log_content) > 10240:
+                compressed_data = gzip.compress(log_content.encode(UTF_8))
+                log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
+                log_batch["compressed"] = True
 
-                # Update metrics
-                metrics["logs_sent"] = log_batch["lineCount"]
-                metrics["bytes_sent"] = len(json.dumps(log_batch))
+            # Use the metadata client's REST interface directly
+            self.client.post(
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}",
+                data=json.dumps(log_batch),
+            )
 
-                logger.debug(
-                    f"Successfully shipped {log_batch['lineCount']} log lines to server"
-                )
-                return metrics
+            # Update metrics
+            metrics["logs_sent"] = log_batch["lineCount"]
+            metrics["bytes_sent"] = len(json.dumps(log_batch))
+
+            logger.debug(
+                f"Successfully shipped {log_batch['lineCount']} log lines to server"
+            )
+            return metrics
 
         except Exception as e:
             logger.error(f"Failed to send logs batch for pipeline {pipeline_fqn}: {e}")
