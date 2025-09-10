@@ -23,6 +23,7 @@ from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
+    _replace_target_table,
     get_column_lineage,
     get_table_fqn_from_query_name,
     populate_column_lineage_map,
@@ -292,3 +293,53 @@ class SqlLineageTest(TestCase):
 
         for i, query in enumerate(query_list):
             self.assertEqual(mask_query(query[0], query[1]), expected_query_list[i])
+
+    def test_replace_target_table(self):
+        """
+        Test the _replace_target_table function
+        """
+        # Create a LineageParser with a dummy UDF query
+        query = "CREATE TABLE dummy_table_name AS SELECT id, name FROM source_table"
+        parser = LineageParser(query, dialect=Dialect.ANSI)
+
+        # Replace the target table with the expected name
+        expected_table_name = "actual_target_table"
+        _replace_target_table(parser, expected_table_name)
+
+        # Verify the target table has been replaced
+        stmt_holder = parser.parser._stmt_holders[0]
+        target_tables = list(stmt_holder.write)
+
+        # Check that we have exactly one target table with the expected name
+        self.assertEqual(len(target_tables), 1)
+        self.assertEqual(str(target_tables[0]), "<default>.actual_target_table")
+
+        # Verify column lineage is preserved
+        column_lineage = parser.parser.get_column_lineage()
+        self.assertIsNotNone(column_lineage)
+
+        # Check that column lineage points to the new target table
+        for col_lineage in column_lineage:
+            target_column = col_lineage[-1]
+            self.assertEqual(str(target_column.parent), "<default>.actual_target_table")
+
+    def test_replace_target_table_with_default_schema(self):
+        """
+        Test _replace_target_table with default schema removal
+        """
+        # Create a LineageParser with a query
+        query = "CREATE TABLE dummy_table_name AS SELECT * FROM source_table"
+        parser = LineageParser(query, dialect=Dialect.ANSI)
+
+        # Replace with a name containing default schema
+        expected_table_name = "<default>.actual_table"
+        _replace_target_table(parser, expected_table_name)
+
+        # Verify the target table name is correct
+        # Note: LineageTable always adds <default> for tables without schema
+        stmt_holder = parser.parser._stmt_holders[0]
+        target_tables = list(stmt_holder.write)
+
+        self.assertEqual(len(target_tables), 1)
+        # LineageTable will add <default> back even after we remove it
+        self.assertEqual(str(target_tables[0]), "<default>.actual_table")

@@ -15,6 +15,7 @@ export interface EntityDataClassCreationConfig {
   entityDetails?: boolean;
   table?: boolean;
   topic?: boolean;
+  chart?: boolean;
   dashboard?: boolean;
   mlModel?: boolean;
   pipeline?: boolean;

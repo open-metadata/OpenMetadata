@@ -211,13 +211,18 @@ class BigQueryQueryResult(BaseModel):
         usage_location: str,
         dataset_id: str,
         project_id: str,
+        billing_project_id: Optional[str] = None,
     ):
+        # Use billing project for the INFORMATION_SCHEMA query if provided
+        query_project_id = billing_project_id or project_id
+
         rows = session.execute(
             text(
                 JOBS.format(
                     usage_location=usage_location,
                     dataset_id=dataset_id,
                     project_id=project_id,
+                    query_project_id=query_project_id,
                     insert=DatabaseDMLOperations.INSERT.value,
                     update=DatabaseDMLOperations.UPDATE.value,
                     delete=DatabaseDMLOperations.DELETE.value,
@@ -240,7 +245,7 @@ JOBS = """
         dml_statistics.deleted_row_count as deleted_row_count,
         dml_statistics.updated_row_count as updated_row_count
     FROM
-        `region-{usage_location}`.INFORMATION_SCHEMA.JOBS
+        `{query_project_id}`.`region-{usage_location}`.INFORMATION_SCHEMA.JOBS
     WHERE
         DATE(creation_time) >= CURRENT_DATE() - 1 AND
         destination_table.dataset_id = '{dataset_id}' AND

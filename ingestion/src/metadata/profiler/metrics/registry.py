@@ -26,6 +26,9 @@ from metadata.profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.profiler.metrics.composed.non_parametric_skew import NonParametricSkew
 from metadata.profiler.metrics.composed.null_ratio import NullRatio
 from metadata.profiler.metrics.composed.unique_ratio import UniqueRatio
+from metadata.profiler.metrics.hybrid.cardinality_distribution import (
+    CardinalityDistribution,
+)
 from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.static.column_count import ColumnCount
 from metadata.profiler.metrics.static.column_names import ColumnNames
@@ -104,6 +107,7 @@ class Metrics(MetricRegistry):
 
     # Hybrid Metrics
     HISTOGRAM = Histogram
+    CARDINALITY_DISTRIBUTION = CardinalityDistribution
 
     # Missing Count
     NULL_MISSING_COUNT = NullMissingCount
