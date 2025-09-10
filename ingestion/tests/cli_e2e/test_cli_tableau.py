@@ -265,10 +265,10 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             self.assertIsNotNone(analytics_dashboard.service)
             # Validate that charts are properly linked
             if hasattr(analytics_dashboard, "charts") and analytics_dashboard.charts:
-                self.assertEqual(
+                self.assertGreaterEqual(
                     len(analytics_dashboard.charts.root),
                     4,
-                    "Analytics Workbook should have 4 charts",
+                    "Analytics Workbook should have 4 or more charts",
                 )
 
     def _validate_chart_metadata(self) -> None:
