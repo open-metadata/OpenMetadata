@@ -66,8 +66,8 @@ export const checkPersonaInProfile = async (
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
-    await expect(page.getByTestId('default-persona-text')).toBeVisible();
-    await expect(page.getByTestId('default-persona-text')).toContainText(
+    await expect(page.getByTestId('default-persona-chip')).toBeVisible();
+    await expect(page.getByTestId('default-persona-chip')).toContainText(
       expectedPersonaName
     );
   } else {
