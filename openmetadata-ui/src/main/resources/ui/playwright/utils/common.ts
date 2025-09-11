@@ -280,7 +280,7 @@ export const removeDomain = async (
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
+  await expect(page.getByTestId('no-domain-text')).toContainText('--');
 };
 
 export const assignDataProduct = async (

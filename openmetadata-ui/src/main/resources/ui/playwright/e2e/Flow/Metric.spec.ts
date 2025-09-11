@@ -178,13 +178,13 @@ test.describe('Listing page and add Metric flow should work', () => {
     // check for metric entities in table
     await expect(
       page.getByRole('row', {
-        name: `${metric4.entity.name} ${metric4.entity.description} -- -- No Owner`,
+        name: `${metric4.entity.name} ${metric4.entity.description} -- -- --`,
       })
     ).toBeVisible();
 
     await expect(
       page.getByRole('row', {
-        name: `${metric5.entity.name} ${metric5.entity.description} -- -- No Owner`,
+        name: `${metric5.entity.name} ${metric5.entity.description} -- -- --`,
       })
     ).toBeVisible();
 
