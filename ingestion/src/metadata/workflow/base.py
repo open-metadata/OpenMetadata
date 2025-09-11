@@ -324,8 +324,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             for step in self.workflow_steps():
+
+                record_count: int = (
+                    step.status.record_count
+                    if step.status.record_count > 0
+                    else len(step.status.records)
+                )
+
                 logger.info(
-                    f"{step.name}: Processed {len(step.status.records)} records,"
+                    f"{step.name}: Processed {record_count} records,"
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
