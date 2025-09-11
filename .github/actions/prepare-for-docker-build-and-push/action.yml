@@ -1,5 +1,5 @@
 name: Prepare for Docker Build&Push
-description: Set up Docker Build&Push dependencies and generate Docker Tags.
+description: Set up DockerBuild&Push dependencies and generate Docker Tags.
 
 inputs:
   image:
