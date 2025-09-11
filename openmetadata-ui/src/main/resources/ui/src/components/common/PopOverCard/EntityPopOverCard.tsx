@@ -27,6 +27,7 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getAlertsFromName } from '../../../rest/alertsAPI';
 import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
@@ -51,6 +52,7 @@ import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getBotByName } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -208,6 +210,18 @@ export const PopoverContent: React.FC<{
             TabSpecificField.DOMAINS,
           ],
         });
+
+        break;
+
+      case EntityType.BOT:
+        promise = getBotByName(entityFQN, {
+          fields: [EntityType.BOT],
+        });
+
+        break;
+
+      case EntityType.EVENT_SUBSCRIPTION:
+        promise = getAlertsFromName(entityFQN);
 
         break;
 

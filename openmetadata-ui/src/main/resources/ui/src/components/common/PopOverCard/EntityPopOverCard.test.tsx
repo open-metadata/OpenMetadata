@@ -15,7 +15,9 @@ import { act, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TAG_DATA, MOCK_TAG_ENCODED_FQN } from '../../../mocks/Tags.mock';
+import { getAlertsFromName } from '../../../rest/alertsAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
+import { getBotByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
 const updateCachedEntityData = jest.fn();
@@ -103,6 +105,14 @@ jest.mock('../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
+jest.mock('../../../rest/userAPI', () => ({
+  getBotByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../rest/alertsAPI', () => ({
+  getAlertsFromName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     cachedEntityData: {},
@@ -111,6 +121,15 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 }));
 
 describe('Test EntityPopoverCard component', () => {
+  beforeEach(() => {
+    updateCachedEntityData.mockClear();
+
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
+      cachedEntityData: {},
+      updateCachedEntityData,
+    }));
+  });
+
   it('EntityPopoverCard should render element', () => {
     render(
       <EntityPopOverCard
@@ -231,5 +250,81 @@ describe('Test EntityPopoverCard component', () => {
 
     expect(mockTagAPI.mock.calls).toEqual([]);
     expect(screen.getByText('ExploreSearchCard')).toBeInTheDocument();
+  });
+
+  it('EntityPopoverCard should call bot API if entity type is BOT', async () => {
+    const mockBotFQN = 'test-bot';
+
+    await act(async () => {
+      render(
+        <PopoverContent entityFQN={mockBotFQN} entityType={EntityType.BOT} />
+      );
+    });
+
+    expect(getBotByName).toHaveBeenCalledWith(mockBotFQN, {
+      fields: [EntityType.BOT],
+    });
+  });
+
+  it('EntityPopoverCard should call alerts API if entity type is EVENT_SUBSCRIPTION', async () => {
+    const mockAlertFQN = 'test-alert';
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={mockAlertFQN}
+          entityType={EntityType.EVENT_SUBSCRIPTION}
+        />
+      );
+    });
+
+    expect(getAlertsFromName).toHaveBeenCalledWith(mockAlertFQN);
+  });
+
+  it('EntityPopoverCard should call bot API and trigger updateCachedEntityData', async () => {
+    const mockBotFQN = 'test-bot';
+    const mockBotData = { id: 'bot-id', name: 'test-bot' };
+
+    (getBotByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockBotData)
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent entityFQN={mockBotFQN} entityType={EntityType.BOT} />
+      );
+    });
+
+    expect(getBotByName).toHaveBeenCalledWith(mockBotFQN, {
+      fields: [EntityType.BOT],
+    });
+    expect(updateCachedEntityData).toHaveBeenCalledWith({
+      id: mockBotFQN,
+      entityDetails: mockBotData,
+    });
+  });
+
+  it('EntityPopoverCard should call alerts API and trigger updateCachedEntityData', async () => {
+    const mockAlertFQN = 'test-alert';
+    const mockAlertData = { id: 'alert-id', name: 'test-alert' };
+
+    (getAlertsFromName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockAlertData)
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={mockAlertFQN}
+          entityType={EntityType.EVENT_SUBSCRIPTION}
+        />
+      );
+    });
+
+    expect(getAlertsFromName).toHaveBeenCalledWith(mockAlertFQN);
+    expect(updateCachedEntityData).toHaveBeenCalledWith({
+      id: mockAlertFQN,
+      entityDetails: mockAlertData,
+    });
   });
 });
