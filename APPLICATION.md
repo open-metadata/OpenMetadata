@@ -1,5 +1,5 @@
 How to Add a New Application
-
+ 
 ## Create App Config
 
 in `openmetadata-spec/src/main/resources/json/schema/entity/applications/configuration` define the json schema representing your application configuration.
