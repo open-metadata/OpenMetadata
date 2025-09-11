@@ -15,6 +15,10 @@
  */
 export interface CreateMetric {
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -282,6 +286,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",

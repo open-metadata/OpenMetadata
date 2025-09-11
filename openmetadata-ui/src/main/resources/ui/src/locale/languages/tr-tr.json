@@ -557,6 +557,7 @@
     "endpoint-url": "Uç Nokta URL'si",
     "endpoint-url-for-aws": "AWS için Uç Nokta URL'si",
     "enter": "Girin",
+    "enter-custom-unit-of-measurement": "Özel ölçü birimini girin ve Enter'a basın",
     "enter-entity": "{{entity}} Girin",
     "enter-entity-name": "{{entity}} adı girin",
     "enter-entity-value": "{{entity}} Değeri Girin",
