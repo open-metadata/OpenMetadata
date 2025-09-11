@@ -19,7 +19,6 @@ It picks up the information from reading the files
 produced by the stage. At the end, the path is removed.
 """
 import json
-import os
 import shutil
 import traceback
 from pathlib import Path
@@ -41,13 +40,14 @@ class MetadataPipelineObservabilitySinkConfig(ConfigModel):
     """
     Configuration for Metadata Pipeline Observability Sink
     """
+
     filename: str
 
 
 class MetadataPipelineObservabilityBulkSink(BulkSink):
     """
     BulkSink implementation to send pipeline observability data to table entities.
-    
+
     Implements merge logic:
     - Append new pipeline observability data
     - Update existing entries based on pipeline FQN
@@ -64,7 +64,7 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         self.config = config
         self.metadata = metadata
         self.wrote_something = False
-        
+
         # Track processed tables for logging
         self.processed_tables: Dict[str, int] = {}
 
@@ -89,33 +89,35 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         try:
             staging_dir = Path(self.config.filename)
             logger.info(f"Processing pipeline observability files from {staging_dir}")
-            
+
             if not staging_dir.exists():
                 logger.warning(f"Staging directory {staging_dir} does not exist")
                 return
-            
+
             # Process all observability JSON files
             observability_files = list(staging_dir.glob("*_observability.json"))
-            
+
             if not observability_files:
                 logger.info("No pipeline observability files found to process")
                 return
-            
+
             for file_path in observability_files:
                 try:
                     self._process_observability_file(file_path)
                 except Exception as exc:
-                    logger.error(f"Failed to process observability file {file_path}: {exc}")
+                    logger.error(
+                        f"Failed to process observability file {file_path}: {exc}"
+                    )
                     logger.debug(traceback.format_exc())
                     continue
-            
+
             # Log summary
             total_processed = sum(self.processed_tables.values())
             logger.info(
                 f"Pipeline observability bulk sink completed. "
                 f"Processed {total_processed} observability entries across {len(self.processed_tables)} tables"
             )
-            
+
         except Exception as exc:
             logger.error(f"Failed to run pipeline observability bulk sink: {exc}")
             logger.debug(traceback.format_exc())
@@ -125,48 +127,48 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
     def _process_observability_file(self, file_path: Path):
         """
         Process a single observability JSON file.
-        
+
         Args:
             file_path: Path to the observability file
         """
         try:
             with open(file_path, "r", encoding=UTF_8) as file:
                 data = json.load(file)
-            
+
             table_fqn = data.get("table_fqn")
             observability_data_json = data.get("observability_data", [])
-            
+
             if not table_fqn or not observability_data_json:
                 logger.warning(f"Invalid observability file format: {file_path}")
                 return
-            
+
             # Convert JSON back to PipelineObservability objects
             observability_data = [
                 PipelineObservability.model_validate(obs_json)
                 for obs_json in observability_data_json
             ]
-            
+
             # Get the table entity
             table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
             if not table:
                 logger.warning(f"Table not found: {table_fqn}")
                 return
-            
+
             # Send observability data to OpenMetadata with merge logic
             self._add_pipeline_observability(table, observability_data)
-            
+
             # Track processed data
             self.processed_tables[table_fqn] = len(observability_data)
             self.wrote_something = True
-            
+
             # Update status tracking for each observability entry
             for _ in observability_data:
                 self.status.scanned(f"Pipeline observability for {table_fqn}")
-            
+
             logger.info(
                 f"Successfully processed {len(observability_data)} observability entries for table {table_fqn}"
             )
-            
+
         except Exception as exc:
             logger.error(f"Failed to process observability file {file_path}: {exc}")
             logger.debug(traceback.format_exc())
@@ -178,26 +180,27 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
                 )
             )
 
-    def _add_pipeline_observability(self, table: Table, observability_data: List[PipelineObservability]):
+    def _add_pipeline_observability(
+        self, table: Table, observability_data: List[PipelineObservability]
+    ):
         """
         Add pipeline observability data to a table using individual storage calls.
-        
+
         This method uses individual pipeline FQN-based storage to ensure proper
         entity_extension storage mechanism rather than bulk updates.
-        
+
         Args:
             table: Table entity to update
             observability_data: List of new pipeline observability data
         """
         try:
             table_id = table.id
-            
+
             # Use the existing working bulk method from table mixin
             result_table = self.metadata.add_pipeline_observability(
-                table_id=table_id,
-                pipeline_observability=observability_data
+                table_id=table_id, pipeline_observability=observability_data
             )
-            
+
             if result_table:
                 logger.info(
                     f"Successfully stored {len(observability_data)} pipeline observability entries "
@@ -207,7 +210,7 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
                 logger.warning(
                     f"No response received for pipeline observability update for table {table.fullyQualifiedName.root}"
                 )
-            
+
         except Exception as exc:
             logger.error(
                 f"Failed to store pipeline observability for table {table.fullyQualifiedName.root}: {exc}"
@@ -234,6 +237,6 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
             logger.info("Pipeline observability bulk sink didn't process any data")
         else:
             logger.info("Pipeline observability bulk sink completed successfully")
-        
+
         # Clean up staging directory
         self._cleanup_staging_dir()

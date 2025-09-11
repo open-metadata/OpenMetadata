@@ -21,10 +21,10 @@ import traceback
 from typing import Dict, Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -42,6 +42,7 @@ class TableObservabilityStageConfig(ConfigModel):
     """
     Configuration for Table Observability Stage
     """
+
     filename: str
 
 
@@ -64,13 +65,16 @@ class TableObservabilityStage(Stage):
         self.config = config
         self.metadata = metadata
         init_staging_dir(self.config.filename)
-        
+
         # In-memory storage for observability data grouped by table FQN
         self.observability_data: Dict[str, List[PipelineObservability]] = {}
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None,
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
     ) -> "TableObservabilityStage":
         config = TableObservabilityStageConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -78,40 +82,40 @@ class TableObservabilityStage(Stage):
     def _run(self, record: TablePipelineObservability) -> Iterable[Either[str]]:
         """
         Stage pipeline observability data by table FQN.
-        
+
         Args:
             record: TablePipelineObservability from processor
-            
+
         Returns:
             Either success (table_fqn) or error message
         """
-        logger.info(f"[DEBUG] Table Observability Stage received record: {record}")
-        logger.info(f"[DEBUG] Record type: {type(record)}")
-        logger.info(f"[DEBUG] Record has table: {hasattr(record, 'table') and record.table is not None}")
-        logger.info(f"[DEBUG] Record has observability_data: {hasattr(record, 'observability_data') and record.observability_data is not None}")
-        
+
         try:
             if not record.table or not record.observability_data:
-                logger.warning(f"[DEBUG] Invalid record - table: {record.table}, observability_data: {record.observability_data}")
+                logger.debug(
+                    f"Invalid record - table: {record.table}, observability_data: {record.observability_data}"
+                )
                 return Either(left="Invalid pipeline observability record")
-            
+
             table_fqn = record.table.fullyQualifiedName.root
-            logger.info(f"[DEBUG] Processing table FQN: {table_fqn} with {len(record.observability_data)} observability entries")
-            
+            logger.debug(
+                f"Processing table FQN: {table_fqn} with {len(record.observability_data)} observability entries"
+            )
+
             # Group observability data by table FQN
             if table_fqn not in self.observability_data:
                 self.observability_data[table_fqn] = []
-            
+
             # Add new observability data for this table
             self.observability_data[table_fqn].extend(record.observability_data)
-            
+
             logger.debug(
                 f"Staged {len(record.observability_data)} observability entries for table {table_fqn}"
             )
-            
+
             yield Either(right=table_fqn)
             self.dump_data_to_file()
-            
+
         except Exception as exc:
             logger.error(f"Failed to stage pipeline observability record: {exc}")
             logger.debug(traceback.format_exc())
@@ -127,46 +131,50 @@ class TableObservabilityStage(Stage):
         """
         Write all staged observability data to files.
         """
-        logger.debug(f"Staging observability data for {len(self.observability_data)} tables")
-        
+        logger.debug(
+            f"Staging observability data for {len(self.observability_data)} tables"
+        )
+
         try:
             if not self.observability_data:
                 logger.info("No pipeline observability data to stage")
                 return
-            
+
             # Write observability data grouped by table FQN
             for table_fqn, obs_data_list in self.observability_data.items():
                 filename = f"{table_fqn.replace('.', '_')}_observability.json"
                 file_path = os.path.join(self.config.filename, filename)
-                
+
                 # Convert to JSON-serializable format
-                observability_json = [obs_data.model_dump(mode='json') for obs_data in obs_data_list]
-                
+                observability_json = [
+                    obs_data.model_dump(mode="json") for obs_data in obs_data_list
+                ]
+
                 with open(file_path, "w", encoding=UTF_8) as file:
                     json.dump(
                         {
                             "table_fqn": table_fqn,
-                            "observability_data": observability_json
+                            "observability_data": observability_json,
                         },
                         file,
-                        indent=2
+                        indent=2,
                     )
-                
+
                 logger.info(
                     f"Staged {len(obs_data_list)} observability entries for table {table_fqn} "
                     f"to {file_path}"
                 )
-            
+
             logger.info(
                 f"Successfully staged pipeline observability data for {len(self.observability_data)} tables "
                 f"in {self.config.filename}"
             )
-            
+
         except Exception as exc:
             logger.error(f"Failed to write staged pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
 
-    @property 
+    @property
     def name(self) -> str:
         return "Table Observability Stage"
 
@@ -180,4 +188,3 @@ class TableObservabilityStage(Stage):
         """
         Nothing to close. Data is being dumped inside a context manager
         """
-

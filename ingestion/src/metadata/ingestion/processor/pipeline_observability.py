@@ -33,7 +33,7 @@ logger = ingestion_logger()
 class PipelineObservabilityProcessor(Processor):
     """
     Processor for pipeline observability data.
-    
+
     Validates and transforms TablePipelineObservability objects
     from pipeline profiler sources.
     """
@@ -47,18 +47,24 @@ class PipelineObservabilityProcessor(Processor):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None, **kwargs
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+        **kwargs,
     ):
         config = ConfigModel.model_validate(config_dict or {})
         return cls(config, metadata)
 
-    def _run(self, record: TablePipelineObservability) -> Either[TablePipelineObservability]:
+    def _run(
+        self, record: TablePipelineObservability
+    ) -> Either[TablePipelineObservability]:
         """
         Process pipeline observability data.
-        
+
         Args:
             record: TablePipelineObservability from pipeline profiler source
-            
+
         Returns:
             Either validated TablePipelineObservability or error
         """
@@ -66,12 +72,14 @@ class PipelineObservabilityProcessor(Processor):
             # Validate the record
             if not record.table:
                 logger.warning("Missing table entity in pipeline observability record")
-                return Either(left="Missing table entity in pipeline observability record")
-            
+                return Either(
+                    left="Missing table entity in pipeline observability record"
+                )
+
             if not record.observability_data:
                 logger.warning("Missing observability data in record")
                 return Either(left="Missing observability data in record")
-            
+
             # Validate each observability entry
             for obs_data in record.observability_data:
                 if not obs_data.pipeline:
@@ -79,16 +87,18 @@ class PipelineObservabilityProcessor(Processor):
                         f"Pipeline observability entry missing pipeline reference for table {record.table.fullyQualifiedName}"
                     )
                     continue
-                
+
                 # Additional validation can be added here
                 logger.debug(
                     f"Processing observability data for pipeline {obs_data.pipeline.fullyQualifiedName} "
                     f"and table {record.table.fullyQualifiedName}"
                 )
-            
-            logger.debug(f"Processed pipeline observability for table: {record.table.fullyQualifiedName}")
+
+            logger.debug(
+                f"Processed pipeline observability for table: {record.table.fullyQualifiedName}"
+            )
             return Either(right=record)
-            
+
         except Exception as exc:
             logger.error(f"Failed to process pipeline observability record: {exc}")
             logger.debug(traceback.format_exc())

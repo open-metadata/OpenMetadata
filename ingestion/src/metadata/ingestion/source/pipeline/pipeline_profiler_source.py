@@ -36,6 +36,7 @@ class TablePipelineObservability(BaseModel):
     """
     Model to represent table with its pipeline observability data
     """
+
     table: Table
     observability_data: List[PipelineObservability]
 
@@ -51,9 +52,11 @@ class PipelineProfilerSource(Source, ABC):
     def __init__(self, config, metadata: OpenMetadata):
         self.config = config
         self.metadata = metadata
-        self.source_config = self.config.sourceConfig.config if self.config.sourceConfig else None
+        self.source_config = (
+            self.config.sourceConfig.config if self.config.sourceConfig else None
+        )
         super().__init__()
-        
+
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name=None):
         """
@@ -62,15 +65,18 @@ class PipelineProfilerSource(Source, ABC):
         from metadata.generated.schema.metadataIngestion.workflow import (
             Source as WorkflowSource,
         )
+
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
     @abstractmethod
-    def get_table_pipeline_observability(self) -> Iterable[Dict[str, List[PipelineObservability]]]:
+    def get_table_pipeline_observability(
+        self,
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
         """
         Method to extract pipeline observability data grouped by table FQN.
         This method should be implemented by each pipeline service.
-        
+
         Returns:
             Dict mapping table FQN to list of PipelineObservability objects
         """
@@ -85,7 +91,11 @@ class PipelineProfilerSource(Source, ABC):
                     # Get the table entity from OpenMetadata
                     table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                     if table:
-                        yield Either(right=TablePipelineObservability(table=table, observability_data=observability_list))
+                        yield Either(
+                            right=TablePipelineObservability(
+                                table=table, observability_data=observability_list
+                            )
+                        )
                     else:
                         logger.warning(f"Table not found: {table_fqn}")
         except Exception as exc:
@@ -122,7 +132,5 @@ class PipelineProfilerSource(Source, ABC):
         Get the list of db service names for mapping pipeline observability to table entities
         """
         return (
-            self.source_config.dbServiceNames or ["*"]
-            if self.source_config
-            else ["*"]
+            self.source_config.dbServiceNames or ["*"] if self.source_config else ["*"]
         )

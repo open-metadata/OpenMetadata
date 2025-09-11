@@ -62,9 +62,7 @@ class PipelineProfilerWorkflow(IngestionWorkflow):
         processor_type = self.config.processor.type.lower()
         processor_class = import_processor_class(processor_type)
         processor_config = self.config.processor.model_dump().get("config", {})
-        processor: Processor = processor_class.create(
-            processor_config, self.metadata
-        )
+        processor: Processor = processor_class.create(processor_config, self.metadata)
         logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")
 
         return processor

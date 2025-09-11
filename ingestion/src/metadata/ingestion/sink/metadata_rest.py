@@ -88,9 +88,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
-from metadata.ingestion.source.pipeline.pipeline_profiler_source import (
-    TablePipelineObservability,
-)
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
