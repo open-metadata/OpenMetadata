@@ -113,7 +113,7 @@ if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
     -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
     -Djava.awt.headless=true"
 fi
-
+ 
 #Application classname
 APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
