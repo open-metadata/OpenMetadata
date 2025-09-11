@@ -1,6 +1,6 @@
 name: Setup OpenMetadata Test Environment
 description: Steps needed to have a coherent test environment
-
+ 
 inputs:
   python-version:
     description: Python Version to install
