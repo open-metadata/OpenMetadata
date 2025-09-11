@@ -35,7 +35,7 @@ import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import ProviderSelector from './ProviderSelector/ProviderSelector';
-import './SettingsSso.less';
+import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
 
 const SettingsSso = () => {

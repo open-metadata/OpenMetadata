@@ -69,37 +69,17 @@ import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedCha
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
-import './SSOConfigurationForm.less';
+import './sso-configuration-form.less';
+import {
+  FormData,
+  SSOConfigurationFormProps,
+  UISchemaObject,
+} from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 
 const widgets = {
   SelectWidget: SelectWidget,
 };
-
-interface UISchemaField {
-  'ui:title'?: string;
-  'ui:widget'?: string;
-  'ui:hideError'?: boolean;
-  'ui:options'?: Record<string, unknown>;
-}
-
-interface UISchemaObject {
-  [key: string]: UISchemaField | UISchemaObject;
-}
-
-interface FormData {
-  authenticationConfiguration: AuthenticationConfiguration;
-  authorizerConfiguration: AuthorizerConfiguration;
-}
-
-interface SSOConfigurationFormProps {
-  forceEditMode?: boolean;
-  onChangeProvider?: () => void;
-  onProviderSelect?: (provider: AuthProvider) => void;
-  selectedProvider?: string;
-  hideBorder?: boolean;
-  securityConfig?: SecurityConfiguration | null;
-}
 
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
@@ -129,17 +109,20 @@ const SSOConfigurationFormRJSF = ({
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
 
   const getProviderDisplayName = (provider: string) => {
-    return provider === AuthProvider.Azure
-      ? 'Azure AD'
-      : provider === AuthProvider.Google
-      ? 'Google'
-      : provider === AuthProvider.Okta
-      ? 'Okta'
-      : provider === AuthProvider.Auth0
-      ? 'Auth0'
-      : provider === AuthProvider.AwsCognito
-      ? 'AWS Cognito'
-      : provider?.charAt(0).toUpperCase() + provider?.slice(1);
+    switch (provider) {
+      case AuthProvider.Azure:
+        return 'Azure AD';
+      case AuthProvider.Google:
+        return 'Google';
+      case AuthProvider.Okta:
+        return 'Okta';
+      case AuthProvider.Auth0:
+        return 'Auth0';
+      case AuthProvider.AwsCognito:
+        return 'AWS Cognito';
+      default:
+        return provider?.charAt(0).toUpperCase() + provider?.slice(1);
+    }
   };
 
   const getProviderIcon = (provider: string) => {

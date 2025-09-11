@@ -23,7 +23,7 @@ import AzureIcon from '../../../assets/img/icon-azure.png';
 import GoogleIcon from '../../../assets/img/icon-google.png';
 import OktaIcon from '../../../assets/img/icon-okta.png';
 import { AuthProvider } from '../../../generated/settings/settings';
-import './ProviderSelector.less';
+import './provider-selector.less';
 
 interface ProviderSelectorProps {
   selectedProvider?: AuthProvider;

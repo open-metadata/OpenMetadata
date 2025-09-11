@@ -22,18 +22,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
 import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import './SSOGroupedFieldTemplate.less';
-
-interface PropertyMap {
-  advancedProperties: ObjectFieldTemplatePropertyType[];
-  normalProperties: ObjectFieldTemplatePropertyType[];
-}
-
-interface FieldGroup {
-  title?: string;
-  properties: ObjectFieldTemplatePropertyType[];
-  showDivider?: boolean;
-}
+import './sso-grouped-field-template.less';
+import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
 
 export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {

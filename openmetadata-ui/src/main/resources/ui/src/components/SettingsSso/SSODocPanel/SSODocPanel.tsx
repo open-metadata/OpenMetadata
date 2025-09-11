@@ -30,7 +30,7 @@ import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
-import './SSODocPanel.less';
+import './sso-doc-panel.less';
 
 interface SSODocPanelProp {
   serviceName: string;

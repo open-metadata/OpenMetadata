@@ -22,7 +22,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
 import { ADVANCED_PROPERTIES } from '../../constants/Services.constant';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import './SSOObjectFieldTemplate.less';
+import './sso-object-field-template.less';
 
 interface PropertyMap {
   advancedProperties: ObjectFieldTemplatePropertyType[];
