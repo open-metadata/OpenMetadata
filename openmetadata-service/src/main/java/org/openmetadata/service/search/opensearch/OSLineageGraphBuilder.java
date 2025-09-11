@@ -52,9 +52,9 @@ public class OSLineageGraphBuilder {
     }
 
     int totalDepth =
-        lineageRequest.getDirection().toString().equals("UPSTREAM")
+        lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)
             ? lineageRequest.getUpstreamDepth()
-            : lineageRequest.getDownstreamDepth();
+            : lineageRequest.getDownstreamDepth() + 1;
 
     return totalDepth - remainingDepth;
   }
@@ -150,7 +150,7 @@ public class OSLineageGraphBuilder {
                 new NodeInformation()
                     .withEntity(esDoc)
                     .withPaging(new LayerPaging().withEntityUpstreamCount(upStreamEntities.size()))
-                    .withNodeDepth(currentDepth));
+                    .withNodeDepth(-1 * currentDepth));
         List<EsLineageData> paginatedUpstreamEntities =
             paginateList(
                 upStreamEntities, lineageRequest.getLayerFrom(), lineageRequest.getLayerSize());
@@ -193,25 +193,6 @@ public class OSLineageGraphBuilder {
         Map.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
         lineageRequest.getDownstreamDepth());
     return result;
-  }
-
-  private void addFirstDownstreamEntity(
-      SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
-    Map<String, Object> entityMap =
-        OsUtils.searchEntityByKey(
-            lineageRequest.getDirection(),
-            GLOBAL_SEARCH_ALIAS,
-            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-            SOURCE_FIELDS_TO_EXCLUDE);
-    result
-        .getNodes()
-        .putIfAbsent(
-            entityMap.get(FQN_FIELD).toString(),
-            new NodeInformation()
-                .withEntity(entityMap)
-                .withPaging(new LayerPaging().withEntityDownstreamCount(0))
-                .withNodeDepth(0)); // Root entity
   }
 
   private void fetchDownstreamNodesRecursively(
