@@ -236,6 +236,7 @@ public final class Entity {
   //
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+  public static final String NOTIFICATION_TEMPLATE = "notificationTemplate";
   public static final String THREAD = "THREAD";
   public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";

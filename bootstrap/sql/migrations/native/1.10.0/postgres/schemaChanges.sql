@@ -19,3 +19,21 @@ WHERE configtype = 'entityRulesSettings'
     FROM jsonb_array_elements(json->'entitySemantics') AS rule
     WHERE rule->>'name' = 'Data Product Domain Validation'
   );
+
+-- Create notification_template_entity table following OpenMetadata patterns
+CREATE TABLE IF NOT EXISTS notification_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    provider VARCHAR(32) GENERATED ALWAYS AS (json ->> 'provider') STORED,
+
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_template_name ON notification_template_entity(name);
+CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_template_entity(provider);

@@ -594,7 +594,8 @@ public class SchemaFieldExtractor {
             "pipeline", "data",
             "votes", "data",
             "dataProduct", "domains",
-            "domain", "domains");
+            "domain", "domains",
+            "notificationTemplate", "events");
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 
