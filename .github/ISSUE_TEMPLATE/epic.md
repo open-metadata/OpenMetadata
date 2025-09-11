@@ -2,7 +2,7 @@
 name: Epic Feature
 about: Roadmap track of features
 title: ''
-labels: 'epic'
+labels: 'epic' 
 assignees: ''
 ---
 
