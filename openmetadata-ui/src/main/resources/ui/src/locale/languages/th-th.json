@@ -557,6 +557,7 @@
     "endpoint-url": "URL จุดสิ้นสุด",
     "endpoint-url-for-aws": "URL จุดสิ้นสุดสำหรับ AWS",
     "enter": "ป้อน",
+    "enter-custom-unit-of-measurement": "กรอกหน่วยวัดที่กำหนดเองและกด Enter",
     "enter-entity": "ป้อน {{entity}}",
     "enter-entity-name": "ป้อนชื่อ {{entity}}",
     "enter-entity-value": "ป้อนค่าของ {{entity}}",
