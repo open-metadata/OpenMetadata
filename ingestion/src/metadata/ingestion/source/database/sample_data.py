@@ -62,6 +62,8 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
+from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
+from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -687,6 +689,15 @@ class SampleDataSource(
             )
         )
 
+        # Load glossary sample data
+        self.glossary = json.load(
+            open(
+                sample_data_folder + "/glossaries/glossary.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
         # Load data contracts sample data
         try:
             self.data_contracts = json.load(
@@ -798,6 +809,7 @@ class SampleDataSource(
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_domains()
+        yield from self.ingest_glossaries()
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
@@ -831,9 +843,63 @@ class SampleDataSource(
         yield from self.ingest_data_contracts()
 
     def ingest_domains(self):
-
+        # Create the main parent domain
         domain_request = CreateDomainRequest(**self.domain)
         yield Either(right=domain_request)
+        
+        # Create 60 subdomains for pagination testing
+        for i in range(1, 61):
+            subdomain_name = f"TestSubdomain{i:03d}"
+            subdomain_data = {
+                "domainType": "Source-aligned",
+                "name": subdomain_name,
+                "fullyQualifiedName": f"TestDomain.{subdomain_name}",
+                "parent": "TestDomain",
+                "description": f"<p>Test subdomain {i} for pagination testing. This subdomain is part of the TestDomain hierarchy and contains sample data for validating domain listing, search, and pagination functionality.</p><p>Domain features tested:</p><ul><li>Hierarchical domain structure</li><li>Large-scale domain listing (60 subdomains)</li><li>Domain search and filtering</li><li>Pagination performance with domain metadata</li></ul>",
+                "style": {},
+                "owners": [],
+                "experts": [],
+                "tags": []
+            }
+            subdomain_request = CreateDomainRequest(**subdomain_data)
+            yield Either(right=subdomain_request)
+
+    def ingest_glossaries(self):
+        # Create the main glossary
+        glossary_request = CreateGlossaryRequest(**self.glossary)
+        yield Either(right=glossary_request)
+        
+        # Create 500 parent glossary terms for pagination testing
+        for i in range(1, 501):
+            term_name = f"TestTerm{i:03d}"
+            term_data = {
+                "glossary": self.glossary["name"],
+                "name": term_name,
+                "displayName": f"Test Term {i}",
+                "description": f"<p>Test glossary term {i} for pagination testing. This term is part of the TestGlossary and contains sample metadata for validating glossary term listing, search, and pagination functionality.</p><p>Term features tested:</p><ul><li>Large-scale term listing (500 parent terms)</li><li>Term search and filtering</li><li>Pagination performance with term metadata</li><li>Term hierarchy and relationships</li><li>Nested child term structure</li></ul>",
+                "synonyms": [f"synonym{i}", f"alt_term_{i}"] if i % 10 == 0 else None,
+                "tags": [],
+                "provider": "user"
+            }
+            # Remove None values to avoid validation issues
+            term_data = {k: v for k, v in term_data.items() if v is not None}
+            term_request = CreateGlossaryTermRequest(**term_data)
+            yield Either(right=term_request)
+            
+            # Create 5 child terms for each parent term
+            for j in range(1, 6):
+                child_term_name = f"TestTerm{i:03d}_Child{j}"
+                child_term_data = {
+                    "glossary": self.glossary["name"],
+                    "parent": f"TestGlossary.{term_name}",  # FQN of the parent term
+                    "name": child_term_name,
+                    "displayName": f"Test Term {i} - Child {j}",
+                    "description": f"<p>Child term {j} of TestTerm{i:03d} for testing hierarchical glossary structure and nested pagination. This child term demonstrates:</p><ul><li>Parent-child relationships in glossary terms</li><li>Nested pagination testing</li><li>Hierarchical term organization</li><li>Multi-level term filtering</li></ul>",
+                    "tags": [],
+                    "provider": "user"
+                }
+                child_term_request = CreateGlossaryTermRequest(**child_term_data)
+                yield Either(right=child_term_request)
 
     def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
         """

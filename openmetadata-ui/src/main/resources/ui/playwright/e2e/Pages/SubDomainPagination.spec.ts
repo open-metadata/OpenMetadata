@@ -10,55 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { createSubDomain, selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const domain = new Domain();
-const subDomains: SubDomain[] = [];
-const SUBDOMAIN_COUNT = 60;
+// Use existing sample data domain and subdomains
+const SAMPLE_DOMAIN_NAME = 'TestDomain';
+
+// Create Domain object with sample data properties
+const sampleDomain = new Domain();
+sampleDomain.data.name = SAMPLE_DOMAIN_NAME;
+sampleDomain.data.displayName = SAMPLE_DOMAIN_NAME;
+sampleDomain.data.description =
+  'Sample domain with 60 subdomains for pagination testing';
 
 test.describe('SubDomain Pagination', () => {
-  test.slow(true);
-
-  test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await domain.create(apiContext);
-
-    const createPromises = [];
-    for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {
-      const subDomain = new SubDomain(
-        domain,
-        `TestSubDomain${i.toString().padStart(2, '0')}`
-      );
-      subDomains.push(subDomain);
-      createPromises.push(subDomain.create(apiContext));
-    }
-
-    await Promise.all(createPromises);
-
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await domain.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Navigate to domain page', async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -69,9 +42,8 @@ test.describe('SubDomain Pagination', () => {
   test('Verify subdomain count and pagination functionality', async ({
     page,
   }) => {
-    await selectDomain(page, domain.data);
+    await selectDomain(page, sampleDomain.data);
 
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await test.step('Verify subdomain count in tab label', async () => {
@@ -122,7 +94,7 @@ test.describe('SubDomain Pagination', () => {
     await test.step(
       'Create new subdomain and verify count updates',
       async () => {
-        const subDomain = new SubDomain(domain);
+        const subDomain = new SubDomain(sampleDomain);
         await createSubDomain(page, subDomain.data);
 
         await redirectToHomePage(page);
@@ -130,23 +102,11 @@ test.describe('SubDomain Pagination', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await page.waitForLoadState('networkidle');
 
-        await selectDomain(page, domain.data);
+        await selectDomain(page, sampleDomain.data);
 
         const subDomainsTab = page.getByTestId('subdomains');
 
         await expect(subDomainsTab).toContainText('61');
-
-        const { apiContext, afterAction } = await getApiContext(page);
-
-        const response = await apiContext.get(
-          '/api/v1/domains/name/' +
-            encodeURIComponent(`"${domain.data.name}"."NewTestSubDomain"`)
-        );
-        const subDomainData = await response.json();
-        await apiContext.delete(
-          `/api/v1/domains/${subDomainData.id}?hardDelete=true`
-        );
-        await afterAction();
       }
     );
   });
