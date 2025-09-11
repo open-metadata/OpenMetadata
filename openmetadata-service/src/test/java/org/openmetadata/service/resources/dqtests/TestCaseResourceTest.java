@@ -4113,68 +4113,55 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Verify the test case is created without reviewers
     assertTrue(nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers initially");
 
-    // Update test case reviewers as admin using PATCH
-    String json = JsonUtils.pojoToJson(testCase);
-    List<EntityReference> reviewers = List.of(USER1.getEntityReference());
-    testCase.setReviewers(reviewers);
+    // Add reviewer USER1 in PATCH request
+    String origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1.getEntityReference()));
     ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
-    fieldAdded(change, "reviewers", reviewers);
-    TestCase updatedTestCase =
-        patchEntityAndCheck(testCase, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldAdded(change, "reviewers", List.of(USER1.getEntityReference()));
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    assertEquals(1, updatedTestCase.getReviewers().size(), "TestCase should have one reviewer");
+    assertEquals(1, testCase.getReviewers().size(), "TestCase should have one reviewer");
     assertEquals(
-        USER1.getId(),
-        updatedTestCase.getReviewers().get(0).getId(),
-        "Reviewer should match USER1");
+        USER1.getId(), testCase.getReviewers().getFirst().getId(), "Reviewer should match USER1");
 
-    // Update reviewers - replace existing reviewer with a new one
-    List<EntityReference> previousReviewers = new ArrayList<>(updatedTestCase.getReviewers());
-    String testCaseJson = JsonUtils.pojoToJson(updatedTestCase);
-    List<EntityReference> newReviewers = List.of(USER2.getEntityReference());
-    updatedTestCase.setReviewers(newReviewers);
-    change = getChangeDescription(updatedTestCase, MINOR_UPDATE);
-    fieldUpdated(change, "reviewers", previousReviewers, newReviewers);
-    TestCase finalTestCase =
-        patchEntityAndCheck(
-            updatedTestCase, testCaseJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Add reviewer USER2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
 
-    // Verify that the test case's reviewers were updated
-    assertNotNull(finalTestCase.getReviewers(), "TestCase should have updated reviewers");
-    assertEquals(
-        1, finalTestCase.getReviewers().size(), "TestCase should have one reviewer after update");
-    assertEquals(
-        USER2.getId(),
-        finalTestCase.getReviewers().get(0).getId(),
-        "TestCase should have the updated reviewer");
-
-    // Add multiple reviewers
-    json = JsonUtils.pojoToJson(finalTestCase);
-    List<EntityReference> multipleReviewers =
-        List.of(USER1.getEntityReference(), USER2.getEntityReference());
-    finalTestCase.setReviewers(multipleReviewers);
-    change = getChangeDescription(finalTestCase, MINOR_UPDATE);
-    fieldUpdated(change, "reviewers", newReviewers, multipleReviewers);
-    TestCase multiReviewerTestCase =
-        patchEntityAndCheck(finalTestCase, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    assertEquals(
-        2, multiReviewerTestCase.getReviewers().size(), "TestCase should have two reviewers");
+    // Verify that the test case has both reviewers
+    assertNotNull(testCase);
+    assertNotNull(testCase.getReviewers(), "TestCase should have reviewers");
+    assertEquals(2, testCase.getReviewers().size(), "TestCase should have two reviewers");
     assertTrue(
-        multiReviewerTestCase.getReviewers().stream()
-            .anyMatch(r -> r.getId().equals(USER1.getId())),
+        testCase.getReviewers().stream().anyMatch(r -> r.getId().equals(USER1.getId())),
         "TestCase should have USER1 as a reviewer");
     assertTrue(
-        multiReviewerTestCase.getReviewers().stream()
-            .anyMatch(r -> r.getId().equals(USER2.getId())),
+        testCase.getReviewers().stream().anyMatch(r -> r.getId().equals(USER2.getId())),
         "TestCase should have USER2 as a reviewer");
+
+    // Remove reviewer USER1 in PATCH request
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER1.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    assertEquals(
+        1, testCase.getReviewers().size(), "TestCase should have one reviewer after removal");
+    assertEquals(
+        USER2.getId(),
+        testCase.getReviewers().getFirst().getId(),
+        "TestCase should only have USER2 as a reviewer");
   }
 
   @Test
   void test_entityStatusAndReviewersCombination(TestInfo test) throws IOException {
-    // Create a test case with specific entity status and reviewers
-    CreateTestCase createTestCase =
-        createRequest(getEntityName(test)).withReviewers(List.of(USER1_REF));
+    // Create a test case without any reviewers initially
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
     TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
     // Verify initial state
@@ -4182,53 +4169,64 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         EntityStatus.APPROVED,
         testCase.getEntityStatus(),
         "TestCase should be created with APPROVED status");
+    assertTrue(nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers initially");
+
+    // Add reviewers using PATCH
+    String origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1_REF));
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER1_REF));
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify reviewers were added
     assertNotNull(testCase.getReviewers(), "TestCase should have reviewers");
     assertEquals(1, testCase.getReviewers().size(), "TestCase should have one reviewer");
-    assertEquals(USER1.getId(), testCase.getReviewers().get(0).getId(), "Reviewer should be USER1");
+    assertEquals(
+        USER1.getId(), testCase.getReviewers().getFirst().getId(), "Reviewer should be USER1");
 
-    // Update both entityStatus and reviewers in a single PATCH operation
-    String originalJson = JsonUtils.pojoToJson(testCase);
-    testCase.setEntityStatus(EntityStatus.IN_REVIEW);
-    testCase.setReviewers(List.of(USER2.getEntityReference()));
-
-    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    // Update entityStatus
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withEntityStatus(EntityStatus.IN_REVIEW);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
-    fieldUpdated(change, "reviewers", List.of(USER1_REF), List.of(USER2.getEntityReference()));
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    TestCase updatedTestCase =
-        patchEntityAndCheck(testCase, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Verify both fields were updated
+    // Verify entityStatus was updated
     assertEquals(
         EntityStatus.IN_REVIEW,
-        updatedTestCase.getEntityStatus(),
+        testCase.getEntityStatus(),
         "TestCase should be updated to IN_REVIEW status");
-    assertEquals(
-        1, updatedTestCase.getReviewers().size(), "TestCase should still have one reviewer");
+
+    // Update reviewers
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "reviewers", List.of(USER1_REF), List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    // Verify reviewer was updated
+    assertNotNull(testCase);
+    assertEquals(1, testCase.getReviewers().size(), "TestCase should still have one reviewer");
     assertEquals(
         USER2.getId(),
-        updatedTestCase.getReviewers().get(0).getId(),
+        testCase.getReviewers().getFirst().getId(),
         "Reviewer should be updated to USER2");
 
-    // Test transitioning to APPROVED status with clearing reviewers
-    originalJson = JsonUtils.pojoToJson(updatedTestCase);
-    updatedTestCase.setEntityStatus(EntityStatus.APPROVED);
-    updatedTestCase.setReviewers(null);
-
-    change = getChangeDescription(updatedTestCase, MINOR_UPDATE);
+    // Test clearing reviewers and updating status back to APPROVED
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withEntityStatus(EntityStatus.APPROVED).withReviewers(null);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.APPROVED);
     fieldDeleted(change, "reviewers", List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
 
-    TestCase approvedTestCase =
-        patchEntityAndCheck(
-            updatedTestCase, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
+    // Verify final state
+    assertNotNull(testCase);
     assertEquals(
         EntityStatus.APPROVED,
-        approvedTestCase.getEntityStatus(),
+        testCase.getEntityStatus(),
         "TestCase should be updated to APPROVED status");
     assertTrue(
-        nullOrEmpty(approvedTestCase.getReviewers()),
-        "TestCase should have no reviewers after approval");
+        nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers after approval");
   }
 }

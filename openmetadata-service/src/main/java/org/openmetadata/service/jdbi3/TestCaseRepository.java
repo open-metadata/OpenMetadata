@@ -391,12 +391,48 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public EntityInterface getParentEntity(TestCase entity, String fields) {
     EntityReference testSuite = entity.getTestSuite();
+
+    String filteredFields = getFilteredFields(entity, fields, testSuite);
+
     if (testSuite == null) {
       EntityLink entityLink = EntityLink.parse(entity.getEntityLink());
-      return Entity.getEntity(entityLink, fields, ALL);
+      return Entity.getEntity(entityLink, filteredFields, ALL);
     } else {
-      return Entity.getEntity(testSuite, fields, ALL);
+      return Entity.getEntity(testSuite, filteredFields, ALL);
     }
+  }
+
+  private static @NotNull String getFilteredFields(
+      TestCase entity, String fields, EntityReference testSuite) {
+    // Helper method to filter fields based on what the parent entity supports
+    String filteredFields = fields;
+    if (!fields.isEmpty()) {
+      EntityRepository<?> parentRepository;
+
+      if (testSuite == null) {
+        // Parent is a table (via entityLink)
+        EntityLink entityLink = EntityLink.parse(entity.getEntityLink());
+        parentRepository = Entity.getEntityRepository(entityLink.getEntityType());
+      } else {
+        // Parent is a test suite
+        parentRepository = Entity.getEntityRepository(TEST_SUITE);
+      }
+
+      Set<String> parentAllowedFields = parentRepository.getAllowedFields();
+
+      // Filter the requested fields to only include those supported by parent
+      String[] requestedFields = fields.split(",");
+      List<String> validFields = new ArrayList<>();
+      for (String field : requestedFields) {
+        field = field.trim();
+        // Check if parent supports this field or if it's a common field
+        if (parentAllowedFields.contains(field) || "owners,tags,domains".contains(field)) {
+          validFields.add(field);
+        }
+      }
+      filteredFields = String.join(",", validFields);
+    }
+    return filteredFields;
   }
 
   @Override
