@@ -14,13 +14,6 @@ import { Col, Row, Typography } from 'antd';
 import { first, last } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import LdapIcon from '../../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../../assets/img/icon-azure.png';
-import GoogleIcon from '../../../assets/img/icon-google.png';
-import OktaIcon from '../../../assets/img/icon-okta.png';
 import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
@@ -28,9 +21,15 @@ import {
 import { AuthProvider } from '../../../generated/settings/settings';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import { getProviderDisplayName } from '../../../utils/SSOUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import './sso-doc-panel.less';
+import {
+  FIELD_MAPPINGS,
+  PROVIDER_FILE_MAP,
+  PROVIDER_ICON_MAP,
+} from './SSODocPanel.constants';
 
 interface SSODocPanelProp {
   serviceName: string;
@@ -43,67 +42,16 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [markdownContent, setMarkdownContent] = useState<string>('');
 
-  const providerIconMap: Record<string, string> = {
-    google: GoogleIcon,
-    azure: AzureIcon,
-    okta: OktaIcon,
-    auth0: Auth0Icon,
-    'aws-cognito': CognitoIcon,
-    ldap: LdapIcon,
-    saml: SamlIcon,
-  };
-
-  const getProviderDisplayName = (provider: string) => {
-    return provider === AuthProvider.Azure
-      ? 'Azure AD'
-      : provider === AuthProvider.Google
-      ? 'Google'
-      : provider === AuthProvider.Okta
-      ? 'Okta'
-      : provider === AuthProvider.Auth0
-      ? 'Auth0'
-      : provider === AuthProvider.AwsCognito
-      ? 'AWS Cognito'
-      : provider === AuthProvider.Saml
-      ? 'SAML'
-      : provider === AuthProvider.CustomOidc
-      ? 'Custom OIDC'
-      : provider === AuthProvider.Basic
-      ? 'Basic Authentication'
-      : provider?.charAt(0).toUpperCase() + provider?.slice(1);
-  };
-
-  const fieldMappings: Record<string, string> = {
-    clientType: 'clientType',
-    clientId: 'clientId',
-    callbackUrl: 'callbackUrl',
-    redirectUrl: 'callbackUrl',
-    publicKeyUrls: 'publicKey',
-    publicKey: 'publicKey',
-    tokenValidationAlgorithm: 'tokenValidation',
-    authority: 'authority',
-    domain: 'authority', // Auth0 domain maps to authority
-    jwtPrincipalClaims: 'principals',
-    principalDomain: 'principalDomain',
-    adminPrincipals: 'adminPrincipals',
-    enableSelfSignup: 'selfSignup',
-    secret: 'clientSecret',
-    clientSecret: 'clientSecret',
-    secretKey: 'clientSecret',
-    scopes: 'scopes',
-    providerName: 'providerName',
-  };
-
   const getFieldGroup = (fieldName: string): string => {
     const lowerFieldName = fieldName.toLowerCase();
 
     // Direct mapping first
-    if (fieldMappings[fieldName]) {
-      return fieldMappings[fieldName];
+    if (FIELD_MAPPINGS[fieldName]) {
+      return FIELD_MAPPINGS[fieldName];
     }
 
     // Try to find partial matches
-    for (const [key, value] of Object.entries(fieldMappings)) {
+    for (const [key, value] of Object.entries(FIELD_MAPPINGS)) {
       if (
         lowerFieldName.includes(key.toLowerCase()) ||
         key.toLowerCase().includes(lowerFieldName)
@@ -145,20 +93,7 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
   const fetchRequirement = async () => {
     setIsLoading(true);
     try {
-      const providerFileMap: Record<string, string> = {
-        [AuthProvider.Google]: 'googleSSOClientConfig',
-        [AuthProvider.Azure]: 'azureSSOClientConfig',
-        [AuthProvider.Okta]: 'oktaSSOClientConfig',
-        [AuthProvider.Auth0]: 'auth0SSOClientConfig',
-        [AuthProvider.Saml]: 'samlSSOClientConfig',
-        [AuthProvider.LDAP]: 'ldapSSOClientConfig',
-        [AuthProvider.CustomOidc]: 'customOidcSSOClientConfig',
-        [AuthProvider.AwsCognito]: 'awsCognitoSSOClientConfig',
-        [AuthProvider.Basic]: 'basic',
-        general: 'general',
-      };
-
-      const fileName = providerFileMap[serviceName] || serviceName;
+      const fileName = PROVIDER_FILE_MAP[serviceName] || serviceName;
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
       const filePath = `${i18n.language}/SSO/${fileName}.md`;
       const fallbackFilePath = `${SupportedLocales.English}/SSO/${fileName}.md`;
@@ -299,12 +234,12 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     <Row className="sso-doc-panel" data-testid="sso-requirements">
       <Col span={24}>
         <div className="sso-doc-header">
-          {providerIconMap[serviceName] && (
+          {PROVIDER_ICON_MAP[serviceName] && (
             <div className="sso-provider-icon">
               <img
                 alt={`${serviceName} icon`}
                 height={22}
-                src={providerIconMap[serviceName]}
+                src={PROVIDER_ICON_MAP[serviceName]}
                 width={22}
               />
             </div>

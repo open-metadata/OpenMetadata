@@ -58,6 +58,7 @@ import {
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
+import { getProviderDisplayName } from '../../../utils/SSOUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
@@ -107,23 +108,6 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
-
-  const getProviderDisplayName = (provider: string) => {
-    switch (provider) {
-      case AuthProvider.Azure:
-        return 'Azure AD';
-      case AuthProvider.Google:
-        return 'Google';
-      case AuthProvider.Okta:
-        return 'Okta';
-      case AuthProvider.Auth0:
-        return 'Auth0';
-      case AuthProvider.AwsCognito:
-        return 'AWS Cognito';
-      default:
-        return provider?.charAt(0).toUpperCase() + provider?.slice(1);
-    }
-  };
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
