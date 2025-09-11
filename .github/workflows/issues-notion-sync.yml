@@ -1,4 +1,4 @@
-name: Notion Sync
+name: Notion Sync 
 
 on:
   workflow_dispatch:
