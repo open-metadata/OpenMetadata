@@ -29,11 +29,19 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search Host
      */
-    host: string;
+    host?: string;
     /**
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -49,7 +57,7 @@ export interface ElasticSearchConfiguration {
     /**
      * Elastic Search port
      */
-    port: number;
+    port?: number;
     /**
      * Http/Https connection scheme
      */
