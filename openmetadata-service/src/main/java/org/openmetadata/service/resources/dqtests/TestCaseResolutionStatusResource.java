@@ -430,7 +430,7 @@ public class TestCaseResolutionStatusResource
       // For latest results, use aggregation grouped by test case to get the latest status per test
       // case
       return repository.listLatestFromSearch(
-          new Fields(null),
+          Fields.EMPTY_FIELDS,
           searchListFilter,
           "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
           // case
