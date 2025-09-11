@@ -31,6 +31,7 @@ export const acknowledgeTask = async (data: {
   const { testCase, page, table } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
   await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(50000);
 
   expect(page.getByTestId('test-case-incident-manager-table')).toBeVisible();
 
