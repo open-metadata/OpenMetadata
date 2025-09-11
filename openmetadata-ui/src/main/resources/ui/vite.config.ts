@@ -19,6 +19,33 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
+// Handle auth login redirects in development mode
+const handleAuthRedirect = (proxyRes, req, res) => {
+  const location = proxyRes.headers.location;
+  if (location && location.includes('/auth/callback')) {
+    // Parse the token from the backend redirect
+    const tokenMatch = location.match(/id_token=([^&]+)/);
+    if (tokenMatch) {
+      // Instead of redirecting, send back a 200 with the token
+      proxyRes.statusCode = 200;
+      proxyRes.headers['content-type'] = 'application/json';
+      delete proxyRes.headers.location;
+
+      // Write the token as JSON response
+      const responseBody = JSON.stringify({
+        redirectUrl: `/auth/callback?id_token=${tokenMatch[1]}`,
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(responseBody);
+
+      return true; // Indicates we handled the response
+    }
+  }
+
+  return false; // Not handled
+};
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const devServerTarget =
@@ -28,6 +55,7 @@ export default defineConfig(({ mode }) => {
 
   // Dynamically set base path from environment variable or use '/' as default
   const basePath = env.BASE_PATH || '/';
+  const isDevelopment = mode === 'development';
 
   return {
     base: basePath,
@@ -103,35 +131,18 @@ export default defineConfig(({ mode }) => {
           target: devServerTarget,
           changeOrigin: true,
           configure: (proxy) => {
-            proxy.on('proxyRes', (proxyRes, req, res) => {
-              // Intercept auth login responses
-              if (
-                req.url?.includes('/api/v1/auth/login') &&
-                proxyRes.statusCode === 302
-              ) {
-                const location = proxyRes.headers.location;
-                if (location && location.includes('/auth/callback')) {
-                  // Parse the token from the backend redirect
-                  const tokenMatch = location.match(/id_token=([^&]+)/);
-                  if (tokenMatch) {
-                    // Instead of redirecting, send back a 200 with the token
-                    proxyRes.statusCode = 200;
-                    proxyRes.headers['content-type'] = 'application/json';
-                    delete proxyRes.headers.location;
-
-                    // Write the token as JSON response
-                    const responseBody = JSON.stringify({
-                      redirectUrl: `/auth/callback?id_token=${tokenMatch[1]}`,
-                    });
-
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(responseBody);
-
-                    return;
-                  }
+            // Only add auth redirect handling in development mode
+            if (isDevelopment) {
+              proxy.on('proxyRes', (proxyRes, req, res) => {
+                // Intercept auth login responses in development
+                if (
+                  req.url?.includes('/api/v1/auth/login') &&
+                  proxyRes.statusCode === 302
+                ) {
+                  handleAuthRedirect(proxyRes, req, res);
                 }
-              }
-            });
+              });
+            }
           },
         },
       },

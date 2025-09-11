@@ -53,8 +53,12 @@ export const basicAuthSignIn = async (payload: LoginRequest) => {
     }
   );
 
-  // Check if proxy intercepted and converted redirect to JSON (dev workaround)
-  if (response.status === 200 && response.data?.redirectUrl) {
+  // Check if running in Vite dev mode (localhost:3000 with proxy)
+  const isViteDevMode =
+    window.location.hostname === 'localhost' && window.location.port === '3000';
+
+  // Only handle proxy-converted JSON response in development mode with Vite
+  if (isViteDevMode && response.status === 200 && response.data?.redirectUrl) {
     window.location.href = response.data.redirectUrl;
 
     return {} as AccessTokenResponse;
