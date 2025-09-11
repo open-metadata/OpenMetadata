@@ -520,6 +520,10 @@ export enum AuthProvider {
  *
  * Regex exclude pipelines.
  *
+ * Regex include/exclude pipelines for profiling.
+ *
+ * Regex include/exclude tables for profiling based on pipeline outputs.
+ *
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
@@ -816,6 +820,8 @@ export interface SourceConfig {
  *
  * PipelineService Metadata Pipeline Configuration.
  *
+ * PipelineService Profiler Pipeline Configuration.
+ *
  * MlModelService Metadata Pipeline Configuration.
  *
  * StorageService Metadata Pipeline Configuration.
@@ -937,6 +943,8 @@ export interface Pipeline {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex exclude tables or databases that matches the pattern.
+     *
+     * Regex include/exclude tables for profiling based on pipeline outputs.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -949,6 +957,8 @@ export interface Pipeline {
     threads?: number;
     /**
      * Pipeline type
+     *
+     * Pipeline profiler type
      */
     type?: FluffyType;
     /**
@@ -1107,6 +1117,8 @@ export interface Pipeline {
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      *
+     * Percentage of tables to profile. Value should be between 1 and 100
+     *
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
     profileSample?:     number;
@@ -1168,8 +1180,26 @@ export interface Pipeline {
     markDeletedPipelines?: boolean;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex include/exclude pipelines for profiling.
      */
     pipelineFilterPattern?: FilterPattern;
+    /**
+     * List of Database Service Names for mapping pipeline observability to table entities
+     */
+    dbServiceNames?: string[];
+    /**
+     * Include failed pipeline runs in observability data
+     */
+    includeFailedRuns?: boolean;
+    /**
+     * Maximum number of recent pipeline runs to profile for observability data
+     */
+    maxRunsToProfile?: number;
+    /**
+     * Number of days to look back for pipeline runs
+     */
+    observabilityDays?: number;
     /**
      * Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are
      * deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc.,
@@ -6482,6 +6512,10 @@ export interface StorageMetadataBucketDetails {
  *
  * Pipeline Source Config Metadata Pipeline type
  *
+ * Pipeline profiler type
+ *
+ * Pipeline Source Config Profiler Pipeline type
+ *
  * MlModel Source Config Metadata Pipeline type
  *
  * Object Store Source Config Metadata Pipeline type
@@ -6513,6 +6547,7 @@ export enum FluffyType {
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
+    PipelineProfiler = "PipelineProfiler",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",

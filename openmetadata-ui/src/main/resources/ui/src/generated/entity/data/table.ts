@@ -119,6 +119,11 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Pipeline observability information for the table. Multiple pipelines can process the same
+     * table.
+     */
+    pipelineObservability?: PipelineObservability[];
+    /**
      * Processed lineage for the table
      */
     processedLineage?: boolean;
@@ -613,6 +618,8 @@ export interface CustomMetric {
  *
  * Reference to the Location that contains this table.
  *
+ * Reference to the pipeline that processes this data asset.
+ *
  * Link to Database service this table is hosted in.
  *
  * Executable test suite associated with this table
@@ -981,6 +988,48 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * This schema defines pipeline observability data that can be associated with data assets
+ * to track pipeline execution information.
+ */
+export interface PipelineObservability {
+    /**
+     * End time of the pipeline schedule.
+     */
+    endTime?: number;
+    /**
+     * Status of the last pipeline execution.
+     */
+    lastRunStatus?: LastRunStatus;
+    /**
+     * Timestamp of the last pipeline execution.
+     */
+    lastRunTime?: number;
+    /**
+     * Reference to the pipeline that processes this data asset.
+     */
+    pipeline: EntityReference;
+    /**
+     * Schedule interval for the pipeline in cron format.
+     */
+    scheduleInterval?: null | string;
+    /**
+     * Start time of the pipeline schedule.
+     */
+    startTime?: number;
+}
+
+/**
+ * Status of the last pipeline execution.
+ */
+export enum LastRunStatus {
+    Failed = "Failed",
+    Pending = "Pending",
+    Running = "Running",
+    Skipped = "Skipped",
+    Successful = "Successful",
 }
 
 /**
