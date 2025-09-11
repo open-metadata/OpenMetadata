@@ -42,7 +42,9 @@ def run_pipeline_profiler(config_path: Path) -> None:
         workflow = PipelineProfilerWorkflow.create(config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.profiler)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, config_dict, PipelineType.profiler
+        )
         sys.exit(1)
 
     execute_workflow(workflow=workflow, config_dict=config_dict)
