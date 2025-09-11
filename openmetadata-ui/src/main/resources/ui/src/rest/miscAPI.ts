@@ -246,7 +246,9 @@ export const postLineageColumnAggregateOptions = (
     fieldName: field,
     fieldValue: withWildCardValue,
     query: q,
-    script: "if (doc['columns.displayName.keyword'].size() > 0 && !doc['columns.displayName.keyword'].value.isEmpty()) { return doc['columns.displayName.keyword'].value } else { return doc['columns.name.keyword'].value }"
+    script:
+      // eslint-disable-next-line max-len
+      "if (doc['columns.displayName.keyword'].size() > 0 && !doc['columns.displayName.keyword'].value.isEmpty()) { return doc['columns.displayName.keyword'].value } else { return doc['columns.name.keyword'].value }",
   };
 
   return APIClient.post<SearchResponse<ExploreSearchIndex>>(

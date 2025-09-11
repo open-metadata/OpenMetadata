@@ -363,12 +363,13 @@ export const getAggregationOptions = async (
   filter: string,
   isIndependent: boolean
 ) => {
-  const isColumnField = key.includes('columns.name') || key.includes('columns.displayName');
-  
+  const isColumnField =
+    key.includes('columns.name') || key.includes('columns.displayName');
+
   if (isIndependent && isColumnField) {
     return postLineageColumnAggregateOptions(index, key, value, filter);
   }
-  
+
   return isIndependent
     ? postAggregateFieldOptions(index, key, value, filter)
     : getAggregateFieldOptions(index, key, value, filter);
