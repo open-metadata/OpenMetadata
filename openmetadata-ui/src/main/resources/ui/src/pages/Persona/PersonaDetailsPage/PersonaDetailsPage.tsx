@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckCircleOutlined, XOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Tabs, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -277,7 +277,11 @@ export const PersonaDetailsPage = () => {
                 ? t('message.remove-default-persona-description')
                 : t('message.set-default-persona-menu-description')
             }
-            icon={(isDefault ? XOutlined : CheckCircleOutlined) as SvgComponent}
+            icon={
+              (isDefault
+                ? CloseCircleOutlined
+                : CheckCircleOutlined) as SvgComponent
+            }
             id={isDefault ? 'remove-default-button' : 'set-as-default-button'}
             name={
               isDefault ? t('label.remove-default') : t('label.set-as-default')
