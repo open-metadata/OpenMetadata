@@ -17,3 +17,4 @@ WHERE configType = 'entityRulesSettings'
     JSON_EXTRACT(json, '$.entitySemantics[*].name'),
     JSON_QUOTE('Data Product Domain Validation')
   );
+
