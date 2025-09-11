@@ -16,6 +16,7 @@
       "enum": [
         "TEST_CONNECTION",
         "REVERSE_INGESTION",
+        "QUERY_RUNNER",
         "TEST_SPARK_ENGINE_CONNECTION"
       ]
     },
@@ -71,6 +72,9 @@
           "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
         },
         {
+          "$ref": "queryRunnerRequest.json"
+        },
+        {
           "$ref": "testSparkEngineConnection.json"
         }
       ]
@@ -83,6 +87,9 @@
         },
         {
           "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
+        },
+        {
+          "$ref": "response/queryRunnerResponse.json"
         }
       ]
     },
