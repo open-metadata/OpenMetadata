@@ -209,7 +209,7 @@ public class FeedRepository {
   public abstract static class TaskWorkflow {
     protected final ThreadContext threadContext;
 
-    TaskWorkflow(ThreadContext threadContext) {
+    public TaskWorkflow(ThreadContext threadContext) {
       this.threadContext = threadContext;
     }
 
