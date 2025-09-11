@@ -1,4 +1,4 @@
-# OpenMetadata Code of Conduct
+l# OpenMetadata Code of Conduct
 
 ## Our Pledge
 
