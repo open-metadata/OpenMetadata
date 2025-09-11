@@ -521,7 +521,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*'
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;
