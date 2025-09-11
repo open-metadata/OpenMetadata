@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
+  DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
@@ -28,6 +29,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
+import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   redirectToHomePage,
@@ -38,7 +40,13 @@ import {
   validateDataContractInsideBundleTestSuites,
   waitForDataContractExecution,
 } from '../../utils/dataContracts';
-import { addOwner } from '../../utils/entity';
+import {
+  addOwner,
+  addOwnerWithoutValidation,
+  assignGlossaryTerm,
+  assignTag,
+  assignTier,
+} from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -65,7 +73,7 @@ test.describe('Data Contracts', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await table.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
@@ -101,6 +109,12 @@ test.describe('Data Contracts', () => {
         },
       ],
     });
+
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
+
     await afterAction();
   });
 
@@ -307,6 +321,11 @@ test.describe('Data Contracts', () => {
 
       await page.reload();
 
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await expect(
         page.getByTestId('contract-status-card-item-Semantics-status')
       ).toContainText('Passed');
@@ -508,6 +527,85 @@ test.describe('Data Contracts', () => {
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
       await download.saveAs('downloads/' + download.suggestedFilename());
+    });
+
+    await test.step('Edit and Validate Contract data', async () => {
+      await page.getByTestId('contract-edit-button').click();
+
+      await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
+
+      // Change the Contract Details
+      await page
+        .getByTestId('contract-name')
+        .fill(DATA_CONTRACT_DETAILS.displayName);
+      await page.click('.om-block-editor[contenteditable="true"]');
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
+
+      await addOwnerWithoutValidation({
+        page,
+        owner: 'admin',
+        type: 'Users',
+        initiatorId: 'select-owners',
+      });
+
+      await expect(
+        page.getByTestId('user-tag').getByText('admin')
+      ).toBeVisible();
+
+      // Move to Schema Tab
+      await page.getByRole('button', { name: 'Schema' }).click();
+
+      // TODO: will enable this once nested column is fixed
+      //   await page.waitForSelector('[data-testid="loader"]', {
+      //     state: 'detached',
+      //   });
+
+      //   await page.getByRole('checkbox', { name: 'Select all' }).click();
+
+      //   await expect(
+      //     page.getByRole('checkbox', { name: 'Select all' })
+      //   ).not.toBeChecked();
+
+      // Move to Semantic Tab
+      await page.getByRole('button', { name: 'Semantics' }).click();
+
+      await page.getByTestId('delete-condition-button').last().click();
+
+      await expect(
+        page.getByTestId('query-builder-form-field').getByText('Description')
+      ).not.toBeVisible();
+
+      await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Validate the Updated Values
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DATA_CONTRACT_DETAILS.displayName
+      );
+
+      await expect(
+        page.getByTestId('contract-owner-card').getByTestId('admin')
+      ).toBeVisible();
+
+      await expect(
+        page.locator(
+          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+        )
+      ).toContainText(DATA_CONTRACT_DETAILS.description2);
+
+      // TODO: will enable this once nested column is fixed
+      //   await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
 
     await test.step('Delete contract', async () => {
@@ -886,7 +984,7 @@ test.describe('Data Contracts', () => {
 
       await test.step('Save contract and validate for schema', async () => {
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -930,7 +1028,7 @@ test.describe('Data Contracts', () => {
         ).not.toBeChecked();
 
         const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts'
+          '/api/v1/dataContracts/*'
         );
         await page.getByTestId('save-contract-btn').click();
 
@@ -972,7 +1070,7 @@ test.describe('Data Contracts', () => {
           }
 
           const saveContractResponse = page.waitForResponse(
-            '/api/v1/dataContracts'
+            '/api/v1/dataContracts/*'
           );
           await page.getByTestId('save-contract-btn').click();
 
@@ -1030,6 +1128,226 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
       });
+    }
+  });
+
+  test('Semantic with Contains Operator should work for Tier, Tag and Glossary', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill('#semantics_0_name', DATA_CONTRACT_CONTAIN_SEMANTICS.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_CONTAIN_SEMANTICS.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'Tier.Tier1',
+      true
+    );
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator2 = page.locator('.rule').nth(1);
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[1].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[1].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--value .ant-select'),
+      testTag.responseData.name,
+      true
+    );
+
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator3 = page.locator('.rule').nth(2);
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[2].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_CONTAIN_SEMANTICS.rules[2].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--value .ant-select'),
+      testGlossaryTerm.responseData.name,
+      true
+    );
+
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-title')
+    ).toContainText(DATA_CONTRACT_CONTAIN_SEMANTICS.name);
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-description')
+    ).toContainText(DATA_CONTRACT_CONTAIN_SEMANTICS.description);
+
+    await page.locator('.expand-collapse-icon').click();
+
+    await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
+
+    // save and trigger contract validation
+    await saveAndTriggerDataContractValidation(page, true);
+
+    await expect(
+      page.getByTestId('contract-card-title-container').filter({
+        hasText: 'Contract Status',
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('contract-status-card-item-Semantics-status')
+    ).toContainText('Failed');
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
+
+    await page.getByTestId('schema').click();
+
+    // Add the data in the Table Entity which Semantic Required
+    await assignTier(page, 'Tier1', EntityTypeEndpoint.Table);
+    await assignTag(
+      page,
+      testTag.responseData.displayName,
+      'Add',
+      EntityTypeEndpoint.Table,
+      'KnowledgePanel.Tags',
+      testTag.responseData.fullyQualifiedName
+    );
+    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+
+    await page.click('[data-testid="contract"]');
+
+    const runNowResponse = page.waitForResponse(
+      '/api/v1/dataContracts/*/validate'
+    );
+
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      page.getByTestId('contract-status-card-item-Semantics-status')
+    ).toContainText('Passed');
+  });
+
+  test('Nested Column should not be selectable', async ({ page }) => {
+    const entityFQN = table.entityResponseData.fullyQualifiedName;
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('button', { name: 'Schema' }).click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // First level column should be selectable
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    await expect(
+      page.locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-checked`
+      )
+    ).toBeVisible();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(
+        page.getByText(table.entityLinkColumnsName[i])
+      ).not.toBeVisible();
+    }
+
+    // Expand the Column and check if they are disabled
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[2]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[4]}"] [data-testid="expand-icon"]`
+      )
+      .click();
+
+    // This Nested column should be closed on initial
+    for (let i = 3; i <= 6; i++) {
+      await expect(page.getByText(table.columnsName[i])).toBeVisible();
+
+      await expect(
+        page.locator(
+          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] .ant-checkbox-input`
+        )
+      ).toBeDisabled();
     }
   });
 
