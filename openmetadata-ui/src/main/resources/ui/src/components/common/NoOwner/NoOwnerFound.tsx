@@ -21,7 +21,7 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
 export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
-  isDataAssetHeader,
+  showDashPlaceholder,
   isCompactView,
   showLabel = true,
   placeHolder,
@@ -33,6 +33,22 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+
+  const getOwnerPlaceholder = () => {
+    if (placeHolder) {
+      if (showLabel) {
+        return showDashPlaceholder
+          ? NO_DATA_PLACEHOLDER
+          : t('label.no-entity', { entity: t('label.owner-plural') });
+      }
+
+      return placeHolder;
+    }
+
+    return showDashPlaceholder
+      ? NO_DATA_PLACEHOLDER
+      : t('label.no-entity', { entity: t('label.owner-plural') });
+  };
 
   return (
     <div
@@ -88,15 +104,7 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
 
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
-          {placeHolder
-            ? showLabel
-              ? isDataAssetHeader
-                ? NO_DATA_PLACEHOLDER
-                : t('label.no-entity', { entity: t('label.owner-plural') })
-              : placeHolder
-            : isDataAssetHeader
-            ? NO_DATA_PLACEHOLDER
-            : t('label.no-entity', { entity: t('label.owner-plural') })}
+          {getOwnerPlaceholder()}
         </div>
       )}
     </div>

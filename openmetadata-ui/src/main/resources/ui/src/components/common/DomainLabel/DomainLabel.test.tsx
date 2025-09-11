@@ -17,21 +17,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabel } from './DomainLabel.component';
 
-// Mock dependencies
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: any) => {
-      const translations: Record<string, string> = {
-        'label.domain-plural': 'Domains',
-        'label.no-entity': `No ${options?.entity || 'entity'}`,
-        'label.inherited-entity': `Inherited ${options?.entity || 'entity'}`,
-      };
-
-      return translations[key] || key;
-    },
-  }),
-}));
-
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
@@ -162,14 +147,14 @@ describe('DomainLabel Component', () => {
     renderDomainLabel({ domains: [] });
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
-    expect(screen.getByText('No Domains')).toBeInTheDocument();
+    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
   it('should render "No Domains" text when domains is undefined', () => {
     renderDomainLabel({ domains: undefined });
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
-    expect(screen.getByText('No Domains')).toBeInTheDocument();
+    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
   it('should render inherited domain with inherit icon', () => {
@@ -193,7 +178,7 @@ describe('DomainLabel Component', () => {
     renderDomainLabel({ showDomainHeading: true });
 
     expect(screen.getByTestId('header-domain-container')).toBeInTheDocument();
-    expect(screen.getByText('Domains')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
   });
 
   it('should not render domain heading when showDomainHeading is false', () => {

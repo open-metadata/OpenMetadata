@@ -14,7 +14,7 @@ import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/tests/testCase';
 
 export interface OwnerLabelProps {
-  isDataAssetHeader?: boolean;
+  showDashPlaceholder?: boolean;
   owners?: EntityReference[];
   showLabel?: boolean;
   className?: string;

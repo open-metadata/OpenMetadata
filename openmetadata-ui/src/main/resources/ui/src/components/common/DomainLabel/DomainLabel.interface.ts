@@ -17,7 +17,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 
 export type DomainLabelProps = {
-  isDataAssetHeader?: boolean;
+  showDashPlaceholder?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   hasPermission?: boolean;
   domains: EntityReference[] | undefined;

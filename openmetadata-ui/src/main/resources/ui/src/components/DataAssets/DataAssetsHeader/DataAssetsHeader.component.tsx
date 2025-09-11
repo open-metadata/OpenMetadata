@@ -661,8 +661,8 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
-                  isDataAssetHeader
                   multiple
+                  showDashPlaceholder
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
@@ -678,7 +678,7 @@ export const DataAssetsHeader = ({
               </>
             )}
             <OwnerLabel
-              isDataAssetHeader
+              showDashPlaceholder
               avatarSize={24}
               hasPermission={editOwnerPermission}
               isCompactView={false}

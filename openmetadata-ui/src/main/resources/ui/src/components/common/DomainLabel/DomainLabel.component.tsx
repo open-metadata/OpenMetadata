@@ -37,7 +37,7 @@ import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
-  isDataAssetHeader,
+  showDashPlaceholder,
   afterDomainUpdateAction,
   hasPermission,
   domains,
@@ -193,7 +193,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {isDataAssetHeader
+        {showDashPlaceholder
           ? NO_DATA_PLACEHOLDER
           : t('label.no-entity', { entity: t('label.domain-plural') })}
       </Typography.Text>
@@ -236,7 +236,7 @@ export const DomainLabel = ({
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
-                  : isDataAssetHeader
+                  : showDashPlaceholder
                   ? NO_DATA_PLACEHOLDER
                   : t('label.no-entity', { entity: t('label.domain-plural') })}
               </Typography.Text>
