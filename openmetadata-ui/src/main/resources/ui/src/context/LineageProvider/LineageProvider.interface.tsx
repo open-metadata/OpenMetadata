@@ -26,6 +26,7 @@ import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLinea
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -91,7 +92,7 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
-  onExportClick: () => void;
+  onExportClick: (entityTypes?: ExportTypes[]) => void;
   onPlatformViewChange: (view: LineagePlatformView) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;

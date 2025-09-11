@@ -507,32 +507,37 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [entityType, entityFqn, lineageConfig, queryFilter]
   );
 
-  const onExportClick = useCallback(() => {
-    if (entityFqn || isPlatformLineagePage) {
-      showModal({
-        ...(isPlatformLineagePage
-          ? {
-              name: `${t('label.lineage')}_${getCurrentISODate()}`,
-              exportTypes: [ExportTypes.PNG],
-            }
-          : {
-              name: entityFqn,
-              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
-            }),
-        title: t('label.lineage'),
-        documentSelector: LINEAGE_EXPORT_SELECTOR,
-        viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
-        onExport: exportLineageData,
-      });
-    }
-  }, [
-    entityType,
-    entityFqn,
-    lineageConfig,
-    queryFilter,
-    nodes,
-    isPlatformLineagePage,
-  ]);
+  const onExportClick = useCallback(
+    (exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG]) => {
+      if (entityFqn || isPlatformLineagePage) {
+        showModal({
+          ...(isPlatformLineagePage
+            ? {
+                name: `${t('label.lineage')}_${getCurrentISODate()}`,
+                exportTypes: [ExportTypes.PNG],
+              }
+            : {
+                name: entityFqn,
+                exportTypes: exportTypes,
+              }),
+          title: t('label.lineage'),
+          documentSelector: LINEAGE_EXPORT_SELECTOR,
+          viewport: exportTypes?.includes(ExportTypes.PNG)
+            ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
+            : undefined,
+          onExport: exportLineageData,
+        });
+      }
+    },
+    [
+      entityType,
+      entityFqn,
+      lineageConfig,
+      queryFilter,
+      nodes,
+      isPlatformLineagePage,
+    ]
+  );
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: LineageDirection) => {
@@ -1675,7 +1680,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isLineageSettingsLoaded,
   ]);
 
-  const activityFeedContextValues = useMemo(() => {
+  const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       isDrawerOpen,
       loading,
@@ -1720,6 +1725,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onNodeClick,
       onEdgeClick,
       onColumnEdgeRemove,
+      selectedQuickFilters,
+      setSelectedQuickFilters,
       onLineageConfigUpdate,
       onLineageEditClick,
       onAddPipelineClick,
