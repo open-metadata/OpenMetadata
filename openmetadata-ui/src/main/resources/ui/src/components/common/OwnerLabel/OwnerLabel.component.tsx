@@ -211,7 +211,7 @@ export const OwnerLabel = ({
     return (
       <div
         className={classNames({
-          'owner-label-container w-full d-flex flex-col items-start flex-start':
+          'owner-label-container d-flex flex-col items-start flex-start':
             !isCompactView,
           'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}

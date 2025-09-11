@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
@@ -88,9 +89,9 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
         <div className="no-owner-text text-sm font-medium">
           {placeHolder
             ? showLabel
-              ? t('label.no-entity', { entity: placeHolder })
+              ? NO_DATA_PLACEHOLDER
               : placeHolder
-            : t('label.no-entity', { entity: t('label.owner-plural') })}
+            : NO_DATA_PLACEHOLDER}
         </div>
       )}
     </div>

@@ -32,6 +32,7 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -736,9 +737,7 @@ export const DataAssetsHeader = ({
                       <span
                         className="font-medium no-tier-text text-sm"
                         data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
-                        })}
+                        {NO_DATA_PLACEHOLDER}
                       </span>
                     </div>
                   )}
@@ -809,9 +808,7 @@ export const DataAssetsHeader = ({
                             certification={(dataAsset as Table).certification!}
                           />
                         ) : (
-                          t('label.no-entity', {
-                            entity: t('label.certification'),
-                          })
+                          NO_DATA_PLACEHOLDER
                         )}
                       </div>
                     </Typography.Text>

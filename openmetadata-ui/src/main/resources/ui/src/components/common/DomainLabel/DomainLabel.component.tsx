@@ -19,7 +19,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
@@ -189,7 +192,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {t('label.no-entity', { entity: t('label.domain-plural') })}
+        {NO_DATA_PLACEHOLDER}
       </Typography.Text>
     );
   }, [
@@ -230,7 +233,7 @@ export const DomainLabel = ({
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
-                  : t('label.no-entity', { entity: t('label.domain-plural') })}
+                  : NO_DATA_PLACEHOLDER}
               </Typography.Text>
             )}
             {selectableList}
