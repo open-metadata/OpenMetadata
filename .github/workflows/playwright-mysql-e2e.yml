@@ -166,6 +166,10 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Run Okta Login Tests
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn playwright:okta
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
