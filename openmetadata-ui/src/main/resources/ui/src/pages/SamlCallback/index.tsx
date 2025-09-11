@@ -13,7 +13,6 @@
 
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
@@ -26,9 +25,8 @@ const cookieStorage = new CookieStorage();
 
 // Unified auth callback handler for all authentication methods
 const AuthCallback = () => {
-  const { handleSuccessfulLogin } = useAuthProvider();
+  const { handleSuccessfulLogin, handleFailedLogin } = useAuthProvider();
   const location = useCustomLocation();
-  const { t } = useTranslation();
 
   const processLogin = useCallback(async () => {
     // Extract token from URL params - works for all auth methods in unified flow
@@ -36,8 +34,8 @@ const AuthCallback = () => {
     const idToken = params.get('id_token');
 
     if (!idToken) {
-      // If no token in URL params, redirect to login
-      window.location.href = '/signin';
+      // No token means authentication failed - handle properly
+      handleFailedLogin();
 
       return;
     }
@@ -87,10 +85,10 @@ const AuthCallback = () => {
 
       await handleSuccessfulLogin(oidcUser);
     } catch (error) {
-      // Redirect to login on error
-      window.location.href = '/signin';
+      // Authentication processing failed - handle properly
+      handleFailedLogin();
     }
-  }, [location, handleSuccessfulLogin]);
+  }, [location, handleSuccessfulLogin, handleFailedLogin]);
 
   useEffect(() => {
     processLogin();

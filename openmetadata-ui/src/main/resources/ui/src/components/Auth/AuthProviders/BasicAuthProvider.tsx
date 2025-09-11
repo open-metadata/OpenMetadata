@@ -74,8 +74,7 @@ export const BasicAuthContext = createContext<InitialContext>(initialContext);
 const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
-    useAuthProvider();
+  const { handleSuccessfulLogout } = useAuthProvider();
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -104,7 +103,6 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
           showErrorToast(err.message || 'Authentication failed');
         }
       }
-      handleFailedLogin();
     }
   };
 
