@@ -11,7 +11,22 @@
  *  limitations under the License.
  */
 
+import LdapIcon from '../assets/img/ic-ldap.svg';
+import SamlIcon from '../assets/img/ic-saml.svg';
+import Auth0Icon from '../assets/img/icon-auth0.png';
+import CognitoIcon from '../assets/img/icon-aws-cognito.png';
+import AzureIcon from '../assets/img/icon-azure.png';
+import GoogleIcon from '../assets/img/icon-google.png';
+import OktaIcon from '../assets/img/icon-okta.png';
+import SSOIcon from '../assets/svg/sso-settings.svg';
+
 import { AuthProvider } from '../generated/settings/settings';
+
+export interface ProviderOption {
+  key: AuthProvider;
+  label: string;
+  icon: string;
+}
 
 /**
  * Get the display name for an authentication provider
@@ -40,3 +55,75 @@ export const getProviderDisplayName = (provider: string): string => {
       return provider?.charAt(0).toUpperCase() + provider?.slice(1);
   }
 };
+
+/**
+ * Get the icon for an authentication provider
+ * @param provider - The authentication provider
+ * @returns The icon component or null
+ */
+export const getProviderIcon = (provider: string): string | null => {
+  switch (provider) {
+    case AuthProvider.Azure:
+      return AzureIcon;
+    case AuthProvider.Google:
+      return GoogleIcon;
+    case AuthProvider.Okta:
+      return OktaIcon;
+    case AuthProvider.Auth0:
+      return Auth0Icon;
+    case AuthProvider.AwsCognito:
+      return CognitoIcon;
+    case AuthProvider.LDAP:
+      return SSOIcon;
+    case AuthProvider.Saml:
+      return SSOIcon;
+    default:
+      return null;
+  }
+};
+
+/**
+ * Provider options for SSO configuration
+ */
+export const PROVIDER_OPTIONS: ProviderOption[] = [
+  {
+    key: AuthProvider.Google,
+    label: 'Google',
+    icon: GoogleIcon,
+  },
+  {
+    key: AuthProvider.Azure,
+    label: 'Azure AD',
+    icon: AzureIcon,
+  },
+  {
+    key: AuthProvider.Okta,
+    label: 'Okta',
+    icon: OktaIcon,
+  },
+  {
+    key: AuthProvider.Saml,
+    label: 'SAML',
+    icon: SamlIcon,
+  },
+  {
+    key: AuthProvider.AwsCognito,
+    label: 'AWS-Cognito',
+    icon: CognitoIcon,
+  },
+  {
+    key: AuthProvider.CustomOidc,
+    label: 'Custom-OIDC',
+    icon: CognitoIcon,
+  },
+  {
+    key: AuthProvider.LDAP,
+    label: 'LDAP',
+    icon: LdapIcon,
+  },
+  {
+    key: AuthProvider.Auth0,
+    label: 'Auth0',
+    icon: Auth0Icon,
+  },
+];

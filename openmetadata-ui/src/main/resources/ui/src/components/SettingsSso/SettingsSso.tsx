@@ -14,12 +14,6 @@ import { Switch, Tabs, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import Auth0Icon from '../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../assets/img/icon-azure.png';
-import GoogleIcon from '../../assets/img/icon-google.png';
-import OktaIcon from '../../assets/img/icon-okta.png';
-import SSOIcon from '../../assets/svg/sso-settings.svg';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import {
@@ -31,6 +25,7 @@ import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
+import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -51,41 +46,6 @@ const SettingsSso = () => {
   const [securityConfig, setSecurityConfig] =
     useState<SecurityConfiguration | null>(null);
   const configFetched = useRef<boolean>(false);
-
-  const getProviderDisplayName = (provider: string) => {
-    return provider === AuthProvider.Azure
-      ? 'Azure AD'
-      : provider === AuthProvider.Google
-      ? 'Google'
-      : provider === AuthProvider.Okta
-      ? 'Okta'
-      : provider === AuthProvider.Auth0
-      ? 'Auth0'
-      : provider === AuthProvider.AwsCognito
-      ? 'AWS Cognito'
-      : provider?.charAt(0).toUpperCase() + provider?.slice(1);
-  };
-
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case AuthProvider.Azure:
-        return AzureIcon;
-      case AuthProvider.Google:
-        return GoogleIcon;
-      case AuthProvider.Okta:
-        return OktaIcon;
-      case AuthProvider.Auth0:
-        return Auth0Icon;
-      case AuthProvider.AwsCognito:
-        return CognitoIcon;
-      case AuthProvider.LDAP:
-        return SSOIcon;
-      case AuthProvider.Saml:
-        return SSOIcon;
-      default:
-        return null;
-    }
-  };
 
   const breadcrumb = useMemo(() => {
     const baseBreadcrumb = getSettingPageEntityBreadCrumb(

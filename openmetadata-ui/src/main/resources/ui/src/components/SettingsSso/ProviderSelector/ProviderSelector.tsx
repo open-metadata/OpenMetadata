@@ -11,30 +11,14 @@
  *  limitations under the License.
  */
 
-import { ArrowUpOutlined, LockOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import LdapIcon from '../../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../../assets/img/icon-azure.png';
-import GoogleIcon from '../../../assets/img/icon-google.png';
-import OktaIcon from '../../../assets/img/icon-okta.png';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { PROVIDER_OPTIONS } from '../../../utils/SSOUtils';
 import './provider-selector.less';
-
-interface ProviderSelectorProps {
-  selectedProvider?: AuthProvider;
-  onProviderSelect: (provider: AuthProvider) => void;
-}
-
-interface ProviderOption {
-  key: AuthProvider;
-  label: string;
-  icon: string | React.ReactNode;
-}
+import { ProviderSelectorProps } from './ProviderSelector.interface';
 
 const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider: initialSelectedProvider,
@@ -44,49 +28,6 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<
     AuthProvider | undefined
   >(initialSelectedProvider);
-
-  const providers: ProviderOption[] = [
-    {
-      key: AuthProvider.Google,
-      label: 'Google',
-      icon: GoogleIcon,
-    },
-    {
-      key: AuthProvider.Azure,
-      label: 'Azure AD',
-      icon: AzureIcon,
-    },
-    {
-      key: AuthProvider.Okta,
-      label: 'Okta',
-      icon: OktaIcon,
-    },
-    {
-      key: AuthProvider.Saml,
-      label: 'SAML',
-      icon: SamlIcon,
-    },
-    {
-      key: AuthProvider.AwsCognito,
-      label: 'AWS-Cognito',
-      icon: CognitoIcon,
-    },
-    {
-      key: AuthProvider.CustomOidc,
-      label: 'Custom-OIDC',
-      icon: <LockOutlined />,
-    },
-    {
-      key: AuthProvider.LDAP,
-      label: 'LDAP',
-      icon: LdapIcon,
-    },
-    {
-      key: AuthProvider.Auth0,
-      label: 'Auth0',
-      icon: Auth0Icon,
-    },
-  ];
 
   const handleCardClick = (provider: AuthProvider) => {
     setSelectedProvider(provider);
@@ -114,7 +55,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       </div>
 
       <div className="provider-selection-container d-flex flex-wrap">
-        {providers.map((provider) => (
+        {PROVIDER_OPTIONS.map((provider) => (
           <div
             className={`provider-item ${
               selectedProvider === provider.key ? 'selected' : ''
