@@ -187,14 +187,11 @@ public class OSLineageGraphBuilder {
             .withNodes(new HashMap<>())
             .withUpstreamEdges(new HashMap<>())
             .withDownstreamEdges(new HashMap<>());
-
-    // Add First and call recursively
-    addFirstDownstreamEntity(lineageRequest, result);
     fetchDownstreamNodesRecursively(
         lineageRequest,
         result,
         Map.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-        lineageRequest.getDownstreamDepth() - 1);
+        lineageRequest.getDownstreamDepth());
     return result;
   }
 
