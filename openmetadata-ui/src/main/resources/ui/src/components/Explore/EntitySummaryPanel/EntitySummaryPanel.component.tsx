@@ -69,8 +69,8 @@ export default function EntitySummaryPanel({
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
       setIsPermissionLoading(true);
-      const type =
-        get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
+      const type = (get(entityDetails, 'details.entityType') ??
+        ResourceEntity.TABLE) as ResourceEntity;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
     } catch {
@@ -107,7 +107,8 @@ export default function EntitySummaryPanel({
         />
       );
     }
-    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const type = (get(entityDetails, 'details.entityType') ??
+      EntityType.TABLE) as EntityType;
     const entity = entityDetails.details;
 
     return (
@@ -144,7 +145,8 @@ export default function EntitySummaryPanel({
         />
       );
     }
-    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const type = (get(entityDetails, 'details.entityType') ??
+      EntityType.TABLE) as EntityType;
     const entity = entityDetails.details;
 
     return (
@@ -182,13 +184,17 @@ export default function EntitySummaryPanel({
     setActiveTab(tab);
   };
 
-  const entityType =
-    get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+  const entityType = (get(entityDetails, 'details.entityType') ??
+    EntityType.TABLE) as EntityType;
 
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
-        return summaryComponentV1;
+        return (
+          <div style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+            {summaryComponentV1}
+          </div>
+        );
       case EntityRightPanelTab.SCHEMA:
         return (
           <div className="entity-summary-panel-tab-content">
@@ -239,7 +245,8 @@ export default function EntitySummaryPanel({
             target={searchClassBase.getSearchEntityLinkTarget(
               entityDetails.details
             )}
-            to={entityLink}>
+            to={entityLink}
+          >
             <Typography.Text style={{ fontSize: '13px', fontWeight: 700 }}>
               {entityIcon}
               {stringToHTML(
@@ -273,9 +280,11 @@ export default function EntitySummaryPanel({
           style={{
             borderRadius: '0px',
             display: 'flex',
-            paddingLeft: '16px',
-          }}>
-          <div style={{ paddingTop: '16px' }}>{renderTabContent()}</div>
+          }}
+        >
+          <div style={{ paddingTop: '16px', width: '100%' }}>
+            {renderTabContent()}
+          </div>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
             entityType={entityType}

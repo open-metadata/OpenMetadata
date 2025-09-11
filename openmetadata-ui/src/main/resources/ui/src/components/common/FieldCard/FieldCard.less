@@ -1,0 +1,127 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.field-card {
+  border-bottom: 1px solid #e8e8e8;
+  // margin-bottom: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 8px;
+
+  .field-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .field-name-container {
+      display: flex;
+      align-items: center;
+      flex: 1;
+
+      .constraint-icon {
+        margin-right: 8px;
+        display: flex;
+        align-items: center;
+      }
+
+      .field-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #20293a;
+        line-height: 1.4;
+      }
+    }
+
+    .data-type-badge {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 3px 6px;
+      border: 1px solid #e3e8f0;
+      border-radius: 4px;
+      white-space: nowrap;
+      background-color: #f9fafc;
+      text-transform: capitalize;
+    }
+  }
+
+  .field-card-content {
+    .field-description {
+      margin-bottom: 8px;
+      color: #364254;
+      font-size: 12px;
+
+      .no-description-text {
+        color: #bfbfbf;
+        font-style: italic;
+      }
+    }
+
+    .field-metadata {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+
+      .metadata-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .metadata-label {
+          font-size: 11px;
+          color: #21263c;
+          font-weight: 500;
+        }
+
+        .metadata-value {
+          font-size: 11px;
+          color: #21263c;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .field-tags {
+      margin-top: 8px;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .field-card {
+    padding: 12px;
+    margin-bottom: 8px;
+
+    .field-card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+
+      .field-name-container {
+        width: 100%;
+      }
+
+      .data-type-badge {
+        align-self: flex-end;
+      }
+    }
+
+    .field-card-content {
+      .field-metadata {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+  }
+}

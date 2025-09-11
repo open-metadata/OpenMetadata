@@ -13,8 +13,9 @@
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { getEntityChildDetails } from '../../../utils/EntitySummaryPanelUtils';
+import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import './EntityDetailsSection.less';
 
 interface EntityDetailsSectionProps {
   entityType: EntityType;
@@ -30,10 +31,13 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   isLoading = false,
 }) => {
   const entityDetails = useMemo(() => {
-    return getEntityChildDetails(
+    return getEntityChildDetailsV1(
       entityType,
       entityType === EntityType.DASHBOARD
-        ? ({ ...dataAsset, charts: [] } as any)
+        ? ({
+            ...dataAsset,
+            charts: [],
+          } as unknown as SearchedDataProps['data'][number]['_source'])
         : dataAsset,
       highlights,
       isLoading
