@@ -74,7 +74,7 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@material/material-color-utilities|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',
   ],
 
   // TypeScript

@@ -80,6 +80,14 @@ export default defineConfig(({ mode }) => {
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
+      dedupe: [
+        'react',
+        'react-dom',
+        '@mui/material',
+        '@mui/system',
+        '@emotion/react',
+        '@emotion/styled',
+      ],
     },
 
     css: {
