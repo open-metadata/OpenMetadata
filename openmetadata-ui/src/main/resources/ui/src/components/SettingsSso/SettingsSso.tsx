@@ -127,7 +127,10 @@ const SettingsSso = () => {
       Object.values(AuthProvider).includes(providerParam as AuthProvider)
     ) {
       setCurrentProvider(providerParam);
-      setShowProviderSelector(false); // Don't show selector for specific providers
+      setShowProviderSelector(false);
+    } else {
+      setShowProviderSelector(true);
+      setCurrentProvider('');
     }
 
     // Check for existing SSO configuration
