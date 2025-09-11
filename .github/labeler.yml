@@ -1,4 +1,4 @@
-# Label when source files are for UI team
+# Label when source files are for UI team 
 ui:
   - "openmetadata-ui/**/*"
   - "package.json"
