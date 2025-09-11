@@ -30,13 +30,13 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import { highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
+import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -84,14 +84,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
-        ...(source?.domains
-          ? source.domains.map((domain) => ({
-              key: 'Domains',
-              value: getDomainPath(domain.fullyQualifiedName) ?? '',
-              placeholderText: getEntityName(domain),
-              isLink: true,
-              openInNewTab: false,
-            }))
+        ...(source?.domains && source.domains.length > 0
+          ? [
+              {
+                key: 'Domains',
+                value: <DomainDisplay domains={source.domains} />,
+              },
+            ]
           : !searchClassBase
               .getListOfEntitiesWithoutDomain()
               .includes(source?.entityType ?? '')

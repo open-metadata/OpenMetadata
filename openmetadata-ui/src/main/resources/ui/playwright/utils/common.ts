@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Page, request } from '@playwright/test';
+import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
@@ -413,6 +413,23 @@ export const generateRandomUsername = (prefix = '') => {
   };
 };
 
+export const verifyDomainLinkInCard = async (
+  entityCard: Locator,
+  domain: Domain['responseData']
+) => {
+  const domainLink = entityCard.getByTestId('domain-link').filter({
+    hasText: domain.displayName,
+  });
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
+
+  const href = await domainLink.getAttribute('href');
+
+  expect(href).toContain('/domain/');
+  await expect(domainLink).toBeEnabled();
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
@@ -420,12 +437,16 @@ export const verifyDomainPropagation = async (
 ) => {
   await page.getByTestId('searchBox').fill(childFqnSearchTerm);
   await page.getByTestId('searchBox').press('Enter');
+  await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
-  await expect(
-    page
-      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domains-link')
-  ).toContainText(domain.displayName);
+  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+
+  await expect(entityCard).toBeVisible();
+
+  const domainLink = entityCard.getByTestId('domain-link').first();
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
