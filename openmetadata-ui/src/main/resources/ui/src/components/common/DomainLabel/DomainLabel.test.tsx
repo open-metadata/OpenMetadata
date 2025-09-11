@@ -162,14 +162,14 @@ describe('DomainLabel Component', () => {
     renderDomainLabel({ domains: [] });
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
-    expect(screen.getByText('--')).toBeInTheDocument();
+    expect(screen.getByText('No Domains')).toBeInTheDocument();
   });
 
   it('should render "No Domains" text when domains is undefined', () => {
     renderDomainLabel({ domains: undefined });
 
     expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
-    expect(screen.getByText('--')).toBeInTheDocument();
+    expect(screen.getByText('No Domains')).toBeInTheDocument();
   });
 
   it('should render inherited domain with inherit icon', () => {

@@ -27,6 +27,7 @@ import './owner-label.less';
 import { OwnerLabelProps } from './OwnerLabel.interface';
 
 export const OwnerLabel = ({
+  isDataAssetHeader,
   owners = [],
   showLabel = true,
   className,
@@ -194,6 +195,7 @@ export const OwnerLabel = ({
           className={className}
           hasPermission={hasPermission}
           isCompactView={isCompactView}
+          isDataAssetHeader={isDataAssetHeader}
           multiple={multiple}
           owners={owners}
           placeHolder={placeHolder}

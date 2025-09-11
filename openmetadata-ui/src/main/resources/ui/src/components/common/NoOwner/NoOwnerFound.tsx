@@ -21,6 +21,7 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
 export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
+  isDataAssetHeader,
   isCompactView,
   showLabel = true,
   placeHolder,
@@ -89,9 +90,13 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
         <div className="no-owner-text text-sm font-medium">
           {placeHolder
             ? showLabel
-              ? NO_DATA_PLACEHOLDER
+              ? isDataAssetHeader
+                ? NO_DATA_PLACEHOLDER
+                : t('label.no-entity', { entity: t('label.owner-plural') })
               : placeHolder
-            : NO_DATA_PLACEHOLDER}
+            : isDataAssetHeader
+            ? NO_DATA_PLACEHOLDER
+            : t('label.no-entity', { entity: t('label.owner-plural') })}
         </div>
       )}
     </div>
