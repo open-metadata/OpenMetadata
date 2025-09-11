@@ -130,7 +130,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     // Inherit domain from spreadsheet if not set
     if (nullOrEmpty(worksheet.getDomains())) {
       Spreadsheet spreadsheet =
-          Entity.getEntity(worksheet.getSpreadsheet(), "domains", Include.NON_DELETED);
+          Entity.getEntity(worksheet.getSpreadsheet(), "domains", Include.ALL);
       inheritDomains(worksheet, fields, spreadsheet);
     }
   }

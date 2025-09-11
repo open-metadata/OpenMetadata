@@ -125,7 +125,15 @@ export const selectDataAssetFilter = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
   );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  await page.getByTestId(`${filterValue}-checkbox`).check();
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill(filterValue.toLowerCase());
+  await dataAssetDropdownRequest;
+  await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
   await page.getByTestId('update-btn').click();
 };
 

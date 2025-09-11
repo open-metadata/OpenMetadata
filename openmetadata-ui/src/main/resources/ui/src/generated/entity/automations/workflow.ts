@@ -534,6 +534,10 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Request
+ *
+ * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +578,18 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
+    /**
+     * Spark Engine Configuration.
+     */
+    sparkEngine?: SparkEngineConfiguration;
 }
 
 /**
@@ -697,6 +713,8 @@ export interface RequestConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -783,6 +801,8 @@ export interface RequestConnection {
  * Azure Data Factory Connection Config
  *
  * Stitch Connection
+ *
+ * Snowplow Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -961,6 +981,8 @@ export interface ConfigObject {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      *
      * URL to the Looker instance.
      *
@@ -1193,6 +1215,8 @@ export interface ConfigObject {
      *
      * Password
      *
+     * Password to connect to ServiceNow.
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -1295,6 +1319,9 @@ export interface ConfigObject {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -1409,13 +1436,22 @@ export interface ConfigObject {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
+     *
+     * SSL Configuration for OpenMetadata Server
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: SSLConfigObject;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Choose Auth Config Type.
      *
@@ -1426,12 +1462,6 @@ export interface ConfigObject {
      * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1467,6 +1497,8 @@ export interface ConfigObject {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -1533,6 +1565,10 @@ export interface ConfigObject {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -1671,6 +1707,8 @@ export interface ConfigObject {
      * Admin role for full metadata extraction.
      *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -1722,6 +1760,16 @@ export interface ConfigObject {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -2075,6 +2123,22 @@ export interface ConfigObject {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -2837,6 +2901,15 @@ export interface QlikCertificatesBy {
      */
     rootCertificate?: string;
     [property: string]: any;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -3622,6 +3695,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ConfigElasticsSearch {
@@ -4357,10 +4440,12 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",
@@ -4402,7 +4487,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -4532,7 +4617,7 @@ export interface Style {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
@@ -4558,6 +4643,36 @@ export enum ServiceType {
 }
 
 /**
+ * Spark Engine Configuration.
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface SparkEngineConfiguration {
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote: string;
+    type:   SparkEngineType;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+export enum SparkEngineType {
+    Spark = "Spark",
+}
+
+/**
  * Pipeline type
  *
  * Reverse Ingestion Config Pipeline type
@@ -4573,6 +4688,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Response
  */
 export interface TestConnectionResult {
     /**
@@ -4581,6 +4698,8 @@ export interface TestConnectionResult {
     lastUpdatedAt?: number;
     /**
      * Test Connection Result computation status.
+     *
+     * Status of the query execution
      */
     status?: StatusType;
     /**
@@ -4593,8 +4712,10 @@ export interface TestConnectionResult {
     message?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * Results of the query execution
      */
-    results?: ReverseIngestionOperationResult[];
+    results?: ReverseIngestionOperationResult[] | TableData;
     /**
      * The id of the service to be modified
      */
@@ -4604,6 +4725,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
+     * Detailed error log in case of failure
+     */
+    errorLog?: string;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4623,9 +4752,29 @@ export interface ReverseIngestionOperationResult {
 }
 
 /**
+ * Results of the query execution
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Test Connection Result computation status.
  *
  * Enum defining possible Test Connection Result status
+ *
+ * Status of the query execution
+ *
+ * Enum defining possible Query Runner status
  */
 export enum StatusType {
     Failed = "Failed",
@@ -4679,6 +4828,8 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }

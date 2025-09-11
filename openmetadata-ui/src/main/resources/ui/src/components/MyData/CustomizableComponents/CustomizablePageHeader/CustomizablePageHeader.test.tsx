@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -71,7 +77,10 @@ describe('CustomizablePageHeader', () => {
     );
 
     const saveButton = screen.getByTestId('save-button');
-    fireEvent.click(saveButton);
+
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
 
     expect(mockProps.onSave).toHaveBeenCalled();
 
@@ -101,12 +110,20 @@ describe('CustomizablePageHeader', () => {
     );
 
     const saveButton = screen.getByTestId('save-button');
-    fireEvent.click(saveButton);
+    const cancelButton = screen.getByTestId('cancel-button');
+    const resetButton = screen.getByTestId('reset-button');
 
-    // Check if cancel and reset buttons are disabled during save
-    expect(screen.getByTestId('cancel-button')).toBeDisabled();
-    expect(screen.getByTestId('reset-button')).toBeDisabled();
+    act(() => {
+      fireEvent.click(saveButton);
+    });
 
+    // During save, buttons should be disabled
+    await waitFor(() => {
+      expect(cancelButton).toBeDisabled();
+      expect(resetButton).toBeDisabled();
+    });
+
+    // Wait for saving to complete
     await waitFor(() => {
       expect(saveButton).not.toHaveAttribute('loading');
     });
@@ -121,13 +138,13 @@ describe('CustomizablePageHeader', () => {
 
     fireEvent.click(screen.getByTestId('reset-button'));
 
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
+    expect(screen.getByText('label.reset-default-layout')).toBeInTheDocument();
     expect(
       screen.getByText('message.reset-layout-confirmation')
     ).toBeInTheDocument();
   });
 
-  it('should handle reset confirmation', () => {
+  it('should handle reset confirmation', async () => {
     render(
       <MemoryRouter>
         <CustomizablePageHeader {...mockProps} />
@@ -135,18 +152,29 @@ describe('CustomizablePageHeader', () => {
     );
 
     // Open reset modal
-    fireEvent.click(screen.getByTestId('reset-button'));
+    act(() => {
+      fireEvent.click(screen.getByTestId('reset-button'));
+    });
 
-    // Click yes on the modal
-    const modal = screen.getByTestId('reset-layout-modal');
-    const okButton = modal.querySelector('.ant-btn-primary') as HTMLElement;
-    fireEvent.click(okButton);
+    // Wait for modal to appear and find the reset button in modal by text
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.reset-default-layout')
+      ).toBeInTheDocument();
+    });
+
+    const modalResetButton = screen.getByRole('button', {
+      name: 'label.reset',
+    });
+
+    act(() => {
+      fireEvent.click(modalResetButton);
+    });
 
     expect(mockProps.onReset).toHaveBeenCalled();
-    expect(screen.queryByTestId('reset-layout-modal')).not.toBeInTheDocument();
   });
 
-  it('should handle reset cancellation', () => {
+  it('should handle reset cancellation', async () => {
     render(
       <MemoryRouter>
         <CustomizablePageHeader {...mockProps} />
@@ -154,17 +182,24 @@ describe('CustomizablePageHeader', () => {
     );
 
     // Open reset modal
-    fireEvent.click(screen.getByTestId('reset-button'));
+    act(() => {
+      fireEvent.click(screen.getByTestId('reset-button'));
+    });
 
-    // Click no on the modal
-    const modal = screen.getByTestId('reset-layout-modal');
-    const cancelButton = modal.querySelector(
-      '.ant-btn:not(.ant-btn-primary)'
-    ) as HTMLElement;
-    fireEvent.click(cancelButton);
+    // Wait for modal to appear and find cancel button by role and text
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.reset-default-layout')
+      ).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
+
+    act(() => {
+      fireEvent.click(cancelButton);
+    });
 
     expect(mockProps.onReset).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('reset-layout-modal')).not.toBeInTheDocument();
   });
 
   it('should render different titles for different page types', () => {

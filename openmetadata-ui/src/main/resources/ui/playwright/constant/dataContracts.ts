@@ -15,6 +15,8 @@ import { uuid } from '../utils/common';
 export const DATA_CONTRACT_DETAILS = {
   name: `data_contract_${uuid()}`,
   description: 'new data contract description',
+  displayName: `Data Contract_${uuid()}`,
+  description2: 'Modified Data Contract Description',
 };
 
 export const DATA_CONTRACT_SEMANTICS1 = {
@@ -49,4 +51,23 @@ export const NEW_TABLE_TEST_CASE = {
   type: 'tableColumnCountToEqual',
   value: '1000',
   description: 'New table test case for TableColumnCountToEqual',
+};
+
+export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
+  name: `data_contract_container_semantic_${uuid()}`,
+  description: 'new data contract semantic contains description ',
+  rules: [
+    {
+      field: 'Tier',
+      operator: 'Contains',
+    },
+    {
+      field: 'Tags',
+      operator: 'Contains',
+    },
+    {
+      field: 'Glossary Term',
+      operator: 'Contains',
+    },
+  ],
 };

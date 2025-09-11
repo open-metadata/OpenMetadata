@@ -72,8 +72,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
               getDisplayNameOrFqn(eventSubscription), event);
       String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event, json);
+          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, json);
       targets.add(getTarget(client, webhook, json));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, gchatMessage);
