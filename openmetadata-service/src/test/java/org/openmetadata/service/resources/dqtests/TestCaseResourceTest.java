@@ -4229,4 +4229,160 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertTrue(
         nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers after approval");
   }
+
+  @Test
+  void test_reviewerInheritanceFromTestSuite(TestInfo test) throws IOException {
+    // Create a test suite first without reviewers
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test.getDisplayName());
+    TestSuite testSuite = testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Add reviewers to the test suite using PATCH
+    String testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(List.of(USER1_REF, USER2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntityAndCheck(
+            testSuite, testSuiteJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify test suite has reviewers
+    assertNotNull(testSuite.getReviewers(), "TestSuite should have reviewers");
+    assertEquals(2, testSuite.getReviewers().size(), "TestSuite should have two reviewers");
+
+    // Create a test case under this test suite (without explicit reviewers)
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    createTestCase.withEntityLink(
+        String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName()));
+    TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // Add the test case to the test suite to establish the parent-child relationship
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+
+    // Fetch the test case with testSuite and reviewers fields
+    // We need testSuite field to be populated for reviewer inheritance to work
+    TestCase retrievedTestCase =
+        getEntity(testCase.getId(), "testSuite,reviewers", ADMIN_AUTH_HEADERS);
+
+    // Verify that the test case inherited reviewers from test suite
+    assertNotNull(
+        retrievedTestCase.getReviewers(),
+        "TestCase should have inherited reviewers from TestSuite");
+    assertEquals(
+        2, retrievedTestCase.getReviewers().size(), "TestCase should have inherited two reviewers");
+
+    // Verify the inherited reviewers match the test suite's reviewers
+    Set<UUID> testSuiteReviewerIds =
+        testSuite.getReviewers().stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> testCaseReviewerIds =
+        retrievedTestCase.getReviewers().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    assertEquals(
+        testSuiteReviewerIds,
+        testCaseReviewerIds,
+        "TestCase reviewers should match TestSuite reviewers");
+
+    // Verify that inherited reviewers are marked as inherited
+    assertTrue(
+        retrievedTestCase.getReviewers().stream()
+            .allMatch(reviewer -> reviewer.getInherited() != null && reviewer.getInherited()),
+        "All inherited reviewers should be marked as inherited");
+
+    // Update test suite reviewers
+    testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldUpdated(
+        change,
+        "reviewers",
+        List.of(USER1_REF, USER2.getEntityReference()),
+        List.of(USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), testSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+
+    // Verify test suite reviewers were updated
+    assertEquals(
+        1, testSuite.getReviewers().size(), "TestSuite should have one reviewer after update");
+    assertEquals(
+        USER2.getId(),
+        testSuite.getReviewers().getFirst().getId(),
+        "TestSuite reviewer should be USER2");
+
+    // Get the test case again to verify inherited reviewers were updated
+    retrievedTestCase = getEntity(testCase.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedTestCase.getReviewers(), "TestCase should still have inherited reviewers");
+    assertEquals(
+        1,
+        retrievedTestCase.getReviewers().size(),
+        "TestCase should have one inherited reviewer after update");
+    assertEquals(
+        USER2.getId(),
+        retrievedTestCase.getReviewers().getFirst().getId(),
+        "TestCase reviewer should be USER2 after update");
+    assertTrue(
+        retrievedTestCase.getReviewers().getFirst().getInherited(),
+        "Reviewer should still be marked as inherited");
+
+    // Create a test case with explicit reviewers (should not inherit)
+    CreateTestCase createTestCaseWithReviewers = createRequest(getEntityName(test) + "_explicit");
+    createTestCaseWithReviewers.withEntityLink(
+        String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName()));
+    createTestCaseWithReviewers.withReviewers(List.of(USER1_REF));
+    TestCase testCaseWithExplicitReviewers =
+        createEntity(createTestCaseWithReviewers, ADMIN_AUTH_HEADERS);
+
+    // Verify explicit reviewers are not overridden
+    TestCase retrievedExplicitTestCase =
+        getEntity(testCaseWithExplicitReviewers.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedExplicitTestCase.getReviewers(), "TestCase should have explicit reviewers");
+    assertEquals(
+        1,
+        retrievedExplicitTestCase.getReviewers().size(),
+        "TestCase should have one explicit reviewer");
+    assertEquals(
+        USER1.getId(),
+        retrievedExplicitTestCase.getReviewers().getFirst().getId(),
+        "TestCase should have USER1 as reviewer");
+    assertNull(
+        retrievedExplicitTestCase.getReviewers().getFirst().getInherited(),
+        "Explicit reviewer should not be marked as inherited");
+
+    // Clear test suite reviewers and verify test cases no longer inherit
+    testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(null);
+    change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), testSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+
+    // Verify test suite has no reviewers
+    assertTrue(
+        nullOrEmpty(testSuite.getReviewers()), "TestSuite should have no reviewers after clearing");
+
+    // Verify test case no longer inherits reviewers
+    retrievedTestCase = getEntity(testCase.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        nullOrEmpty(retrievedTestCase.getReviewers()),
+        "TestCase should have no inherited reviewers when TestSuite has none");
+
+    // Verify test case with explicit reviewers still has them
+    retrievedExplicitTestCase =
+        getEntity(testCaseWithExplicitReviewers.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedExplicitTestCase.getReviewers(),
+        "TestCase with explicit reviewers should still have them");
+    assertEquals(
+        1,
+        retrievedExplicitTestCase.getReviewers().size(),
+        "TestCase should still have one explicit reviewer");
+    assertEquals(
+        USER1.getId(),
+        retrievedExplicitTestCase.getReviewers().getFirst().getId(),
+        "TestCase should still have USER1 as reviewer");
+  }
 }
