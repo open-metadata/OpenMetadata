@@ -204,7 +204,6 @@ const TagsV1 = ({
     () => (
       <Tag
         className="tag-chip tag-chip-add-button"
-        data-testid="add-tag"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
           className="m-0 text-xs font-medium text-primary"
