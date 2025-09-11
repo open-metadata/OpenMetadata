@@ -29,7 +29,9 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
 
 const policy = new PolicyClass();
+const policy2 = new PolicyClass();
 const role = new RolesClass();
+const role2 = new RolesClass();
 const user = new UserClass();
 const table = new TableClass();
 
@@ -145,9 +147,23 @@ test.beforeAll(async ({ browser }) => {
     },
   ]);
 
+  const policyResponse2 = await policy2.create(apiContext, [
+    {
+      name: `pw-permission-rule-${uuid()}`,
+      resources: ['All'],
+      operations: ['All'],
+      effect: 'deny',
+      condition: '!isOwner',
+    },
+  ]);
+
   const roleResponse = await role.create(apiContext, [
     policyResponse.fullyQualifiedName,
   ]);
+  const roleResponse2 = await role2.create(apiContext, [
+    policyResponse2.fullyQualifiedName,
+  ]);
+
   await user.patch({
     apiContext,
     patchData: [
@@ -159,6 +175,11 @@ test.beforeAll(async ({ browser }) => {
             id: roleResponse.id,
             type: 'role',
             name: roleResponse.name,
+          },
+          {
+            id: roleResponse2.id,
+            type: 'role',
+            name: roleResponse2.name,
           },
         ],
       },
@@ -172,6 +193,8 @@ test.afterAll(async ({ browser }) => {
   await user.delete(apiContext);
   await role.delete(apiContext);
   await policy.delete(apiContext);
+  await policy2.delete(apiContext);
+  await role2.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -188,6 +211,32 @@ for (const Entity of entities) {
       await entityObj.create(apiContext);
 
       // verify service search
+      await searchForEntityShouldWork(
+        entityObj.entityResponseData?.fullyQualifiedName,
+        entityObj.entityResponseData?.displayName,
+        userWithPermissionPage
+      );
+      await searchForEntityShouldWorkShowNoResult(
+        entityObj.entityResponseData?.fullyQualifiedName,
+        entityObj.entityResponseData?.displayName,
+        userWithoutPermissionPage
+      );
+    } catch (_e) {
+      // remove entity
+    } finally {
+      await entityObj.delete(apiContext);
+    }
+  });
+
+  test(`Search RBAC for ${entityObj.getType()} with !isOwner condition`, async ({
+    userWithPermissionPage,
+    userWithoutPermissionPage,
+  }) => {
+    const { apiContext } = await getApiContext(userWithPermissionPage);
+    try {
+      await entityObj.create(apiContext);
+
+      // verify search with !isOwner condition
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName,
         entityObj.entityResponseData?.displayName,
