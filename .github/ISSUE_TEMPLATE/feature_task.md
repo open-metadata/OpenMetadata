@@ -1,4 +1,4 @@
----
+--- 
 name: Feature task
 about: Create a Feature based on an issue
 title: ''
