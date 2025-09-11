@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -37,6 +38,7 @@ public class WorkflowClassConverter extends ClassConverter {
             List.of(
                 TestServiceConnectionRequest.class,
                 ReverseIngestionPipeline.class,
+                QueryRunnerRequest.class,
                 TestSparkEngineConnectionRequest.class))
         .ifPresent(workflow::setRequest);
 
