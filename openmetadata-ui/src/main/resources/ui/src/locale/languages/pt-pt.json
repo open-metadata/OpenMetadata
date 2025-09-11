@@ -557,6 +557,7 @@
     "endpoint-url": "URL do Ponto Final",
     "endpoint-url-for-aws": "URL do Ponto Final para AWS",
     "enter": "Entrar",
+    "enter-custom-unit-of-measurement": "Digite a unidade de medida personalizada e prima Enter",
     "enter-entity": "Inserir {{entity}}",
     "enter-entity-name": "Inserir nome de {{entity}}",
     "enter-entity-value": "Inserir Valor de {{entity}}",
