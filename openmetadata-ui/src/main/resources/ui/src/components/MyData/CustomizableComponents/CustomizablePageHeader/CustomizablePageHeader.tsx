@@ -16,7 +16,7 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Modal, Space, Typography } from 'antd';
+import { Button, Card, Space, Typography } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
@@ -59,19 +60,19 @@ export const CustomizablePageHeader = ({
     navigate(-1);
   };
 
-  const { modalTitle, modalDescription } = useMemo(() => {
+  const { modalTitle, modalDescription, okText, cancelText } = useMemo(() => {
     if (confirmationModalType === 'reset') {
       return {
         modalTitle: t('label.reset-default-layout'),
         modalDescription: t('message.reset-layout-confirmation'),
+        okText: t('label.reset'),
+        cancelText: t('label.cancel'),
       };
     }
 
     return {
-      modalTitle: t('message.are-you-sure-want-to-text', {
-        text: t('label.close'),
-      }),
-      modalDescription: t('message.unsaved-changes-warning'),
+      modalTitle: undefined,
+      modalDescription: undefined,
     };
   }, [confirmationModalType]);
 
@@ -90,10 +91,23 @@ export const CustomizablePageHeader = ({
     setSaving(false);
   }, [onSave]);
 
-  const handleReset = useCallback(async () => {
-    confirmationModalType === 'reset' ? onReset() : handleCancel();
+  const handleModalSave = useCallback(async () => {
+    if (confirmationModalType === 'reset') {
+      onReset();
+    } else {
+      await handleSave();
+    }
     setConfirmationModalOpen(false);
-  }, [onReset, confirmationModalType, handleCancel]);
+  }, [confirmationModalType, onReset, handleSave]);
+
+  const handleModalDiscard = useCallback(() => {
+    if (confirmationModalType === 'reset') {
+      handleCloseResetModal();
+    } else {
+      handleCancel();
+    }
+    setConfirmationModalOpen(false);
+  }, [confirmationModalType, handleCancel, onReset]);
 
   const i18Values = useMemo(
     () => ({
@@ -112,7 +126,7 @@ export const CustomizablePageHeader = ({
     } else {
       handleCancel();
     }
-  }, [disableSave]);
+  }, [disableSave, handleCancel]);
 
   return (
     <Card
@@ -143,21 +157,13 @@ export const CustomizablePageHeader = ({
           </Typography.Paragraph>
         </div>
         <Space>
-          {isLandingPage ? (
+          {isLandingPage && (
             <Button
               data-testid="add-widget-button"
               icon={<PlusOutlined />}
               type="primary"
               onClick={onAddWidget}>
               {t('label.add-widget-plural')}
-            </Button>
-          ) : (
-            <Button
-              data-testid="cancel-button"
-              disabled={saving}
-              icon={<CloseOutlined />}
-              onClick={handleClose}>
-              {t('label.close')}
             </Button>
           )}
           <Button
@@ -176,31 +182,27 @@ export const CustomizablePageHeader = ({
             onClick={handleSave}>
             {t('label.save')}
           </Button>
-          {isLandingPage && (
-            <Button
-              className="landing-page-cancel-button"
-              data-testid="cancel-button"
-              disabled={saving}
-              icon={<CloseOutlined />}
-              onClick={handleClose}
-            />
-          )}
+          <Button
+            className="landing-page-cancel-button"
+            data-testid="cancel-button"
+            disabled={saving}
+            icon={<CloseOutlined />}
+            onClick={handleClose}
+          />
         </Space>
       </div>
 
-      {confirmationModalOpen && (
-        <Modal
-          centered
-          cancelText={t('label.no')}
-          data-testid="reset-layout-modal"
-          okText={t('label.yes')}
-          open={confirmationModalOpen}
-          title={modalTitle}
-          onCancel={handleCloseResetModal}
-          onOk={handleReset}>
-          {modalDescription}
-        </Modal>
-      )}
+      <UnsavedChangesModal
+        description={modalDescription}
+        discardText={cancelText}
+        loading={saving}
+        open={confirmationModalOpen}
+        saveText={okText}
+        title={modalTitle}
+        onCancel={handleCloseResetModal}
+        onDiscard={handleModalDiscard}
+        onSave={handleModalSave}
+      />
     </Card>
   );
 };

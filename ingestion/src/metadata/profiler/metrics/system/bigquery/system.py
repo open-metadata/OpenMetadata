@@ -1,6 +1,6 @@
 """BigQuery system metric source"""
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
@@ -30,12 +30,14 @@ class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         session: Session,
         runner: QueryRunner,
         usage_location: str,
+        billing_project_id: Optional[str] = None,
     ):
         self.session = session
         self.table = runner.table_name
         self.project_id = runner.session.get_bind().url.host
         self.dataset_id = runner.schema_name
         self.usage_location = usage_location
+        self.billing_project_id = billing_project_id or self.project_id
 
     def get_deletes(self) -> List[SystemProfile]:
         return self.get_system_profile(
@@ -116,6 +118,7 @@ class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             usage_location=usage_location,
             project_id=project_id,
             dataset_id=dataset_id,
+            billing_project_id=self.billing_project_id,
         )
 
     @staticmethod

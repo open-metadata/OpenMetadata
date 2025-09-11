@@ -238,7 +238,14 @@
         "type": "integer"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "tier": {
         "properties": {
@@ -288,8 +295,9 @@
       "deleted": {
         "type": "boolean"
       },
-      "status": {
-        "type": "text"
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

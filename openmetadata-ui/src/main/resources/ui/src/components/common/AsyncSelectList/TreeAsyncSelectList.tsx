@@ -141,7 +141,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     <KeyDownStopPropagationWrapper>
       <div ref={dropdownContainerRef}>
         {isLoading ? <Loader size="small" /> : menu}
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+        <Space
+          className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+          data-testid="custom-drop-down-menu"
+          size={8}>
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
