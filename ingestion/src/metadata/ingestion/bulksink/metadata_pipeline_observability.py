@@ -28,8 +28,8 @@ from typing import Dict, List, Optional
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.steps import BulkSink
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -87,7 +87,7 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         Read staged pipeline observability files and send data to OpenMetadata.
         """
         try:
-            staging_dir = Path(self.config.filename).parent
+            staging_dir = Path(self.config.filename)
             logger.info(f"Processing pipeline observability files from {staging_dir}")
             
             if not staging_dir.exists():
@@ -119,9 +119,8 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         except Exception as exc:
             logger.error(f"Failed to run pipeline observability bulk sink: {exc}")
             logger.debug(traceback.format_exc())
-        finally:
-            # Cleanup staging directory
-            self._cleanup_staging_dir()
+        # Note: Do not cleanup staging directory here - let the stage handle cleanup
+        # The stage's close() method runs after bulk sink and handles cleanup properly
 
     def _process_observability_file(self, file_path: Path):
         """
@@ -160,6 +159,10 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
             self.processed_tables[table_fqn] = len(observability_data)
             self.wrote_something = True
             
+            # Update status tracking for each observability entry
+            for _ in observability_data:
+                self.status.scanned(f"Pipeline observability for {table_fqn}")
+            
             logger.info(
                 f"Successfully processed {len(observability_data)} observability entries for table {table_fqn}"
             )
@@ -167,85 +170,47 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         except Exception as exc:
             logger.error(f"Failed to process observability file {file_path}: {exc}")
             logger.debug(traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name=f"Observability file {file_path.name}",
+                    error=f"Failed to process observability file: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _add_pipeline_observability(self, table: Table, observability_data: List[PipelineObservability]):
         """
-        Add pipeline observability data to a table with merge logic.
+        Add pipeline observability data to a table using individual storage calls.
+        
+        This method uses individual pipeline FQN-based storage to ensure proper
+        entity_extension storage mechanism rather than bulk updates.
         
         Args:
             table: Table entity to update
             observability_data: List of new pipeline observability data
         """
         try:
-            # Get existing observability data
-            existing_obs = table.pipelineObservability or []
+            table_id = table.id
             
-            # Create a map of existing data by pipeline FQN for efficient lookup
-            existing_obs_map = {}
-            for obs in existing_obs:
-                if obs.pipeline and obs.pipeline.fullyQualifiedName:
-                    pipeline_fqn = obs.pipeline.fullyQualifiedName.__root__
-                    existing_obs_map[pipeline_fqn] = obs
-            
-            # Merge new data with existing data
-            merged_obs_list = []
-            
-            # Add existing data (will be updated if new data has same pipeline)
-            for pipeline_fqn, obs in existing_obs_map.items():
-                merged_obs_list.append(obs)
-            
-            # Process new observability data
-            for new_obs in observability_data:
-                if new_obs.pipeline and new_obs.pipeline.fullyQualifiedName:
-                    pipeline_fqn = new_obs.pipeline.fullyQualifiedName.__root__
-                    
-                    if pipeline_fqn in existing_obs_map:
-                        # Update existing entry
-                        for i, obs in enumerate(merged_obs_list):
-                            if (obs.pipeline and obs.pipeline.fullyQualifiedName and 
-                                obs.pipeline.fullyQualifiedName.__root__ == pipeline_fqn):
-                                merged_obs_list[i] = new_obs  # Replace with new data
-                                logger.debug(f"Updated existing observability data for pipeline {pipeline_fqn}")
-                                break
-                    else:
-                        # Append new entry
-                        merged_obs_list.append(new_obs)
-                        logger.debug(f"Added new observability data for pipeline {pipeline_fqn}")
-                else:
-                    # If no pipeline reference, just append
-                    merged_obs_list.append(new_obs)
-            
-            # Update the table entity with merged observability data using REST API
-            table_id = table.id.__root__
-            
-            # Call the REST API to update pipeline observability
-            try:
-                # Convert observability data to JSON format
-                observability_json = [obs.model_dump() for obs in merged_obs_list]
-                
-                response = self.metadata.client.put(
-                    f"/tables/{table_id}/pipelineObservability",
-                    data=observability_json
-                )
-                
-                logger.info(
-                    f"Successfully updated table {table.fullyQualifiedName.__root__} with "
-                    f"{len(merged_obs_list)} pipeline observability entries"
-                )
-                
-            except Exception as api_exc:
-                logger.error(
-                    f"Failed to call REST API for table {table.fullyQualifiedName.__root__}: {api_exc}"
-                )
-                raise api_exc
-            
-        except APIError as api_err:
-            logger.error(
-                f"Failed to update pipeline observability for table {table.fullyQualifiedName.__root__}: {api_err}"
+            # Use the existing working bulk method from table mixin
+            result_table = self.metadata.add_pipeline_observability(
+                table_id=table_id,
+                pipeline_observability=observability_data
             )
+            
+            if result_table:
+                logger.info(
+                    f"Successfully stored {len(observability_data)} pipeline observability entries "
+                    f"for table {table.fullyQualifiedName.root}"
+                )
+            else:
+                logger.warning(
+                    f"No response received for pipeline observability update for table {table.fullyQualifiedName.root}"
+                )
+            
         except Exception as exc:
             logger.error(
-                f"Unexpected error updating pipeline observability for table {table.fullyQualifiedName.__root__}: {exc}"
+                f"Failed to store pipeline observability for table {table.fullyQualifiedName.root}: {exc}"
             )
             logger.debug(traceback.format_exc())
 
@@ -254,7 +219,7 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
         Clean up the staging directory after processing.
         """
         try:
-            staging_dir = Path(self.config.filename).parent
+            staging_dir = Path(self.config.filename)
             if staging_dir.exists():
                 shutil.rmtree(staging_dir)
                 logger.info(f"Cleaned up staging directory: {staging_dir}")
@@ -263,9 +228,12 @@ class MetadataPipelineObservabilityBulkSink(BulkSink):
 
     def close(self):
         """
-        Clean up resources.
+        Clean up resources and staging directory.
         """
         if not self.wrote_something:
             logger.info("Pipeline observability bulk sink didn't process any data")
         else:
             logger.info("Pipeline observability bulk sink completed successfully")
+        
+        # Clean up staging directory
+        self._cleanup_staging_dir()

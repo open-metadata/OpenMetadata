@@ -65,9 +65,11 @@ class PipelineObservabilityProcessor(Processor):
         try:
             # Validate the record
             if not record.table:
+                logger.warning("Missing table entity in pipeline observability record")
                 return Either(left="Missing table entity in pipeline observability record")
             
             if not record.observability_data:
+                logger.warning("Missing observability data in record")
                 return Either(left="Missing observability data in record")
             
             # Validate each observability entry
@@ -84,6 +86,7 @@ class PipelineObservabilityProcessor(Processor):
                     f"and table {record.table.fullyQualifiedName}"
                 )
             
+            logger.debug(f"Processed pipeline observability for table: {record.table.fullyQualifiedName}")
             return Either(right=record)
             
         except Exception as exc:

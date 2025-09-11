@@ -18,7 +18,7 @@ for bulk processing by the metadata sink.
 import json
 import os
 import traceback
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
@@ -75,7 +75,7 @@ class TableObservabilityStage(Stage):
         config = TableObservabilityStageConfig.model_validate(config_dict)
         return cls(config, metadata)
 
-    def _run(self, record: TablePipelineObservability) -> Either[Optional[None]]:
+    def _run(self, record: TablePipelineObservability) -> Iterable[Either[str]]:
         """
         Stage pipeline observability data by table FQN.
         
@@ -83,13 +83,20 @@ class TableObservabilityStage(Stage):
             record: TablePipelineObservability from processor
             
         Returns:
-            Either success (None) or error message
+            Either success (table_fqn) or error message
         """
+        logger.info(f"[DEBUG] Table Observability Stage received record: {record}")
+        logger.info(f"[DEBUG] Record type: {type(record)}")
+        logger.info(f"[DEBUG] Record has table: {hasattr(record, 'table') and record.table is not None}")
+        logger.info(f"[DEBUG] Record has observability_data: {hasattr(record, 'observability_data') and record.observability_data is not None}")
+        
         try:
             if not record.table or not record.observability_data:
+                logger.warning(f"[DEBUG] Invalid record - table: {record.table}, observability_data: {record.observability_data}")
                 return Either(left="Invalid pipeline observability record")
             
             table_fqn = record.table.fullyQualifiedName.root
+            logger.info(f"[DEBUG] Processing table FQN: {table_fqn} with {len(record.observability_data)} observability entries")
             
             # Group observability data by table FQN
             if table_fqn not in self.observability_data:
@@ -102,7 +109,8 @@ class TableObservabilityStage(Stage):
                 f"Staged {len(record.observability_data)} observability entries for table {table_fqn}"
             )
             
-            return Either(right=None)
+            yield Either(right=table_fqn)
+            self.dump_data_to_file()
             
         except Exception as exc:
             logger.error(f"Failed to stage pipeline observability record: {exc}")
@@ -115,10 +123,12 @@ class TableObservabilityStage(Stage):
                 )
             )
 
-    def close(self):
+    def dump_data_to_file(self):
         """
-        Write all staged observability data to files and clean up.
+        Write all staged observability data to files.
         """
+        logger.debug(f"Staging observability data for {len(self.observability_data)} tables")
+        
         try:
             if not self.observability_data:
                 logger.info("No pipeline observability data to stage")
@@ -130,7 +140,7 @@ class TableObservabilityStage(Stage):
                 file_path = os.path.join(self.config.filename, filename)
                 
                 # Convert to JSON-serializable format
-                observability_json = [obs_data.model_dump_json() for obs_data in obs_data_list]
+                observability_json = [obs_data.model_dump(mode='json') for obs_data in obs_data_list]
                 
                 with open(file_path, "w", encoding=UTF_8) as file:
                     json.dump(
@@ -155,9 +165,6 @@ class TableObservabilityStage(Stage):
         except Exception as exc:
             logger.error(f"Failed to write staged pipeline observability data: {exc}")
             logger.debug(traceback.format_exc())
-        finally:
-            # Clear in-memory data
-            self.observability_data.clear()
 
     @property 
     def name(self) -> str:
@@ -168,3 +175,9 @@ class TableObservabilityStage(Stage):
         Get the staging directory path
         """
         return str(self.config.filename)
+
+    def close(self) -> None:
+        """
+        Nothing to close. Data is being dumped inside a context manager
+        """
+

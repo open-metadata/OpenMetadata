@@ -14,6 +14,7 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import base64
+import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -168,7 +169,17 @@ class OMetaTableMixin:
         """
         resp = None
         try:
-            data = [obs.model_dump() for obs in pipeline_observability]
+            try:
+                data_list = [obs.model_dump(mode='json') for obs in pipeline_observability]
+                # Convert list to JSON string for requests.put()
+                data = json.dumps(data_list)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error serializing pipeline observability data for table {table_id.root}: {exc}"
+                )
+                return None
+            
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability",
                 data=data,
@@ -202,14 +213,26 @@ class OMetaTableMixin:
         resp = None
         try:
             if pipeline_observability.pipeline and pipeline_observability.pipeline.fullyQualifiedName:
-                pipeline_fqn = pipeline_observability.pipeline.fullyQualifiedName.root
-                data = pipeline_observability.model_dump()
+                pipeline_fqn = pipeline_observability.pipeline.fullyQualifiedName
+                
+                try:
+                    data_dict = pipeline_observability.model_dump(mode='json')
+                    # Convert dictionary to JSON string for requests.put()
+                    data = json.dumps(data_dict)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error serializing single pipeline observability data for table {table_id.root}: {exc}"
+                    )
+                    return None
+                
                 resp = self.client.put(
                     f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability/{pipeline_fqn}",
                     data=data,
                 )
             else:
                 logger.warning(f"Pipeline FQN missing in observability data for table {table_id.root}")
+                return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(

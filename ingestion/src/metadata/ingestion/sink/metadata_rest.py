@@ -476,23 +476,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=table)
 
     @_run_dispatch.register
-    def write_pipeline_observability(
-        self, record: TablePipelineObservability
-    ) -> Either[Table]:
-        """
-        Use the /tables/{id}/pipelineObservability/{pipelineFqn} endpoint to ingest pipeline observability data
-        This approach ensures proper append/update logic: same pipeline updates, different pipelines append
-        """
-        table = None
-        # Send each pipeline observability individually to ensure proper append/update logic
-        for observability in record.observability_data:
-            table = self.metadata.add_single_pipeline_observability(
-                table_id=record.table.id, 
-                pipeline_observability=observability
-            )
-        return Either(right=table)
-
-    @_run_dispatch.register
     def write_test_suite_sample(
         self, record: OMetaTestSuiteSample
     ) -> Either[TestSuite]:
