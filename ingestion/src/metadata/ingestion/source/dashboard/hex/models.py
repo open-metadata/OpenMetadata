@@ -62,7 +62,9 @@ class ProjectAnalytics(BaseModel):
 
     appViews: Optional[AppViews] = Field(None, alias="app_views")
     lastViewedAt: Optional[datetime] = Field(None, alias="last_viewed_at")
-    publishedResultsUpdatedAt: Optional[datetime] = Field(None, alias="published_results_updated_at")
+    publishedResultsUpdatedAt: Optional[datetime] = Field(
+        None, alias="published_results_updated_at"
+    )
 
 
 class Project(BaseModel):

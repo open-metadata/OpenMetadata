@@ -514,7 +514,7 @@ export interface Connection {
     /**
      * Whether to import Hex project categories as OpenMetadata tags
      */
-    includeCategories?: boolean;
+    includeTags?: boolean;
     /**
      * Type of token to use for authentication
      */

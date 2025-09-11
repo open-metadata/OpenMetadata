@@ -1346,8 +1346,10 @@ export interface ConfigObject {
     pageSize?: number;
     /**
      * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
      */
-    includeCategories?: boolean;
+    includeTags?: boolean;
     /**
      * Type of token to use for authentication
      */
@@ -1637,10 +1639,6 @@ export interface ConfigObject {
      * Include Tables for Indexing
      */
     includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
     /**
      * Include Teams for Indexing
      */

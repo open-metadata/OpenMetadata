@@ -41,11 +41,16 @@
         "type": "string",
         "format": "password"
       },
-      "includeCategories": {
-        "title": "Include Categories as Tags",
+      "includeTags": {
+        "title": "Include Categories and status as Tags",
         "description": "Whether to import Hex project categories as OpenMetadata tags",
         "type": "boolean",
         "default": true
+      },
+      "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
       },
       "supportsMetadataExtraction": {
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

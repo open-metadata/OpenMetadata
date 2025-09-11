@@ -76,12 +76,15 @@ class HexApiClient:
             while True:
                 if after:
                     params["after"] = after
-                    
+
                 response = self.client.get("/projects", data=params)
                 project_response = ProjectListResponse.model_validate(response)
                 projects.extend(project_response.values)
 
-                if not project_response.pagination or not project_response.pagination.after:
+                if (
+                    not project_response.pagination
+                    or not project_response.pagination.after
+                ):
                     break
 
                 after = project_response.pagination.after

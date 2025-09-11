@@ -15,13 +15,17 @@
  */
 export interface HexConnection {
     /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      */
     hostPort: string;
     /**
      * Whether to import Hex project categories as OpenMetadata tags
      */
-    includeCategories?:          boolean;
+    includeTags?:                boolean;
     supportsMetadataExtraction?: boolean;
     /**
      * Hex API token for authentication. Can be personal or workspace token.
@@ -35,6 +39,22 @@ export interface HexConnection {
      * Service Type
      */
     type?: HexType;
+}
+
+/**
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
