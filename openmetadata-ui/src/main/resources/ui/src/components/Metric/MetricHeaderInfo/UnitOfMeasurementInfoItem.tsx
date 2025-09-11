@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Divider,
-  List,
-  Popover,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
@@ -30,69 +23,102 @@ import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   Metric,
-  MetricGranularity,
-  MetricType,
+  UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
+import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
-import './metric-header-info.less';
-import UnitOfMeasurementInfoItem from './UnitOfMeasurementInfoItem';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import './unit-of-measurement-header.less';
 
-interface MetricInfoItemOption {
+interface UnitOfMeasurementInfoItemProps {
   label: string;
-  value: string;
-  key: string;
-}
-
-interface MetricHeaderInfoProps {
-  metricPermissions: OperationPermission;
-  metricDetails: Metric;
-  onUpdateMetricDetails: (
-    updatedData: Metric,
-    key?: keyof Metric
-  ) => Promise<void>;
-}
-
-interface MetricInfoItemProps {
-  label: string;
-  value: string | undefined;
   hasPermission: boolean;
-  options: MetricInfoItemOption[];
-  valueKey: keyof Metric;
   metricDetails: Metric;
-  onUpdateMetricDetails: MetricHeaderInfoProps['onUpdateMetricDetails'];
+  onMetricUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
 }
 
-const MetricInfoItem: FC<MetricInfoItemProps> = ({
+const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
   label,
-  value,
   hasPermission,
-  options,
-  onUpdateMetricDetails,
-  valueKey,
   metricDetails,
+  onMetricUpdate,
 }) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
 
   const modiFiedLabel = label.toLowerCase().replace(/\s+/g, '-');
 
+  const fetchCustomUnits = useCallback(async () => {
+    try {
+      const units = await getCustomUnitsOfMeasurement();
+      setCustomUnits(units || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomUnits();
+  }, []);
+
+  const currentValue = useMemo(() => {
+    if (metricDetails.unitOfMeasurement === UnitOfMeasurement.Other) {
+      return metricDetails.customUnitOfMeasurement;
+    }
+
+    return metricDetails.unitOfMeasurement;
+  }, [metricDetails.unitOfMeasurement, metricDetails.customUnitOfMeasurement]);
+
   const allOptions = useMemo(() => {
-    return getSortedOptions(options, value, valueKey);
-  }, [options, value, valueKey]);
+    // Standard unit options (excluding 'Other' as it's handled via custom units)
+    const standardOptions = Object.values(UnitOfMeasurement)
+      .filter((unit) => unit !== UnitOfMeasurement.Other)
+      .map((unitOfMeasurement) => ({
+        key: unitOfMeasurement,
+        label: startCase(unitOfMeasurement.toLowerCase()),
+        value: unitOfMeasurement,
+      }));
+
+    // Custom unit options
+    const customOptions = customUnits.map((unit) => ({
+      key: unit,
+      label: unit,
+      value: unit,
+    }));
+
+    return getSortedOptions(
+      [...standardOptions, ...customOptions],
+      currentValue,
+      'unitOfMeasurement'
+    );
+  }, [customUnits, currentValue]);
 
   const handleUpdate = async (value: string | undefined) => {
     try {
       setIsUpdating(true);
       const updatedMetricDetails: Metric = {
         ...metricDetails,
-        [valueKey]: value,
       };
 
-      await onUpdateMetricDetails(updatedMetricDetails, valueKey);
+      if (!value) {
+        // Remove unit of measurement
+        updatedMetricDetails.unitOfMeasurement = undefined;
+        updatedMetricDetails.customUnitOfMeasurement = undefined;
+      } else if (customUnits.includes(value)) {
+        // Custom unit selected
+        updatedMetricDetails.unitOfMeasurement = UnitOfMeasurement.Other;
+        updatedMetricDetails.customUnitOfMeasurement = value;
+      } else {
+        // Standard unit selected
+        updatedMetricDetails.unitOfMeasurement = value as UnitOfMeasurement;
+        updatedMetricDetails.customUnitOfMeasurement = undefined;
+      }
+
+      await onMetricUpdate(updatedMetricDetails, 'unitOfMeasurement');
       setPopupVisible(false);
     } finally {
       setIsUpdating(false);
@@ -101,10 +127,11 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
 
   const list = (
     <List
+      className="unit-of-measurement-header"
       dataSource={allOptions}
       itemLayout="vertical"
       renderItem={(item) => {
-        const isActive = value === item.value;
+        const isActive = currentValue === item.value;
 
         return (
           <List.Item
@@ -141,10 +168,6 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
         );
       }}
       size="small"
-      style={{
-        maxHeight: '250px',
-        overflowY: 'auto',
-      }}
     />
   );
 
@@ -185,7 +208,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
             )}
           </div>
           <div className={classNames('font-medium extra-info-value')}>
-            {value ?? NO_DATA_PLACEHOLDER}
+            {currentValue ?? NO_DATA_PLACEHOLDER}
           </div>
         </Typography.Text>
       </div>
@@ -193,55 +216,4 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 };
 
-const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
-  metricDetails,
-  metricPermissions,
-  onUpdateMetricDetails,
-}) => {
-  const { t } = useTranslation();
-  const hasPermission = Boolean(metricPermissions.EditAll);
-
-  return (
-    <>
-      <Divider className="self-center vertical-divider" type="vertical" />
-      <MetricInfoItem
-        hasPermission={hasPermission}
-        label={t('label.metric-type')}
-        metricDetails={metricDetails}
-        options={Object.values(MetricType).map((metricType) => ({
-          key: metricType,
-          label: startCase(metricType.toLowerCase()),
-          value: metricType,
-        }))}
-        value={metricDetails.metricType}
-        valueKey="metricType"
-        onUpdateMetricDetails={onUpdateMetricDetails}
-      />
-      <Divider className="self-center vertical-divider" type="vertical" />
-
-      <UnitOfMeasurementInfoItem
-        hasPermission={hasPermission}
-        label={t('label.unit-of-measurement')}
-        metricDetails={metricDetails}
-        onMetricUpdate={onUpdateMetricDetails}
-      />
-      <Divider className="self-center vertical-divider" type="vertical" />
-
-      <MetricInfoItem
-        hasPermission={hasPermission}
-        label={t('label.granularity')}
-        metricDetails={metricDetails}
-        options={Object.values(MetricGranularity).map((granularity) => ({
-          key: granularity,
-          label: startCase(granularity.toLowerCase()),
-          value: granularity,
-        }))}
-        value={metricDetails.granularity}
-        valueKey="granularity"
-        onUpdateMetricDetails={onUpdateMetricDetails}
-      />
-    </>
-  );
-};
-
-export default MetricHeaderInfo;
+export default UnitOfMeasurementInfoItem;
