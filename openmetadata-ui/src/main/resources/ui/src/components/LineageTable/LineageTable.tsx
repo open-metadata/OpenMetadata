@@ -152,22 +152,22 @@ const LineageTable = () => {
       selectedDependencyType === 'direct'
         ? 1
         : lineageDirection === LineageDirection.Upstream
-        ? 2
+        ? lineageConfig.upstreamDepth
         : 0;
 
     const downstreamDepth =
       selectedDependencyType === 'direct'
         ? 1
         : lineageDirection === LineageDirection.Downstream
-        ? 2
+        ? lineageConfig.downstreamDepth
         : 0;
 
     return {
       upstreamDepth,
       downstreamDepth,
-      nodesPerLayer: 5,
+      nodesPerLayer: 50,
     };
-  }, [lineageDirection, selectedDependencyType]);
+  }, [lineageDirection, selectedDependencyType, lineageConfig]);
 
   const extraTableFilters = useMemo(() => {
     return (
@@ -201,12 +201,17 @@ const LineageTable = () => {
                   icon: <ArrowLeftOutlined />,
                 },
               ],
+              selectedKeys: [selectedDependencyType],
               onSelect: ({ key }) => {
+                setSelectedDependencyType(key);
+              },
+              onClick: ({ key }) => {
                 setSelectedDependencyType(key);
               },
             }}>
             <Button icon={<Icon component={SwitchVerticalIcon} />} type="text">
-              Dependency <Icon component={DropdownIcon} />
+              Dependency <Icon component={DropdownIcon} />{' '}
+              {selectedDependencyType}
             </Button>
           </Dropdown>
           <Dropdown
@@ -237,7 +242,7 @@ const LineageTable = () => {
         </div>
       </div>
     );
-  }, [navigate, radioGroupOptions, lineageDirection]);
+  }, [navigate, radioGroupOptions, lineageDirection, selectedDependencyType]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -332,7 +337,11 @@ const LineageTable = () => {
       delete res.nodes[fqn];
 
       setFilterNodes(
-        map(res.nodes, ({ entity, paging }) => ({ ...entity, ...paging }))
+        map(res.nodes, ({ entity, paging, nodeDepth }) => ({
+          ...entity,
+          ...paging,
+          nodeDepth,
+        }))
       );
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -352,7 +361,7 @@ const LineageTable = () => {
 
   useEffect(() => {
     fetchNodes();
-  }, [selectedFilter, lineageDirection, queryFilter]);
+  }, [selectedFilter, lineageDirection, queryFilter, reqLineageConfig]);
 
   useEffect(() => {
     if (!currentNodeData) {
@@ -457,7 +466,6 @@ const LineageTable = () => {
         title: 'Node Depth',
         dataIndex: 'nodeDepth',
         key: 'nodeDepth',
-        render: (depth: string) => <span>{depth}</span>,
       },
       {
         title: 'Description',

@@ -153,7 +153,7 @@ const CustomControls: FC<LineageControlProps> = ({
               independent
               aggregations={{}}
               defaultQueryFilter={queryFilter}
-              fields={selectedQuickFilters}
+              fields={selectedQuickFilters ?? []}
               index={SearchIndex.ALL}
               showDeleted={false}
               onFieldValueSelect={handleQuickFiltersValueSelect}
