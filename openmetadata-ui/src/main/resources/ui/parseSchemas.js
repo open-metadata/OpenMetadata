@@ -84,27 +84,16 @@ async function traverseDirectory(
   Directory,
   playDir,
   destDir,
-  shouldDereference = false,
-  allowedFiles = []
+  shouldDereference = false
 ) {
   const Files = fs.readdirSync(Directory);
   for (const File of Files) {
     const Absolute = path.join(Directory, File);
-
     if (fs.statSync(Absolute).isDirectory()) {
-      await traverseDirectory(
-        Absolute,
-        playDir,
-        destDir,
-        shouldDereference,
-        allowedFiles
-      );
+      await traverseDirectory(Absolute, playDir, destDir, shouldDereference);
     } else {
-      // If allowedFiles is empty, process all. Else process only allowed files.
-      if (allowedFiles.length === 0 || allowedFiles.includes(File)) {
-        const name = Absolute.replace(playDir, destDir);
-        await parseSchema(Absolute, name, shouldDereference);
-      }
+      const name = Absolute.replace(playDir, destDir);
+      await parseSchema(Absolute, name, shouldDereference);
     }
   }
 }
@@ -119,13 +108,7 @@ function copySourceFiles(rootDir) {
 }
 
 // Main function to handle schema parsing
-async function main(
-  rootDir,
-  srcDir,
-  destDir,
-  shouldDereference = false,
-  allowedFiles = []
-) {
+async function main(rootDir, srcDir, destDir, shouldDereference = false) {
   const playDir = `${rootDir}/${srcDir}`;
 
   try {
@@ -136,13 +119,7 @@ async function main(
 
     copySourceFiles(rootDir);
 
-    await traverseDirectory(
-      playDir,
-      playDir,
-      destDir,
-      shouldDereference,
-      allowedFiles
-    );
+    await traverseDirectory(playDir, playDir, destDir, shouldDereference);
   } catch (err) {
     console.log(err);
   } finally {
@@ -157,7 +134,7 @@ async function main(
 async function parseApplicationSchemas() {
   const appSchemaDir = 'src/utils/ApplicationSchemas';
   const destDir = 'src/jsons/applicationSchemas';
-
+  
   try {
     // Create destination directory if it doesn't exist
     if (!fs.existsSync(destDir)) {
@@ -167,30 +144,30 @@ async function parseApplicationSchemas() {
       fs.rmSync(destDir, { recursive: true });
       fs.mkdirSync(destDir, { recursive: true });
     }
-
+    
     // Get all JSON files in ApplicationSchemas directory
     const files = fs.readdirSync(appSchemaDir).filter(file => file.endsWith('.json'));
-
+    
     for (const file of files) {
       const filePath = path.join(appSchemaDir, file);
       const destPath = path.join(destDir, file);
-
+      
       try {
         // Change to the source directory for relative path resolution
         const fileDir = path.dirname(filePath);
         const originalCwd = process.cwd();
         process.chdir(fileDir);
-
+        
         // Parse and dereference the schema
         let parsedSchema = await parser.parse(file);
         parsedSchema = await parser.dereference(parsedSchema);
-
+        
         // Remove $id fields
         const updatedSchema = removeObjectByKey(parsedSchema, '$id');
-
+        
         // Change back to original directory
         process.chdir(originalCwd);
-
+        
         // Write the processed schema to destination
         fs.writeFileSync(destPath, JSON.stringify(updatedSchema, null, 2));
         console.log(`Processed ApplicationSchema: ${file}`);
@@ -226,17 +203,29 @@ async function runParsers() {
     'schema/governance/workflows/elements/nodes',
     'src/jsons/governanceSchemas'
   );
-
+  
   // Parse Application schemas
   await parseApplicationSchemas();
 
-  await main(
-    'configTemp',
-    'schema/configuration',
-    'src/jsons/configuration',
-    true,
-    ['authenticationConfiguration.json', 'authorizerConfiguration.json']
-  );
+  // Parse configuration schemas directly
+  const configDir = 'src/jsons/configuration';
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  const configSchemas = [
+    'authenticationConfiguration.json',
+    'authorizerConfiguration.json',
+  ];
+
+  for (const configFile of configSchemas) {
+    const srcPath = `${schemaDir}/configuration/${configFile}`;
+    const destPath = `${configDir}/${configFile}`;
+
+    // Only authenticationConfiguration.json needs dereferencing (has external $ref)
+    const needsDereference = configFile === 'authenticationConfiguration.json';
+    await parseSchema(srcPath, destPath, needsDereference);
+  }
 }
 
 runParsers();
