@@ -18,7 +18,8 @@
              correctly. -->
         <dependency>
             <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-rest-high-level-client</artifactId>
+            <artifactId>opensearch-java</artifactId>
+            <version>3.2.0</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
