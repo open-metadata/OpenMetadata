@@ -97,11 +97,26 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: ROUTES.DOMAIN,
+    key: 'domains-section',
     title: 'label.domain-plural',
-    redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
-    dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+    dataTestId: `app-bar-item-${SidebarItem.DOMAINS_SECTION}`,
+    children: [
+      {
+        key: ROUTES.DOMAIN,
+        title: 'label.domain',
+        redirect_url: ROUTES.DOMAIN,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+      },
+      {
+        key: ROUTES.DATA_PRODUCT,
+        title: 'label.data-product',
+        redirect_url: ROUTES.DATA_PRODUCT,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
+      },
+    ],
   },
   {
     key: 'governance',

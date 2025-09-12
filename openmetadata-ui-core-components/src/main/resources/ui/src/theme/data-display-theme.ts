@@ -251,6 +251,14 @@ export const dataDisplayTheme = (colors: any): Components<Theme> & Record<string
       },
     ],
   },
+  MuiAvatar: {
+    styleOverrides: {
+      root: {
+        backgroundColor: colors.blue[50],
+        color: colors.blue[600],
+      },
+    },
+  },
   MuiDivider: {
     styleOverrides: {
       root: {

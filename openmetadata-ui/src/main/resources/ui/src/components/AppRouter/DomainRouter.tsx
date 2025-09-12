@@ -18,7 +18,8 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import i18n from '../../utils/i18next/LocalUtil';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import AddDomain from '../Domain/AddDomain/AddDomain.component';
-import DomainPage from '../Domain/DomainPage.component';
+import DomainDetailPage from '../Domain/DomainDetailPage/DomainDetailPage.component';
+import DomainsListPage from '../DomainListing/DomainListPage';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
 const DomainRouter = () => {
@@ -45,7 +46,7 @@ const DomainRouter = () => {
         index
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage pageTitle={i18n.t('label.domain')} />
+            <DomainsListPage />
           </AdminProtectedRoute>
         }
         path="/"
@@ -53,7 +54,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage pageTitle={i18n.t('label.domain')} />
+            <DomainDetailPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
@@ -61,7 +62,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainPage pageTitle={i18n.t('label.domain')} />
+            <DomainDetailPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
