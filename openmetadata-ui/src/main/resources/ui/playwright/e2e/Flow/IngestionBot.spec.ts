@@ -24,6 +24,7 @@ import {
 } from '../../utils/domain';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
+import { setToken } from '../../utils/tokenStorage';
 
 const test = base.extend<{
   page: Page;
@@ -53,13 +54,7 @@ const test = base.extend<{
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
 
-    await page.evaluate((token) => {
-      // Set a new value for a key in localStorage
-      localStorage.setItem(
-        'om-session',
-        JSON.stringify({ oidcIdToken: token })
-      );
-    }, tokenData.config.JWTToken);
+    await setToken(page, tokenData.config.JWTToken);
 
     // await afterAction();
     await use(page);
@@ -113,12 +108,14 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1);
 
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2);
     });
@@ -161,6 +158,7 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
       await selectDomain(page, domain1.data);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
@@ -169,6 +167,7 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
       await selectDomain(page, domain2.data);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,

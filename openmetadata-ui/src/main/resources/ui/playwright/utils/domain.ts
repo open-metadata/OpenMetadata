@@ -47,7 +47,7 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -212,6 +212,7 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 const fillCommonFormItems = async (
@@ -282,11 +283,11 @@ export const verifyDomain = async (
 ) => {
   await checkDomainDisplayName(page, domain.displayName);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
-  );
+  await expect(page.getByText(domain.description)).toBeVisible();
 
-  await expect(viewerContainerText).toContain(domain.description);
+  expect(
+    await page.locator(`[id="KnowledgePanel\\.Description"]`).textContent()
+  ).toContain(domain.description);
 
   if (!isEmpty(domain.owners) && !isUndefined(domain.owners)) {
     await expect(

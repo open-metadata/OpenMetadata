@@ -69,6 +69,14 @@ export default defineConfig(({ mode }) => {
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
+      dedupe: [
+        'react',
+        'react-dom',
+        '@mui/material',
+        '@mui/system',
+        '@emotion/react',
+        '@emotion/styled',
+      ],
     },
 
     css: {
@@ -91,7 +99,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       open: true,
       proxy: {
-        '/api': {
+        '/api/': {
           target: devServerTarget,
           changeOrigin: true,
         },
