@@ -387,7 +387,7 @@
           "default": ""
         }
       },
-      "required": ["name", "type", "field"],
+      "required": ["name", "type"],
       "additionalProperties": false
     },
     "allowedSearchFields": {

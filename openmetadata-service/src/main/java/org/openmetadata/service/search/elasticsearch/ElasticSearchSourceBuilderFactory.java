@@ -127,10 +127,12 @@ public class ElasticSearchSourceBuilderFactory
                   AggregationBuilders.terms(agg.getName())
                       .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
 
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg.field(agg.getField());
+              }
+
               if (!nullOrEmpty(agg.getScript())) {
                 termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
-              } else {
-                termsAgg.field(agg.getField());
               }
 
               searchSourceBuilder.aggregation(termsAgg);
@@ -661,10 +663,12 @@ public class ElasticSearchSourceBuilderFactory
           AggregationBuilders.terms(agg.getName())
               .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
 
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg.field(agg.getField());
+      }
+
       if (!nullOrEmpty(agg.getScript())) {
         termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
-      } else {
-        termsAgg.field(agg.getField());
       }
 
       searchSourceBuilder.aggregation(termsAgg);

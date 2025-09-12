@@ -132,10 +132,12 @@ public class OpenSearchSourceBuilderFactory
                   AggregationBuilders.terms(agg.getName())
                       .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
 
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg.field(agg.getField());
+              }
+
               if (!nullOrEmpty(agg.getScript())) {
                 termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
-              } else {
-                termsAgg.field(agg.getField());
               }
 
               searchSourceBuilder.aggregation(termsAgg);
@@ -662,10 +664,12 @@ public class OpenSearchSourceBuilderFactory
           AggregationBuilders.terms(agg.getName())
               .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
 
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg.field(agg.getField());
+      }
+
       if (!nullOrEmpty(agg.getScript())) {
         termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
-      } else {
-        termsAgg.field(agg.getField());
       }
 
       searchSourceBuilder.aggregation(termsAgg);
