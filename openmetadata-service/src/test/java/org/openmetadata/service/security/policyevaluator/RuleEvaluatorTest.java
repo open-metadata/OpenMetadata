@@ -892,7 +892,7 @@ class RuleEvaluatorTest {
 
     // Should return true when entity has no domains
     Boolean noDomainResult = parseExpression("noDomain()").getValue(contextEmpty, Boolean.class);
-    assertTrue(noDomainResult != null && noDomainResult);
+    assertTrue(noDomainResult);
 
     // Test 2: Entity with null domains (no parent entities)
     CreateResourceContext<?> contextNullDomains = mock(CreateResourceContext.class);
@@ -904,7 +904,7 @@ class RuleEvaluatorTest {
 
     // Should return true when getDomains() returns null
     Boolean noDomainNullResult = parseExpression("noDomain()").getValue(contextNull, Boolean.class);
-    assertTrue(noDomainNullResult != null && noDomainNullResult);
+    assertTrue(noDomainNullResult);
 
     // Test 3: Entity with directly assigned domains
     EntityReference domainRef =
@@ -924,7 +924,7 @@ class RuleEvaluatorTest {
     // Should return false when entity has domains
     Boolean hasDomainResult =
         parseExpression("noDomain()").getValue(contextWithDomainsEval, Boolean.class);
-    assertTrue(hasDomainResult != null && !hasDomainResult);
+    assertFalse(hasDomainResult);
 
     // Test 4: Entity with inherited domains from parent
     EntityReference inheritedDomainRef =

@@ -94,13 +94,14 @@ public class RuleEvaluator {
   @Function(
       name = "noDomain",
       input = "none",
-      description = "Returns true if the entity being accessed has no domain assigned",
+      description =
+          "Returns true if the entity being accessed has no domains assigned (empty or null domain list)",
       examples = {"noDomain()", "!noDomain()"})
   public boolean noDomain() {
     if (expressionValidation) {
       return false;
     }
-    if (resourceContext == null || subjectContext == null) {
+    if (resourceContext == null) {
       return false;
     }
     // Returns true only if entity has no domains
