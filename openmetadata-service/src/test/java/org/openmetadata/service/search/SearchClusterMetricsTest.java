@@ -148,10 +148,12 @@ public class SearchClusterMetricsTest {
   void testGetConservativeDefaults() throws Exception {
     // Test conservative defaults use JVM heap values
     Method method =
-        SearchClusterMetrics.class.getDeclaredMethod("getConservativeDefaults", long.class);
+        SearchClusterMetrics.class.getDeclaredMethod(
+            "getConservativeDefaults", SearchRepository.class, long.class, int.class);
     method.setAccessible(true);
 
-    SearchClusterMetrics metrics = (SearchClusterMetrics) method.invoke(null, 100000L);
+    SearchClusterMetrics metrics =
+        (SearchClusterMetrics) method.invoke(null, searchRepository, 100000L, 50);
 
     assertNotNull(metrics);
     assertTrue(metrics.getHeapSizeBytes() > 0); // Should use JVM heap
