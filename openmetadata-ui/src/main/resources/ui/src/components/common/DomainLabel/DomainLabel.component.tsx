@@ -177,11 +177,11 @@ export const DomainLabel = ({
                 className: 'domain-tooltip-list',
               }}>
               <Typography.Text
-                className="flex-center cursor-pointer align-middle domain-count-button h-5 w-5"
+                className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
+                  remainingCount <= 9 ? 'h-6 w-6' : ''
+                }`}
                 data-testid="domain-count-button">
-                <span className="domain-count-label">
-                  {`+${remainingCount}`}
-                </span>
+                <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
               </Typography.Text>
             </Dropdown>
           </div>
