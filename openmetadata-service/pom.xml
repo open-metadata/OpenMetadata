@@ -306,11 +306,6 @@
       <artifactId>dropwizard-json-logging</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>${commons-lang.version}</version>
-    </dependency>
-    <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
     </dependency>
@@ -992,6 +987,12 @@
       <groupId>org.apache.calcite</groupId>
       <artifactId>calcite-core</artifactId>
       <version>1.36.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.apicatalog</groupId>

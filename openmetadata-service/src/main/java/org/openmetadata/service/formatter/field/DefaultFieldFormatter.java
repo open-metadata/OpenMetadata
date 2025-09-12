@@ -27,7 +27,7 @@ import jakarta.json.stream.JsonParsingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
