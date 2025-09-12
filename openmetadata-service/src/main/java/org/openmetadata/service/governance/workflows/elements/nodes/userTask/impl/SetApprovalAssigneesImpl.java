@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -37,14 +36,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);
-      Boolean addReviewers = (Boolean) assigneesConfig.get("addReviewers");
-      Optional<List<EntityReference>> oExtraAssignees =
-          Optional.ofNullable(
-              JsonUtils.readOrConvertValue(assigneesConfig.get("extraAssignees"), List.class));
+      Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", false);
 
       List<String> assignees = new ArrayList<>();
 
-      if (addReviewers) {
+      // Add reviewers from the related entity if requested
+      if (addReviewers != null && addReviewers) {
         MessageParser.EntityLink entityLink =
             MessageParser.EntityLink.parse(
                 (String)
@@ -54,10 +51,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         assignees.addAll(getEntityLinkStringFromEntityReference(entity.getReviewers()));
       }
 
-      oExtraAssignees.ifPresent(
-          extraAssignees ->
-              assignees.addAll(getEntityLinkStringFromEntityReference(extraAssignees)));
-
+      // Persist the list as JSON array so TaskListener can read it
       execution.setVariableLocal(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
     } catch (Exception exc) {

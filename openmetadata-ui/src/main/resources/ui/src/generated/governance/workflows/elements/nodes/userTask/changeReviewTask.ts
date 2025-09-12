@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 /**
- * Sets the GlossaryTerm Status to the configured value.
+ * Defines a Task for reviewing entity changes with the ability to approve, reject, or
+ * suggest modifications.
  */
-export interface SetGlossaryTermStatusTask {
-    config?: NodeConfiguration;
+export interface ChangeReviewTask {
+    branches?: string[];
+    config?:   NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -29,6 +31,7 @@ export interface SetGlossaryTermStatusTask {
      * Name that identifies this Node.
      */
     name?:    string;
+    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -36,26 +39,32 @@ export interface SetGlossaryTermStatusTask {
 
 export interface NodeConfiguration {
     /**
-     * Choose which Status to apply to the Glossary Term
+     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
+     * single reviewer can approve).
      */
-    glossaryTermStatus: EntityStatus;
+    approvalThreshold?: number;
+    /**
+     * People/Teams assigned to the Task.
+     */
+    assignees: Assignees;
+    /**
+     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
+     * single reviewer can reject). This allows for scenarios where you want multiple approvals
+     * but a single rejection can veto.
+     */
+    rejectionThreshold?: number;
 }
 
 /**
- * Choose which Status to apply to the Glossary Term
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * People/Teams assigned to the Task.
  */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
+export interface Assignees {
+    /**
+     * Add the Reviewers to the assignees List.
+     */
+    addReviewers?: boolean;
 }
 
 export interface InputNamespaceMap {
     relatedEntity: string;
-    updatedBy?:    string;
 }

@@ -1,0 +1,131 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/dataCompletenessTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataCompletenessTaskDefinition",
+  "description": "Evaluates entity data completeness based on field presence and outputs quality bands.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "qualityBand": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Band Name",
+          "description": "Name for this quality band (e.g., 'gold', 'excellent', 'tier1')",
+          "type": "string"
+        },
+        "minimumScore": {
+          "title": "Minimum Score",
+          "description": "Minimum completeness percentage for this band",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": ["name", "minimumScore"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "dataCompletenessTask"
+    },
+    "name": {
+      "title": "Node Name",
+      "description": "Unique name that identifies this node in the workflow",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "User-friendly display name for this node",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of what this completeness check does",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Completeness Configuration",
+      "type": "object",
+      "properties": {
+        "fieldsToCheck": {
+          "title": "Fields to Check",
+          "description": "List of entity field paths to evaluate. Supports dot notation for nested fields (e.g., 'owner.name', 'columns[].description')",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "examples": ["name", "description", "owner", "tags", "columns[].description"]
+        },
+        "qualityBands": {
+          "title": "Quality Bands",
+          "description": "Define quality levels based on completeness scores. Bands are evaluated from highest to lowest score.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/qualityBand"
+          },
+          "default": [
+            {"name": "excellent", "minimumScore": 90},
+            {"name": "good", "minimumScore": 75},
+            {"name": "acceptable", "minimumScore": 50},
+            {"name": "poor", "minimumScore": 0}
+          ],
+          "minItems": 1
+        },
+        "treatEmptyStringAsNull": {
+          "title": "Treat Empty String as Missing",
+          "description": "Consider empty strings ('') as missing values",
+          "type": "boolean",
+          "default": true
+        },
+        "treatEmptyArrayAsNull": {
+          "title": "Treat Empty Array as Missing",
+          "description": "Consider empty arrays ([]) as missing values",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["fieldsToCheck"],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "output": {
+      "title": "Output Variables",
+      "description": "Variables this node outputs for use in subsequent nodes",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["completenessScore", "qualityBand", "filledFieldsCount", "totalFieldsCount", "missingFields", "filledFields", "result"],
+      "additionalItems": false
+    }
+  },
+  "required": ["name", "config"],
+  "additionalProperties": false
+}
