@@ -306,6 +306,9 @@ public interface SearchClient<T> {
 
   Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
+  Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException;
+
   Response getDocByID(String indexName, String entityId) throws IOException;
 
   default ExecutorService getAsyncExecutor() {
