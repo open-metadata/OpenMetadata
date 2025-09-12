@@ -13,6 +13,79 @@
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
 
+// Common UI field configurations to reduce duplication
+export const COMMON_UI_FIELDS = {
+  clientId: {
+    'ui:title': 'Client ID',
+    'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
+  },
+  clientSecret: {
+    'ui:title': 'Client Secret',
+    'ui:widget': 'password',
+    'ui:placeholder': 'Enter your client secret',
+  },
+  oidcClientId: {
+    'ui:title': 'OIDC Client ID',
+    'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
+  },
+  oidcClientSecret: {
+    'ui:title': 'OIDC Client Secret',
+    'ui:widget': 'password',
+    'ui:placeholder': 'Enter your OIDC client secret',
+  },
+  oidcScope: {
+    'ui:title': 'OIDC Request Scopes',
+    'ui:placeholder': 'e.g. openid email profile',
+  },
+  oidcDiscoveryUri: {
+    'ui:title': 'OIDC Discovery URI',
+    'ui:placeholder':
+      'e.g. https://accounts.google.com/.well-known/openid_configuration',
+  },
+  oidcCallbackUrl: {
+    'ui:title': 'OIDC Callback URL',
+    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+  },
+  oidcServerUrl: {
+    'ui:title': 'OIDC Server URL',
+    'ui:placeholder': 'e.g. https://your-domain.auth0.com',
+  },
+  oidcTenant: {
+    'ui:title': 'OIDC Tenant',
+    'ui:placeholder': 'e.g. your-tenant-id',
+  },
+  // Additional common OIDC fields
+  oidcConfiguration: { 'ui:title': 'OIDC Configuration' },
+  oidcIdpType: { 'ui:title': 'OIDC IDP Type' },
+  oidcUseNonce: { 'ui:title': 'OIDC Use Nonce' },
+  oidcPreferredJwsAlgorithm: { 'ui:title': 'OIDC Preferred JWS Algorithm' },
+  oidcResponseType: { 'ui:title': 'OIDC Response Type' },
+  oidcDisablePkce: { 'ui:title': 'OIDC Disable PKCE' },
+  oidcMaxClockSkew: { 'ui:title': 'OIDC Max Clock Skew' },
+  oidcClientAuthenticationMethod: {
+    'ui:title': 'OIDC Client Authentication Method',
+  },
+  oidcTokenValidity: { 'ui:title': 'OIDC Token Validity' },
+  oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
+  oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
+  oidcPrompt: { 'ui:title': 'OIDC Prompt' },
+  oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+  // Common non-OIDC fields
+  authority: {
+    'ui:title': 'Authority',
+    'ui:placeholder': 'e.g. https://accounts.google.com',
+  },
+  callbackUrl: {
+    'ui:title': 'Callback URL',
+    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+  },
+  publicKeyUrls: {
+    'ui:title': 'Public Key URLs',
+    'ui:placeholder':
+      'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
+  },
+};
+
 // Common hidden fields for all providers
 export const COMMON_HIDDEN_FIELDS = {
   responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -153,8 +226,8 @@ export const SAML_UI_SCHEMA = {
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Show required fields for SAML
-  authority: { 'ui:title': 'Authority' },
-  clientId: { 'ui:title': 'Client ID' },
+  authority: COMMON_UI_FIELDS.authority,
+  clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: { 'ui:title': 'Callback URL' },
   publicKeyUrls: { 'ui:title': 'Public Key URLs' },
 };
@@ -162,51 +235,26 @@ export const SAML_UI_SCHEMA = {
 // OIDC Configuration UI Schema
 export const OIDC_UI_SCHEMA = {
   oidcConfiguration: {
-    'ui:title': 'OIDC Configuration',
-    type: { 'ui:title': 'OIDC IDP Type' },
-    id: {
-      'ui:title': 'OIDC Client ID',
-      'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
-    },
-    secret: {
-      'ui:title': 'OIDC Client Secret',
-      'ui:widget': 'password',
-      'ui:placeholder': 'Enter your OIDC client secret',
-    },
-    scope: {
-      'ui:title': 'OIDC Request Scopes',
-      'ui:placeholder': 'e.g. openid email profile',
-    },
-    discoveryUri: {
-      'ui:title': 'OIDC Discovery URI',
-      'ui:placeholder':
-        'e.g. https://accounts.google.com/.well-known/openid_configuration',
-    },
-    useNonce: { 'ui:title': 'OIDC Use Nonce' },
-    preferredJwsAlgorithm: { 'ui:title': 'OIDC Preferred JWS Algorithm' },
-    responseType: { 'ui:title': 'OIDC Response Type' },
-    disablePkce: { 'ui:title': 'OIDC Disable PKCE' },
-    maxClockSkew: { 'ui:title': 'OIDC Max Clock Skew' },
-    clientAuthenticationMethod: {
-      'ui:title': 'OIDC Client Authentication Method',
-    },
-    tokenValidity: { 'ui:title': 'OIDC Token Validity' },
-    customParams: { 'ui:title': 'OIDC Custom Parameters' },
-    tenant: {
-      'ui:title': 'OIDC Tenant',
-      'ui:placeholder': 'e.g. your-tenant-id',
-    },
-    serverUrl: {
-      'ui:title': 'OIDC Server URL',
-      'ui:placeholder': 'e.g. https://your-domain.auth0.com',
-    },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
-    },
-    maxAge: { 'ui:title': 'OIDC Max Age' },
-    prompt: { 'ui:title': 'OIDC Prompt' },
-    sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+    ...COMMON_UI_FIELDS.oidcConfiguration,
+    type: COMMON_UI_FIELDS.oidcIdpType,
+    id: COMMON_UI_FIELDS.oidcClientId,
+    secret: COMMON_UI_FIELDS.oidcClientSecret,
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
+    useNonce: COMMON_UI_FIELDS.oidcUseNonce,
+    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
+    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
+    maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
+    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
+    customParams: COMMON_UI_FIELDS.oidcCustomParameters,
+    tenant: COMMON_UI_FIELDS.oidcTenant,
+    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
+    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    maxAge: COMMON_UI_FIELDS.oidcMaxAge,
+    prompt: COMMON_UI_FIELDS.oidcPrompt,
+    sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   // Hide LDAP/SAML specific fields for OIDC
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -218,51 +266,26 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: {
-    'ui:title': 'OIDC Configuration',
-    type: { 'ui:title': 'OIDC IDP Type' },
-    id: {
-      'ui:title': 'OIDC Client ID',
-      'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
-    },
-    secret: {
-      'ui:title': 'OIDC Client Secret',
-      'ui:widget': 'password',
-      'ui:placeholder': 'Enter your OIDC client secret',
-    },
-    scope: {
-      'ui:title': 'OIDC Request Scopes',
-      'ui:placeholder': 'e.g. openid email profile',
-    },
-    discoveryUri: {
-      'ui:title': 'OIDC Discovery URI',
-      'ui:placeholder':
-        'e.g. https://accounts.google.com/.well-known/openid_configuration',
-    },
-    useNonce: { 'ui:title': 'OIDC Use Nonce' },
-    preferredJwsAlgorithm: { 'ui:title': 'OIDC Preferred JWS Algorithm' },
-    responseType: { 'ui:title': 'OIDC Response Type' },
-    disablePkce: { 'ui:title': 'OIDC Disable PKCE' },
-    maxClockSkew: { 'ui:title': 'OIDC Max Clock Skew' },
-    clientAuthenticationMethod: {
-      'ui:title': 'OIDC Client Authentication Method',
-    },
-    tokenValidity: { 'ui:title': 'OIDC Token Validity' },
-    customParams: { 'ui:title': 'OIDC Custom Parameters' },
-    tenant: {
-      'ui:title': 'OIDC Tenant',
-      'ui:placeholder': 'e.g. your-tenant-id',
-    },
-    serverUrl: {
-      'ui:title': 'OIDC Server URL',
-      'ui:placeholder': 'e.g. https://your-domain.auth0.com',
-    },
-    callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
-      'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
-    },
-    maxAge: { 'ui:title': 'OIDC Max Age' },
-    prompt: { 'ui:title': 'OIDC Prompt' },
-    sessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+    ...COMMON_UI_FIELDS.oidcConfiguration,
+    type: COMMON_UI_FIELDS.oidcIdpType,
+    id: COMMON_UI_FIELDS.oidcClientId,
+    secret: COMMON_UI_FIELDS.oidcClientSecret,
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
+    useNonce: COMMON_UI_FIELDS.oidcUseNonce,
+    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
+    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
+    maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
+    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
+    customParams: COMMON_UI_FIELDS.oidcCustomParameters,
+    tenant: COMMON_UI_FIELDS.oidcTenant,
+    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
+    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    maxAge: COMMON_UI_FIELDS.oidcMaxAge,
+    prompt: COMMON_UI_FIELDS.oidcPrompt,
+    sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   // Hide universal settings managed in overview tab
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
@@ -282,19 +305,9 @@ export const COMMON_FIELD_TITLES = {
     'ui:title': 'Authority',
     'ui:placeholder': 'e.g. https://accounts.google.com',
   },
-  clientId: {
-    'ui:title': 'Client ID',
-    'ui:placeholder': 'e.g. 123456890-abcdef.apps.googleusercontent.com',
-  },
-  callbackUrl: {
-    'ui:title': 'Callback URL',
-    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
-  },
-  publicKeyUrls: {
-    'ui:title': 'Public Key URLs',
-    'ui:placeholder':
-      'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
-  },
+  clientId: COMMON_UI_FIELDS.clientId,
+  callbackUrl: COMMON_UI_FIELDS.callbackUrl,
+  publicKeyUrls: COMMON_UI_FIELDS.publicKeyUrls,
   tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
   jwtPrincipalClaims: {
     'ui:title': 'JWT Principal Claims',
@@ -313,11 +326,7 @@ export const COMMON_FIELD_TITLES = {
       inline: true,
     },
   },
-  secret: {
-    'ui:title': 'Client Secret',
-    'ui:widget': 'password',
-    'ui:placeholder': 'Enter your client secret',
-  },
+  secret: COMMON_UI_FIELDS.clientSecret,
 };
 
 // Authorizer field titles
