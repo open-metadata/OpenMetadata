@@ -1,4 +1,4 @@
-<br /><br />
+<br /><br /> 
 <p align="center">
     <a href="https://open-metadata.org">
         <img alt="Logo" src="https://github.com/open-metadata/OpenMetadata/assets/40225091/e794ced8-7220-4393-8efc-3faf93bfb503" width="49%">
