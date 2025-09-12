@@ -27,6 +27,7 @@ from metadata.readers.dataframe.dsv import (
     get_dsv_reader_by_separator,
 )
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.dataframe.mf4 import MF4DataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.readers.models import ConfigSource
 from metadata.utils.logger import utils_logger
@@ -50,6 +51,7 @@ class SupportedTypes(Enum):
     JSONL = "jsonl"
     JSONLGZ = "jsonl.gz"
     JSONLZIP = "jsonl.zip"
+    MF4 = "MF4"
 
 
 DF_READER_MAP = {
@@ -68,6 +70,7 @@ DF_READER_MAP = {
     SupportedTypes.JSONL.value: JSONDataFrameReader,
     SupportedTypes.JSONLGZ.value: JSONDataFrameReader,
     SupportedTypes.JSONLZIP.value: JSONDataFrameReader,
+    SupportedTypes.MF4.value: MF4DataFrameReader,
 }
 
 
