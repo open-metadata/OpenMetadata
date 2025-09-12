@@ -37,6 +37,9 @@
               "$ref": "pipelineServiceMetadataPipeline.json"
             },
             {
+              "$ref": "pipelineServiceProfilerPipeline.json"
+            },
+            {
               "$ref": "mlmodelServiceMetadataPipeline.json"
             },
             {
