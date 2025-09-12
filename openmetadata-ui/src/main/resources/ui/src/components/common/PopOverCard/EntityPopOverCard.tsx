@@ -253,52 +253,16 @@ export const PopoverContent: React.FC<{
         break;
 
       case EntityType.DATABASE_SERVICE:
-        promise = getServiceByFQN(EntityType.DATABASE_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.MESSAGING_SERVICE:
-        promise = getServiceByFQN(EntityType.MESSAGING_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.DASHBOARD_SERVICE:
-        promise = getServiceByFQN(EntityType.DASHBOARD_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.PIPELINE_SERVICE:
-        promise = getServiceByFQN(EntityType.PIPELINE_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.MLMODEL_SERVICE:
-        promise = getServiceByFQN(EntityType.MLMODEL_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.STORAGE_SERVICE:
-        promise = getServiceByFQN(EntityType.STORAGE_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.SEARCH_SERVICE:
-        promise = getServiceByFQN(EntityType.SEARCH_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.API_SERVICE:
-        promise = getServiceByFQN(EntityType.API_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.SECURITY_SERVICE:
-        promise = getServiceByFQN(EntityType.SECURITY_SERVICE, entityFQN);
-
-        break;
-
       case EntityType.METADATA_SERVICE:
-        promise = getServiceByFQN(EntityType.METADATA_SERVICE, entityFQN);
+        promise = getServiceByFQN(entityType, entityFQN);
 
         break;
 

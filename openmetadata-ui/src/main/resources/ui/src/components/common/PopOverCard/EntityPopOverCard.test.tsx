@@ -502,202 +502,32 @@ describe('Test EntityPopoverCard component', () => {
     });
   });
 
-  it('EntityPopoverCard should call service API for DATABASE_SERVICE', async () => {
-    const mockServiceFQN = 'test-database-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.DATABASE_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
+  it('EntityPopoverCard should call service API for all service types', async () => {
+    const serviceTypes = [
       EntityType.DATABASE_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for MESSAGING_SERVICE', async () => {
-    const mockServiceFQN = 'test-messaging-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.MESSAGING_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.MESSAGING_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for DASHBOARD_SERVICE', async () => {
-    const mockServiceFQN = 'test-dashboard-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.DASHBOARD_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.DASHBOARD_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for PIPELINE_SERVICE', async () => {
-    const mockServiceFQN = 'test-pipeline-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.PIPELINE_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.PIPELINE_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for MLMODEL_SERVICE', async () => {
-    const mockServiceFQN = 'test-mlmodel-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.MLMODEL_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.MLMODEL_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for STORAGE_SERVICE', async () => {
-    const mockServiceFQN = 'test-storage-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.STORAGE_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.STORAGE_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for SEARCH_SERVICE', async () => {
-    const mockServiceFQN = 'test-search-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.SEARCH_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.SEARCH_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for API_SERVICE', async () => {
-    const mockServiceFQN = 'test-api-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.API_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.API_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for SECURITY_SERVICE', async () => {
-    const mockServiceFQN = 'test-security-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.SECURITY_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.SECURITY_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for METADATA_SERVICE', async () => {
-    const mockServiceFQN = 'test-metadata-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.METADATA_SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.METADATA_SERVICE,
-      mockServiceFQN
-    );
-  });
-
-  it('EntityPopoverCard should call service API for SERVICE', async () => {
-    const mockServiceFQN = 'test-service';
-
-    await act(async () => {
-      render(
-        <PopoverContent
-          entityFQN={mockServiceFQN}
-          entityType={EntityType.SERVICE}
-        />
-      );
-    });
-
-    expect(getServiceByFQN).toHaveBeenCalledWith(
       EntityType.SERVICE,
-      mockServiceFQN
-    );
+    ];
+
+    for (const serviceType of serviceTypes) {
+      const mockServiceFQN = `test-${serviceType}`;
+
+      await act(async () => {
+        render(
+          <PopoverContent entityFQN={mockServiceFQN} entityType={serviceType} />
+        );
+      });
+
+      expect(getServiceByFQN).toHaveBeenCalledWith(serviceType, mockServiceFQN);
+    }
   });
 
   it('EntityPopoverCard should call type API if entity type is TYPE', async () => {
