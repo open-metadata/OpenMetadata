@@ -134,7 +134,6 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
           <ResponsiveContainer height="100%" width="100%">
             <BarChart
               data={processedChartData}
-              height={240}
               margin={{
                 top: 5,
                 right: 30,

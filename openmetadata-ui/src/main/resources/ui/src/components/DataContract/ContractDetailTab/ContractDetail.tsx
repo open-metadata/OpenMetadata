@@ -23,7 +23,6 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,10 +32,7 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
-import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
 import {
@@ -64,6 +60,7 @@ import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
+import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
@@ -76,14 +73,12 @@ const ContractDetail: React.FC<{
 }> = ({ contract, onEdit, onDelete }) => {
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
 
   const fetchLatestContractResults = async () => {
     try {
-      setIsLoading(true);
       const results = await getContractResultByResultId(
         contract?.id || '',
         contract?.latestResult?.resultId || ''
@@ -91,8 +86,6 @@ const ContractDetail: React.FC<{
       setLatestContractResults(results);
     } catch (err) {
       showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -173,22 +166,6 @@ const ContractDetail: React.FC<{
       },
     ];
   }, []);
-
-  const getSemanticIconPerLastExecution = (semanticName: string) => {
-    if (!latestContractResults) {
-      return DefaultIcon;
-    }
-    const isRuleFailed =
-      latestContractResults?.semanticsValidation?.failedRules?.find(
-        (rule) => rule.ruleName === semanticName
-      );
-
-    if (isRuleFailed) {
-      return FailIcon;
-    }
-
-    return CheckIcon;
-  };
 
   const handleExportContract = useCallback(() => {
     if (!contract) {
@@ -425,19 +402,11 @@ const ContractDetail: React.FC<{
                 <Divider dashed />
               </div>
 
-              <div className="rule-item-container">
-                {(contract?.semantics ?? []).map((item) => (
-                  <div className="rule-item" key={item.rule}>
-                    <Icon
-                      className={classNames('rule-icon', {
-                        'rule-icon-default': !latestContractResults,
-                      })}
-                      component={getSemanticIconPerLastExecution(item.name)}
-                    />
-                    <span className="rule-name">{item.name}</span>
-                  </div>
-                ))}
-              </div>
+              <ContractSemantics
+                contractStatus={constraintStatus['semantic']}
+                latestContractResults={latestContractResults}
+                semantics={contract?.semantics}
+              />
             </Col>
           )}
 

@@ -66,6 +66,10 @@
     }
   }
 
+  .ant-card-body {
+    padding: 24px;
+  }
+
   .contract-status-badge {
     padding: 2px 8px;
   }
@@ -139,6 +143,10 @@
 
   .contract-card-items {
     margin-bottom: 32px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
 
     .contract-card-header-container {
       display: flex;
@@ -255,8 +263,8 @@
   gap: 8px;
 
   .rule-item {
-    display: inline-flex;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     gap: 12px;
 
     .rule-icon {
@@ -269,15 +277,19 @@
       }
     }
 
-    .rule-name {
-      font-size: 14px;
-      font-weight: 500;
-      color: @grey-900;
-    }
+    .rule-item-content {
+      display: flex;
+      flex-direction: column;
+      .rule-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: @grey-900;
+      }
 
-    .rule-description {
-      font-size: 12px;
-      font-weight: 300;
+      .rule-description {
+        font-size: 12px;
+        font-weight: 300;
+      }
     }
   }
 }
