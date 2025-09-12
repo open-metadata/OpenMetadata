@@ -730,6 +730,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const response = await getDriveAssets<File>(EntityType.FILE, {
           service: decodedServiceFQN,
           fields: commonTableFields,
+          root: true,
           paging,
           include,
         });
@@ -753,6 +754,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           {
             service: decodedServiceFQN,
             fields: commonTableFields,
+            root: true,
             paging,
             include,
           }

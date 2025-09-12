@@ -23,8 +23,8 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-export class FileClass extends EntityClass {
-  private fileName = `pw-file-${uuid()}`;
+export class DirectoryClass extends EntityClass {
+  private directoryName = `pw-directory-${uuid()}`;
   private serviceName = `pw-directory-service-${uuid()}`;
 
   service = {
@@ -56,8 +56,8 @@ export class FileClass extends EntityClass {
   };
 
   entity = {
-    name: this.fileName,
-    displayName: this.fileName,
+    name: this.directoryName,
+    displayName: this.directoryName,
     service: this.service.name,
   };
 
@@ -66,12 +66,11 @@ export class FileClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.File);
+    super(EntityTypeEndpoint.Directory);
     this.service.name = name ?? this.service.name;
-    this.type = 'File';
+    this.type = 'Directory';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.childrenSelectorId = `${this.service.name}.${this.fileName}`;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -85,10 +84,10 @@ export class FileClass extends EntityClass {
 
     // Create directories
     const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.File}`,
+      `/api/v1/${EntityTypeEndpoint.Directory}`,
       {
         data: {
-          name: this.fileName,
+          name: this.directoryName,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }
@@ -109,7 +108,7 @@ export class FileClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.File}/name/${this.entityResponseData.fullyQualifiedName}`,
+      `/api/v1/${EntityTypeEndpoint.Directory}/name/${this.entityResponseData.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {

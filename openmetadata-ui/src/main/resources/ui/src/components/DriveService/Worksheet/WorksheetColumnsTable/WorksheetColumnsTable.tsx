@@ -294,7 +294,7 @@ function WorksheetColumnsTable() {
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
-        rowKey="name"
+        rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}

@@ -19,6 +19,7 @@ export interface GetFilesParams {
   fields?: string;
   directory?: string;
   fileType?: FileType;
+  root?: boolean;
   include?: Include;
   paging?: Omit<Paging, 'total'>;
 }
@@ -36,6 +37,7 @@ export interface GetSpreadsheetParams {
   fields?: string;
   service?: string;
   directory?: string;
+  root?: boolean;
   include?: Include;
   paging?: Omit<Paging, 'total'>;
 }

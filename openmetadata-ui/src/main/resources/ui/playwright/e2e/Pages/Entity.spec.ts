@@ -22,7 +22,7 @@ import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
-import { DriveAssetsClass } from '../../support/entity/DriveAssetsClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
@@ -67,7 +67,7 @@ const entities = [
   DashboardDataModelClass,
   MetricClass,
   ChartClass,
-  DriveAssetsClass,
+  DirectoryClass,
   FileClass,
   SpreadsheetClass,
   WorksheetClass,
