@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -219,34 +218,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
-      // Filter fields to only request those supported by the parent entity (Table)
-      String filteredFields = getFilteredFields(fields);
+      String filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
       return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
     }
     return null;
-  }
-
-  private String getFilteredFields(String fields) {
-    // Helper method to filter fields based on what the parent entity (Table) supports
-    if (fields == null || fields.isEmpty()) {
-      return fields;
-    }
-
-    // Get the parent repository (Table)
-    EntityRepository<?> parentRepository = Entity.getEntityRepository(TABLE);
-    Set<String> parentAllowedFields = parentRepository.getAllowedFields();
-
-    // Filter the requested fields to only include those supported by parent
-    String[] requestedFields = fields.split(",");
-    List<String> validFields = new ArrayList<>();
-    for (String field : requestedFields) {
-      field = field.trim();
-      if (parentAllowedFields.contains(field)) {
-        validFields.add(field);
-      }
-    }
-
-    return String.join(",", validFields);
   }
 
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
