@@ -41,8 +41,8 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 
 import {
-  CONTRACT_ACTION_DROPDOWN_KEY,
   DataContractMode,
+  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -131,7 +131,7 @@ const ContractDetail: React.FC<{
             {t('label.edit')}
           </div>
         ),
-        key: CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
       },
       {
         label: (
@@ -143,7 +143,7 @@ const ContractDetail: React.FC<{
             {t('label.run-now')}
           </div>
         ),
-        key: CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
       },
       {
         label: (
@@ -155,7 +155,7 @@ const ContractDetail: React.FC<{
             {t('label.export')}
           </div>
         ),
-        key: CONTRACT_ACTION_DROPDOWN_KEY.EXPORT,
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT,
       },
       {
         type: 'divider',
@@ -170,7 +170,7 @@ const ContractDetail: React.FC<{
             {t('label.delete')}
           </div>
         ),
-        key: CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
       },
     ];
   }, []);
@@ -216,13 +216,13 @@ const ContractDetail: React.FC<{
   const handleContractAction = useCallback(
     (item: MenuInfo) => {
       switch (item.key) {
-        case CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW:
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW:
           return handleRunNow();
 
-        case CONTRACT_ACTION_DROPDOWN_KEY.EXPORT:
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT:
           return handleExportContract();
 
-        case CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
           return onDelete();
 
         default:
@@ -424,7 +424,7 @@ const ContractDetail: React.FC<{
 
               <div className="rule-item-container">
                 {(contract?.semantics ?? []).map((item) => (
-                  <div className="rule-item">
+                  <div className="rule-item" key={item.rule}>
                     <Icon
                       className={classNames('rule-icon', {
                         'rule-icon-default': !latestContractResults,

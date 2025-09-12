@@ -11,27 +11,106 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import classNames from 'classnames';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
+import { isEmpty, lowerCase } from 'lodash';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle-2.svg';
+import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Transi18next } from '../../../utils/CommonUtils';
 import './contract-sla.less';
 
 const ContractSLA: React.FC<{
   contract: DataContract;
 }> = ({ contract }) => {
-  const latestContractResults = true;
+  const { t } = useTranslation();
+
+  const renderSLAData = useMemo(() => {
+    if (isEmpty(contract.sla)) {
+      return [];
+    }
+
+    const slaList = [];
+
+    if (contract.sla?.refreshFrequency) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.REFRESH_FREQUENCY,
+        label: (
+          <Transi18next
+            i18nKey="message.freshness-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.freshness'),
+              data: `${contract.sla?.refreshFrequency.interval} ${lowerCase(
+                contract.sla?.refreshFrequency.unit
+              )}`,
+            }}
+          />
+        ),
+      });
+    }
+
+    if (contract.sla?.refreshFrequency) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.TIME_AVAILABILITY,
+        label: (
+          <Transi18next
+            i18nKey="message.completeness-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.completeness'),
+              data: `${contract.sla?.availabilityTime}`,
+            }}
+          />
+        ),
+      });
+    }
+
+    if (contract.sla?.refreshFrequency) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.MAX_LATENCY,
+        label: (
+          <Transi18next
+            i18nKey="message.latency-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.latency'),
+              data: `${contract.sla?.maxLatency?.value} ${lowerCase(
+                contract.sla?.maxLatency?.unit
+              )}`,
+            }}
+          />
+        ),
+      });
+    }
+
+    if (contract.sla?.refreshFrequency) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.RETENTION,
+        label: (
+          <Transi18next
+            i18nKey="message.retention-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.retention'),
+              data: `${contract.sla?.retention?.period} ${lowerCase(
+                contract.sla?.retention?.unit
+              )}`,
+            }}
+          />
+        ),
+      });
+    }
+
+    return slaList;
+  }, [contract.sla]);
 
   return (
-    <div className="rule-item-container">
-      {(contract?.semantics ?? []).map((item) => (
-        <div className="rule-item">
-          <Icon
-            className={classNames('rule-icon', {
-              'rule-icon-default': !latestContractResults,
-            })}
-            component={DefaultIcon}
-          />
-          <span className="rule-name">{item.name}</span>
+    <div className="sla-item-container">
+      {renderSLAData.map((item) => (
+        <div className="sla-item" key={item.key}>
+          <Icon className="sla-icon" component={CheckIcon} />
+          <span className="sla-description">{item.label}</span>
         </div>
       ))}
     </div>

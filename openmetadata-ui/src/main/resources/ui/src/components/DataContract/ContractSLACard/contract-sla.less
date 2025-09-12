@@ -11,3 +11,24 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
+
+.sla-item-container {
+  .sla-item {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .sla-icon {
+      font-size: 20px;
+    }
+    .sla-description {
+      font-size: 14px;
+      color: @grey-600;
+
+      strong {
+        color: @grey-900;
+      }
+    }
+  }
+}

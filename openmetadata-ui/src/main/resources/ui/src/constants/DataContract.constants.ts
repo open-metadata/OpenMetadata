@@ -50,9 +50,16 @@ export const SEMANTIC_OPERATORS = [
 
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
 
-export enum CONTRACT_ACTION_DROPDOWN_KEY {
+export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
   EDIT = 'edit',
   RUN_NOW = 'run_now',
   EXPORT = 'export',
   DELETE = 'delete',
+}
+
+export enum DATA_CONTRACT_SLA {
+  REFRESH_FREQUENCY = 'refresh_frequency',
+  MAX_LATENCY = 'max_latency',
+  TIME_AVAILABILITY = 'time_availability',
+  RETENTION = 'retention',
 }
