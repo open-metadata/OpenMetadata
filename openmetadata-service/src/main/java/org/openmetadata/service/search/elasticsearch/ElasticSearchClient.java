@@ -905,6 +905,40 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    try {
+      XContentParser parser = createXContentParser(request.getQueryFilter());
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+
+      // Apply RBAC constraints
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      // Add aggregations if needed
+      ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+      sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+
+      es.org.elasticsearch.action.search.SearchRequest esRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
+      esRequest.source(searchSourceBuilder);
+
+      es.org.elasticsearch.action.search.SearchResponse response =
+          client.search(esRequest, RequestOptions.DEFAULT);
+
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(response.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
+    }
+  }
+
   private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
     try {
       LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
