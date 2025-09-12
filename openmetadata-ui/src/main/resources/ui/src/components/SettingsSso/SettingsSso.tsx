@@ -47,6 +47,28 @@ const SettingsSso = () => {
     useState<SecurityConfiguration | null>(null);
   const configFetched = useRef<boolean>(false);
 
+  const handleSSOToggle = useCallback(async (checked: boolean) => {
+    setSsoEnabled(checked);
+
+    try {
+      const patches = [
+        {
+          op: 'replace' as const,
+          path: '/authenticationConfiguration/enableSelfSignup',
+          value: checked,
+        },
+      ];
+
+      await patchSecurityConfiguration(patches);
+    } catch (error) {
+      setSsoEnabled(!checked);
+    }
+  }, []);
+
+  const handleChangeProvider = useCallback(() => {
+    setSearchParams({ provider: AuthProvider.Basic });
+  }, [setSearchParams]);
+
   const breadcrumb = useMemo(() => {
     const baseBreadcrumb = getSettingPageEntityBreadCrumb(
       GlobalSettingsMenuCategory.SSO
@@ -105,6 +127,97 @@ const SettingsSso = () => {
 
     return updatedBaseBreadcrumb;
   }, [searchParams, hasExistingConfig]);
+
+  // If existing configuration, show tabs
+  const tabItems = useMemo(() => {
+    const items = [];
+
+    // Overview tab for all SSO providers
+    if (currentProvider && currentProvider !== AuthProvider.Basic) {
+      const renderOverviewContent = () => {
+        // Get the SCIM access token card component - only for Azure and Okta
+        const SCIMAccessTokenCard =
+          (currentProvider === AuthProvider.Azure ||
+            currentProvider === AuthProvider.Okta) &&
+          ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
+
+        return (
+          <div>
+            {/* Enable SSO section */}
+            <div className="enable-sso-card-container">
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col  gap-2">
+                  <Typography.Title className="enable-self-signup-header m-b-xs">
+                    {t('label.enable-sso')}
+                  </Typography.Title>
+                  <Typography.Text className="enable-self-signup-desc">
+                    {t('message.allow-user-to-login-via-sso')}
+                  </Typography.Text>
+                </div>
+                <Switch
+                  checked={ssoEnabled}
+                  size="default"
+                  onChange={handleSSOToggle}
+                />
+              </div>
+            </div>
+
+            {/* SCIM Provisioning section - only for Azure and Okta */}
+
+            {/* SCIM Access Token Card - only show if available and for Azure/Okta */}
+            {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
+          </div>
+        );
+      };
+
+      items.push({
+        key: 'overview',
+        label: t('label.overview'),
+        children: renderOverviewContent(),
+      });
+    }
+
+    // Configure tab always present for existing configurations
+    items.push({
+      key: 'configure',
+      label: t('label.configure'),
+      children: (
+        <div>
+          <SSOConfigurationForm
+            hideBorder
+            forceEditMode={activeTab === 'configure'}
+            securityConfig={securityConfig}
+            onChangeProvider={handleChangeProvider}
+          />
+        </div>
+      ),
+    });
+
+    // Group Mapping tab - only for Azure and Okta with SCIM (Collate-specific feature)
+    const ScimGroupMappingComponent =
+      ssoUtilClassBase.getScimGroupMappingComponent?.();
+    if (
+      ScimGroupMappingComponent &&
+      (currentProvider === AuthProvider.Azure ||
+        currentProvider === AuthProvider.Okta)
+    ) {
+      items.push({
+        key: 'group-mapping',
+        label: 'Group Mapping',
+        children: <ScimGroupMappingComponent />,
+      });
+    }
+
+    return items;
+  }, [
+    currentProvider,
+    t,
+    ssoEnabled,
+    handleSSOToggle,
+    activeTab,
+    securityConfig,
+    handleChangeProvider,
+  ]);
 
   // Combined effect to handle URL parameters and existing configuration
   useEffect(() => {
@@ -226,28 +339,6 @@ const SettingsSso = () => {
     [setSearchParams]
   );
 
-  const handleSSOToggle = useCallback(async (checked: boolean) => {
-    setSsoEnabled(checked);
-
-    try {
-      const patches = [
-        {
-          op: 'replace' as const,
-          path: '/authenticationConfiguration/enableSelfSignup',
-          value: checked,
-        },
-      ];
-
-      await patchSecurityConfiguration(patches);
-    } catch (error) {
-      setSsoEnabled(!checked);
-    }
-  }, []);
-
-  const handleChangeProvider = useCallback(() => {
-    setSearchParams({ provider: AuthProvider.Basic });
-  }, [setSearchParams]);
-
   // Show loading state first to prevent flickering
   if (isLoading) {
     return (
@@ -288,85 +379,6 @@ const SettingsSso = () => {
         />
       </PageLayoutV1>
     );
-  }
-
-  // If existing configuration, show tabs
-  const tabItems = [];
-
-  // Overview tab for all SSO providers
-  if (currentProvider && currentProvider !== AuthProvider.Basic) {
-    const renderOverviewContent = () => {
-      // Get the SCIM access token card component - only for Azure and Okta
-      const SCIMAccessTokenCard =
-        (currentProvider === AuthProvider.Azure ||
-          currentProvider === AuthProvider.Okta) &&
-        ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
-
-      return (
-        <div>
-          {/* Enable SSO section */}
-          <div className="enable-sso-card-container">
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col  gap-2">
-                <Typography.Title className="enable-self-signup-header m-b-xs">
-                  {t('label.enable-sso')}
-                </Typography.Title>
-                <Typography.Text className="enable-self-signup-desc">
-                  {t('message.allow-user-to-login-via-sso')}
-                </Typography.Text>
-              </div>
-              <Switch
-                checked={ssoEnabled}
-                size="default"
-                onChange={handleSSOToggle}
-              />
-            </div>
-          </div>
-
-          {/* SCIM Provisioning section - only for Azure and Okta */}
-
-          {/* SCIM Access Token Card - only show if available and for Azure/Okta */}
-          {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
-        </div>
-      );
-    };
-
-    tabItems.push({
-      key: 'overview',
-      label: t('label.overview'),
-      children: renderOverviewContent(),
-    });
-  }
-
-  // Configure tab always present for existing configurations
-  tabItems.push({
-    key: 'configure',
-    label: t('label.configure'),
-    children: (
-      <div>
-        <SSOConfigurationForm
-          hideBorder
-          forceEditMode={activeTab === 'configure'}
-          securityConfig={securityConfig}
-          onChangeProvider={handleChangeProvider}
-        />
-      </div>
-    ),
-  });
-
-  // Group Mapping tab - only for Azure and Okta with SCIM (Collate-specific feature)
-  const ScimGroupMappingComponent =
-    ssoUtilClassBase.getScimGroupMappingComponent?.();
-  if (
-    ScimGroupMappingComponent &&
-    (currentProvider === AuthProvider.Azure ||
-      currentProvider === AuthProvider.Okta)
-  ) {
-    tabItems.push({
-      key: 'group-mapping',
-      label: 'Group Mapping',
-      children: <ScimGroupMappingComponent />,
-    });
   }
 
   return (
