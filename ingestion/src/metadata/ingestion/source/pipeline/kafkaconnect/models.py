@@ -13,7 +13,7 @@
 KafkaConnect Source Model module
 """
 
-from typing import List, Optional
+from typing import List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,20 @@ class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
 
 
+class KafkaConnectDatasetDetails(BaseModel):
+    table: Optional[str] = None
+    database: Optional[str] = None
+    container_name: Optional[str] = None
+
+    @property
+    def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:
+        if self.table or self.database:
+            return Table
+        if self.container_name:
+            return Container
+        return None
+
+
 class KafkaConnectPipelineDetails(BaseModel):
     name: str = Field(
         ..., description="Name of the status source (e.g., random-source-json)"
@@ -43,20 +57,9 @@ class KafkaConnectPipelineDetails(BaseModel):
         default="UNASSIGNED",
         description="State of the connector (e.g., RUNNING, STOPPED)",
     )
-    tasks: Optional[List[KafkaConnectTasks]] = []
-    topics: Optional[List[KafkaConnectTopics]] = []
+    tasks: Optional[List[KafkaConnectTasks]] = Field(default_factory=list)
+    topics: Optional[List[KafkaConnectTopics]] = Field(default_factory=list)
     conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")
-
-
-class KafkaConnectDatasetDetails(BaseModel):
-    table: Optional[str] = None
-    database: Optional[str] = None
-    container_name: Optional[str] = None
-
-    @property
-    def dataset_type(self):
-        if self.table or self.database:
-            return Table
-        if self.container_name:
-            return Container
-        return None
+    description: Optional[str] = None
+    dataset: Optional[KafkaConnectDatasetDetails] = None
+    config: Optional[dict] = Field(default_factory=dict)
