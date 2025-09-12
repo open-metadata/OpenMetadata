@@ -2,6 +2,7 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static es.org.elasticsearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
@@ -20,6 +21,7 @@ import es.org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBu
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import java.util.ArrayList;
@@ -36,7 +38,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticFiltersAggregations;
 import org.openmetadata.service.search.indexes.*;
 
 public class ElasticSearchSourceBuilderFactory
@@ -122,18 +123,17 @@ public class ElasticSearchSourceBuilderFactory
         .getAggregations()
         .forEach(
             agg -> {
-              if (Aggregation.Type.FILTERS.equals(agg.getType())) {
-                ElasticFiltersAggregations filtersAgg = new ElasticFiltersAggregations();
-                filtersAgg.createAggregation(
-                    agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
-                searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+              TermsAggregationBuilder termsAgg =
+                  AggregationBuilders.terms(agg.getName())
+                      .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+              if (!nullOrEmpty(agg.getScript())) {
+                termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
               } else {
-                // Default terms aggregation for other types
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+                termsAgg.field(agg.getField());
               }
+
+              searchSourceBuilder.aggregation(termsAgg);
             });
     return searchSourceBuilder;
   }
@@ -657,17 +657,17 @@ public class ElasticSearchSourceBuilderFactory
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
 
-      if (Aggregation.Type.FILTERS.equals(agg.getType())) {
-        ElasticFiltersAggregations filtersAgg = new ElasticFiltersAggregations();
-        filtersAgg.createAggregation(agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
-        searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+      TermsAggregationBuilder termsAgg =
+          AggregationBuilders.terms(agg.getName())
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+      if (!nullOrEmpty(agg.getScript())) {
+        termsAgg.script(new es.org.elasticsearch.script.Script(agg.getScript()));
       } else {
-        // Default terms aggregation for other types
-        searchSourceBuilder.aggregation(
-            AggregationBuilders.terms(agg.getName())
-                .field(agg.getField())
-                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+        termsAgg.field(agg.getField());
       }
+
+      searchSourceBuilder.aggregation(termsAgg);
     }
   }
 

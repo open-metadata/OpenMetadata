@@ -41,7 +41,6 @@ public class ElasticAggregationsBuilder {
       case "cardinality" -> new ElasticCardinalityAggregations();
       case "nested" -> new ElasticNestedAggregations();
       case "top_hits" -> new ElasticTopHitsAggregations();
-      case "filters" -> new ElasticFiltersAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);
     };
   }

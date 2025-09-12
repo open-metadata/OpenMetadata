@@ -42,19 +42,9 @@
       },
       {
         "name": "classificationTags",
-        "type": "filters", 
-        "field": "tags.source",
-        "filters": "Classification",
-        "subAggField": "tags.tagFQN",
-        "subAggScript": "def classificationTags = []; for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } return classificationTags;"
-      },
-      {
-        "name": "glossaryTags",
-        "type": "filters",
-        "field": "tags.source",
-        "filters": "Glossary",
-        "subAggField": "tags.tagFQN",
-        "subAggScript": "def glossaryTags = []; for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } return glossaryTags;"
+        "type": "terms", 
+        "field": "tags.tagFQN",
+        "script": "def classificationTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } } return classificationTags;"
       },
       {
         "name": "certification.tagLabel.tagFQN",
@@ -1385,6 +1375,11 @@
           "name": "fqnParts_agg",
           "type": "terms",
           "field": "fqnParts"
+        },
+        {
+          "name": "domainType.keyword",
+          "type": "terms",
+          "field": "domainType.keyword"
         }
       ],
       "scoreMode": "sum",

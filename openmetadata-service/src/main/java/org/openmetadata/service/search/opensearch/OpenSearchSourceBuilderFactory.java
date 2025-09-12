@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
@@ -25,7 +26,6 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
-import org.openmetadata.service.search.opensearch.aggregations.OpenFiltersAggregations;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
@@ -40,6 +40,7 @@ import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuild
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
@@ -127,18 +128,17 @@ public class OpenSearchSourceBuilderFactory
         .getAggregations()
         .forEach(
             agg -> {
-              if (Aggregation.Type.FILTERS.equals(agg.getType())) {
-                OpenFiltersAggregations filtersAgg = new OpenFiltersAggregations();
-                filtersAgg.createAggregation(
-                    agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
-                searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+              TermsAggregationBuilder termsAgg =
+                  AggregationBuilders.terms(agg.getName())
+                      .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+              if (!nullOrEmpty(agg.getScript())) {
+                termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
               } else {
-                // Default terms aggregation for other types
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+                termsAgg.field(agg.getField());
               }
+
+              searchSourceBuilder.aggregation(termsAgg);
             });
     return searchSourceBuilder;
   }
@@ -658,17 +658,17 @@ public class OpenSearchSourceBuilderFactory
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
 
-      if (Aggregation.Type.FILTERS.equals(agg.getType())) {
-        OpenFiltersAggregations filtersAgg = new OpenFiltersAggregations();
-        filtersAgg.createAggregation(agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
-        searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+      TermsAggregationBuilder termsAgg =
+          AggregationBuilders.terms(agg.getName())
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+      if (!nullOrEmpty(agg.getScript())) {
+        termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
       } else {
-        // Default to terms aggregation for other cases
-        searchSourceBuilder.aggregation(
-            AggregationBuilders.terms(agg.getName())
-                .field(agg.getField())
-                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+        termsAgg.field(agg.getField());
       }
+
+      searchSourceBuilder.aggregation(termsAgg);
     }
   }
 
