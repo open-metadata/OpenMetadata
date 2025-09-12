@@ -130,6 +130,34 @@ const SSOConfigurationFormRJSF = ({
     }
   };
 
+  // Helper function to setup configuration state - extracted to avoid redundancy
+  const setupConfigurationState = useCallback(
+    (config: SecurityConfiguration) => {
+      if (
+        config?.authenticationConfiguration?.provider &&
+        config.authenticationConfiguration.provider !== AuthProvider.Basic
+      ) {
+        setHasExistingConfig(true);
+        setCurrentProvider(config.authenticationConfiguration.provider);
+        const configData = {
+          authenticationConfiguration: config.authenticationConfiguration,
+          authorizerConfiguration: config.authorizerConfiguration,
+        };
+        setSavedData(configData);
+        setInternalData(configData);
+        setShowForm(true);
+
+        if (forceEditMode) {
+          setIsEditMode(true);
+          setShowForm(true);
+        }
+      } else {
+        setShowProviderSelector(true);
+      }
+    },
+    [forceEditMode]
+  );
+
   // Fetch existing configuration on mount (only if no selectedProvider is passed and no securityConfig provided)
   useEffect(() => {
     const fetchExistingConfig = async () => {
@@ -144,28 +172,7 @@ const SSOConfigurationFormRJSF = ({
         if (!securityConfig) {
           const response = await getSecurityConfiguration();
           const config = response.data;
-
-          if (
-            config?.authenticationConfiguration?.provider &&
-            config.authenticationConfiguration.provider !== AuthProvider.Basic
-          ) {
-            setHasExistingConfig(true);
-            setCurrentProvider(config.authenticationConfiguration.provider);
-            const configData = {
-              authenticationConfiguration: config.authenticationConfiguration,
-              authorizerConfiguration: config.authorizerConfiguration,
-            };
-            setSavedData(configData);
-            setInternalData(configData);
-            setShowForm(true);
-
-            if (forceEditMode) {
-              setIsEditMode(true);
-              setShowForm(true);
-            }
-          } else {
-            setShowProviderSelector(true);
-          }
+          setupConfigurationState(config);
         }
       } catch (error) {
         // No existing configuration, show provider selector
@@ -181,36 +188,14 @@ const SSOConfigurationFormRJSF = ({
     } else {
       setIsInitializing(false);
     }
-  }, [selectedProvider, forceEditMode]);
+  }, [selectedProvider, setupConfigurationState, securityConfig]);
 
   // Separate effect to handle securityConfig changes
   useEffect(() => {
     if (securityConfig && !selectedProvider) {
-      if (
-        securityConfig.authenticationConfiguration?.provider &&
-        securityConfig.authenticationConfiguration.provider !==
-          AuthProvider.Basic
-      ) {
-        setHasExistingConfig(true);
-        setCurrentProvider(securityConfig.authenticationConfiguration.provider);
-        const configData = {
-          authenticationConfiguration:
-            securityConfig.authenticationConfiguration,
-          authorizerConfiguration: securityConfig.authorizerConfiguration,
-        };
-        setSavedData(configData);
-        setInternalData(configData);
-        setShowForm(true);
-
-        if (forceEditMode) {
-          setIsEditMode(true);
-          setShowForm(true);
-        }
-      } else {
-        setShowProviderSelector(true);
-      }
+      setupConfigurationState(securityConfig);
     }
-  }, [securityConfig, forceEditMode]);
+  }, [securityConfig, selectedProvider, setupConfigurationState]);
 
   // Handle selectedProvider prop - initialize fresh form when provider is selected
   useEffect(() => {
@@ -887,22 +872,6 @@ const SSOConfigurationFormRJSF = ({
           cleanedFormData?.authorizerConfiguration as SecurityConfiguration['authorizerConfiguration'],
       };
 
-      // First validate the configuration
-      try {
-        const validationResponse = await validateSecurityConfiguration(payload);
-        const validationResult = validationResponse.data;
-
-        if (validationResult.status !== VALIDATION_STATUS.SUCCESS) {
-          handleValidationErrors(validationResult);
-
-          return;
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-
-        return;
-      }
-
       try {
         // Use PATCH for existing configurations, PUT for new ones
         if (hasExistingConfig && savedData) {
@@ -914,6 +883,23 @@ const SSOConfigurationFormRJSF = ({
             await patchSecurityConfiguration(allPatches);
           }
         } else {
+          // For new configurations, validate first then apply
+          try {
+            const validationResponse: { data: SecurityValidationResponse } =
+              await validateSecurityConfiguration(payload);
+            const validationResult = validationResponse.data;
+
+            if (validationResult.status !== VALIDATION_STATUS.SUCCESS) {
+              handleValidationErrors(validationResult);
+
+              return;
+            }
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+
+            return;
+          }
+
           // Use full PUT for new configurations
           await applySecurityConfiguration(payload);
         }
