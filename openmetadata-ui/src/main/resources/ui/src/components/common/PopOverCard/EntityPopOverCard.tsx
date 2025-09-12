@@ -30,7 +30,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAlertsFromName } from '../../../rest/alertsAPI';
 import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
+import { getApplicationByName } from '../../../rest/applicationAPI';
+import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
+import { getContract } from '../../../rest/contractAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -43,16 +46,25 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
+import { getKPIByName } from '../../../rest/KpiAPI';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPersonaByName } from '../../../rest/PersonaAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getQueryByFqn } from '../../../rest/queryAPI';
+import { getPolicyByName, getRoleByName } from '../../../rest/rolesAPIV1';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTagByFqn } from '../../../rest/tagAPI';
-import { getTestCaseByFqn } from '../../../rest/testAPI';
+import { getClassificationByName, getTagByFqn } from '../../../rest/tagAPI';
+import { getTeamByName } from '../../../rest/teamsAPI';
+import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getBotByName } from '../../../rest/userAPI';
+import { getBotByName, getUserByName } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -222,6 +234,136 @@ export const PopoverContent: React.FC<{
 
       case EntityType.EVENT_SUBSCRIPTION:
         promise = getAlertsFromName(entityFQN);
+
+        break;
+
+      case EntityType.ROLE:
+        promise = getRoleByName(entityFQN, '');
+
+        break;
+
+      case EntityType.POLICY:
+        promise = getPolicyByName(entityFQN, '');
+
+        break;
+
+      case EntityType.CLASSIFICATION:
+        promise = getClassificationByName(entityFQN);
+
+        break;
+
+      case EntityType.DATABASE_SERVICE:
+        promise = getServiceByFQN(EntityType.DATABASE_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.MESSAGING_SERVICE:
+        promise = getServiceByFQN(EntityType.MESSAGING_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.DASHBOARD_SERVICE:
+        promise = getServiceByFQN(EntityType.DASHBOARD_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.PIPELINE_SERVICE:
+        promise = getServiceByFQN(EntityType.PIPELINE_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.MLMODEL_SERVICE:
+        promise = getServiceByFQN(EntityType.MLMODEL_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.STORAGE_SERVICE:
+        promise = getServiceByFQN(EntityType.STORAGE_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.SEARCH_SERVICE:
+        promise = getServiceByFQN(EntityType.SEARCH_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.API_SERVICE:
+        promise = getServiceByFQN(EntityType.API_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.SECURITY_SERVICE:
+        promise = getServiceByFQN(EntityType.SECURITY_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.METADATA_SERVICE:
+        promise = getServiceByFQN(EntityType.METADATA_SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.TYPE:
+        promise = getTypeByFQN(entityFQN);
+
+        break;
+
+      case EntityType.TEAM:
+        promise = getTeamByName(entityFQN);
+
+        break;
+
+      case EntityType.USER:
+        promise = getUserByName(entityFQN);
+
+        break;
+
+      case EntityType.TEST_SUITE:
+        promise = getTestSuiteByName(entityFQN);
+
+        break;
+
+      case EntityType.KPI:
+        promise = getKPIByName(entityFQN);
+
+        break;
+
+      case EntityType.SEARCH_INDEX:
+        promise = getSearchIndexDetailsByFQN(entityFQN);
+
+        break;
+
+      case EntityType.APP_MARKET_PLACE_DEFINITION:
+        promise = getMarketPlaceApplicationByFqn(entityFQN);
+
+        break;
+
+      case EntityType.APPLICATION:
+        promise = getApplicationByName(entityFQN);
+
+        break;
+
+      case EntityType.PERSONA:
+        promise = getPersonaByName(entityFQN);
+
+        break;
+
+      case EntityType.INGESTION_PIPELINE:
+        promise = getIngestionPipelineByFqn(entityFQN);
+
+        break;
+
+      case EntityType.SERVICE:
+        promise = getServiceByFQN(EntityType.SERVICE, entityFQN);
+
+        break;
+
+      case EntityType.DATA_CONTRACT:
+        promise = getContract(entityFQN);
+
+        break;
+
+      case EntityType.QUERY:
+        promise = getQueryByFqn(entityFQN);
 
         break;
 
