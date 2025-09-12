@@ -16,6 +16,7 @@ import { omit, startCase } from 'lodash';
 import { FocusEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import CustomUnitSelect from '../../../components/common/CustomUnitSelect/CustomUnitSelect';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -160,32 +161,6 @@ const AddMetricPage = () => {
         },
       },
       {
-        name: 'unitOfMeasurement',
-        required: false,
-        label: t('label.unit-of-measurement'),
-        id: 'root/unitOfMeasurement',
-        type: FieldTypes.SELECT,
-        props: {
-          'data-testid': 'unitOfMeasurement',
-          options: Object.values(UnitOfMeasurement).map(
-            (unitOfMeasurement) => ({
-              key: unitOfMeasurement,
-              label: startCase(unitOfMeasurement.toLowerCase()),
-              value: unitOfMeasurement,
-            })
-          ),
-          placeholder: `${t('label.select-field', {
-            field: t('label.unit-of-measurement'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { label: string }) => {
-            return (option?.label ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
-        },
-      },
-      {
         name: 'language',
         required: false,
         label: t('label.language'),
@@ -230,10 +205,21 @@ const AddMetricPage = () => {
     setActiveField(activeField);
   }, []);
 
+  const handleUnitOfMeasurementChange = (
+    unitOfMeasurement: string,
+    customUnitOfMeasurement?: string
+  ) => {
+    form.setFieldsValue({
+      unitOfMeasurement,
+      customUnitOfMeasurement,
+    });
+  };
+
   const handleSubmit = async (
     values: Exclude<CreateMetric, 'metricExpression'> & {
       code?: string;
       language?: Language;
+      customUnitOfMeasurement?: string;
     }
   ) => {
     setIsCreating(true);
@@ -245,6 +231,14 @@ const AddMetricPage = () => {
           language: values.language,
         },
       };
+
+      if (
+        values.unitOfMeasurement === UnitOfMeasurement.Other &&
+        values.customUnitOfMeasurement
+      ) {
+        createMetricPayload.customUnitOfMeasurement =
+          values.customUnitOfMeasurement;
+      }
 
       const response = await createMetric(createMetricPayload);
       navigate(
@@ -289,6 +283,23 @@ const AddMetricPage = () => {
                   onFinish={handleSubmit}
                   onFocus={handleFieldFocus}>
                   {generateFormFields(formFields)}
+                  <Form.Item
+                    label={t('label.unit-of-measurement')}
+                    name="unitOfMeasurement">
+                    <CustomUnitSelect
+                      customValue={form.getFieldValue(
+                        'customUnitOfMeasurement'
+                      )}
+                      dataTestId="unitOfMeasurement"
+                      placeholder={t('label.select-field', {
+                        field: t('label.unit-of-measurement'),
+                      })}
+                      onChange={handleUnitOfMeasurementChange}
+                    />
+                  </Form.Item>
+                  <Form.Item hidden name="customUnitOfMeasurement">
+                    <input type="hidden" />
+                  </Form.Item>
                   <Form.Item
                     data-testid="expression-code-container"
                     label={t('label.code')}
