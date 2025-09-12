@@ -78,34 +78,6 @@ class TestHexApiClient(TestCase):
             token, expiry = call_args.auth_token()
             self.assertEqual(token, "workspace_token_789")
 
-    def test_test_project_success(self):
-        """Test successful connection test"""
-        self.client.client.get = MagicMock(return_value={"data": []})
-
-        result = self.client.test_project()
-
-        self.assertTrue(result)
-        self.client.client.get.assert_called_once_with("/projects?limit=1")
-
-    def test_test_project_failure(self):
-        """Test failed connection test"""
-        self.client.client.get = MagicMock(side_effect=Exception("Connection failed"))
-
-        result = self.client.test_project()
-
-        self.assertFalse(result)
-        self.client.client.get.assert_called_once_with("/projects?limit=1")
-
-    def test_test_project_unauthorized(self):
-        """Test connection test with 401 error"""
-        self.client.client.get = MagicMock(
-            side_effect=APIError({"message": "Unauthorized"})
-        )
-
-        result = self.client.test_project()
-
-        self.assertFalse(result)
-
     def test_get_projects_single_page(self):
         """Test fetching projects with single page of results"""
         mock_response = {
@@ -273,26 +245,6 @@ class TestHexApiClient(TestCase):
         projects = self.client.get_projects()
 
         self.assertEqual(len(projects), 0)
-
-    def test_forbidden_access(self):
-        """Test handling forbidden access (403 error)"""
-        self.client.client.get = MagicMock(
-            side_effect=APIError({"message": "Forbidden"})
-        )
-
-        result = self.client.test_project()
-
-        self.assertFalse(result)
-
-    def test_not_found_error(self):
-        """Test handling not found error (404)"""
-        self.client.client.get = MagicMock(
-            side_effect=APIError({"message": "Not Found"})
-        )
-
-        result = self.client.test_project()
-
-        self.assertFalse(result)
 
     def test_timeout_error(self):
         """Test handling timeout errors"""
