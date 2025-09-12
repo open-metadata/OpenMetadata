@@ -47,3 +47,12 @@ export const SEMANTIC_OPERATORS = [
   ...(jsonLogicSearchClassBase.defaultSelectOperators ?? []),
   'array_contains',
 ];
+
+export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
+
+export enum CONTRACT_ACTION_DROPDOWN_KEY {
+  EDIT = 'edit',
+  RUN_NOW = 'run_now',
+  EXPORT = 'export',
+  DELETE = 'delete',
+}

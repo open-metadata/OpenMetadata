@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
@@ -38,7 +38,6 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import Loader from '../../common/Loader/Loader';
 import './contract-execution-chart.less';
 
@@ -111,74 +110,59 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   }, [dateRangeObject]);
 
   return (
-    <ExpandableCard
-      cardProps={{
-        className: 'expandable-card-contract',
-        title: (
-          <div className="contract-card-title-container">
-            <Typography.Text className="contract-card-title">
-              {t('label.contract-execution-history')}
-            </Typography.Text>
-            <Typography.Text className="contract-card-description">
-              {t('message.contract-execution-history-description')}
-            </Typography.Text>
-          </div>
-        ),
-      }}>
-      <div className="expandable-card-contract-body contract-execution-chart-container">
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <>
-            <DatePickerMenu
-              showSelectedCustomRange
-              defaultDateRange={pick(defaultRange, ['key', 'title'])}
-              handleDateRangeChange={handleDateRangeChange}
-            />
+    <div className="expandable-card-contract-body contract-execution-chart-container">
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <>
+          <DatePickerMenu
+            showSelectedCustomRange
+            defaultDateRange={pick(defaultRange, ['key', 'title'])}
+            handleDateRangeChange={handleDateRangeChange}
+          />
 
-            <ResponsiveContainer height="100%" width="100%">
-              <BarChart
-                data={processedChartData}
-                height={200}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
-                width={500}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="name"
-                  domain={['min', 'max']}
-                  tickFormatter={formatDateTime}
-                />
-                <Tooltip />
-                <Legend />
-                <Bar
-                  activeBar={<Rectangle fill={GREEN_3} stroke={GREEN_3} />}
-                  dataKey="success"
-                  fill={GREEN_3}
-                  name={t('label.success')}
-                />
-                <Bar
-                  activeBar={<Rectangle fill={RED_3} stroke={RED_3} />}
-                  dataKey="failed"
-                  fill={RED_3}
-                  name={t('label.failed')}
-                />
-                <Bar
-                  activeBar={<Rectangle fill={YELLOW_2} stroke={YELLOW_2} />}
-                  dataKey="aborted"
-                  fill={YELLOW_2}
-                  name={t('label.aborted')}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </>
-        )}
-      </div>
-    </ExpandableCard>
+          <ResponsiveContainer height="100%" width="100%">
+            <BarChart
+              data={processedChartData}
+              height={200}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+              width={500}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="name"
+                domain={['min', 'max']}
+                tickFormatter={formatDateTime}
+              />
+              <Tooltip />
+              <Legend />
+              <Bar
+                activeBar={<Rectangle fill={GREEN_3} stroke={GREEN_3} />}
+                dataKey="success"
+                fill={GREEN_3}
+                name={t('label.success')}
+              />
+              <Bar
+                activeBar={<Rectangle fill={RED_3} stroke={RED_3} />}
+                dataKey="failed"
+                fill={RED_3}
+                name={t('label.failed')}
+              />
+              <Bar
+                activeBar={<Rectangle fill={YELLOW_2} stroke={YELLOW_2} />}
+                dataKey="aborted"
+                fill={YELLOW_2}
+                name={t('label.aborted')}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </>
+      )}
+    </div>
   );
 };
 
