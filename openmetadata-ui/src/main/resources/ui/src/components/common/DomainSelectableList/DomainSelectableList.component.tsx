@@ -46,7 +46,8 @@ export const DomainListItemRenderer = (props: EntityReference) => {
           <Typography.Text
             ellipsis
             className="m-l-xss text-xs"
-            type="secondary">
+            type="secondary"
+          >
             {fqn}
           </Typography.Text>
         )}
@@ -66,6 +67,7 @@ const DomainSelectableList = ({
   selectedDomain,
   showAllDomains = false,
   wrapInButton = true,
+  overlayClassName,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -128,7 +130,7 @@ const DomainSelectableList = ({
         }
         getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
-        overlayClassName="domain-select-popover w-400"
+        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
         placement="bottomRight"
         showArrow={false}
         trigger="click"
@@ -137,7 +139,8 @@ const DomainSelectableList = ({
             setPopupVisible(visible);
           }
         }}
-        {...popoverProps}>
+        {...popoverProps}
+      >
         {children ??
           (!isVersionView && (
             <EditIconButton
@@ -172,7 +175,8 @@ const DomainSelectableList = ({
       <Button
         className="remove-button-default-styling flex-center"
         disabled={disabled}
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()}
+      >
         {popoverContent}
       </Button>
     );

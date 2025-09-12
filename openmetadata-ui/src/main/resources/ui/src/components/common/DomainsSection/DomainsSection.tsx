@@ -95,10 +95,12 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
               <DomainSelectableList
                 multiple
                 hasPermission={hasPermission}
+                overlayClassName="w-auto"
                 popoverProps={{ placement: 'bottomLeft' }}
                 selectedDomain={editingDomains}
                 wrapInButton={false}
-                onUpdate={handleDomainSelection}>
+                onUpdate={handleDomainSelection}
+              >
                 <div className="domain-selector-display">
                   {editingDomains.length > 0 ? (
                     <div className="selected-domains-list">
@@ -161,7 +163,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
               popoverProps={{ placement: 'bottomLeft' }}
               selectedDomain={editingDomains}
               wrapInButton={false}
-              onUpdate={handleDomainSelection}>
+              onUpdate={handleDomainSelection}
+            >
               <div className="domain-selector-display">
                 {editingDomains.length > 0 ? (
                   <div className="selected-domains-list">
