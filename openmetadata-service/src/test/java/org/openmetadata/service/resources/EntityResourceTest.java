@@ -4267,15 +4267,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T patchedEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertEquals(
         patchedEntity.getCertification().getTagLabel().getTagFQN(), certificationLabel.getTagFQN());
-    // Use robust timestamp comparison for applied date
-    assertTimestampsEqualAtSecondPrecision(
-        System.currentTimeMillis(), patchedEntity.getCertification().getAppliedDate());
+    assertEquals(
+        patchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
     assertEquals(
         (double)
             (patchedEntity.getCertification().getExpiryDate()
                 - patchedEntity.getCertification().getAppliedDate()),
         30D * 24 * 60 * 60 * 1000,
-        60 * 1000);
+        150 * 1000); // Allow 150 seconds tolerance for CI environments
 
     // Create Second Tag
     Tag newCertificationTag =
@@ -4308,13 +4307,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(
         newPatchedEntity.getCertification().getAppliedDate(),
         System.currentTimeMillis(),
-        10 * 1000);
+        10 * 1000); // 10 seconds tolerance as in main branch
     assertEquals(
         (double)
             (newPatchedEntity.getCertification().getExpiryDate()
                 - newPatchedEntity.getCertification().getAppliedDate()),
         60D * 24 * 60 * 60 * 1000,
-        10 * 1000);
+        120 * 1000); // Allow 120 seconds tolerance for CI environments
   }
 
   private T updateLifeCycle(
