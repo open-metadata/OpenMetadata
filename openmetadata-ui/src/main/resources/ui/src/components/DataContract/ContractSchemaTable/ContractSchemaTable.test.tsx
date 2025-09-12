@@ -12,8 +12,8 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import { Column } from '../../../generated/entity/data/table';
-import ContractSchemaTable from './ContractSchemaTabe.component';
+import { Column, DataType } from '../../../generated/entity/data/table';
+import ContractSchemaTable from './ContractSchemaTable.component';
 
 // Mock the usePaging hook
 jest.mock('../../../hooks/paging/usePaging', () => ({
@@ -46,17 +46,17 @@ jest.mock('../../common/Table/Table', () => {
 const mockSchemaDetail: Column[] = [
   {
     name: 'id',
-    dataType: 'INTEGER',
+    dataType: DataType.Array,
     constraint: 'PRIMARY_KEY',
   } as Column,
   {
     name: 'name',
-    dataType: 'VARCHAR',
+    dataType: DataType.Varchar,
     constraint: 'NOT_NULL',
   } as Column,
   {
     name: 'email',
-    dataType: 'VARCHAR',
+    dataType: DataType.Varchar,
   } as Column,
 ];
 

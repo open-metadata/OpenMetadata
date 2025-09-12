@@ -30,7 +30,7 @@ import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
-  return isEmpty(failed) ? t('label.passed') : t('label.failed');
+  return failed === 0 ? t('label.passed') : t('label.failed');
 };
 
 export const getConstraintStatus = (

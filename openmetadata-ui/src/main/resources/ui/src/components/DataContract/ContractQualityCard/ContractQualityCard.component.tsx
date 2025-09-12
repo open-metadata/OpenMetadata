@@ -196,9 +196,7 @@ const ContractQualityCard: React.FC<{
                     to={getTestCaseDetailPagePath(
                       item.fullyQualifiedName ?? ''
                     )}>
-                    {/* <Typography.Text className="data-quality-item-name"> */}
                     {item.name}
-                    {/* </Typography.Text> */}
                   </Link>
                 </div>
               </div>
@@ -206,7 +204,7 @@ const ContractQualityCard: React.FC<{
           })}
         </Space>
       </Col>
-      <Col span={12}>
+      <Col className="d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
             <Typography.Text>{`${t('label.entity-status', {

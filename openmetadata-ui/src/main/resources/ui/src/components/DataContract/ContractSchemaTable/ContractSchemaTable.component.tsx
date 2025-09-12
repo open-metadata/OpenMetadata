@@ -10,79 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-full.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Column } from '../../../generated/entity/data/table';
-import { usePaging } from '../../../hooks/paging/usePaging';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
+import './contract-schema.less';
 
 const ContractSchemaTable: React.FC<{
   schemaDetail: Column[];
   contractStatus?: string;
 }> = ({ schemaDetail, contractStatus }) => {
   const { t } = useTranslation();
-
-  const {
-    currentPage,
-    pageSize,
-    handlePageChange,
-    handlePageSizeChange,
-    showPagination,
-    paging,
-    handlePagingChange,
-  } = usePaging(10); // Default page size of 10 for schema tables
-
-  // Calculate paginated data
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
-    return schemaDetail.slice(startIndex, endIndex);
-  }, [schemaDetail, currentPage, pageSize]);
-
-  // Update paging when schemaDetail changes
-  useMemo(() => {
-    handlePagingChange({
-      total: schemaDetail.length,
-    });
-  }, [schemaDetail.length, handlePagingChange]);
-
-  const handleSchemaPageChange = useCallback(
-    ({ currentPage: page }: PagingHandlerParams) => {
-      handlePageChange(page);
-    },
-    [handlePageChange]
-  );
-
-  const paginationProps = useMemo(
-    () => ({
-      currentPage,
-      showPagination,
-      isLoading: false,
-      isNumberBased: true,
-      pageSize,
-      paging: {
-        ...paging,
-        total: schemaDetail.length,
-      },
-      pagingHandler: handleSchemaPageChange,
-      onShowSizeChange: handlePageSizeChange,
-    }),
-    [
-      currentPage,
-      showPagination,
-      pageSize,
-      paging,
-      schemaDetail.length,
-      handleSchemaPageChange,
-      handlePageSizeChange,
-    ]
-  );
 
   const schemaColumns = useMemo(
     () => [
@@ -131,14 +75,19 @@ const ContractSchemaTable: React.FC<{
       <Col span={12}>
         <Table
           columns={schemaColumns}
-          customPaginationProps={paginationProps}
-          dataSource={paginatedData}
-          pagination={false}
+          dataSource={schemaDetail}
+          pagination={{
+            size: 'default',
+            pageSize: 5,
+            prevIcon: <Icon component={ArrowIcon} />,
+            nextIcon: <Icon component={ArrowIcon} />,
+            className: 'schema-custom-pagination',
+          }}
           rowKey="name"
           size="small"
         />
       </Col>
-      <Col span={12}>
+      <Col className="d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
             <Typography.Text>{`${t('label.entity-status', {
