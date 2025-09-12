@@ -31,14 +31,13 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
+import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
-import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 
 import {
   DataContractMode,
@@ -259,7 +258,6 @@ const ContractDetail: React.FC<{
 
             <Dropdown
               destroyPopupOnHide
-              //   getPopupContainer={(triggerNode) => triggerNode.parentElement!}
               menu={{
                 items: contractActionsItems,
                 onClick: handleContractAction,
@@ -303,6 +301,7 @@ const ContractDetail: React.FC<{
             </Typography.Text>
 
             <StatusBadgeV2
+              className="contract-success-badge"
               externalIcon={FlagIcon}
               label={contract.entityStatus ?? t('label.approved')}
               status={StatusType.Success}
@@ -351,6 +350,7 @@ const ContractDetail: React.FC<{
         <ContractYaml contract={contract} />
       ) : (
         <Row className="contract-detail-container">
+          {/* Description Component */}
           <Col className="contract-card-items" span={24}>
             <div className="contract-card-header-container">
               <Typography.Text className="contract-card-header">
@@ -365,6 +365,7 @@ const ContractDetail: React.FC<{
             />
           </Col>
 
+          {/* Terms of Use Component */}
           <Col className="contract-card-items" span={24}>
             <div className="contract-card-header-container">
               <Typography.Text className="contract-card-header">
@@ -379,6 +380,7 @@ const ContractDetail: React.FC<{
             />
           </Col>
 
+          {/* SLA Component */}
           <Col className="contract-card-items" span={24}>
             <div className="contract-card-header-container">
               <Typography.Text className="contract-card-header">
@@ -390,6 +392,7 @@ const ContractDetail: React.FC<{
             <ContractSLA contract={contract} />
           </Col>
 
+          {/* Schema Component */}
           {!isEmpty(schemaDetail) && (
             <Col
               className="contract-card-items"
@@ -409,7 +412,7 @@ const ContractDetail: React.FC<{
             </Col>
           )}
 
-          {/* Semantics Card */}
+          {/* Semantics Component */}
           {contract?.semantics && contract?.semantics.length > 0 && (
             <Col
               className="contract-card-items"
@@ -438,7 +441,7 @@ const ContractDetail: React.FC<{
             </Col>
           )}
 
-          {/* Quality Card */}
+          {/* Quality Component */}
           {contract?.testSuite?.id && (
             <Col
               className="contract-card-items"
