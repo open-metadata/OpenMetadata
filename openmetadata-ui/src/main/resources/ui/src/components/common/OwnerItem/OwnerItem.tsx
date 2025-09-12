@@ -81,7 +81,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           data-testid="owner-link"
           to={ownerPath}>
           <OwnerAvatar
-            avatarSize={18}
+            avatarSize={avatarSize}
             inheritedIcon={inheritedIcon}
             isAssignee={isAssignee}
             isCompactView={isCompactView}

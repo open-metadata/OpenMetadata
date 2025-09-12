@@ -21,7 +21,7 @@ export interface DataTestId {
 }
 
 export type TagsV1Props = {
-  hideTierIcon?: boolean;
+  hideIcon?: boolean;
   tag: TagLabel | HighlightedTagLabel;
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;

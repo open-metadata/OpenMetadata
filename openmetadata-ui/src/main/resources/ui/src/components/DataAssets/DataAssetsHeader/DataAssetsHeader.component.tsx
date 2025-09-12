@@ -712,7 +712,7 @@ export const DataAssetsHeader = ({
                       </div>
 
                       <TagsV1
-                        hideTierIcon
+                        hideIcon
                         startWith={TAG_START_WITH.SOURCE_ICON}
                         tag={tier}
                         tagProps={{

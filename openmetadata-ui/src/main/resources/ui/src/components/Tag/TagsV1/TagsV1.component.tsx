@@ -33,7 +33,7 @@ import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
 const TagsV1 = ({
-  hideTierIcon,
+  hideIcon,
   tag,
   startWith,
   className,
@@ -132,8 +132,8 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
-  const renderIcon = () => {
-    if (hideTierIcon) {
+  const renderIcon = useMemo(() => {
+    if (hideIcon) {
       return null;
     }
 
@@ -150,7 +150,7 @@ const TagsV1 = ({
     }
 
     return startIcon;
-  };
+  }, [hideIcon, tag.style?.iconURL, startIcon]);
 
   const tagContent = useMemo(
     () => (
@@ -161,7 +161,7 @@ const TagsV1 = ({
             'd-flex items-center p-x-xs w-full tag-content-container',
             tagChipStyleClass
           )}>
-          {renderIcon()}
+          {renderIcon}
           <Typography.Text
             className="m-0 tags-label text-truncate truncate w-max-full"
             data-testid={`tag-${tag.tagFQN}`}

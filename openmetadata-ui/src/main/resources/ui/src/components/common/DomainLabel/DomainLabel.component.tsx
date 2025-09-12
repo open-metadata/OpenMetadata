@@ -54,6 +54,12 @@ export const DomainLabel = ({
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
+  const defaultDomainText = useMemo(() => {
+    return showDashPlaceholder
+      ? NO_DATA_PLACEHOLDER
+      : t('label.no-entity', { entity: t('label.domain-plural') });
+  }, [showDashPlaceholder]);
+
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
@@ -193,9 +199,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {showDashPlaceholder
-          ? NO_DATA_PLACEHOLDER
-          : t('label.no-entity', { entity: t('label.domain-plural') })}
+        {defaultDomainText}
       </Typography.Text>
     );
   }, [
@@ -236,9 +240,7 @@ export const DomainLabel = ({
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
-                  : showDashPlaceholder
-                  ? NO_DATA_PLACEHOLDER
-                  : t('label.no-entity', { entity: t('label.domain-plural') })}
+                  : defaultDomainText}
               </Typography.Text>
             )}
             {selectableList}
