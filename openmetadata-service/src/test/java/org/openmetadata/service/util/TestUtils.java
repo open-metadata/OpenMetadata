@@ -922,6 +922,24 @@ public final class TestUtils {
     return date.getTime();
   }
 
+  public static void assertTimestampsEqualWithPrecision(
+      long expected, long actual, long precisionMs) {
+    // Round both timestamps to the specified precision
+    long expectedRounded = (expected / precisionMs) * precisionMs;
+    long actualRounded = (actual / precisionMs) * precisionMs;
+
+    assertEquals(
+        expectedRounded,
+        actualRounded,
+        String.format(
+            "Timestamps differ at %dms precision. Expected: %d, Actual: %d",
+            precisionMs, expected, actual));
+  }
+
+  public static void assertTimestampsEqualAtSecondPrecision(long expected, long actual) {
+    assertTimestampsEqualWithPrecision(expected, actual, 1000);
+  }
+
   public static <T> String getEntityNameLengthError(Class<T> clazz) {
     try {
       Field field = clazz.getDeclaredField("name");
