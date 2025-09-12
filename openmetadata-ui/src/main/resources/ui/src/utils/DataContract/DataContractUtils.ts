@@ -26,6 +26,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -239,7 +240,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
@@ -281,7 +282,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -296,13 +297,22 @@ export const getSematicRuleFields = () => {
 
   const tierField = {
     label: t('label.tier'),
-    type: 'select',
+    type: '!group',
+    mode: 'some',
     fieldName: 'tags',
-    mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-    operators: jsonLogicSearchClassBase.defaultSelectOperators,
-    fieldSettings: {
-      asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
-      useAsyncSearch: true,
+    defaultField: 'tagFQN',
+    subfields: {
+      tagFQN: {
+        label: 'Tags',
+        type: 'multiselect',
+        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+        operators: SEMANTIC_OPERATORS,
+        fieldSettings: {
+          asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
+          useAsyncSearch: true,
+          listValues: jsonLogicSearchClassBase.autoCompleteTier,
+        },
+      },
     },
   };
 
