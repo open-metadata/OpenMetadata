@@ -232,7 +232,7 @@ const SchemaFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row gutter={[0, 12]}>
+      <Row>
         {columns.map((column) => {
           const isHighlighted = highlights?.column?.includes(column.name);
 
@@ -281,7 +281,7 @@ const TopicFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row gutter={[0, 12]}>
+      <Row>
         {schemaFields.map((field: any) => {
           const isHighlighted = highlights?.field?.includes(field.name);
 
@@ -329,7 +329,7 @@ const ContainerFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row gutter={[0, 12]}>
+      <Row>
         {columns.map((column: any) => {
           const isHighlighted = highlights?.column?.includes(column.name);
 
@@ -377,7 +377,7 @@ const SearchIndexFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row gutter={[0, 12]}>
+      <Row>
         {fields.map((field: any) => {
           const isHighlighted = highlights?.field?.includes(field.name);
 

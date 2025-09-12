@@ -42,6 +42,7 @@ import EntityRightPanelVerticalNav, {
   EntityRightPanelTab,
 } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 
@@ -191,7 +192,13 @@ export default function EntitySummaryPanel({
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
         return (
-          <div style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+          <div
+            style={{
+              paddingLeft: '16px',
+              paddingRight: '16px',
+              paddingTop: '16px',
+            }}
+          >
             {summaryComponentV1}
           </div>
         );
@@ -216,10 +223,11 @@ export default function EntitySummaryPanel({
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <div className="entity-summary-panel-tab-content">
-            <div className="text-center text-grey-muted p-lg">
-              {t('message.data-quality-content-placeholder')}
-            </div>
+          <div>
+            <DataQualityTab
+              entityFQN={entityDetails.details.fullyQualifiedName || ''}
+              entityType={entityType}
+            />
           </div>
         );
       case EntityRightPanelTab.CUSTOM_PROPERTIES:
@@ -282,9 +290,7 @@ export default function EntitySummaryPanel({
             display: 'flex',
           }}
         >
-          <div style={{ paddingTop: '16px', width: '100%' }}>
-            {renderTabContent()}
-          </div>
+          <div style={{ width: '80%' }}>{renderTabContent()}</div>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
             entityType={entityType}
