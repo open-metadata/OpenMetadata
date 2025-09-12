@@ -262,7 +262,8 @@ export const updateDomain = async (
 
 export const removeDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -280,7 +281,9 @@ export const removeDomain = async (
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('--');
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
 };
 
 export const assignDataProduct = async (
