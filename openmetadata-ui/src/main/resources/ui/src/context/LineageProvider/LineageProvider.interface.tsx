@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
-import { DragEvent, ReactNode } from 'react';
+import { Dispatch, DragEvent, ReactNode, SetStateAction } from 'react';
 import {
   Connection,
   Edge,
@@ -23,8 +23,10 @@ import {
 } from 'reactflow';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -74,7 +76,8 @@ export interface LineageContextType {
   onLineageEditClick: () => void;
   onZoomUpdate: (value: number) => void;
   onLineageConfigUpdate: (config: any) => void;
-  onQueryFilterUpdate: (query: string) => void;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
   onDrawerClose: () => void;
   onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
@@ -89,7 +92,7 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
-  onExportClick: () => void;
+  onExportClick: (entityTypes?: ExportTypes[]) => void;
   onPlatformViewChange: (view: LineagePlatformView) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;

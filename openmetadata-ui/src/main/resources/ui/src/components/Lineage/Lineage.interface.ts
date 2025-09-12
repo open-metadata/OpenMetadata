@@ -14,6 +14,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/entity/type';
 import { ColumnLineage } from '../../generated/type/entityLineage';
+import { SearchSourceAlias } from '../../interface/search.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -63,6 +64,7 @@ export type NodeData = {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;
   };
+  nodeDepth?: number;
 };
 
 export type LineageData = {
@@ -84,4 +86,13 @@ export interface LineageEntityReference extends EntityReference {
   upstreamExpandPerformed?: boolean;
   downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
+}
+
+export interface LineageNode {
+  entity: SearchSourceAlias;
+  nodeDepth?: number;
+  paging: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
 }

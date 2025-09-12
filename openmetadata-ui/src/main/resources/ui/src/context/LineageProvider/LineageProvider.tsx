@@ -58,6 +58,7 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
+import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
   EntityLineageResponse,
@@ -132,6 +133,7 @@ import {
   getEntityReferenceFromEntity,
   updateNodeType,
 } from '../../utils/EntityUtils';
+import { getQuickFilterQuery } from '../../utils/ExploreUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -207,7 +209,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     downstreamDepth: 3,
     nodesPerLayer: 50,
   });
-  const [queryFilter, setQueryFilter] = useState<string>('');
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([]);
   const [entityType, setEntityType] = useState('');
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
@@ -219,6 +223,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
+
+  const queryFilter = useMemo(() => {
+    const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
+
+    return JSON.stringify(quickFilterQuery);
+  }, [selectedQuickFilters]);
 
   // Update entityFqn when decodedFqn changes (for backward compatibility)
   useEffect(() => {
@@ -497,32 +507,37 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [entityType, entityFqn, lineageConfig, queryFilter]
   );
 
-  const onExportClick = useCallback(() => {
-    if (entityFqn || isPlatformLineagePage) {
-      showModal({
-        ...(isPlatformLineagePage
-          ? {
-              name: `${t('label.lineage')}_${getCurrentISODate()}`,
-              exportTypes: [ExportTypes.PNG],
-            }
-          : {
-              name: entityFqn,
-              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
-            }),
-        title: t('label.lineage'),
-        documentSelector: LINEAGE_EXPORT_SELECTOR,
-        viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
-        onExport: exportLineageData,
-      });
-    }
-  }, [
-    entityType,
-    entityFqn,
-    lineageConfig,
-    queryFilter,
-    nodes,
-    isPlatformLineagePage,
-  ]);
+  const onExportClick = useCallback(
+    (exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG]) => {
+      if (entityFqn || isPlatformLineagePage) {
+        showModal({
+          ...(isPlatformLineagePage
+            ? {
+                name: `${t('label.lineage')}_${getCurrentISODate()}`,
+                exportTypes: [ExportTypes.PNG],
+              }
+            : {
+                name: entityFqn,
+                exportTypes: exportTypes,
+              }),
+          title: t('label.lineage'),
+          documentSelector: LINEAGE_EXPORT_SELECTOR,
+          viewport: exportTypes?.includes(ExportTypes.PNG)
+            ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
+            : undefined,
+          onExport: exportLineageData,
+        });
+      }
+    },
+    [
+      entityType,
+      entityFqn,
+      lineageConfig,
+      queryFilter,
+      nodes,
+      isPlatformLineagePage,
+    ]
+  );
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: LineageDirection) => {
@@ -1665,7 +1680,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isLineageSettingsLoaded,
   ]);
 
-  const activityFeedContextValues = useMemo(() => {
+  const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       isDrawerOpen,
       loading,
@@ -1710,6 +1725,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onNodeClick,
       onEdgeClick,
       onColumnEdgeRemove,
+      selectedQuickFilters,
+      setSelectedQuickFilters,
       onLineageConfigUpdate,
       onLineageEditClick,
       onAddPipelineClick,
@@ -1717,6 +1734,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onExportClick,
       dataQualityLineage,
       redraw,
+      queryFilter,
       onPlatformViewChange,
       dqHighlightedEdges,
     };
@@ -1752,7 +1770,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onNodeDrop,
     onNodeCollapse,
     onColumnClick,
-    onQueryFilterUpdate,
+    selectedQuickFilters,
+    setSelectedQuickFilters,
     onNodesChange,
     onEdgesChange,
     onZoomUpdate,
