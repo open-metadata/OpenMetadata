@@ -205,8 +205,6 @@ class TableUsageStage(Stage):
         """
         if not record or not record.parsedData:
             return
-        self.table_usage = {}
-        self.table_queries = {}
         for parsed_data in record.parsedData:
             if parsed_data is None:
                 continue
