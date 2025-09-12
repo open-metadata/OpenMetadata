@@ -557,6 +557,7 @@
     "endpoint-url": "URL نقطه انتهایی",
     "endpoint-url-for-aws": "URL نقطه انتهایی برای AWS",
     "enter": "ورود",
+    "enter-custom-unit-of-measurement": "واحد اندازه‌گیری سفارشی را وارد کرده و Enter را بزنید",
     "enter-entity": "ورود {{entity}}",
     "enter-entity-name": "نام {{entity}} را وارد کنید",
     "enter-entity-value": "مقدار {{entity}} را وارد کنید",

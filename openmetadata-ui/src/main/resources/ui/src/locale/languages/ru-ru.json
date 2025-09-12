@@ -557,6 +557,7 @@
     "endpoint-url": "URL конечной точки",
     "endpoint-url-for-aws": "URL-адрес конечной точки для AWS",
     "enter": "Введите",
+    "enter-custom-unit-of-measurement": "Введите пользовательскую единицу измерения и нажмите Enter",
     "enter-entity": "Введите {{entity}}",
     "enter-entity-name": "Введите имя {{entity}}",
     "enter-entity-value": "Введите значение {{entity}}",
