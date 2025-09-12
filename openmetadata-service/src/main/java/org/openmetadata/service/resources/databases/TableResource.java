@@ -66,12 +66,12 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
-import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -869,7 +869,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               content =
                   @Content(
                       mediaType = "application/json",
-                      schema = @Schema(type = "array", implementation = PipelineObservability.class)))
+                      schema =
+                          @Schema(type = "array", implementation = PipelineObservability.class)))
           List<PipelineObservability> pipelineObservability) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
@@ -937,7 +938,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addSinglePipelineObservability",
       summary = "Add or update single pipeline observability data",
-      description = "Add or update pipeline observability data for a specific pipeline on the table.",
+      description =
+          "Add or update pipeline observability data for a specific pipeline on the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",

@@ -108,7 +108,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import java.util.ArrayList;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -309,10 +308,7 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     setFieldFromMap(
-        true,
-        tables,
-        batchFetchPipelineObservability(tables),
-        Table::setPipelineObservability);
+        true, tables, batchFetchPipelineObservability(tables), Table::setPipelineObservability);
   }
 
   @Override
@@ -527,41 +523,50 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addPipelineObservability(UUID tableId, List<PipelineObservability> pipelineObservabilityList) {
+  public Table addPipelineObservability(
+      UUID tableId, List<PipelineObservability> pipelineObservabilityList) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
-    
+
     // Store each pipeline observability individually using pipeline FQN as unique key
     for (PipelineObservability observability : pipelineObservabilityList) {
-      if (observability.getPipeline() != null && observability.getPipeline().getFullyQualifiedName() != null) {
+      if (observability.getPipeline() != null
+          && observability.getPipeline().getFullyQualifiedName() != null) {
         String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
         String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
-        
+
         daoCollection
             .entityExtensionDAO()
-            .insert(tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(observability));
+            .insert(
+                tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(observability));
       }
     }
-    
+
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     // Return table with updated observability data
     return table.withPipelineObservability(getAllPipelineObservability(table));
   }
 
   @Transaction
-  public Table addSinglePipelineObservability(UUID tableId, PipelineObservability pipelineObservability) {
+  public Table addSinglePipelineObservability(
+      UUID tableId, PipelineObservability pipelineObservability) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
-    
-    if (pipelineObservability.getPipeline() != null && pipelineObservability.getPipeline().getFullyQualifiedName() != null) {
+
+    if (pipelineObservability.getPipeline() != null
+        && pipelineObservability.getPipeline().getFullyQualifiedName() != null) {
       String pipelineFqn = pipelineObservability.getPipeline().getFullyQualifiedName();
       String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
-      
+
       daoCollection
           .entityExtensionDAO()
-          .insert(tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(pipelineObservability));
+          .insert(
+              tableId,
+              extension,
+              "pipelineObservability",
+              JsonUtils.pojoToJson(pipelineObservability));
     }
-    
+
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withPipelineObservability(getAllPipelineObservability(table));
   }
@@ -576,16 +581,18 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<PipelineObservability> getAllPipelineObservability(Table table) {
-    List<ExtensionRecord> extensionRecords = daoCollection
-        .entityExtensionDAO()
-        .getExtensions(table.getId(), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
-    
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(table.getId(), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
     List<PipelineObservability> pipelineObservabilityList = new ArrayList<>();
     for (ExtensionRecord extensionRecord : extensionRecords) {
-      PipelineObservability observability = JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
+      PipelineObservability observability =
+          JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
       pipelineObservabilityList.add(observability);
     }
-    
+
     return pipelineObservabilityList;
   }
 
@@ -593,15 +600,16 @@ public class TableRepository extends EntityRepository<Table> {
   public Table deletePipelineObservability(UUID tableId) {
     // Validate the request content and delete all pipeline observability data
     Table table = find(tableId, NON_DELETED);
-    
-    List<ExtensionRecord> extensionRecords = daoCollection
-        .entityExtensionDAO()
-        .getExtensions(tableId, TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
-    
+
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(tableId, TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
     for (ExtensionRecord record : extensionRecords) {
       daoCollection.entityExtensionDAO().delete(tableId, record.extensionName());
     }
-    
+
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
@@ -2024,7 +2032,8 @@ public class TableRepository extends EntityRepository<Table> {
     return configMap;
   }
 
-  private Map<UUID, List<PipelineObservability>> batchFetchPipelineObservability(List<Table> tables) {
+  private Map<UUID, List<PipelineObservability>> batchFetchPipelineObservability(
+      List<Table> tables) {
     Map<UUID, List<PipelineObservability>> observabilityMap = new HashMap<>();
     if (tables == null || tables.isEmpty()) {
       return observabilityMap;
@@ -2043,20 +2052,24 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     // Convert extension records to PipelineObservability objects for each table
-    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry : recordsByTableId.entrySet()) {
+    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry :
+        recordsByTableId.entrySet()) {
       UUID tableId = entry.getKey();
       List<PipelineObservability> tableObservabilityList = new ArrayList<>();
-      
+
       for (CollectionDAO.ExtensionRecordWithId record : entry.getValue()) {
         try {
-          PipelineObservability observability = JsonUtils.readValue(record.extensionJson(), PipelineObservability.class);
+          PipelineObservability observability =
+              JsonUtils.readValue(record.extensionJson(), PipelineObservability.class);
           tableObservabilityList.add(observability);
         } catch (Exception e) {
-          LOG.warn("Failed to parse pipeline observability for table {}: {}", tableId, e.getMessage());
+          LOG.warn(
+              "Failed to parse pipeline observability for table {}: {}", tableId, e.getMessage());
         }
       }
-      
-      observabilityMap.put(tableId, tableObservabilityList.isEmpty() ? null : tableObservabilityList);
+
+      observabilityMap.put(
+          tableId, tableObservabilityList.isEmpty() ? null : tableObservabilityList);
     }
 
     // Ensure all tables have an entry in the map

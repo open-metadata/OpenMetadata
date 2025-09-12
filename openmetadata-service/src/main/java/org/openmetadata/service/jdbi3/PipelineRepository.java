@@ -47,8 +47,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
+import org.openmetadata.schema.type.TableObservabilityData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.TaskType;
@@ -905,6 +907,102 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     } catch (Exception e) {
       LOG.error("Failed to store pipeline execution in RDF", e);
     }
+  }
+
+  /**
+   * Get pipeline observability data for all tables associated with a pipeline.
+   *
+   * @param pipelineId the pipeline ID
+   * @return PipelineObservabilityResponse containing observability data grouped by tables
+   */
+  public PipelineObservabilityResponse getPipelineObservability(UUID pipelineId) {
+    // Get the pipeline entity to retrieve its FQN
+    Pipeline pipeline = get(null, pipelineId, getFields("*"));
+    if (pipeline == null) {
+      throw new EntityNotFoundException(String.format("Pipeline with id %s not found", pipelineId));
+    }
+
+    String pipelineFqn = pipeline.getFullyQualifiedName();
+
+    // Query entity_extension table for pipeline observability data
+    // The extension key pattern is: table.pipelineObservability.{pipelineFqn}
+    String extensionKey = "table.pipelineObservability." + pipelineFqn;
+
+    List<TableObservabilityData> tableObservabilityList = new ArrayList<>();
+
+    try {
+      LOG.info(
+          "Retrieving pipeline observability data for pipeline: {} ({})", pipelineId, pipelineFqn);
+
+      // Query entity_extension table for all entries that match the extension key
+      List<CollectionDAO.ExtensionWithIdAndSchemaObject> records =
+          daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(extensionKey);
+
+      // Group records by table ID
+      Map<UUID, List<CollectionDAO.ExtensionWithIdAndSchemaObject>> recordsByTableId =
+          new HashMap<>();
+      for (CollectionDAO.ExtensionWithIdAndSchemaObject record : records) {
+        UUID tableId = UUID.fromString(record.getId());
+        recordsByTableId.computeIfAbsent(tableId, k -> new ArrayList<>()).add(record);
+      }
+
+      // Process each table's pipeline observability data
+      for (Map.Entry<UUID, List<CollectionDAO.ExtensionWithIdAndSchemaObject>> entry :
+          recordsByTableId.entrySet()) {
+        UUID tableId = entry.getKey();
+        List<CollectionDAO.ExtensionWithIdAndSchemaObject> tableRecords = entry.getValue();
+
+        try {
+          // Get table reference for FQN
+          EntityReference tableRef =
+              Entity.getEntityReferenceById(Entity.TABLE, tableId, Include.NON_DELETED);
+
+          // Parse observability data for this table
+          List<org.openmetadata.schema.type.PipelineObservability> observabilityData =
+              new ArrayList<>();
+          for (CollectionDAO.ExtensionWithIdAndSchemaObject record : tableRecords) {
+            if (record.getExtension().equals(extensionKey)) {
+              org.openmetadata.schema.type.PipelineObservability observability =
+                  JsonUtils.readValue(
+                      record.getJson(), org.openmetadata.schema.type.PipelineObservability.class);
+              observabilityData.add(observability);
+            }
+          }
+
+          // Only add tables that have observability data for this specific pipeline
+          if (!observabilityData.isEmpty()) {
+            TableObservabilityData tableObsData =
+                new TableObservabilityData()
+                    .withTableId(tableId)
+                    .withTableFqn(tableRef.getFullyQualifiedName())
+                    .withObservabilityData(observabilityData);
+
+            tableObservabilityList.add(tableObsData);
+          }
+
+        } catch (EntityNotFoundException e) {
+          LOG.warn("Table with ID {} not found, skipping observability data", tableId);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to process observability data for table {}: {}", tableId, e.getMessage());
+        }
+      }
+
+      LOG.info(
+          "Retrieved pipeline observability data for {} tables", tableObservabilityList.size());
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to retrieve pipeline observability data for pipeline {}: {}",
+          pipelineId,
+          e.getMessage());
+      throw new RuntimeException("Failed to retrieve pipeline observability data", e);
+    }
+
+    return new PipelineObservabilityResponse()
+        .withPipelineId(pipelineId)
+        .withPipelineFqn(pipelineFqn)
+        .withTableObservabilityData(tableObservabilityList);
   }
 
   private String formatTimestamp(Long timestamp) {
