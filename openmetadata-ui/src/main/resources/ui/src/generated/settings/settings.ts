@@ -528,9 +528,21 @@ export interface Aggregation {
      */
     field: string;
     /**
+     * Comma-separated filter values for filters aggregation type.
+     */
+    filters?: string;
+    /**
      * A descriptive name for the aggregation.
      */
     name: string;
+    /**
+     * Field for sub-aggregation within filters aggregation.
+     */
+    subAggField?: string;
+    /**
+     * Painless script for custom sub-aggregation logic within filters aggregation.
+     */
+    subAggScript?: string;
     /**
      * The type of aggregation to perform.
      */
