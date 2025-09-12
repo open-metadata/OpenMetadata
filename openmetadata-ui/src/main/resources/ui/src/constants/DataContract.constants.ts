@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
@@ -63,3 +64,126 @@ export enum DATA_CONTRACT_SLA {
   TIME_AVAILABILITY = 'time_availability',
   RETENTION = 'retention',
 }
+
+export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {
+  maxBarSize: number;
+  radius: BarProps['radius'];
+} = {
+  maxBarSize: 12,
+  radius: [6, 6, 0, 0],
+};
+
+export const execution = [
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1757679039870,
+    contractExecutionStatus: 'Failed',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1757679039870,
+    contractExecutionStatus: 'Failed',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1757679039870,
+    contractExecutionStatus: 'Success',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1755003318000,
+    contractExecutionStatus: 'Success',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1755003318000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1755003318000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1755003318000,
+    contractExecutionStatus: 'Failed',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1752324918000,
+    contractExecutionStatus: 'Success',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1752324918000,
+    contractExecutionStatus: 'Failed',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1752324918000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1749732918000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1749732918000,
+    contractExecutionStatus: 'Success',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1747054518000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1747054518000,
+    contractExecutionStatus: 'Success',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1744462518000,
+    contractExecutionStatus: 'Aborted',
+  },
+  {
+    id: '18fae9bf-7115-425e-80ef-a53e16e2919b',
+    dataContractFQN:
+      'mysql_service_test.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors Contract',
+    timestamp: 1744462518000,
+    contractExecutionStatus: 'Success',
+  },
+];

@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 .contract-execution-chart-container {
-  height: 360px;
+  height: 240px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
   align-items: flex-end;
+
+  .recharts-cartesian-axis-tick-line {
+    display: none;
+  }
 }

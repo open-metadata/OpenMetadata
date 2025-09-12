@@ -25,6 +25,7 @@ import {
   DataContract,
 } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
+import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 
@@ -207,4 +208,31 @@ export const getSematicRuleFields = () => {
   allFields[EntityReferenceFields.TIER] = tierField;
 
   return allFields;
+};
+
+// Create month ticks at regular intervals
+export const getContractExecutionMonthTicks = (
+  data: {
+    name: number;
+    failed: number;
+    success: number;
+    aborted: number;
+  }[]
+) => {
+  if (isEmpty(data)) {
+    return [];
+  }
+
+  // Group data by month and find the first occurrence of each month
+  const monthMap = new Map<string, number>();
+
+  data.forEach((item) => {
+    const month = formatMonth(item.name);
+    // Only add if we haven't seen this month before (keeps the earliest timestamp)
+    if (!monthMap.has(month)) {
+      monthMap.set(month, item.name);
+    }
+  });
+
+  return Array.from(monthMap.values());
 };
