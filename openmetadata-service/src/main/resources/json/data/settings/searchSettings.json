@@ -41,6 +41,22 @@
         "field": "tags.tagFQN"
       },
       {
+        "name": "classificationTags",
+        "type": "filters", 
+        "field": "tags.source",
+        "filters": "Classification",
+        "subAggField": "tags.tagFQN",
+        "subAggScript": "def classificationTags = []; for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } return classificationTags;"
+      },
+      {
+        "name": "glossaryTags",
+        "type": "filters",
+        "field": "tags.source",
+        "filters": "Glossary",
+        "subAggField": "tags.tagFQN",
+        "subAggScript": "def glossaryTags = []; for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } return glossaryTags;"
+      },
+      {
         "name": "certification.tagLabel.tagFQN",
         "type": "terms",
         "field": "certification.tagLabel.tagFQN"

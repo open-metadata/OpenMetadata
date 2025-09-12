@@ -41,6 +41,7 @@ public class OpenAggregationsBuilder {
       case "cardinality" -> new OpenCardinalityAggregations();
       case "nested" -> new OpenNestedAggregations();
       case "top_hits" -> new OpenTopHitsAggregations();
+      case "filters" -> new OpenFiltersAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);
     };
   }

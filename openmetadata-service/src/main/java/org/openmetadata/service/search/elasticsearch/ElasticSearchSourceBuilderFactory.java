@@ -36,6 +36,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticFiltersAggregations;
 import org.openmetadata.service.search.indexes.*;
 
 public class ElasticSearchSourceBuilderFactory
@@ -120,11 +121,20 @@ public class ElasticSearchSourceBuilderFactory
         .getGlobalSettings()
         .getAggregations()
         .forEach(
-            agg ->
+            agg -> {
+              if (Aggregation.Type.FILTERS.equals(agg.getType())) {
+                ElasticFiltersAggregations filtersAgg = new ElasticFiltersAggregations();
+                filtersAgg.createAggregation(
+                    agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
+                searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+              } else {
+                // Default terms aggregation for other types
                 searchSourceBuilder.aggregation(
                     AggregationBuilders.terms(agg.getName())
                         .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+              }
+            });
     return searchSourceBuilder;
   }
 
@@ -646,10 +656,18 @@ public class ElasticSearchSourceBuilderFactory
 
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
-      searchSourceBuilder.aggregation(
-          AggregationBuilders.terms(agg.getName())
-              .field(agg.getField())
-              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+
+      if (Aggregation.Type.FILTERS.equals(agg.getType())) {
+        ElasticFiltersAggregations filtersAgg = new ElasticFiltersAggregations();
+        filtersAgg.createAggregation(agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
+        searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+      } else {
+        // Default terms aggregation for other types
+        searchSourceBuilder.aggregation(
+            AggregationBuilders.terms(agg.getName())
+                .field(agg.getField())
+                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+      }
     }
   }
 

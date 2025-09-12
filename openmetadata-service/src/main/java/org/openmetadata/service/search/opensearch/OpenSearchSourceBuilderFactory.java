@@ -25,6 +25,7 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
+import org.openmetadata.service.search.opensearch.aggregations.OpenFiltersAggregations;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
@@ -125,11 +126,20 @@ public class OpenSearchSourceBuilderFactory
         .getGlobalSettings()
         .getAggregations()
         .forEach(
-            agg ->
+            agg -> {
+              if (Aggregation.Type.FILTERS.equals(agg.getType())) {
+                OpenFiltersAggregations filtersAgg = new OpenFiltersAggregations();
+                filtersAgg.createAggregation(
+                    agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
+                searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+              } else {
+                // Default terms aggregation for other types
                 searchSourceBuilder.aggregation(
                     AggregationBuilders.terms(agg.getName())
                         .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+              }
+            });
     return searchSourceBuilder;
   }
 
@@ -647,10 +657,18 @@ public class OpenSearchSourceBuilderFactory
 
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
-      searchSourceBuilder.aggregation(
-          AggregationBuilders.terms(agg.getName())
-              .field(agg.getField())
-              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+
+      if (Aggregation.Type.FILTERS.equals(agg.getType())) {
+        OpenFiltersAggregations filtersAgg = new OpenFiltersAggregations();
+        filtersAgg.createAggregation(agg, searchSettings.getGlobalSettings().getMaxAggregateSize());
+        searchSourceBuilder.aggregation(filtersAgg.getElasticAggregationBuilder());
+      } else {
+        // Default to terms aggregation for other cases
+        searchSourceBuilder.aggregation(
+            AggregationBuilders.terms(agg.getName())
+                .field(agg.getField())
+                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+      }
     }
   }
 

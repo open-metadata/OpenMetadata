@@ -380,6 +380,18 @@
         "field": {
           "type": "string",
           "description": "The field on which this aggregation is performed."
+        },
+        "filters": {
+          "type": "string",
+          "description": "Comma-separated filter values for filters aggregation type."
+        },
+        "subAggField": {
+          "type": "string", 
+          "description": "Field for sub-aggregation within filters aggregation."
+        },
+        "subAggScript": {
+          "type": "string",
+          "description": "Painless script for custom sub-aggregation logic within filters aggregation."
         }
       },
       "required": ["name", "type", "field"],
