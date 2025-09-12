@@ -68,17 +68,6 @@ export const ContractDetailFormTab: React.FC<{
         initialValue: initialValues?.description ?? '',
       },
     },
-    {
-      label: t('label.terms-of-service'),
-      id: 'termsOfUse',
-      name: 'termsOfUse',
-      type: FieldTypes.DESCRIPTION,
-      required: false,
-      props: {
-        'data-testid': 'contract-terms-of-service',
-        initialValue: initialValues?.termsOfUse ?? '',
-      },
-    },
   ];
 
   useEffect(() => {
@@ -87,7 +76,6 @@ export const ContractDetailFormTab: React.FC<{
         name: getEntityName(initialValues),
         description: initialValues.description,
         owners: initialValues.owners,
-        termsOfUse: initialValues.termsOfUse,
       });
     }
   }, [initialValues]);
