@@ -546,7 +546,7 @@ test.describe('User Profile Feed Interactions', () => {
   });
 });
 
-test.describe('User Profile Icon Persona Interactions', () => {
+test.describe('User Profile Dropdown Persona Interactions', () => {
   test.beforeAll(async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
 
@@ -590,10 +590,13 @@ test.describe('User Profile Icon Persona Interactions', () => {
 
     await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
 
+    const defaultPersonaUpdateResponse =
+      adminPage.waitForResponse('/api/v1/users/*');
+
     await adminPage
       .locator('[data-testid="user-profile-default-persona-edit-save"]')
       .click();
-    await adminPage.waitForResponse('/api/v1/users/*');
+    await defaultPersonaUpdateResponse;
 
     await redirectToHomePage(adminPage);
   });
@@ -684,10 +687,14 @@ test.describe('User Profile Icon Persona Interactions', () => {
       const secondPersona = personaLabels.nth(1);
 
       // Click on the second persona
+      const personaChangeResponse = adminPage.waitForResponse(
+        '/api/v1/docStore/name/persona.*'
+      );
+
       await secondPersona.click();
 
       // Wait for persona change API call
-      await adminPage.waitForResponse('/api/v1/docStore/name/persona.*');
+      await personaChangeResponse;
 
       // Close dropdown to see updated persona
       await adminPage.keyboard.press('Escape');
@@ -767,10 +774,14 @@ test.describe('User Profile Icon Persona Interactions', () => {
 
       // Select the second (non-default) persona
       const secondPersona = personaLabels.nth(1);
+      const personaChangeResponse = adminPage.waitForResponse(
+        '/api/v1/docStore/name/persona.*'
+      );
+
       await secondPersona.click();
 
       // Wait for persona change API call
-      await adminPage.waitForResponse('/api/v1/docStore/name/persona.*');
+      await personaChangeResponse;
 
       // Verify the second persona is now selected
       const secondPersonaRadio = personaLabels
@@ -872,10 +883,13 @@ test.describe('User Profile Icon Persona Interactions', () => {
     // Select the second persona as default
     await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
 
+    const defaultPersonaChangeResponse =
+      adminPage.waitForResponse('/api/v1/users/*');
+
     await adminPage
       .locator('[data-testid="user-profile-default-persona-edit-save"]')
       .click();
-    await adminPage.waitForResponse('/api/v1/users/*');
+    await defaultPersonaChangeResponse;
 
     // Step 3: Go back to home page and verify new default persona is selected
     await redirectToHomePage(adminPage);
@@ -1215,13 +1229,16 @@ test.describe('User Profile Persona Interactions', () => {
         )
         .click();
 
+      const defaultPersonaChangeResponse =
+        adminPage.waitForResponse('/api/v1/users/*');
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-default-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no default persona is shown
-      await adminPage.waitForResponse('api/v1/users/*');
+      await defaultPersonaChangeResponse;
 
       await expect(adminPage.getByText('No default persona')).toBeVisible();
     });
