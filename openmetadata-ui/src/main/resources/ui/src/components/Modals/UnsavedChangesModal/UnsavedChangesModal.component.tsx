@@ -52,12 +52,12 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
               className="unsaved-changes-modal-title"
               data-testid="unsaved-changes-modal-title"
               level={5}>
-              {title || t('unsaved-changes')}
+              {title || t('message.unsaved-changes')}
             </Typography.Title>
             <Typography.Text
               className="unsaved-changes-modal-description"
               data-testid="unsaved-changes-modal-description">
-              {description || t('unsaved-changes-description')}
+              {description || t('message.unsaved-changes-description')}
             </Typography.Text>
           </div>
         </div>
@@ -67,7 +67,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
             className="unsaved-changes-modal-discard"
             data-testid="unsaved-changes-modal-discard"
             onClick={onDiscard}>
-            {discardText || t('unsaved-changes-discard')}
+            {discardText || t('message.unsaved-changes-discard')}
           </Button>
           <Button
             className="unsaved-changes-modal-save"
@@ -75,7 +75,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
             loading={loading}
             type="primary"
             onClick={onSave}>
-            {saveText || t('unsaved-changes-save')}
+            {saveText || t('message.unsaved-changes-save')}
           </Button>
         </div>
       </div>
