@@ -99,6 +99,10 @@ export interface TestSuite {
      */
     pipelines?: EntityReference[];
     /**
+     * List of reviewers for this entity.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
      */
     serviceType?: ServiceType;

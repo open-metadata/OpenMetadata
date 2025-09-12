@@ -70,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -705,6 +706,33 @@ public final class EntityUtil {
       refs.add(entityRef);
     }
     return refs;
+  }
+
+  public static String getFilteredFields(String entityType, String fields) {
+    // Helper method to filter fields based on what the entity supports
+    if (fields == null || fields.isEmpty() || entityType == null) {
+      return fields;
+    }
+
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> allowed = new HashSet<>(repository.getAllowedFields());
+
+    // Always allow these common fields
+    allowed.add("owners");
+    allowed.add("tags");
+    allowed.add("domains");
+
+    // Filter the requested fields to only include those supported by the entity's allowed list
+    String[] requestedFields = fields.split(",");
+    List<String> validFields = new ArrayList<>();
+    for (String field : requestedFields) {
+      field = field.trim();
+      if (allowed.contains(field)) {
+        validFields.add(field);
+      }
+    }
+
+    return String.join(",", validFields);
   }
 
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {

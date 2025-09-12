@@ -97,7 +97,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domains,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
     Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
@@ -796,7 +796,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

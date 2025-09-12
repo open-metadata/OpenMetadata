@@ -84,7 +84,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public static final String BASIC_TEST_SUITE_WITHOUT_REF_ERROR =
       "Cannot create a basic test suite without the BasicEntityReference field informed.";
 
-  static final String FIELDS = "owners,tests,summary";
+  static final String FIELDS = "owners,reviewers,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
 
   public TestSuiteResource(Authorizer authorizer, Limits limits) {

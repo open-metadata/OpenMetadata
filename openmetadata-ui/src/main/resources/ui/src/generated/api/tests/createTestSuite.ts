@@ -48,6 +48,10 @@ export interface CreateTestSuite {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this test suite
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this TestSuite
      */
     tags?: TagLabel[];

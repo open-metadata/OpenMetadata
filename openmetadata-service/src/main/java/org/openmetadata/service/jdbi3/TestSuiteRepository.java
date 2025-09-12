@@ -218,7 +218,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
-      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
+      String filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
+      return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
     }
     return null;
   }
