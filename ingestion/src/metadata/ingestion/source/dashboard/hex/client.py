@@ -53,17 +53,19 @@ class HexApiClient:
 
         self.client = REST(client_config)
 
-    def test_project(self) -> bool:
+    def test_project(self) -> None:
         """
         Test the connection to Hex
         """
         try:
             response = self.client.get("/projects?limit=1")
-            return response is not None
+            # Check if we got a successful response with data
+            if not response or not isinstance(response, dict):
+                raise Exception("Invalid response from Hex API")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to test connection: {exc}")
-            return False
+            raise
 
     def get_projects(self) -> List[Project]:
         """
