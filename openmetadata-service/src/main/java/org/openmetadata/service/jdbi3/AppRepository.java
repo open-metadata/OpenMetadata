@@ -24,13 +24,13 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -171,7 +171,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void postDelete(App entity) {
+  protected void postDelete(App entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Delete the status stored in the app extension
     // Note that we don't want to delete the LIMITS, since we want to keep them
     // between different app installations

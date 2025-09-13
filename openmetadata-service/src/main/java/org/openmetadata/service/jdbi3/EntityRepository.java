@@ -36,6 +36,7 @@ import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -157,6 +158,8 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -177,6 +180,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -193,6 +197,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
@@ -209,7 +214,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -282,6 +286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
+  @Getter protected final boolean supportsEntityStatus;
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -404,6 +409,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
+    this.supportsEntityStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
+    if (supportsEntityStatus) {
+      this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+      this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+    }
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -560,6 +570,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
+  }
+
+  /**
+   * Set default status for entities that support status field.
+   * All entities use EntityStatus.APPROVED as the default.
+   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   */
+  protected void setDefaultStatus(T entity, boolean update) {
+    if (!supportsEntityStatus) {
+      return;
+    }
+    // Skip if status is already set
+    if (entity.getEntityStatus() != null) {
+      return;
+    }
+    // Set default status to APPROVED
+    entity.setEntityStatus(EntityStatus.APPROVED);
   }
 
   /**
@@ -1121,6 +1148,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
+    setDefaultStatus(entity, update);
     // Domain is already validated
   }
 
@@ -1158,6 +1186,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
+    if (fields.contains(FIELD_ENTITY_STATUS)) {
+      if (entity.getEntityStatus() == null) {
+        entity.setEntityStatus(EntityStatus.APPROVED);
+      }
+    }
+
     setFields(entity, fields);
     return entity;
   }
@@ -1209,11 +1243,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(entity);
   }
 
   protected void postCreate(List<T> entities) {
     for (T entity : entities) {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
+
+      // Update RDF
+      RdfUpdater.updateEntity(entity);
     }
   }
 
@@ -1221,12 +1261,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T updated) {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(updated, updated.getChangeDescription(), null);
+
+    // Update RDF
+    RdfUpdater.updateEntity(updated);
   }
 
   @Transaction
@@ -1403,8 +1449,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
-      // Refresh the entity fields from the database after the update
-      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
@@ -1503,7 +1547,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> delete(
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1516,7 +1560,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = findByNameOrNull(name, ALL);
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-      postDelete(response.entity());
+      postDelete(response.entity(), hardDelete);
       deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
@@ -1529,7 +1573,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
-    postDelete(response.entity());
+    postDelete(response.entity(), hardDelete);
     deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
@@ -1539,7 +1583,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  protected void postDelete(T entity) {}
+  protected void postDelete(T entity, boolean hardDelete) {
+    // Delete from RDF only on hard delete
+    if (hardDelete) {
+      RdfUpdater.deleteEntity(entity.getEntityReference());
+    }
+  }
 
   public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (hardDelete) {
@@ -2418,6 +2467,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal());
+
+        // Update RDF store
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
       }
     }
   }
@@ -2438,6 +2490,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
+
+      // Update RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+      }
     }
   }
 
@@ -2457,6 +2514,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
+
+      // Remove from RDF store for each tag
+      for (TagLabel tagLabel : nonDerivedTags) {
+        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFQN);
+      }
     }
   }
 
@@ -2537,38 +2599,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
-    if (!supportsDataProducts) {
-      return;
-    }
-
-    List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
-      // If no domains are being removed, nothing to do
-      return;
-    }
-
-    for (EntityReference domain : removedDomains) {
-      // Fetch domain data products
-      List<UUID> domainDataProductIds =
-          daoCollection
-              .relationshipDAO()
-              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-      entityDataProducts.removeIf(
-          dataProduct -> {
-            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-            if (isNotDomainDataProduct) {
-              LOG.info(
-                  "Removing data product {} from entity {}",
-                  dataProduct.getFullyQualifiedName(),
-                  entity.getEntityReference().getType());
-            }
-            return isNotDomainDataProduct;
-          });
-    }
-  }
-
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
@@ -2580,6 +2610,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       T original = find(id, DELETED);
       setFieldsInternal(original, putFields);
+      setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -2641,6 +2672,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntity)
+            .withToEntity(toEntity)
+            .withRelationshipType(relationship);
+    RdfUpdater.addRelationship(entityRelationship);
+
+    if (bidirectional) {
+      // Also add the reverse relationship to RDF
+      EntityRelationship reverseRelationship =
+          new EntityRelationship()
+              .withFromId(toId)
+              .withToId(fromId)
+              .withFromEntity(toEntity)
+              .withToEntity(fromEntity)
+              .withRelationshipType(relationship);
+      RdfUpdater.addRelationship(reverseRelationship);
+    }
   }
 
   @Transaction
@@ -2721,9 +2774,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, toEntity, relationship, fromEntityType);
     ensureSingleRelationship(
         toEntity, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final EntityReference getFromEntityRef(
@@ -2732,20 +2795,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findFromRecords(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(
         entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.info(
+            "Skipping deleted entity reference in getFromEntityRef: {} {} - {}",
+            records.get(0).getType(),
+            records.get(0).getId(),
+            e.getMessage());
+        return null;
+      }
+    }
+    return null;
   }
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
-    return !records.isEmpty()
-        ? records.stream()
-            .map(fromRef -> Entity.getEntityReferenceById(fromRef.getType(), fromRef.getId(), ALL))
-            .collect(Collectors.toList())
-        : null;
+    if (!records.isEmpty()) {
+      List<EntityReference> refs = new ArrayList<>();
+      for (EntityRelationshipRecord record : records) {
+        try {
+          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
+        } catch (EntityNotFoundException e) {
+          // Skip deleted entities
+          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
+        }
+      }
+      return refs.isEmpty() ? null : refs;
+    }
+    return null;
   }
 
   public final EntityReference getToEntityRef(
@@ -2754,9 +2836,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         findToRecords(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(
         entityType, fromId, records, relationship.value(), toEntityType, mustHaveRelationship);
-    return !records.isEmpty()
-        ? getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+    if (!records.isEmpty()) {
+      try {
+        return getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted but relationship still exists - return null
+        LOG.debug(
+            "Skipping deleted entity reference: {} {}",
+            records.get(0).getType(),
+            records.get(0).getId());
+        return null;
+      }
+    }
+    return null;
   }
 
   public static void ensureSingleRelationship(
@@ -2811,6 +2903,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .delete(fromId, fromEntityType, toId, toEntityType, relationship.ordinal());
+
+    // Update RDF
+    EntityRelationship entityRelationship =
+        new EntityRelationship()
+            .withFromId(fromId)
+            .withToId(toId)
+            .withFromEntity(fromEntityType)
+            .withToEntity(toEntityType)
+            .withRelationshipType(relationship);
+    RdfUpdater.removeRelationship(entityRelationship);
   }
 
   public final void deleteTo(
@@ -3749,6 +3851,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -3774,6 +3877,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -3828,6 +3932,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateDisplayName() {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
+    }
+
+    private void updateEntityStatus() {
+      if (supportsEntityStatus) {
+        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+      }
     }
 
     private void updateOwners() {
@@ -4041,8 +4151,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4107,8 +4215,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityReferenceMatch)) {
         updateDomains(original, origDomains, updatedDomains);
         updated.setDomains(updatedDomains);
-        // Clean up data products associated with the domains we are removing
-        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -4145,7 +4251,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(
@@ -4571,13 +4676,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
       }
       // Add relationships from updated
-      addRelationship(
-          fromId,
-          updatedToRef.getId(),
-          fromEntityType,
-          toEntityType,
-          relationshipType,
-          bidirectional);
+      if (updatedToRef != null) {
+        addRelationship(
+            fromId,
+            updatedToRef.getId(),
+            fromEntityType,
+            toEntityType,
+            relationshipType,
+            bidirectional);
+      }
     }
 
     /**
@@ -4652,7 +4759,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
 
       // Add relationships from updated
-      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      if (updatedFromRef != null) {
+        addRelationship(
+            updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      }
     }
 
     public final void storeUpdate() {
@@ -5307,7 +5417,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
-    return batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DATA_PRODUCT);
+    return batchFetchToIdsOneToMany(entities, Relationship.HAS, Entity.DATA_PRODUCT);
   }
 
   private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
@@ -5605,6 +5715,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
         record -> {
           var entityId = UUID.fromString(record.getFromId());
           var relatedRef = idReferenceMap.get(record.getToId());
+          if (relatedRef != null) {
+            resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+          }
+        });
+
+    return resultMap;
+  }
+
+  protected Map<UUID, List<EntityReference>> batchFetchToIdsOneToMany(
+      List<T> entities, Relationship relationship, String fromEntityType) {
+    var resultMap = new HashMap<UUID, List<EntityReference>>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), relationship.ordinal(), fromEntityType, ALL);
+
+    var idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                fromEntityType,
+                records.stream().map(e -> UUID.fromString(e.getFromId())).distinct().toList(),
+                ALL)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getToId());
+          var relatedRef = idReferenceMap.get(record.getFromId());
           if (relatedRef != null) {
             resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
           }

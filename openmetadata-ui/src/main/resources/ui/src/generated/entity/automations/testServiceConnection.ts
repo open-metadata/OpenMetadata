@@ -62,7 +62,7 @@ export interface TestServiceConnection {
  * Security Connection.
  */
 export interface TestServiceConnectionConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -161,6 +161,8 @@ export interface TestServiceConnectionConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -195,6 +197,8 @@ export interface TestServiceConnectionConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Kafka Connection Config
  *
@@ -244,6 +248,8 @@ export interface TestServiceConnectionConnection {
  *
  * Stitch Connection
  *
+ * Snowplow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -285,7 +291,7 @@ export interface TestServiceConnectionConnection {
  *
  * Apache Ranger Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -420,6 +426,8 @@ export interface ConfigClass {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -447,6 +455,8 @@ export interface ConfigClass {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      *
      * Pipeline Service Management/UI URI.
      *
@@ -647,6 +657,8 @@ export interface ConfigClass {
      *
      * Password
      *
+     * Password to connect to ServiceNow.
+     *
      * Password to connect to Metabase.
      *
      * Password to connect to PowerBI report server.
@@ -749,6 +761,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -863,13 +878,22 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
+     *
+     * SSL Configuration for OpenMetadata Server
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: SSLConfigObject;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Choose Auth Config Type.
      *
@@ -880,12 +904,6 @@ export interface ConfigClass {
      * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
     /**
      * Use slow logs to extract lineage.
      */
@@ -921,6 +939,8 @@ export interface ConfigClass {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -987,6 +1007,10 @@ export interface ConfigClass {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -1119,7 +1143,14 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -1131,6 +1162,8 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1169,6 +1202,16 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1323,6 +1366,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1508,6 +1555,22 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -1711,6 +1774,7 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    [property: string]: any;
 }
 
 /**
@@ -2366,6 +2430,15 @@ export interface ConsumerConfigSSLClass {
      * The private key associated with the SSL certificate.
      */
     sslKey?: string;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -3162,6 +3235,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -3597,6 +3680,7 @@ export enum ConfigScheme {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -3804,6 +3888,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3885,6 +3971,7 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3929,10 +4016,12 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",

@@ -408,6 +408,15 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
+    // Check if semantic search is enabled and override the query
+    if (Boolean.TRUE.equals(request.getSemanticSearch())) {
+      SemanticSearchQueryBuilder semanticBuilder = new SemanticSearchQueryBuilder();
+      QueryBuilder semanticQuery = semanticBuilder.buildSemanticQuery(request);
+      if (semanticQuery != null) {
+        searchSourceBuilder.query(semanticQuery);
+      }
+    }
+
     // Add Query Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
@@ -571,6 +580,41 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    try {
+      XContentParser parser = createXContentParser(request.getQueryFilter());
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+
+      // Apply RBAC constraints
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      // Add aggregations if needed
+      OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+      sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+
+      os.org.opensearch.action.search.SearchRequest osRequest =
+          new os.org.opensearch.action.search.SearchRequest(request.getIndex());
+      osRequest.source(searchSourceBuilder);
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
+      SearchResponse response = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
+
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(response.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
+    }
+  }
+
   private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
     try {
       LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
@@ -647,7 +691,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
           .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-          .must(QueryBuilders.matchQuery("status", "Approved"));
+          .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
@@ -682,7 +726,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
         parentTermQueryBuilder
             .minimumShouldMatch(1)
-            .must(QueryBuilders.matchQuery("status", "Approved"));
+            .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
       } else {
         parentTermQueryBuilder.minimumShouldMatch(1);
       }

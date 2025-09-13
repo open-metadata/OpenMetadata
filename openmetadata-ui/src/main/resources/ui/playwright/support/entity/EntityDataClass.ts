@@ -21,6 +21,7 @@ import { TeamClass } from '../team/TeamClass';
 import { UserClass } from '../user/UserClass';
 import { ApiCollectionClass } from './ApiCollectionClass';
 import { ApiEndpointClass } from './ApiEndpointClass';
+import { ChartClass } from './ChartClass';
 import { ContainerClass } from './ContainerClass';
 import { DashboardClass } from './DashboardClass';
 import { DashboardDataModelClass } from './DashboardDataModelClass';
@@ -104,6 +105,7 @@ export class EntityDataClass {
   static readonly dataProduct2 = new DataProduct([this.domain1]);
   static readonly dataProduct3 = new DataProduct([this.domain2]);
   static readonly metric1 = new MetricClass();
+  static readonly chart1 = new ChartClass();
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
@@ -127,7 +129,6 @@ export class EntityDataClass {
             this.certificationTag1.create(apiContext),
             this.certificationTag2.create(apiContext),
             this.classification1.create(apiContext),
-            this.metric1.create(apiContext),
           ]
         : [];
 
@@ -205,6 +206,12 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.create(apiContext));
     }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.chart) {
+      promises.push(this.chart1.create(apiContext));
+    }
 
     await Promise.allSettled(promises);
 
@@ -246,7 +253,6 @@ export class EntityDataClass {
             this.dataProduct1.delete(apiContext),
             this.dataProduct2.delete(apiContext),
             this.dataProduct3.delete(apiContext),
-            this.metric1.delete(apiContext),
           ]
         : [];
 
@@ -323,6 +329,12 @@ export class EntityDataClass {
     }
     if (creationConfig?.all || creationConfig?.storageService) {
       promises.push(this.storageService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.metric) {
+      promises.push(this.metric1.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.chart) {
+      promises.push(this.chart1.delete(apiContext));
     }
 
     return await Promise.allSettled(promises);

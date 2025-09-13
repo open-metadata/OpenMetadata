@@ -49,7 +49,9 @@ import { Container } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -135,6 +137,7 @@ export const DataAssetsHeader = ({
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
+  const { customizedPage } = useCustomPages(PageType.Table);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
@@ -365,6 +368,7 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -425,7 +429,14 @@ export const DataAssetsHeader = ({
   ]);
 
   const dataContractLatestResultButton = useMemo(() => {
+    const entityContainContractTabVisible =
+      isUndefined(customizedPage?.tabs) ||
+      Boolean(
+        customizedPage?.tabs?.find((item) => item.id === EntityTabs.CONTRACT)
+      );
+
     if (
+      entityContainContractTabVisible &&
       dataContract?.latestResult?.status &&
       [
         ContractExecutionStatus.Aborted,
@@ -462,7 +473,7 @@ export const DataAssetsHeader = ({
     }
 
     return null;
-  }, [dataContract]);
+  }, [dataContract, customizedPage?.tabs]);
 
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
@@ -652,9 +663,10 @@ export const DataAssetsHeader = ({
 
         <Col span={24}>
           <div
-            className={classNames('data-asset-header-metadata ', {
+            className={classNames('data-asset-header-metadata', {
               'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}>
+            })}
+            data-testid="data-asset-header-metadata">
             {showDomain && (
               <>
                 <DomainLabel

@@ -511,6 +511,7 @@ class DbtSource(DbtServiceSource):
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if (
@@ -520,6 +521,9 @@ class DbtSource(DbtServiceSource):
                 self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
+            dbt_project_name = getattr(
+                dbt_objects.dbt_manifest.metadata, "project_name", None
+            )
             for key, manifest_node in manifest_entities.items():
                 try:
                     resource_type = getattr(
@@ -543,7 +547,7 @@ class DbtSource(DbtServiceSource):
 
                     if (
                         dbt_objects.dbt_sources
-                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                        and resource_type == DbtCommonEnum.SOURCE.value
                     ):
                         self.add_dbt_sources(
                             key,
@@ -644,6 +648,7 @@ class DbtSource(DbtServiceSource):
                                     catalog_node=catalog_node,
                                 ),
                                 tags=dbt_table_tags_list or [],
+                                dbtSourceProject=dbt_project_name,
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -707,20 +712,6 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
-
-        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
-            parent_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=get_corrected_name(dbt_node.database),
-                schema_name=get_corrected_name(dbt_node.schema_),
-                table_name=dbt_node.name,
-            )
-
-            # check if the parent table exists in OM before adding it to the upstream list
-            if self._get_table_entity(table_fqn=parent_fqn):
-                upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
 
@@ -924,7 +915,7 @@ class DbtSource(DbtServiceSource):
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_name=source_elements[0],
+                    service_names=source_elements[0],
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,

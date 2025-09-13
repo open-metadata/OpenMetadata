@@ -19,13 +19,16 @@ import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
+const table1 = new TableClass();
 
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await table.create(apiContext);
+    await table1.create(apiContext);
     await table.delete(apiContext, false);
+    // await table1.delete(apiContext, false);
 
     await afterAction();
   });
@@ -34,6 +37,7 @@ test.describe('Explore Assets Discovery', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await table.delete(apiContext);
+    await table1.delete(apiContext);
 
     await afterAction();
   });
@@ -182,5 +186,47 @@ test.describe('Explore Assets Discovery', () => {
         `[data-testid="table-data-card_${table.entityResponseData.fullyQualifiedName}"]`
       )
     ).not.toBeAttached();
+  });
+
+  test('Should not display soft deleted assets in search suggestions', async ({
+    page,
+  }) => {
+    await table1.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button').click();
+
+    await expect(
+      page
+        .locator('.ant-modal-title')
+        .getByText(
+          `Delete table "${
+            table1.entityResponseData.displayName ??
+            table1.entityResponseData.name
+          }"`
+        )
+    ).toBeVisible();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    await expect(page.getByTestId('confirm-button')).toBeEnabled();
+
+    await page.getByTestId('confirm-button').click();
+
+    await page.reload();
+
+    await expect(page.getByTestId('deleted-badge')).toBeVisible();
+
+    await redirectToHomePage(page);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('searchBox').click();
+    await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
+
+    expect(
+      page.locator('.ant-popover-inner-content').textContent()
+    ).not.toContain(table1.entityResponseData.name);
   });
 });

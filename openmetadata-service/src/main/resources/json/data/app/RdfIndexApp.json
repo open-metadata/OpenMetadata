@@ -1,0 +1,16 @@
+{
+  "name": "RdfIndexApp",
+  "displayName": "RDF Knowledge Graph Indexing",
+  "appConfiguration": {
+    "entities": [
+      "all"
+    ],
+    "recreateIndex": false,
+    "batchSize": "100"
+  },
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * *"
+  },
+  "supportsInterrupt": true
+}

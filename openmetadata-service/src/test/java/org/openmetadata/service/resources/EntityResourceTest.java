@@ -44,6 +44,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.RdfTestUtils.*;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CREATED;
@@ -180,6 +181,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -191,6 +193,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -201,6 +204,7 @@ import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -243,7 +247,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
@@ -290,9 +293,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static final String ENTITY_LINK_MATCH_ERROR =
       "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
-  public static final String MULTIDOMAIN_RULE_ERROR =
-      "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: "
-          + "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
@@ -679,6 +679,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException;
 
   public static void toggleMultiDomainSupport(Boolean enable) {
+    toggleRule(MULTI_DOMAIN_RULE, enable);
+  }
+
+  /**
+   * Generic method to toggle any rule by name in the system settings.
+   *
+   * @param ruleName The name of the rule to toggle
+   * @param enable The desired enabled state of the rule
+   */
+  public static void toggleRule(String ruleName, Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -689,7 +699,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getEntitySemantics()
         .forEach(
             rule -> {
-              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+              if (ruleName.equals(rule.getName())) {
                 rule.setEnabled(enable);
               }
             });
@@ -857,6 +867,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Domain testDomain2 =
         domainResourceTest.createEntity(
             domainResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
+
+    // Create DataProduct for testing if supported
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    DataProduct testDataProduct = null;
+    if (supportsDataProducts && supportsDomains) {
+      CreateDataProduct createDataProduct =
+          dataProductResourceTest
+              .createRequest(test, 5)
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      testDataProduct = dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+    }
+
     final String testName = "000_" + getEntityName(test);
     final K createRequest =
         createRequest(testName, "Test entity for field fetching", testName, null);
@@ -900,6 +922,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
                     .withName(testDomain1.getName()));
         entity.setDomains(domains);
         entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+
+        // Add DataProducts if supported
+        if (supportsDataProducts && testDataProduct != null) {
+          entity.setDataProducts(List.of(testDataProduct.getEntityReference()));
+          entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        }
       }
 
       Map<String, String> params = new HashMap<>();
@@ -917,12 +946,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       if (supportsOwners) fieldCombinationsList.add("owners");
       if (supportsTags) fieldCombinationsList.add("tags");
       if (supportsFollowers) fieldCombinationsList.add("followers");
-      if (supportsDomains)
-        fieldCombinationsList.add("domains"); // Always test fetching domains if supported
+      if (supportsDomains) fieldCombinationsList.add("domains");
+      if (supportsDataProducts) fieldCombinationsList.add("dataProducts");
+      if (supportsExperts) fieldCombinationsList.add("experts");
+      if (supportsReviewers) fieldCombinationsList.add("reviewers");
+      if (supportsVotes) fieldCombinationsList.add("votes");
+
+      // Test combinations
       if (supportsOwners && supportsTags) fieldCombinationsList.add("owners,tags");
       if (supportsFollowers && supportsOwners) fieldCombinationsList.add("followers,owners");
-      if (supportsDomains && supportsTags)
-        fieldCombinationsList.add("domains,tags"); // Always test fetching domains if supported
+      if (supportsDomains && supportsTags) fieldCombinationsList.add("domains,tags");
+      if (supportsDataProducts && supportsDomains)
+        fieldCombinationsList.add("dataProducts,domains");
+
+      // Always test with all allowed fields
       fieldCombinationsList.add(getAllowedFields());
 
       for (String fields : fieldCombinationsList) {
@@ -1002,7 +1039,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           assertFalse(indivDomains.isEmpty(), "Individual domains should not be empty");
 
           final UUID domain1Id = testDomain1.getId();
-          final UUID domain2Id = testDomain2.getId();
 
           assertTrue(
               batchDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
@@ -1012,12 +1048,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               "Should find test domain 1 in individual domains");
         }
 
+        if (fields.contains("dataProducts") && supportsDataProducts && testDataProduct != null) {
+          List<EntityReference> batchDataProducts = listOrEmpty(batchEntityFound.getDataProducts());
+          List<EntityReference> indivDataProducts = listOrEmpty(individualEntity.getDataProducts());
+
+          assertEquals(
+              indivDataProducts.size(),
+              batchDataProducts.size(),
+              "DataProducts count mismatch between batch and individual fetch - This is the bug!");
+
+          if (!indivDataProducts.isEmpty()) {
+            assertFalse(
+                batchDataProducts.isEmpty(),
+                "Batch DataProducts empty when individual has them - This is the exact bug!");
+
+            final UUID dataProductId = testDataProduct.getId();
+            assertTrue(
+                batchDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in batch DataProducts");
+            assertTrue(
+                indivDataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId)),
+                "Should find test data product in individual DataProducts");
+          }
+        }
+
         LOG.info("Successfully verified field combination: {}", fields);
       }
 
     } finally {
       if (supportsOwners) userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
       if (supportsTags) tagResourceTest.deleteEntity(testTag.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsDataProducts && testDataProduct != null) {
+        dataProductResourceTest.deleteEntity(testDataProduct.getId(), ADMIN_AUTH_HEADERS);
+      }
       if (supportsDomains) {
         domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
         domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
@@ -1201,8 +1264,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
-        NOT_FOUND,
-        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
+        BAD_REQUEST,
+        "Rule [Data Product Domain Validation] validation failed: Entity does not satisfy the rule. Rule context: Validates that Data Products assigned to an entity match the entity's domains.");
   }
 
   @Test
@@ -3576,7 +3639,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and update the entity with extension field intA to a new value
     JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
     jsonNode.set("intA", intAValue);
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     change = getChangeDescription(entity, MINOR_UPDATE);
     fieldUpdated(
         change,
@@ -3598,7 +3661,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
-    create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
+    create = create.withExtension(jsonNode).withName(entity.getName());
     entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
@@ -4525,6 +4588,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
+
+    // Verify entity is removed from RDF if enabled
+    // Note: Some entities like DataProduct don't support soft delete and are always hard deleted
+    boolean actuallyHardDeleted = hardDelete || !supportsSoftDelete;
+
+    if (!actuallyHardDeleted) {
+      // For soft delete, entity should still exist but marked as deleted
+      verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+    } else {
+      // For hard delete, entity should not exist in RDF
+      verifyEntityNotInRdf(entity.getFullyQualifiedName());
+    }
+
     return entity;
   }
 
@@ -4616,6 +4692,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Validate that change event was created
     validateChangeEvents(
         entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+
+    // Verify entity in RDF if enabled
+    verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
+
     return entity;
   }
 
@@ -4770,6 +4850,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 
@@ -4810,6 +4908,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateChangeEvents(
           returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
+
+    // Verify entity and relationships in RDF if enabled
+    verifyEntityInRdf(returned, RdfUtils.getRdfType(entityType));
+    if (supportsTags) {
+      verifyTagsInRdf(returned.getFullyQualifiedName(), returned.getTags());
+    }
+    if (supportsOwners && returned.getOwners() != null && !returned.getOwners().isEmpty()) {
+      for (EntityReference owner : returned.getOwners()) {
+        verifyOwnerInRdf(returned.getFullyQualifiedName(), owner);
+      }
+    }
+
+    // Verify container (CONTAINS) relationship if entity has a container
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
+    }
+
     return returned;
   }
 
@@ -5176,6 +5292,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     } else if (fieldName.equals(
         "domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
+    } else if (fieldName.equals("entityStatus")) {
+      assertEquals(expected, EntityStatus.fromValue(actual.toString()));
     } else if (fieldName.equals("style")) {
       Style expectedStyle =
           expected instanceof Style
