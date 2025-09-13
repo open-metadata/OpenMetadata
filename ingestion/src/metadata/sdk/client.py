@@ -20,7 +20,7 @@ class OpenMetadata:
     def __init__(self, config: OpenMetadataConfig):
         """Initialize OpenMetadata client"""
         self.config = config
-        
+
         # Convert boolean verify_ssl to enum
         if not config.verify_ssl:
             verify_ssl = VerifySSL.no_ssl
@@ -28,7 +28,7 @@ class OpenMetadata:
             verify_ssl = VerifySSL.validate
         else:
             verify_ssl = VerifySSL.ignore
-        
+
         # Create OpenMetadataConnection from config
         om_connection = OpenMetadataConnection(
             hostPort=config.server_url,
@@ -37,7 +37,7 @@ class OpenMetadata:
             verifySSL=verify_ssl,
             sslConfig={"caCertificate": config.ca_bundle} if config.ca_bundle else None,
         )
-        
+
         self._ometa = OMeta(config=om_connection)
 
     @classmethod
@@ -51,14 +51,18 @@ class OpenMetadata:
     def get_instance(cls) -> "OpenMetadata":
         """Get the default client instance"""
         if cls._instance is None:
-            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
+            raise RuntimeError(
+                "OpenMetadata client not initialized. Call initialize() first"
+            )
         return cls._instance
 
     @classmethod
     def get_default_client(cls) -> OMeta:
         """Get the default OMeta client for internal use"""
         if cls._default_client is None:
-            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
+            raise RuntimeError(
+                "OpenMetadata client not initialized. Call initialize() first"
+            )
         return cls._default_client
 
     @property

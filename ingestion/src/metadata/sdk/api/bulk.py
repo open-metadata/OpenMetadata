@@ -11,6 +11,7 @@ from metadata.sdk.client import OpenMetadata
 
 class BulkOperationType(Enum):
     """Type of bulk operation"""
+
     IMPORT_CSV = "import_csv"
     EXPORT_CSV = "export_csv"
     ADD_ASSETS = "add_assets"
@@ -48,7 +49,9 @@ class Bulk:
     ) -> Dict:
         """Import entities from CSV"""
         client = cls._get_client()
-        return client.import_csv(entity_type=entity_type, csv_data=csv_data, dry_run=dry_run)
+        return client.import_csv(
+            entity_type=entity_type, csv_data=csv_data, dry_run=dry_run
+        )
 
     @classmethod
     def export_csv(
@@ -71,7 +74,9 @@ class Bulk:
         results = []
         for asset in assets:
             result = client.create_or_update(asset)
-            results.append(result.dict() if hasattr(result, 'dict') else result.__dict__)
+            results.append(
+                result.dict() if hasattr(result, "dict") else result.__dict__
+            )
         return results
 
     @classmethod
@@ -87,8 +92,12 @@ class Bulk:
             entity_id = patch.get("id")
             json_patch = patch.get("patch", [])
             if entity_id:
-                result = client.patch(entity_type=entity_type, entity_id=entity_id, json_patch=json_patch)
-                results.append(result.dict() if hasattr(result, 'dict') else result.__dict__)
+                result = client.patch(
+                    entity_type=entity_type, entity_id=entity_id, json_patch=json_patch
+                )
+                results.append(
+                    result.dict() if hasattr(result, "dict") else result.__dict__
+                )
         return results
 
     @classmethod
@@ -103,7 +112,11 @@ class Bulk:
         deleted = []
         for entity_id in ids:
             try:
-                client.delete(entity_type=entity_type, entity_id=entity_id, hard_delete=hard_delete)
+                client.delete(
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    hard_delete=hard_delete,
+                )
                 deleted.append(entity_id)
             except Exception as e:
                 print(f"Failed to delete {entity_id}: {e}")
@@ -135,7 +148,9 @@ class Bulk:
     ) -> Dict:
         """Async import CSV"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.import_csv, entity_type, csv_data, dry_run)
+        return await loop.run_in_executor(
+            None, cls.import_csv, entity_type, csv_data, dry_run
+        )
 
     @classmethod
     async def export_csv_async(
@@ -176,7 +191,9 @@ class Bulk:
     ) -> List[str]:
         """Async bulk delete"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.delete, entity_type, ids, hard_delete)
+        return await loop.run_in_executor(
+            None, cls.delete, entity_type, ids, hard_delete
+        )
 
     @classmethod
     async def restore_async(
@@ -270,35 +287,35 @@ class BulkBuilder:
         """Execute the bulk operation"""
         if not self._entity_type:
             raise ValueError("Entity type is required")
-        
+
         if self._operation_type == BulkOperationType.IMPORT_CSV:
             if not self._csv_data:
                 raise ValueError("CSV data is required for import")
             return Bulk.import_csv(self._entity_type, self._csv_data, self._dry_run)
-        
+
         elif self._operation_type == BulkOperationType.EXPORT_CSV:
             return Bulk.export_csv(self._entity_type, self._name)
-        
+
         elif self._operation_type == BulkOperationType.ADD_ASSETS:
             if not self._assets:
                 raise ValueError("Assets are required for bulk add")
             return Bulk.add_assets(self._entity_type, self._assets)
-        
+
         elif self._operation_type == BulkOperationType.PATCH:
             if not self._patches:
                 raise ValueError("Patches are required for bulk patch")
             return Bulk.patch(self._entity_type, self._patches)
-        
+
         elif self._operation_type == BulkOperationType.DELETE:
             if not self._ids:
                 raise ValueError("IDs are required for bulk delete")
             return Bulk.delete(self._entity_type, self._ids, self._hard_delete)
-        
+
         elif self._operation_type == BulkOperationType.RESTORE:
             if not self._ids:
                 raise ValueError("IDs are required for bulk restore")
             return Bulk.restore(self._entity_type, self._ids)
-        
+
         else:
             raise ValueError("Operation type must be set")
 
@@ -306,34 +323,38 @@ class BulkBuilder:
         """Execute the bulk operation asynchronously"""
         if not self._entity_type:
             raise ValueError("Entity type is required")
-        
+
         if self._operation_type == BulkOperationType.IMPORT_CSV:
             if not self._csv_data:
                 raise ValueError("CSV data is required for import")
-            return await Bulk.import_csv_async(self._entity_type, self._csv_data, self._dry_run)
-        
+            return await Bulk.import_csv_async(
+                self._entity_type, self._csv_data, self._dry_run
+            )
+
         elif self._operation_type == BulkOperationType.EXPORT_CSV:
             return await Bulk.export_csv_async(self._entity_type, self._name)
-        
+
         elif self._operation_type == BulkOperationType.ADD_ASSETS:
             if not self._assets:
                 raise ValueError("Assets are required for bulk add")
             return await Bulk.add_assets_async(self._entity_type, self._assets)
-        
+
         elif self._operation_type == BulkOperationType.PATCH:
             if not self._patches:
                 raise ValueError("Patches are required for bulk patch")
             return await Bulk.patch_async(self._entity_type, self._patches)
-        
+
         elif self._operation_type == BulkOperationType.DELETE:
             if not self._ids:
                 raise ValueError("IDs are required for bulk delete")
-            return await Bulk.delete_async(self._entity_type, self._ids, self._hard_delete)
-        
+            return await Bulk.delete_async(
+                self._entity_type, self._ids, self._hard_delete
+            )
+
         elif self._operation_type == BulkOperationType.RESTORE:
             if not self._ids:
                 raise ValueError("IDs are required for bulk restore")
             return await Bulk.restore_async(self._entity_type, self._ids)
-        
+
         else:
             raise ValueError("Operation type must be set")

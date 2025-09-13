@@ -72,7 +72,12 @@ class User:
     def delete(cls, user_id: str, recursive: bool = False, hard_delete: bool = False):
         """Delete a user"""
         client = cls._get_client()
-        client.delete(entity=UserEntity, entity_id=user_id, recursive=recursive, hard_delete=hard_delete)
+        client.delete(
+            entity=UserEntity,
+            entity_id=user_id,
+            recursive=recursive,
+            hard_delete=hard_delete,
+        )
 
     @classmethod
     async def create_async(cls, request: CreateUserRequest) -> UserEntity:
@@ -94,7 +99,9 @@ class User:
     ):
         """Async delete a user"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.delete, user_id, recursive, hard_delete)
+        return await loop.run_in_executor(
+            None, cls.delete, user_id, recursive, hard_delete
+        )
 
 
 class UserCollection:
@@ -127,13 +134,13 @@ class UserCollection:
                 fields=self.params.fields,
                 params=self.params.to_dict(),
             )
-            
+
             for entity in response.entities:
                 yield entity
-            
+
             if not response.paging or not response.paging.after:
                 break
-            
+
             after = response.paging.after
 
 

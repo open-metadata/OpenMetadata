@@ -66,13 +66,20 @@ class Table:
     def patch(cls, table_id: str, json_patch: List[Dict]) -> TableEntity:
         """Apply JSON patch to a table"""
         client = cls._get_client()
-        return client.patch(entity=TableEntity, entity_id=table_id, json_patch=json_patch)
+        return client.patch(
+            entity=TableEntity, entity_id=table_id, json_patch=json_patch
+        )
 
     @classmethod
     def delete(cls, table_id: str, recursive: bool = False, hard_delete: bool = False):
         """Delete a table"""
         client = cls._get_client()
-        client.delete(entity=TableEntity, entity_id=table_id, recursive=recursive, hard_delete=hard_delete)
+        client.delete(
+            entity=TableEntity,
+            entity_id=table_id,
+            recursive=recursive,
+            hard_delete=hard_delete,
+        )
 
     @classmethod
     def export_csv(cls, name: str) -> str:
@@ -106,7 +113,9 @@ class Table:
     ):
         """Async delete a table"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.delete, table_id, recursive, hard_delete)
+        return await loop.run_in_executor(
+            None, cls.delete, table_id, recursive, hard_delete
+        )
 
     @classmethod
     async def export_csv_async(cls, name: str) -> str:
@@ -151,13 +160,13 @@ class TableCollection:
                 fields=self.params.fields,
                 params=self.params.to_dict(),
             )
-            
+
             for entity in response.entities:
                 yield entity
-            
+
             if not response.paging or not response.paging.after:
                 break
-            
+
             after = response.paging.after
 
 

@@ -54,7 +54,7 @@ class Search:
             params["sort_order"] = sort_order
         if filters:
             params.update(filters)
-        
+
         return client.es_search_from_es(query_string=query, **params)
 
     @classmethod
@@ -66,11 +66,7 @@ class Search:
     ) -> List[str]:
         """Get search suggestions"""
         client = cls._get_client()
-        return client.get_suggest_entities(
-            query_string=query, 
-            field=field,
-            size=size
-        )
+        return client.get_suggest_entities(query_string=query, field=field, size=size)
 
     @classmethod
     def aggregate(
@@ -86,7 +82,7 @@ class Search:
             params["index"] = index
         if field:
             params["field"] = field
-        
+
         return client.es_aggregate(query=query, **params)
 
     @classmethod
@@ -215,7 +211,7 @@ class SearchBuilder:
         """Execute the search"""
         if not self._query:
             raise ValueError("Query is required")
-        
+
         return Search.search(
             query=self._query,
             index=self._index,
@@ -230,7 +226,7 @@ class SearchBuilder:
         """Execute the search asynchronously"""
         if not self._query:
             raise ValueError("Query is required")
-        
+
         return await Search.search_async(
             query=self._query,
             index=self._index,

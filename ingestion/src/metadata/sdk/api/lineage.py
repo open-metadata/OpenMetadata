@@ -2,7 +2,7 @@
 Lineage API with fluent interface
 """
 import asyncio
-from typing import ClassVar, Dict, List, Optional, Union
+from typing import ClassVar, Dict, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntityLineage
@@ -73,7 +73,7 @@ class Lineage:
     ) -> Dict:
         """Add lineage between two entities"""
         client = cls._get_client()
-        
+
         lineage_request = AddLineageRequest(
             edge={
                 "fromEntity": EntityReference(
@@ -87,7 +87,7 @@ class Lineage:
                 "description": description,
             }
         )
-        
+
         return client.add_lineage(lineage_request)
 
     @classmethod
@@ -128,7 +128,7 @@ class Lineage:
             upstream_depth=upstream_depth,
             downstream_depth=downstream_depth,
         )
-        return lineage.dict() if hasattr(lineage, 'dict') else lineage.__dict__
+        return lineage.dict() if hasattr(lineage, "dict") else lineage.__dict__
 
     @classmethod
     async def get_lineage_async(
@@ -154,7 +154,12 @@ class Lineage:
         """Async get entity lineage"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, cls.get_entity_lineage, entity_type, entity_id, upstream_depth, downstream_depth
+            None,
+            cls.get_entity_lineage,
+            entity_type,
+            entity_id,
+            upstream_depth,
+            downstream_depth,
         )
 
     @classmethod
@@ -169,7 +174,13 @@ class Lineage:
         """Async add lineage"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, cls.add_lineage, from_entity_id, from_entity_type, to_entity_id, to_entity_type, description
+            None,
+            cls.add_lineage,
+            from_entity_id,
+            from_entity_type,
+            to_entity_id,
+            to_entity_type,
+            description,
         )
 
     @classmethod
@@ -183,7 +194,12 @@ class Lineage:
         """Async delete lineage"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, cls.delete_lineage, from_entity, from_entity_type, to_entity, to_entity_type
+            None,
+            cls.delete_lineage,
+            from_entity,
+            from_entity_type,
+            to_entity,
+            to_entity_type,
         )
 
     @classmethod
@@ -197,7 +213,12 @@ class Lineage:
         """Async export lineage"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, cls.export_lineage, entity_type, entity_id, upstream_depth, downstream_depth
+            None,
+            cls.export_lineage,
+            entity_type,
+            entity_id,
+            upstream_depth,
+            downstream_depth,
         )
 
     @classmethod
