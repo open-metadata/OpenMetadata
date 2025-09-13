@@ -33,6 +33,7 @@ import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
 const TagsV1 = ({
+  hideIcon,
   tag,
   startWith,
   className,
@@ -131,34 +132,43 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
+  const renderIcon = useMemo(() => {
+    if (hideIcon) {
+      return null;
+    }
+
+    if (tag.style?.iconURL) {
+      return (
+        <img
+          className="m-r-xss"
+          data-testid="icon"
+          height={12}
+          src={tag.style.iconURL}
+          width={12}
+        />
+      );
+    }
+
+    return startIcon;
+  }, [hideIcon, tag.style?.iconURL, startIcon]);
+
   const tagContent = useMemo(
     () => (
-      <div className="d-flex w-full h-full">
+      <div className="d-flex w-full">
         {tagColorBar}
         <div
           className={classNames(
-            'd-flex items-center p-x-xs w-full',
+            'd-flex items-center p-x-xs w-full tag-content-container',
             tagChipStyleClass
           )}>
-          {tag.style?.iconURL ? (
-            <img
-              className="m-r-xss"
-              data-testid="icon"
-              height={12}
-              src={tag.style.iconURL}
-              width={12}
-            />
-          ) : (
-            startIcon
-          )}
-
-          <Typography.Paragraph
-            ellipsis
-            className="m-0 tags-label"
+          {renderIcon}
+          <Typography.Text
+            className="m-0 tags-label text-truncate truncate w-max-full"
             data-testid={`tag-${tag.tagFQN}`}
+            ellipsis={{ tooltip: false }}
             style={{ color: tag.style?.color }}>
             {tagName}
-          </Typography.Paragraph>
+          </Typography.Text>
         </div>
       </div>
     ),
@@ -205,11 +215,12 @@ const TagsV1 = ({
       <Tag
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
-        <Typography.Paragraph
-          className="m-0 text-xs font-medium text-primary"
-          data-testid="add-tag">
+        <Typography.Text
+          className="m-0 text-xs font-medium text-primary text-truncate truncate w-max-full"
+          data-testid="add-tag"
+          ellipsis={{ tooltip: false }}>
           {getTagDisplay(tagName)}
-        </Typography.Paragraph>
+        </Typography.Text>
       </Tag>
     ),
     [tagName]

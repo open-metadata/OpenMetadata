@@ -1024,13 +1024,11 @@ test.describe('Bulk Import Export', () => {
         page.getByTestId('glossary-container').getByTestId('add-tag')
       ).toBeVisible();
 
-      await expect(page.getByTestId('Tier')).toContainText('No Tier');
+      await expect(page.getByTestId('Tier')).toContainText('--');
 
-      await expect(page.getByTestId('certification-label')).toContainText(
-        'No Certification'
-      );
+      await expect(page.getByTestId('certification-label')).toContainText('--');
 
-      await expect(page.getByTestId('owner-label')).toContainText('No Owners');
+      await expect(page.getByTestId('owner-label')).toContainText('--');
 
       await expect(page.getByTestId('no-domain-text')).toBeVisible();
     });

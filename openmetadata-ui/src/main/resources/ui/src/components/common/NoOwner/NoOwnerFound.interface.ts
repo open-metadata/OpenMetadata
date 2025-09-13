@@ -13,6 +13,7 @@
 import { EntityReference } from '../../../generated/tests/testCase';
 
 export interface NoOwnerFoundProps {
+  showDashPlaceholder?: boolean;
   isCompactView: boolean;
   placeHolder?: string;
   showLabel?: boolean;
