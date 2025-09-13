@@ -451,6 +451,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
         fieldSortBuilder.unmappedType("integer");
       }
       searchSourceBuilder.sort(fieldSortBuilder);
+
+      // Add tiebreaker sort for stable pagination when sorting by score
+      // This ensures consistent ordering when multiple documents have identical scores
+      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
+      }
     }
 
     buildHierarchyQuery(request, searchSourceBuilder, client);
