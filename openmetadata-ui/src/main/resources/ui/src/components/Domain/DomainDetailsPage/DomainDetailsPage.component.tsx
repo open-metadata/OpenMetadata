@@ -171,7 +171,7 @@ const DomainDetailsPage = ({
     return [
       {
         name: 'Domains',
-        url: getDomainPath(arr[0]),
+        url: getDomainPath(), // Navigate to domains listing page
         activeTitle: false,
       },
       ...arr.slice(0, -1).map((d) => {
