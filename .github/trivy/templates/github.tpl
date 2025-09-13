@@ -1,4 +1,4 @@
-{{- range . }}
+{{- range . }} 
   <h2> 🛡️ TRIVY SCAN RESULT 🛡️ </h2>
   <h4> Target: <code>{{ .Target }}</code></h4>
   {{- if .Vulnerabilities }}

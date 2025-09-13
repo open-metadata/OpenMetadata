@@ -1,7 +1,7 @@
 name: Create Release Branches
 run-name: Create Release Branch ${{ inputs.release_branch_name }}
 on:
-  workflow_dispatch:
+  workflow_dispatch: 
     inputs:
       release_branch_name:
         description: "Github Release Branch Name"

@@ -1,4 +1,4 @@
-contact_links:
+contact_links: 
   - name: Read the docs & troubleshoot
     url: https://docs.open-metadata.org/
     about: You can find information on anything related to OpenMetadata.

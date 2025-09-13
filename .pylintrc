@@ -1,4 +1,4 @@
-[BASIC]
+[BASIC] 
 # W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
 # W1202: logging-format-interpolation - lazy formatting in logging functions
 # R0903: too-few-public-methods - False negatives in pydantic classes

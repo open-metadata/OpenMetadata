@@ -1,4 +1,4 @@
----
+--- 
 name: Cherry-pick labeled PRs to OpenMetadata release branch on merge
 # yamllint disable-line rule:comments
 run-name: OpenMetadata release cherry-pick PR #${{ github.event.pull_request.number }}
