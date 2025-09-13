@@ -10,179 +10,190 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { User } from '../../../../generated/entity/teams/user';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getImageWithResolutionAndFallback } from '../../../../utils/ProfilerUtils';
-import { mockPersonaData, mockUserData } from '../mocks/User.mocks';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
-const mockLogout = jest.fn();
-const mockSetCurrentUser = jest.fn();
-
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    selectedPersona: {},
-    setCurrentUser: mockSetCurrentUser,
-    onLogoutHandler: mockLogout,
-    currentUser: mockUserData,
-  })),
+  useApplicationStore: jest.fn(),
+}));
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuthProvider: () => ({
+    onLogoutHandler: jest.fn(),
+  }),
+}));
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Test User'),
-}));
+const mockPersonas: EntityReference[] = [
+  {
+    id: 'persona-1',
+    name: 'default-persona',
+    displayName: 'Default Persona',
+    type: 'persona',
+  },
+  {
+    id: 'persona-2',
+    name: 'selected-persona',
+    displayName: 'Selected Persona',
+    type: 'persona',
+  },
+  {
+    id: 'persona-3',
+    name: 'alpha-persona',
+    displayName: 'Alpha Persona',
+    type: 'persona',
+  },
+];
 
-jest.mock('../../../../utils/ProfilerUtils', () => ({
-  getImageWithResolutionAndFallback: jest
-    .fn()
-    .mockImplementation(() => 'valid-image-url'),
-  ImageQuality: jest.fn().mockReturnValue('6x'),
-}));
+const mockUser: User = {
+  id: 'user-1',
+  name: 'test-user',
+  displayName: 'Test User',
+  email: 'test@example.com',
+  isAdmin: false,
+  defaultPersona: mockPersonas[0],
+  personas: mockPersonas,
+  roles: [],
+  teams: [],
+  inheritedRoles: [],
+};
 
-jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
-  jest.fn().mockReturnValue(<div>ProfilePicture</div>)
+const createMockStoreData = (overrides = {}) => ({
+  currentUser: mockUser,
+  selectedPersona: mockPersonas[1],
+  setSelectedPersona: jest.fn(),
+  userProfilePics: {
+    'test-user': {
+      ...mockUser,
+      profile: {
+        images: {
+          image: 'https://example.com/profile.jpg',
+          image192: 'https://example.com/profile-192.jpg',
+        },
+      },
+    } as User,
+  },
+  updateUserProfilePics: jest.fn(),
+  ...overrides,
+});
+
+const MockWrapper = ({ children }: { children: React.ReactNode }) => (
+  <BrowserRouter>{children}</BrowserRouter>
 );
 
-jest.mock('../../../../rest/userAPI', () => ({
-  updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve({})),
-}));
-
-jest.mock('fast-json-patch', () => ({
-  compare: jest.fn().mockImplementation(() => []),
-}));
-
-jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <p data-testid="link">{children}</p>
-    )),
-}));
-
 describe('UserProfileIcon', () => {
+  const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseApplicationStore.mockReturnValue(createMockStoreData());
   });
 
-  it('should render User Profile Icon', () => {
-    const { getByTestId } = render(<UserProfileIcon />);
+  const openDropdown = () => {
+    const userButton = screen.getByRole('button');
+    fireEvent.click(userButton);
 
-    expect(getByTestId('dropdown-profile')).toBeInTheDocument();
-  });
+    return userButton;
+  };
 
-  it('should display the user name', () => {
-    const { getByText } = render(<UserProfileIcon />);
+  const expandPersonas = () => {
+    const moreButton = screen.getByText('1 label.more');
+    fireEvent.click(moreButton);
+  };
 
-    expect(getByText('Test User')).toBeInTheDocument();
-  });
-
-  it('should display default in case of no persona is selected', () => {
-    const { getByText } = render(<UserProfileIcon />);
-
-    expect(getByText('label.default')).toBeInTheDocument();
-  });
-
-  it('should display image if profile pic is valid', () => {
-    const { getByTestId } = render(<UserProfileIcon />);
-
-    expect(getByTestId('app-bar-user-profile-pic')).toBeInTheDocument();
-  });
-
-  it('should not display profile pic if image url is invalid', () => {
-    (getImageWithResolutionAndFallback as jest.Mock).mockImplementation(
-      () => undefined
+  it('should render user profile dropdown', () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
     );
-    const { queryByTestId, getByText } = render(<UserProfileIcon />);
 
-    expect(queryByTestId('app-bar-user-profile-pic')).not.toBeInTheDocument();
-    expect(getByText('ProfilePicture')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
-  it('should display the user team', () => {
-    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
-      selectedPersona: {
-        id: '3362fe18-05ad-4457-9632-84f22887dda6',
-        type: 'team',
-      },
-      setCurrentUser: mockSetCurrentUser,
-      currentUser: mockUserData,
-    }));
-    const { getByTestId } = render(<UserProfileIcon />);
+  it('should display personas with pagination and sorting', async () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
 
-    expect(getByTestId('default-persona')).toHaveTextContent('Test User');
+    openDropdown();
+    await screen.findByText('label.switch-persona');
+
+    // Initially shows 2 personas (pagination)
+    let personaLabels = screen.getAllByTestId('persona-label');
+
+    expect(personaLabels).toHaveLength(2);
+
+    // Default persona should be first
+    expect(personaLabels[0].textContent).toContain('Default Persona');
+    expect(screen.getByTestId('default-persona-tag')).toBeInTheDocument();
+
+    // Expand to show all personas
+    expandPersonas();
+    personaLabels = screen.getAllByTestId('persona-label');
+
+    expect(personaLabels).toHaveLength(3);
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
   });
 
-  it('should show empty placeholder when no teams data', async () => {
-    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
-      currentUser: { ...mockUserData, teams: [] },
-      onLogoutHandler: mockLogout,
-      setCurrentUser: mockSetCurrentUser,
-      selectedPersona: {},
-    }));
+  it('should handle persona selection', async () => {
+    const mockSetSelectedPersona = jest.fn();
+    mockUseApplicationStore.mockReturnValue(
+      createMockStoreData({ setSelectedPersona: mockSetSelectedPersona })
+    );
 
-    await act(async () => {
-      render(<UserProfileIcon />);
-    });
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
 
-    const teamLabels = screen.queryAllByText('label.team-plural');
+    openDropdown();
+    await screen.findByText('label.switch-persona');
+    expandPersonas();
 
-    teamLabels.forEach((label) => {
-      expect(label).toHaveTextContent('--');
-    });
+    const alphaPersonaLabel = screen
+      .getAllByTestId('persona-label')
+      .find((label) =>
+        label.textContent?.includes('Alpha Persona')
+      ) as HTMLElement;
+
+    fireEvent.click(alphaPersonaLabel);
+
+    expect(mockSetSelectedPersona).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'persona-3',
+        name: 'alpha-persona',
+      })
+    );
   });
 
-  it('should show checked if selected persona is true', async () => {
-    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
-      currentUser: {
-        ...mockUserData,
-        personas: mockPersonaData,
-      },
-      onLogoutHandler: mockLogout,
-      selectedPersona: {
-        id: '0430976d-092a-46c9-90a8-61c6091a6f38',
-        type: 'persona',
-      },
-      setCurrentUser: mockSetCurrentUser,
-    }));
+  it('should handle missing default persona', () => {
+    mockUseApplicationStore.mockReturnValue(
+      createMockStoreData({
+        currentUser: { ...mockUser, defaultPersona: undefined },
+      })
+    );
 
-    const { getByTestId } = render(<UserProfileIcon />);
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
 
-    await act(async () => {
-      fireEvent.click(getByTestId('dropdown-profile'));
-    });
+    openDropdown();
 
-    await act(async () => {
-      fireEvent.click(getByTestId('persona-label'));
-    });
-
-    expect(getByTestId('check-outlined')).toBeInTheDocument();
-  });
-
-  it('should not show checked if selected persona is false', async () => {
-    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
-      currentUser: {
-        ...mockUserData,
-        personas: mockPersonaData,
-      },
-      onLogoutHandler: mockLogout,
-      selectedPersona: {
-        id: 'test',
-        type: 'persona',
-      },
-      setCurrentUser: mockSetCurrentUser,
-    }));
-
-    const { getByTestId, queryByTestId } = render(<UserProfileIcon />);
-
-    await act(async () => {
-      fireEvent.click(getByTestId('dropdown-profile'));
-    });
-
-    await act(async () => {
-      fireEvent.click(getByTestId('persona-label'));
-    });
-
-    expect(queryByTestId('check-outlined')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
   });
 });

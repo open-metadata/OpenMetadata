@@ -235,10 +235,11 @@ export const ensurePlaceholderAtEnd = (
 };
 
 /**
- * Layout update handler with tight coupling
+ * Layout update handler with tight coupling and dimension constraints
  * - Ensures widgets are packed tightly after drag operations
  * - Placeholder is always positioned correctly
  * - No gaps between widgets
+ * - Enforces maximum width of 2 and height of 3 for all widgets
  */
 export const getLayoutUpdateHandler =
   (updatedLayout: Layout[]) => (currentLayout: Array<WidgetConfig>) => {
@@ -255,6 +256,8 @@ export const getLayoutUpdateHandler =
       return {
         ...(!widgetData ? {} : widgetData),
         ...widget,
+        w: getConstrainedWidgetWidth(widget.w),
+        h: 3,
         static: false,
       };
     });
@@ -293,18 +296,16 @@ export const getAddWidgetHandler =
     );
 
     if (!currentLayout || currentLayout.length === 0) {
-      const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
-
       return [
         {
-          w: constrainedWidth,
+          w: widgetWidth,
           h: widgetHeight,
           i: widgetFQN,
           static: false,
           x: 0,
           y: 0,
         },
-        createPlaceholderWidget(constrainedWidth, 0),
+        createPlaceholderWidget(widgetWidth, 0),
       ];
     }
 
@@ -317,9 +318,8 @@ export const getAddWidgetHandler =
       // Calculate position at the end of all existing widgets
       const placement = getNewWidgetPlacement(regularWidgets, widgetWidth);
 
-      const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
       const newWidget = {
-        w: constrainedWidth,
+        w: widgetWidth,
         h: widgetHeight,
         i: widgetFQN,
         static: false,
@@ -331,15 +331,14 @@ export const getAddWidgetHandler =
     }
 
     // Replace specific placeholder
-    const constrainedWidth = getConstrainedWidgetWidth(widgetWidth);
     const updatedWidgets = currentLayout.map((widget: WidgetConfig) => {
       if (widget.i === placeholderWidgetKey) {
         return {
           ...widget,
           i: widgetFQN,
-          h: widgetHeight,
-          w: constrainedWidth,
-          x: Math.min(widget.x, maxGridSize - constrainedWidth),
+          h: 3,
+          w: widgetWidth,
+          x: Math.min(widget.x, maxGridSize - widgetWidth),
           static: false,
         };
       }

@@ -98,7 +98,7 @@ const WidgetHeader = ({
           className="widget-title cursor-pointer"
           ellipsis={{ tooltip: true }}
           style={{
-            maxWidth: widgetWidth === 1 ? '200px' : '525px',
+            maxWidth: widgetWidth === 1 ? '145px' : '525px',
           }}
           onClick={onTitleClick}>
           {title}
