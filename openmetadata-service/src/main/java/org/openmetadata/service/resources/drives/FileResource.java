@@ -135,6 +135,12 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Parameter(description = "Filter files by file type", schema = @Schema(type = "string"))
           @QueryParam("fileType")
           String fileTypeParam,
+      @Parameter(
+              description = "List files at the root level (without parent) when `true`",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          boolean root,
       @Parameter(description = "Limit the number files returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -161,7 +167,8 @@ public class FileResource extends EntityResource<File, FileRepository> {
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("directory", directoryParam)
-            .addQueryParam("fileType", fileTypeParam);
+            .addQueryParam("fileType", fileTypeParam)
+            .addQueryParam("root", String.valueOf(root));
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

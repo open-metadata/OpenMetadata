@@ -77,6 +77,12 @@ export enum EntityFields {
   TAGS_LABEL_TYPE = 'tags.labelType',
   TIER_LABEL_TYPE = 'tier.labelType',
   CREATED_BY = 'createdBy',
+  PARENT = 'parent.displayName.keyword',
+  DIRECTORY = 'directory.displayName.keyword',
+  FILE_TYPE = 'fileType',
+  FILE_EXTENSION = 'fileExtension',
+  LAST_MODIFIED_BY = 'lastModifiedBy',
+  SPREADSHEET = 'spreadsheet.displayName.keyword',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {

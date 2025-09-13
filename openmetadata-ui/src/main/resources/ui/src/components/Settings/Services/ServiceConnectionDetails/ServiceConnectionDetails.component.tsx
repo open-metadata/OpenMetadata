@@ -132,6 +132,14 @@ const ServiceConnectionDetails = ({
         );
 
         break;
+      case EntityType.DRIVE_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getSecurityServiceConfig(
+            serviceFQN as SecurityServiceType
+          ).schema
+        );
+
+        break;
     }
   }, [serviceCategory, serviceFQN]);
 

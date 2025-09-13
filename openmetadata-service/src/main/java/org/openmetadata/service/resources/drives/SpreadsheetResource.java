@@ -138,6 +138,12 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
           @QueryParam("directory")
           String directoryParam,
       @Parameter(
+              description = "List spreadsheets at the root level (without parent) when `true`",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          boolean root,
+      @Parameter(
               description = "Limit the number spreadsheets returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -163,7 +169,8 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("directory", directoryParam);
+            .addQueryParam("directory", directoryParam)
+            .addQueryParam("root", String.valueOf(root));
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
