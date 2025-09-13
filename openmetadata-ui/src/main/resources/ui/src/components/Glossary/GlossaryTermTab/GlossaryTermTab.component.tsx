@@ -63,7 +63,7 @@ import {
 } from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
@@ -83,6 +83,7 @@ import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
+  getGlossaryTerms,
   GlossaryTermWithChildren,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
@@ -95,8 +96,8 @@ import {
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
+  buildTree,
   findExpandableKeysForArray,
-  getAllExpandableKeys,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
   StatusClass,
@@ -182,6 +183,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     hasMore: boolean;
   }>({ offset: 0, total: undefined, hasMore: true });
   const [isExpandingAll, setIsExpandingAll] = useState(false);
+  const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
 
   const { ref: infiniteScrollRef, inView } = useInView({
     threshold: 0.1,
@@ -197,7 +199,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const fetchChildTerms = async (parentFQN: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
-
     try {
       const { data } = await getGlossaryTermChildrenLazy(parentFQN, 1000); // Get all children
 
@@ -313,156 +314,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const mergedTerms = [...glossaryChildTerms, ...newTerms];
 
         setGlossaryChildTerms(mergedTerms);
-
-        // If expand all is active, expand and load children for newly loaded terms
-        if (isAllExpanded) {
-          const newExpandableKeys = findExpandableKeysForArray(
-            newTerms as ModifiedGlossaryTerm[]
-          );
-          setExpandedRowKeys((prev) => [...prev, ...newExpandableKeys]);
-
-          // Load all children recursively for newly loaded terms using same logic as toggleExpandAll
-          const loadChildrenForNewTerms = async () => {
-            const loadAllChildrenRecursively = async (
-              terms: ModifiedGlossary[],
-              depth = 0,
-              maxDepth = 10
-            ): Promise<ModifiedGlossary[]> => {
-              if (depth >= maxDepth) {
-                return terms;
-              }
-
-              const BATCH_SIZE = 5;
-              const termsToLoad = terms.filter(
-                (term) =>
-                  term.childrenCount &&
-                  term.childrenCount > 0 &&
-                  (!term.children || term.children.length === 0)
-              );
-
-              if (termsToLoad.length === 0) {
-                const updatedTerms = await Promise.all(
-                  terms.map(async (term) => {
-                    if (term.children && term.children.length > 0) {
-                      const updatedChildren = await loadAllChildrenRecursively(
-                        term.children as ModifiedGlossary[],
-                        depth + 1,
-                        maxDepth
-                      );
-
-                      return {
-                        ...term,
-                        children: updatedChildren as ModifiedGlossaryTerm[],
-                      };
-                    }
-
-                    return term;
-                  })
-                );
-
-                return updatedTerms;
-              }
-
-              const batches: typeof termsToLoad[] = [];
-              for (let i = 0; i < termsToLoad.length; i += BATCH_SIZE) {
-                batches.push(termsToLoad.slice(i, i + BATCH_SIZE));
-              }
-
-              const childDataMap: Record<string, GlossaryTermWithChildren[]> =
-                {};
-
-              for (const batch of batches) {
-                await Promise.all(
-                  batch.map(async (term) => {
-                    if (term.fullyQualifiedName) {
-                      setLoadingChildren((prev) => ({
-                        ...prev,
-                        [term.fullyQualifiedName as string]: true,
-                      }));
-                      try {
-                        const { data } = await getGlossaryTermChildrenLazy(
-                          term.fullyQualifiedName,
-                          1000
-                        );
-                        childDataMap[term.fullyQualifiedName] = data;
-                      } catch (error) {
-                        showErrorToast(error as AxiosError);
-                      } finally {
-                        setLoadingChildren((prev) => ({
-                          ...prev,
-                          [term.fullyQualifiedName as string]: false,
-                        }));
-                      }
-                    }
-                  })
-                );
-                await new Promise((resolve) => setTimeout(resolve, 50));
-              }
-
-              const termsWithChildren = terms.map((term) => {
-                const termFQN = term.fullyQualifiedName;
-                if (termFQN && childDataMap[termFQN]) {
-                  return {
-                    ...term,
-                    children: childDataMap[termFQN] as ModifiedGlossaryTerm[],
-                  };
-                }
-
-                return term;
-              });
-
-              const fullyLoadedTerms = await Promise.all(
-                termsWithChildren.map(async (term) => {
-                  if (term.children && term.children.length > 0) {
-                    const updatedChildren = await loadAllChildrenRecursively(
-                      term.children as ModifiedGlossary[],
-                      depth + 1,
-                      maxDepth
-                    );
-
-                    return {
-                      ...term,
-                      children: updatedChildren as ModifiedGlossaryTerm[],
-                    };
-                  }
-
-                  return term;
-                })
-              );
-
-              return fullyLoadedTerms;
-            };
-
-            try {
-              const fullyExpandedNewTerms = await loadAllChildrenRecursively(
-                newTerms
-              );
-
-              // Update the merged terms with fully expanded new terms
-              const updatedMergedTerms = [
-                ...glossaryChildTerms,
-                ...fullyExpandedNewTerms,
-              ];
-
-              setGlossaryChildTerms(updatedMergedTerms);
-
-              // Add all expandable keys from the new terms
-              const allNewExpandableKeys = getAllExpandableKeys(
-                fullyExpandedNewTerms
-              );
-              setExpandedRowKeys((prev) => {
-                const combined = [...prev, ...allNewExpandableKeys];
-
-                return [...new Set(combined)]; // Remove duplicates
-              });
-            } catch (error) {
-              showErrorToast(error as AxiosError);
-            }
-          };
-
-          // Execute the loading asynchronously
-          loadChildrenForNewTerms();
-        }
       } else {
         // Replace terms
         setGlossaryChildTerms(data as ModifiedGlossary[]);
@@ -477,6 +328,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
+  const fetchExpadedTree = async () => {
+    setIsTableLoading(true);
+    setIsExpandingAll(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+    setIsTableLoading(false);
+    setIsExpandingAll(false);
+  };
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
       return;
@@ -526,14 +403,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   useEffect(() => {
     const currentFQN = activeGlossary?.fullyQualifiedName;
 
-    if (currentFQN && !isLoadingMore && currentFQN !== previousGlossaryFQN) {
+    if (
+      currentFQN &&
+      !isLoadingMore &&
+      currentFQN !== previousGlossaryFQN &&
+      !toggleExpandBtn
+    ) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
-  }, [activeGlossary?.fullyQualifiedName, isLoadingMore, previousGlossaryFQN]);
+  }, [
+    activeGlossary?.fullyQualifiedName,
+    isLoadingMore,
+    previousGlossaryFQN,
+    toggleExpandBtn,
+  ]);
 
   // Clear terms when component unmounts
   useEffect(() => {
@@ -576,7 +463,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       ? searchPaging.hasMore
       : paging.after !== undefined;
 
-    if (inView && canLoadMore && !isLoadingMore && !isTableLoading) {
+    if (
+      inView &&
+      canLoadMore &&
+      !isLoadingMore &&
+      !isTableLoading &&
+      !toggleExpandBtn
+    ) {
       fetchAllTerms(true);
     }
   }, [
@@ -586,6 +479,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     searchTerm,
     isLoadingMore,
     isTableLoading,
+    toggleExpandBtn,
   ]);
 
   // Monitor for DOM changes to detect when the table becomes scrollable
@@ -597,7 +491,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ? searchPaging.hasMore
         : paging.after !== undefined;
 
-      if (scrollContainer && canLoadMore && !isLoadingMore) {
+      if (
+        scrollContainer &&
+        canLoadMore &&
+        !isLoadingMore &&
+        !toggleExpandBtn
+      ) {
         const { scrollHeight, clientHeight } = scrollContainer;
         // If content doesn't fill the viewport, load more
         if (scrollHeight <= clientHeight + 10) {
@@ -624,6 +523,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     searchTerm,
     isLoadingMore,
     findScrollContainer,
+    toggleExpandBtn,
   ]);
 
   // Additional scroll handler for parent container
@@ -635,7 +535,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ? searchPaging.hasMore
         : paging.after !== undefined;
 
-      if (scrollContainer && canLoadMore && !isLoadingMore && !isTableLoading) {
+      if (
+        scrollContainer &&
+        canLoadMore &&
+        !isLoadingMore &&
+        !isTableLoading &&
+        !toggleExpandBtn
+      ) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
         // Load more when user is 200px from the bottom
         if (scrollHeight - scrollTop - clientHeight < 200) {
@@ -1017,157 +923,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const toggleExpandAll = useCallback(async () => {
-    if (isExpandingAll) {
-      return; // Prevent multiple simultaneous expand operations
-    }
-
+    setToggleExpandBtn((prev) => !prev);
     if (expandedRowKeys.length === expandableKeys.length) {
       // Collapse all - immediate UI update
       setExpandedRowKeys([]);
+      fetchAllTerms();
     } else {
-      setIsExpandingAll(true);
-
-      try {
-        // Recursive function to load all children at all levels
-        const loadAllChildrenRecursively = async (
-          terms: ModifiedGlossary[],
-          depth = 0,
-          maxDepth = 10
-        ): Promise<ModifiedGlossary[]> => {
-          if (depth >= maxDepth) {
-            return terms; // Prevent infinite recursion
-          }
-
-          const BATCH_SIZE = 5;
-          const termsToLoad = terms.filter(
-            (term) =>
-              term.childrenCount &&
-              term.childrenCount > 0 &&
-              (!term.children || term.children.length === 0)
-          );
-
-          if (termsToLoad.length === 0) {
-            // If no terms need loading at this level, check children
-            const updatedTerms = await Promise.all(
-              terms.map(async (term) => {
-                if (term.children && term.children.length > 0) {
-                  const updatedChildren = await loadAllChildrenRecursively(
-                    term.children as ModifiedGlossary[],
-                    depth + 1,
-                    maxDepth
-                  );
-
-                  return {
-                    ...term,
-                    children: updatedChildren as ModifiedGlossaryTerm[],
-                  };
-                }
-
-                return term;
-              })
-            );
-
-            return updatedTerms;
-          }
-
-          // Load data for terms at this level
-          const batches: typeof termsToLoad[] = [];
-          for (let i = 0; i < termsToLoad.length; i += BATCH_SIZE) {
-            batches.push(termsToLoad.slice(i, i + BATCH_SIZE));
-          }
-
-          const childDataMap: Record<string, GlossaryTermWithChildren[]> = {};
-
-          for (const batch of batches) {
-            await Promise.all(
-              batch.map(async (term) => {
-                if (term.fullyQualifiedName) {
-                  setLoadingChildren((prev) => ({
-                    ...prev,
-                    [term.fullyQualifiedName as string]: true,
-                  }));
-                  try {
-                    const { data } = await getGlossaryTermChildrenLazy(
-                      term.fullyQualifiedName,
-                      1000 // Get all children at once
-                    );
-                    childDataMap[term.fullyQualifiedName] = data;
-                  } catch (error) {
-                    showErrorToast(error as AxiosError);
-                  } finally {
-                    setLoadingChildren((prev) => ({
-                      ...prev,
-                      [term.fullyQualifiedName as string]: false,
-                    }));
-                  }
-                }
-              })
-            );
-            // Small delay between batches to keep UI responsive
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-
-          // Update terms with loaded children
-          const termsWithChildren = terms.map((term) => {
-            const termFQN = term.fullyQualifiedName;
-            if (termFQN && childDataMap[termFQN]) {
-              return {
-                ...term,
-                children: childDataMap[termFQN] as ModifiedGlossaryTerm[],
-              };
-            }
-
-            return term;
-          });
-
-          // Recursively load children for the newly loaded terms
-          const fullyLoadedTerms = await Promise.all(
-            termsWithChildren.map(async (term) => {
-              if (term.children && term.children.length > 0) {
-                const updatedChildren = await loadAllChildrenRecursively(
-                  term.children as ModifiedGlossary[],
-                  depth + 1,
-                  maxDepth
-                );
-
-                return {
-                  ...term,
-                  children: updatedChildren as ModifiedGlossaryTerm[],
-                };
-              }
-
-              return term;
-            })
-          );
-
-          return fullyLoadedTerms;
-        };
-
-        // Load all children recursively starting from current terms
-        const currentTerms = glossaryChildTerms;
-        if (!Array.isArray(currentTerms)) {
-          setIsExpandingAll(false);
-
-          return;
-        }
-
-        const fullyExpandedTerms = await loadAllChildrenRecursively(
-          currentTerms
-        );
-
-        // Update the glossary child terms with fully expanded tree
-        setGlossaryChildTerms(fullyExpandedTerms);
-
-        // Get all expandable keys from the fully loaded tree
-        const allExpandableKeys = getAllExpandableKeys(fullyExpandedTerms);
-
-        // Set all keys as expanded
-        setExpandedRowKeys(allExpandableKeys);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsExpandingAll(false);
-      }
+      fetchExpadedTree();
     }
   }, [
     glossaryTerms,
@@ -1177,14 +939,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setLoadingChildren,
     expandedRowKeys,
     expandableKeys,
-    setIsExpandingAll,
     setExpandedRowKeys,
     showErrorToast,
-    isExpandingAll,
   ]);
 
   const isAllExpanded = useMemo(() => {
-    return expandedRowKeys.length === expandableKeys.length;
+    return (
+      expandedRowKeys.length === expandableKeys.length &&
+      expandableKeys.length > 0
+    );
   }, [expandedRowKeys, expandableKeys]);
 
   const statusDropdownMenu: MenuProps = useMemo(
@@ -1302,7 +1065,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Button
           className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
-          disabled={isExpandingAll}
           size="small"
           type="text"
           onClick={toggleExpandAll}>
