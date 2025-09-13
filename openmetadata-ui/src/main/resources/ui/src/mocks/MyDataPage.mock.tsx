@@ -125,7 +125,7 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
-  getWidgetsFromKey: (i: string) => () => <div>{i}</div>,
+  getWidgetsFromKey: (i: string) => () => <div data-testid={i}>{i}</div>,
 };
 
 export const mockDocumentData: Document = {

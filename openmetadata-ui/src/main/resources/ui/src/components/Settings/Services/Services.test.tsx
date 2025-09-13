@@ -137,7 +137,7 @@ jest.mock('../../../rest/serviceAPI', () => ({
   getServices: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetServicesData)),
-  searchService: mockSearchService,
+  searchService: jest.fn().mockImplementation(() => mockSearchService()),
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({

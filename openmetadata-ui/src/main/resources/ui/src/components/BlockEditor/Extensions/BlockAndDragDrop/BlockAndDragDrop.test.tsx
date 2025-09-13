@@ -13,10 +13,8 @@
 import { Extension } from '@tiptap/core';
 import DragAndDrop from './BlockAndDragDrop';
 
-const BlockAndDragHandle = jest.fn();
-
 jest.mock('./BlockAndDragHandle', () => ({
-  BlockAndDragHandle,
+  BlockAndDragHandle: jest.fn(),
 }));
 
 describe('DragAndDrop', () => {

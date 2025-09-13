@@ -63,7 +63,9 @@ const FileUploadWidget: FC<WidgetProps> = ({
     const reader = new FileReader();
     reader.readAsText(options.file as Blob);
     reader.addEventListener('load', (e) => {
-      options?.onSuccess?.(e.target);
+      options?.onSuccess?.({
+        result: e.target?.result,
+      });
     });
     reader.addEventListener('error', () => {
       throw t('server.unexpected-error');

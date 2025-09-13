@@ -63,14 +63,10 @@ describe('Test CopyToClipboardButton Component', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('copy-secret'));
+      fireEvent.mouseOver(screen.getByTestId('copy-secret'));
     });
 
-    fireEvent.mouseOver(screen.getByTestId('copy-secret'));
-    jest.advanceTimersByTime(1000);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('copy-success')).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('copy-success')).toBeInTheDocument();
   });
 
   it('Should have copied text in clipboard', async () => {

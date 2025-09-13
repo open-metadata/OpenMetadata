@@ -18,11 +18,9 @@ import {
 } from '../../../../../rest/tableAPI';
 import TableProfilerChart from './TableProfilerChart';
 
-const mockFQN = 'testFQN';
-
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
-  useParams: jest.fn().mockReturnValue({ fqn: mockFQN }),
+  useParams: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
 }));
 
 jest.mock('../../../../../rest/tableAPI');
@@ -181,8 +179,8 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
     expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
     // API should be call with FQN value
-    expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
-    expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);
+    expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual('testFQN');
+    expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual('testFQN');
     // API should be call with proper Param value
     expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
     expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
