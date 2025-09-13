@@ -1,0 +1,683 @@
+{
+	"metadata": {
+		"dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
+		"dbt_version": "0.21.0",
+		"generated_at": "2021-11-11T21:56:25.947085Z",
+		"invocation_id": "f586e0cb-d473-4b0f-9da0-7e1b4db6b9df",
+		"env": {}
+	},
+	"nodes": {
+		"seed.jaffle_shop.raw_orders": {
+			"metadata": {
+				"type": "BASE TABLE",
+				"schema": "dbt_alice",
+				"name": "raw_orders",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"id": {
+					"type": "integer",
+					"index": 1,
+					"name": "id",
+					"comment": null
+				},
+				"user_id": {
+					"type": "integer",
+					"index": 2,
+					"name": "user_id",
+					"comment": null
+				},
+				"order_date": {
+					"type": "date",
+					"index": 3,
+					"name": "order_date",
+					"comment": null
+				},
+				"status": {
+					"type": "character varying(14)",
+					"index": 4,
+					"name": "status",
+					"comment": null
+				}
+			},
+			"stats": {
+				"diststyle": {
+					"id": "diststyle",
+					"label": "Dist Style",
+					"value": "AUTO(ALL)",
+					"include": true,
+					"description": "Distribution style or distribution key column, if key distribution is defined."
+				},
+				"max_varchar": {
+					"id": "max_varchar",
+					"label": "Max Varchar",
+					"value": 14.0,
+					"include": true,
+					"description": "Size of the largest column that uses a VARCHAR data type."
+				},
+				"size": {
+					"id": "size",
+					"label": "Approximate Size",
+					"value": 7000000.0,
+					"include": true,
+					"description": "Approximate size of the table, calculated from a count of 1MB blocks"
+				},
+				"rows": {
+					"id": "rows",
+					"label": "Approximate Row Count",
+					"value": 99.0,
+					"include": true,
+					"description": "Approximate number of rows in the table. This value includes rows marked for deletion, but not yet vacuumed."
+				},
+				"encoded": {
+					"id": "encoded",
+					"label": "Encoded",
+					"value": "Y, AUTO(ENCODE)",
+					"include": true,
+					"description": "Indicates whether any column in the table has compression encoding defined."
+				},
+				"pct_used": {
+					"id": "pct_used",
+					"label": "Disk Utilization",
+					"value": 1.9e-05,
+					"include": true,
+					"description": "Percent of available space that is used by the table."
+				},
+				"sortkey1": {
+					"id": "sortkey1",
+					"label": "Sort Key 1",
+					"value": "AUTO(SORTKEY)",
+					"include": true,
+					"description": "First column in the sort key."
+				},
+				"stats_off": {
+					"id": "stats_off",
+					"label": "Stats Off",
+					"value": 100.0,
+					"include": true,
+					"description": "Number that indicates how stale the table statistics are; 0 is current, 100 is out of date."
+				},
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": true,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "seed.jaffle_shop.raw_orders"
+		},
+		"seed.jaffle_shop.raw_payments": {
+			"metadata": {
+				"type": "BASE TABLE",
+				"schema": "dbt_alice",
+				"name": "raw_payments",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"id": {
+					"type": "integer",
+					"index": 1,
+					"name": "id",
+					"comment": null
+				},
+				"order_id": {
+					"type": "integer",
+					"index": 2,
+					"name": "order_id",
+					"comment": null
+				},
+				"payment_method": {
+					"type": "character varying(13)",
+					"index": 3,
+					"name": "payment_method",
+					"comment": null
+				},
+				"amount": {
+					"type": "integer",
+					"index": 4,
+					"name": "amount",
+					"comment": null
+				}
+			},
+			"stats": {
+				"diststyle": {
+					"id": "diststyle",
+					"label": "Dist Style",
+					"value": "AUTO(ALL)",
+					"include": true,
+					"description": "Distribution style or distribution key column, if key distribution is defined."
+				},
+				"max_varchar": {
+					"id": "max_varchar",
+					"label": "Max Varchar",
+					"value": 13.0,
+					"include": true,
+					"description": "Size of the largest column that uses a VARCHAR data type."
+				},
+				"size": {
+					"id": "size",
+					"label": "Approximate Size",
+					"value": 7000000.0,
+					"include": true,
+					"description": "Approximate size of the table, calculated from a count of 1MB blocks"
+				},
+				"rows": {
+					"id": "rows",
+					"label": "Approximate Row Count",
+					"value": 113.0,
+					"include": true,
+					"description": "Approximate number of rows in the table. This value includes rows marked for deletion, but not yet vacuumed."
+				},
+				"encoded": {
+					"id": "encoded",
+					"label": "Encoded",
+					"value": "Y, AUTO(ENCODE)",
+					"include": true,
+					"description": "Indicates whether any column in the table has compression encoding defined."
+				},
+				"pct_used": {
+					"id": "pct_used",
+					"label": "Disk Utilization",
+					"value": 1.9e-05,
+					"include": true,
+					"description": "Percent of available space that is used by the table."
+				},
+				"sortkey1": {
+					"id": "sortkey1",
+					"label": "Sort Key 1",
+					"value": "AUTO(SORTKEY)",
+					"include": true,
+					"description": "First column in the sort key."
+				},
+				"stats_off": {
+					"id": "stats_off",
+					"label": "Stats Off",
+					"value": 100.0,
+					"include": true,
+					"description": "Number that indicates how stale the table statistics are; 0 is current, 100 is out of date."
+				},
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": true,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "seed.jaffle_shop.raw_payments"
+		},
+		"seed.jaffle_shop.raw_customers": {
+			"metadata": {
+				"type": "BASE TABLE",
+				"schema": "dbt_alice",
+				"name": "raw_customers",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"id": {
+					"type": "integer",
+					"index": 1,
+					"name": "id",
+					"comment": null
+				},
+				"first_name": {
+					"type": "character varying(10)",
+					"index": 2,
+					"name": "first_name",
+					"comment": null
+				},
+				"last_name": {
+					"type": "character varying(2)",
+					"index": 3,
+					"name": "last_name",
+					"comment": null
+				}
+			},
+			"stats": {
+				"diststyle": {
+					"id": "diststyle",
+					"label": "Dist Style",
+					"value": "AUTO(ALL)",
+					"include": true,
+					"description": "Distribution style or distribution key column, if key distribution is defined."
+				},
+				"max_varchar": {
+					"id": "max_varchar",
+					"label": "Max Varchar",
+					"value": 10.0,
+					"include": true,
+					"description": "Size of the largest column that uses a VARCHAR data type."
+				},
+				"size": {
+					"id": "size",
+					"label": "Approximate Size",
+					"value": 6000000.0,
+					"include": true,
+					"description": "Approximate size of the table, calculated from a count of 1MB blocks"
+				},
+				"rows": {
+					"id": "rows",
+					"label": "Approximate Row Count",
+					"value": 100.0,
+					"include": true,
+					"description": "Approximate number of rows in the table. This value includes rows marked for deletion, but not yet vacuumed."
+				},
+				"encoded": {
+					"id": "encoded",
+					"label": "Encoded",
+					"value": "Y, AUTO(ENCODE)",
+					"include": true,
+					"description": "Indicates whether any column in the table has compression encoding defined."
+				},
+				"pct_used": {
+					"id": "pct_used",
+					"label": "Disk Utilization",
+					"value": 1.6e-05,
+					"include": true,
+					"description": "Percent of available space that is used by the table."
+				},
+				"sortkey1": {
+					"id": "sortkey1",
+					"label": "Sort Key 1",
+					"value": "AUTO(SORTKEY)",
+					"include": true,
+					"description": "First column in the sort key."
+				},
+				"stats_off": {
+					"id": "stats_off",
+					"label": "Stats Off",
+					"value": 100.0,
+					"include": true,
+					"description": "Number that indicates how stale the table statistics are; 0 is current, 100 is out of date."
+				},
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": true,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "seed.jaffle_shop.raw_customers"
+		},
+		"model.jaffle_shop.stg_customers": {
+			"metadata": {
+				"type": "VIEW",
+				"schema": "dbt_alice",
+				"name": "stg_customers",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"customer_id": {
+					"type": "integer",
+					"index": 1,
+					"name": "customer_id",
+					"comment": null
+				},
+				"first_name": {
+					"type": "character varying(10)",
+					"index": 2,
+					"name": "first_name",
+					"comment": null
+				},
+				"last_name": {
+					"type": "character varying(2)",
+					"index": 3,
+					"name": "last_name",
+					"comment": null
+				}
+			},
+			"stats": {
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": false,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "model.jaffle_shop.stg_customers"
+		},
+		"model.jaffle_shop.stg_orders": {
+			"metadata": {
+				"type": "VIEW",
+				"schema": "dbt_alice",
+				"name": "stg_orders",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"order_id": {
+					"type": "integer",
+					"index": 1,
+					"name": "order_id",
+					"comment": null
+				},
+				"customer_id": {
+					"type": "integer",
+					"index": 2,
+					"name": "customer_id",
+					"comment": null
+				},
+				"order_date": {
+					"type": "date",
+					"index": 3,
+					"name": "order_date",
+					"comment": null
+				},
+				"status": {
+					"type": "character varying(14)",
+					"index": 4,
+					"name": "status",
+					"comment": null
+				}
+			},
+			"stats": {
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": false,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "model.jaffle_shop.stg_orders"
+		},
+		"model.jaffle_shop.stg_payments": {
+			"metadata": {
+				"type": "VIEW",
+				"schema": "dbt_alice",
+				"name": "stg_payments",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"payment_id": {
+					"type": "integer",
+					"index": 1,
+					"name": "payment_id",
+					"comment": null
+				},
+				"order_id": {
+					"type": "integer",
+					"index": 2,
+					"name": "order_id",
+					"comment": null
+				},
+				"payment_method": {
+					"type": "character varying(13)",
+					"index": 3,
+					"name": "payment_method",
+					"comment": null
+				},
+				"amount": {
+					"type": "integer",
+					"index": 4,
+					"name": "amount",
+					"comment": null
+				}
+			},
+			"stats": {
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": false,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "model.jaffle_shop.stg_payments"
+		},
+		"model.jaffle_shop.orders": {
+			"metadata": {
+				"type": "BASE TABLE",
+				"schema": "dbt_alice",
+				"name": "orders",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"order_id": {
+					"type": "integer",
+					"index": 1,
+					"name": "order_id",
+					"comment": null
+				},
+				"customer_id": {
+					"type": "integer",
+					"index": 2,
+					"name": "customer_id",
+					"comment": null
+				},
+				"order_date": {
+					"type": "date",
+					"index": 3,
+					"name": "order_date",
+					"comment": null
+				},
+				"status": {
+					"type": "character varying(14)",
+					"index": 4,
+					"name": "status",
+					"comment": null
+				},
+				"credit_card_amount": {
+					"type": "bigint",
+					"index": 5,
+					"name": "credit_card_amount",
+					"comment": null
+				},
+				"coupon_amount": {
+					"type": "bigint",
+					"index": 6,
+					"name": "coupon_amount",
+					"comment": null
+				},
+				"bank_transfer_amount": {
+					"type": "bigint",
+					"index": 7,
+					"name": "bank_transfer_amount",
+					"comment": null
+				},
+				"gift_card_amount": {
+					"type": "bigint",
+					"index": 8,
+					"name": "gift_card_amount",
+					"comment": null
+				},
+				"amount": {
+					"type": "bigint",
+					"index": 9,
+					"name": "amount",
+					"comment": null
+				}
+			},
+			"stats": {
+				"diststyle": {
+					"id": "diststyle",
+					"label": "Dist Style",
+					"value": "EVEN",
+					"include": true,
+					"description": "Distribution style or distribution key column, if key distribution is defined."
+				},
+				"max_varchar": {
+					"id": "max_varchar",
+					"label": "Max Varchar",
+					"value": 14.0,
+					"include": true,
+					"description": "Size of the largest column that uses a VARCHAR data type."
+				},
+				"size": {
+					"id": "size",
+					"label": "Approximate Size",
+					"value": 24000000.0,
+					"include": true,
+					"description": "Approximate size of the table, calculated from a count of 1MB blocks"
+				},
+				"rows": {
+					"id": "rows",
+					"label": "Approximate Row Count",
+					"value": 99.0,
+					"include": true,
+					"description": "Approximate number of rows in the table. This value includes rows marked for deletion, but not yet vacuumed."
+				},
+				"encoded": {
+					"id": "encoded",
+					"label": "Encoded",
+					"value": "Y",
+					"include": true,
+					"description": "Indicates whether any column in the table has compression encoding defined."
+				},
+				"pct_used": {
+					"id": "pct_used",
+					"label": "Disk Utilization",
+					"value": 6.6e-05,
+					"include": true,
+					"description": "Percent of available space that is used by the table."
+				},
+				"stats_off": {
+					"id": "stats_off",
+					"label": "Stats Off",
+					"value": 0.0,
+					"include": true,
+					"description": "Number that indicates how stale the table statistics are; 0 is current, 100 is out of date."
+				},
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": true,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "model.jaffle_shop.orders"
+		},
+		"model.jaffle_shop.customers": {
+			"metadata": {
+				"type": "BASE TABLE",
+				"schema": "dbt_alice",
+				"name": "customers",
+				"database": "jaffle_shop",
+				"comment": null,
+				"owner": "awsuser"
+			},
+			"columns": {
+				"customer_id": {
+					"type": "integer",
+					"index": 1,
+					"name": "customer_id",
+					"comment": null
+				},
+				"first_name": {
+					"type": "character varying(10)",
+					"index": 2,
+					"name": "first_name",
+					"comment": null
+				},
+				"last_name": {
+					"type": "character varying(2)",
+					"index": 3,
+					"name": "last_name",
+					"comment": null
+				},
+				"first_order": {
+					"type": "date",
+					"index": 4,
+					"name": "first_order",
+					"comment": null
+				},
+				"most_recent_order": {
+					"type": "date",
+					"index": 5,
+					"name": "most_recent_order",
+					"comment": null
+				},
+				"number_of_orders": {
+					"type": "bigint",
+					"index": 6,
+					"name": "number_of_orders",
+					"comment": null
+				},
+				"customer_lifetime_value": {
+					"type": "bigint",
+					"index": 7,
+					"name": "customer_lifetime_value",
+					"comment": null
+				}
+			},
+			"stats": {
+				"diststyle": {
+					"id": "diststyle",
+					"label": "Dist Style",
+					"value": "EVEN",
+					"include": true,
+					"description": "Distribution style or distribution key column, if key distribution is defined."
+				},
+				"max_varchar": {
+					"id": "max_varchar",
+					"label": "Max Varchar",
+					"value": 10.0,
+					"include": true,
+					"description": "Size of the largest column that uses a VARCHAR data type."
+				},
+				"size": {
+					"id": "size",
+					"label": "Approximate Size",
+					"value": 20000000.0,
+					"include": true,
+					"description": "Approximate size of the table, calculated from a count of 1MB blocks"
+				},
+				"rows": {
+					"id": "rows",
+					"label": "Approximate Row Count",
+					"value": 100.0,
+					"include": true,
+					"description": "Approximate number of rows in the table. This value includes rows marked for deletion, but not yet vacuumed."
+				},
+				"encoded": {
+					"id": "encoded",
+					"label": "Encoded",
+					"value": "Y",
+					"include": true,
+					"description": "Indicates whether any column in the table has compression encoding defined."
+				},
+				"pct_used": {
+					"id": "pct_used",
+					"label": "Disk Utilization",
+					"value": 5.5e-05,
+					"include": true,
+					"description": "Percent of available space that is used by the table."
+				},
+				"stats_off": {
+					"id": "stats_off",
+					"label": "Stats Off",
+					"value": 0.0,
+					"include": true,
+					"description": "Number that indicates how stale the table statistics are; 0 is current, 100 is out of date."
+				},
+				"has_stats": {
+					"id": "has_stats",
+					"label": "Has Stats?",
+					"value": true,
+					"include": false,
+					"description": "Indicates whether there are statistics for this table"
+				}
+			},
+			"unique_id": "model.jaffle_shop.customers"
+		}
+	},
+	"sources": {},
+	"errors": null
+}

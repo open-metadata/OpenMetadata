@@ -1,0 +1,14 @@
+{
+  "type": "Mlflow",
+  "serviceName": "mlflow_svc",
+  "serviceConnection": {
+    "config": {
+      "type": "Mlflow",
+      "trackingUri": "http://localhost:8088",
+      "registryUri": "http://localhost:8088"
+    }
+  },
+  "sourceConfig": {
+    "config": {}
+  }
+}
