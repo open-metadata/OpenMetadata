@@ -19,6 +19,7 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatMonth,
   formatTimeDurationFromSeconds,
   isValidDateFormat,
 } from './DateTimeUtils';
@@ -47,6 +48,18 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatDate should formate date and time both`, () => {
     expect(formatDate(0)).toBe(`Jan 1, 1970`);
+  });
+
+  it(`formatMonth should format only the month`, () => {
+    expect(formatMonth(0)).toBe(`Jan`); // January 1970
+    expect(formatMonth(1677628800000)).toBe(`Mar`); // March 2023
+    expect(formatMonth(1704067200000)).toBe(`Jan`); // January 2024
+    expect(formatMonth(1717200000000)).toBe(`Jun`); // June 2024
+  });
+
+  it(`formatMonth should handle null/undefined values`, () => {
+    expect(formatMonth(undefined)).toBe('');
+    expect(formatMonth(NaN)).toBe('');
   });
 
   it(`formatDateShort should formate date and time both`, () => {

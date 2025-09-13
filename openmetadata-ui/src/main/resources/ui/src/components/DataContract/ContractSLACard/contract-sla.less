@@ -10,13 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.contract-execution-chart-container {
-  height: 280px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+@import (reference) '../../../styles/variables.less';
 
-  .recharts-cartesian-axis-tick-line {
-    display: none;
+.sla-item-container {
+  .sla-item {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .sla-icon {
+      font-size: 20px;
+    }
+    .sla-description {
+      font-size: 14px;
+      color: @grey-600;
+
+      strong {
+        color: @grey-900;
+      }
+    }
   }
 }

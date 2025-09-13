@@ -50,6 +50,24 @@ export const formatDate = (date?: number, supportUTC = false) => {
 
 /**
  * @param date EPOCH millis
+ * @returns Formatted month for valid input. Format: MMM (e.g. Jan, Feb, Mar)
+ */
+export const formatMonth = (date?: number) => {
+  if (isNil(date) || isNaN(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
+  if (!dateTime.isValid) {
+    return '';
+  }
+
+  return dateTime.toFormat('MMM');
+};
+
+/**
+ * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
 export const formatDateTimeLong = (timestamp?: number, format?: string) => {

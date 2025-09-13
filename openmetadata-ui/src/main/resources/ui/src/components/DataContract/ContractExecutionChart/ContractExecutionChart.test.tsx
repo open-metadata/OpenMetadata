@@ -36,9 +36,24 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn((timestamp) =>
-    new Date(timestamp).toLocaleDateString()
-  ),
+  formatMonth: jest.fn((timestamp) => {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return monthNames[new Date(timestamp).getMonth()];
+  }),
   getCurrentMillis: jest.fn(() => 1640995200000), // Fixed timestamp
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
@@ -297,7 +312,6 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('bar-chart')).toBeInTheDocument();
       expect(await screen.findByTestId('cartesian-grid')).toBeInTheDocument();
       expect(await screen.findByTestId('x-axis')).toBeInTheDocument();
-      expect(await screen.findByTestId('legend')).toBeInTheDocument();
     });
 
     it('should render bars for each status type', async () => {
@@ -367,14 +381,6 @@ describe('ContractExecutionChart', () => {
   });
 
   describe('Component Structure', () => {
-    it('should have correct CSS classes', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(screen.getByTestId('expandable-card')).toHaveClass(
-        'expandable-card-contract'
-      );
-    });
-
     it('should display card title structure correctly', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
