@@ -49,7 +49,7 @@ export const listContracts = async (params: ListContractsParams) => {
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/data-contracts/${fqn}`
+    `/dataContracts/name/${fqn}`
   );
 
   return response.data;
