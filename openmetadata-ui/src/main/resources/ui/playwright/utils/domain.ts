@@ -117,12 +117,33 @@ export const validateDomainForm = async (page: Page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
-export const selectDomain = async (page: Page, domain: Domain['data']) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+export const selectDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  bWaitForResponse = true
+) => {
+  const menuItem = page.getByRole('menuitem', { name: domain.displayName });
+  const isSelected = await menuItem.evaluate((element) => {
+    return element.classList.contains('ant-menu-item-selected');
+  });
+
+  if (!isSelected) {
+    if (bWaitForResponse) {
+      const domainRes = page.waitForResponse(
+        '/api/v1/domains/name/*?fields=children%2Cowners%2Cparent%2Cexperts%2Ctags%2Cfollowers%2Cextension'
+      );
+      await menuItem.click();
+      await domainRes;
+    } else {
+      await menuItem.click();
+    }
+  }
+
   await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 export const selectSubDomain = async (
@@ -244,8 +265,6 @@ export const checkDomainDisplayName = async (
   page: Page,
   displayName: string
 ) => {
-  await page.waitForLoadState('networkidle');
-
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
     displayName
   );
