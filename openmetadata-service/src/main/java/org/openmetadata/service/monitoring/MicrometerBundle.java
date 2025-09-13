@@ -32,6 +32,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
   private PrometheusMeterRegistry prometheusMeterRegistry;
   private OpenMetadataMetrics openMetadataMetrics;
+  private StreamableLogsMetrics streamableLogsMetrics;
 
   @Override
   public void initialize(Bootstrap<?> bootstrap) {
@@ -57,6 +58,9 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     // Create OpenMetadataMetrics instance
     openMetadataMetrics = new OpenMetadataMetrics(prometheusMeterRegistry);
 
+    // Create StreamableLogsMetrics instance
+    streamableLogsMetrics = new StreamableLogsMetrics(prometheusMeterRegistry);
+
     // Register Prometheus endpoint on admin connector
     registerPrometheusEndpoint(environment);
 
@@ -72,6 +76,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
               protected void configure() {
                 bind(prometheusMeterRegistry).to(PrometheusMeterRegistry.class);
                 bind(openMetadataMetrics).to(OpenMetadataMetrics.class);
+                bind(streamableLogsMetrics).to(StreamableLogsMetrics.class);
               }
             });
 
@@ -111,14 +116,6 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
         .addMapping("/prometheus");
 
     LOG.info("Prometheus metrics endpoint registered at admin port on /prometheus");
-
-    // Register user metrics endpoint
-    environment
-        .admin()
-        .addServlet("user-metrics", new UserMetricsServlet())
-        .addMapping("/user-metrics");
-
-    LOG.info("User metrics endpoint registered at admin port on /user-metrics");
   }
 
   private void registerJdbiMetrics(Environment environment) {
@@ -187,6 +184,10 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
   public OpenMetadataMetrics getOpenMetadataMetrics() {
     return openMetadataMetrics;
+  }
+
+  public StreamableLogsMetrics getStreamableLogsMetrics() {
+    return streamableLogsMetrics;
   }
 
   /**

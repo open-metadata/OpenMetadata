@@ -133,3 +133,29 @@ class OMetaIngestionPipelineMixin:
             return parse_ingestion_pipeline_config_gracefully(resp)
 
         return None
+
+    def extract_pipeline_id_from_fqn(
+        self, ingestion_pipeline_fqn: str
+    ) -> Optional[str]:
+        """
+        Extract pipeline ID from FQN by fetching the pipeline entity
+
+        Args:
+            ingestion_pipeline_fqn (str): Fully qualified name of the ingestion pipeline
+
+        Returns:
+            Optional[str]: Pipeline ID if found, None otherwise
+        """
+        try:
+            pipeline = self.get_by_name(
+                entity=IngestionPipeline, fqn=ingestion_pipeline_fqn
+            )
+            if pipeline and hasattr(pipeline, "id"):
+                return str(
+                    pipeline.id.root if hasattr(pipeline.id, "root") else pipeline.id
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to extract pipeline ID from FQN {ingestion_pipeline_fqn}: {e}"
+            )
+        return None
