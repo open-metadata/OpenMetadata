@@ -318,6 +318,8 @@ export interface RequestConnection {
  *
  * Grafana Connection Config
  *
+ * Hex Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -432,6 +434,8 @@ export interface ConfigObject {
      * Generated Token to connect to Databricks.
      *
      * token to connect to Qlik Cloud.
+     *
+     * Hex API token for authentication. Can be personal or workspace token.
      *
      * To Connect to Dagster Cloud
      *
@@ -575,6 +579,8 @@ export interface ConfigObject {
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * URL to the Grafana instance.
+     *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Pipeline Service Management/UI URI.
      *
@@ -1489,6 +1495,16 @@ export interface ConfigObject {
      */
     pageSize?: number;
     /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1789,10 +1805,6 @@ export interface ConfigObject {
      * Include Tables for Indexing
      */
     includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
     /**
      * Include Teams for Indexing
      */
@@ -3962,6 +3974,14 @@ export enum TransactionMode {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * REST API Type
  *
  * REST API type
@@ -4091,6 +4111,7 @@ export enum ConfigType {
     GluePipeline = "GluePipeline",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
+    Hex = "Hex",
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
