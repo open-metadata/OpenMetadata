@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Progress, Typography } from 'antd';
+import { Badge, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import './DataQualitySection.less';
@@ -46,16 +46,6 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   const abortedPercent = totalTests > 0 ? (abortedTests / totalTests) * 100 : 0;
   const failedPercent = totalTests > 0 ? (failedTests / totalTests) * 100 : 0;
 
-  // Create strokeColor object for Ant Design Progress component
-  const strokeColor = {
-    '0%': '#52C41A',
-    [`${successPercent}%`]: '#52C41A',
-    [`${successPercent}%`]: '#FAAD14',
-    [`${successPercent + abortedPercent}%`]: '#FAAD14',
-    [`${successPercent + abortedPercent}%`]: '#F5222D',
-    '100%': '#F5222D',
-  };
-
   return (
     <SectionWithEdit
       showEditButton={false}
@@ -78,19 +68,32 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
           />
         </div>
       }
-      onEdit={onEdit}>
+      onEdit={onEdit}
+    >
       <div className="data-quality-content">
         <div className="data-quality-header" />
 
         <div className="data-quality-progress">
-          <Progress
-            className="data-quality-progress-bar"
-            percent={100}
-            showInfo={false}
-            strokeColor={strokeColor}
-            strokeLinecap="square"
-            strokeWidth={8}
-          />
+          <div className="data-quality-progress-segments">
+            {successPercent > 0 && (
+              <div
+                className="progress-segment success"
+                style={{ width: `${successPercent}%` }}
+              />
+            )}
+            {abortedPercent > 0 && (
+              <div
+                className="progress-segment aborted"
+                style={{ width: `${abortedPercent}%` }}
+              />
+            )}
+            {failedPercent > 0 && (
+              <div
+                className="progress-segment failed"
+                style={{ width: `${failedPercent}%` }}
+              />
+            )}
+          </div>
         </div>
 
         <div className="data-quality-legend">

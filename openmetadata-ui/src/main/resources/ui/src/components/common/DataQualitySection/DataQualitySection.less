@@ -36,9 +36,28 @@
   .data-quality-progress {
     margin-bottom: 12px;
 
-    .data-quality-progress-bar {
-      .ant-progress-bg {
-        border-radius: 4px;
+    .data-quality-progress-segments {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      background-color: #f0f0f0;
+
+      .progress-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+
+        &.success {
+          background-color: #52c41a;
+        }
+
+        &.aborted {
+          background-color: #faad14;
+        }
+
+        &.failed {
+          background-color: #f5222d;
+        }
       }
     }
   }

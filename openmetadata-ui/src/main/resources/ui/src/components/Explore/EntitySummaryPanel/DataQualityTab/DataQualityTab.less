@@ -13,11 +13,19 @@
 .test-title {
   margin-top: 24px;
   margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .incident-status-row-1 {
   border-radius: 8px;
   border: 1px solid var(--Neutral-150, #e3e8f0);
   background: #fff;
+}
+.incident-test-title {
+  font-size: 13px;
+  color: #364254;
+  margin-bottom: 8px;
+  font-weight: 600;
 }
 .incident-status-row-2 {
   background-color: #f8fff5;
@@ -30,6 +38,54 @@
   font-size: 12px;
   font-weight: 600;
   color: #21263c;
+}
+.test-case-count {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background-color: #f2f5f9;
+  border-radius: 9px;
+  margin-left: 4px;
+  color: #21263c;
+  &.active {
+    color: #3a8ce9;
+  }
+}
+.incident-filter-buttons-container {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+
+  // Hide scrollbar but keep functionality
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE and Edge
+
+  &::-webkit-scrollbar {
+    display: none; // Chrome, Safari, Opera
+  }
+
+  .incident-filter-button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+.incident-test-case-count {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background-color: #f2f5f9;
+  border-radius: 9px;
+  margin-left: 4px;
+  color: #21263c;
+  &.active {
+    color: #3a8ce9;
+  }
+}
+.dotted-row {
+  border-bottom: 1px dotted #cdd5e0;
 }
 .data-quality-tab-container {
   border: 0px !important;
@@ -117,7 +173,7 @@
 
         .incidents-title {
           margin: 0;
-          font-size: 16px;
+          font-size: 13px;
           font-weight: 600;
           color: #262626;
         }
@@ -187,7 +243,6 @@
 
     .test-cases-section {
       .incident-filter-button {
-        width: 100%;
         padding: 4px 8px;
         border-radius: 56px;
         border: 1px solid #e3e8f0;
@@ -287,16 +342,16 @@
         flex-direction: column;
         gap: 8px;
         padding-left: 14px;
+        padding-right: 14px;
         padding-top: 14px;
-        padding-bottom: 14px;
         .test-case-detail-item {
           display: flex;
           align-items: center;
-          gap: 8px;
-
+          padding-bottom: 10px;
+          gap: 4px;
           .detail-label {
             font-size: 12px;
-            color: #8c8c8c;
+            color: #364254;
             min-width: 60px;
             font-weight: 500;
 
@@ -308,7 +363,7 @@
 
           .detail-value {
             font-size: 12px;
-            color: #595959;
+            color: #20293a;
             font-weight: 500;
           }
 

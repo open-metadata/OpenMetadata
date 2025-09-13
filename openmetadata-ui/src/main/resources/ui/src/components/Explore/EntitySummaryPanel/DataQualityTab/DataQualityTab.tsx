@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Card, Col, Row, Tabs, Typography } from 'antd';
+import { Avatar, Badge, Button, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +45,7 @@ interface TestCaseStatusCounts {
   success: number;
   failed: number;
   aborted: number;
+  ack: number;
   total: number;
 }
 
@@ -52,11 +53,12 @@ interface IncidentStatusCounts {
   new: number;
   assigned: number;
   resolved: number;
+  ack: number;
   total: number;
 }
 
 type FilterStatus = 'success' | 'failed' | 'aborted';
-type IncidentFilterStatus = 'new' | 'assigned' | 'resolved';
+type IncidentFilterStatus = 'new' | 'ack' | 'assigned' | 'resolved';
 
 interface TestCaseCardProps {
   testCase: TestCase;
@@ -79,7 +81,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   const getStatusBadgeType = (status: TestCaseResolutionStatusTypes) => {
     switch (status) {
       case TestCaseResolutionStatusTypes.New:
-        return StatusType.Success;
+        return StatusType.Started;
       case TestCaseResolutionStatusTypes.Assigned:
         return StatusType.Warning;
       case TestCaseResolutionStatusTypes.Resolved:
@@ -137,7 +139,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
         {/* Details Section */}
         <div className="test-case-details">
           {!isIncidentMode && columnName && (
-            <div className="test-case-detail-item">
+            <div className="test-case-detail-item dotted-row">
               <Typography.Text className="detail-label">
                 {t('label.column')}
               </Typography.Text>
@@ -148,7 +150,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           )}
 
           {isIncidentMode && severity && (
-            <div className="test-case-detail-item">
+            <div className="test-case-detail-item dotted-row">
               <Typography.Text className="detail-label">
                 {t('label.severity')}
               </Typography.Text>
@@ -199,6 +201,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     success: 0,
     failed: 0,
     aborted: 0,
+    ack: 0,
     total: 0,
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('failed');
@@ -211,6 +214,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     assigned: 0,
     resolved: 0,
     total: 0,
+    ack: 0,
   });
   const [activeIncidentFilter, setActiveIncidentFilter] =
     useState<IncidentFilterStatus>('new');
@@ -260,14 +264,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
           return acc;
         },
-        { success: 0, failed: 0, aborted: 0, total: 0 }
+        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
       );
 
       setStatusCounts(counts);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setTestCases([]);
-      setStatusCounts({ success: 0, failed: 0, aborted: 0, total: 0 });
+      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
     } finally {
       setIsLoading(false);
     }
@@ -318,6 +322,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 acc.resolved++;
 
                 break;
+              case TestCaseResolutionStatusTypes.ACK:
+                acc.ack++;
+
+                break;
             }
             acc.total++;
           }
@@ -328,6 +336,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           new: 0,
           assigned: 0,
           resolved: 0,
+          ack: 0,
           total: 0,
         }
       );
@@ -340,6 +349,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
         new: 0,
         assigned: 0,
         resolved: 0,
+        ack: 0,
         total: 0,
       });
     } finally {
@@ -369,6 +379,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     switch (activeIncidentFilter) {
       case 'new':
         return status === TestCaseResolutionStatusTypes.New;
+      case 'ack':
+        return status === TestCaseResolutionStatusTypes.ACK;
       case 'assigned':
         return status === TestCaseResolutionStatusTypes.Assigned;
       case 'resolved':
@@ -419,18 +431,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
         <div className="data-quality-tab-content">
           <DataQualitySection
             tests={[
-              { type: 'success', count: 8 },
-              { type: 'aborted', count: 4 },
-              { type: 'failed', count: 2 },
+              { type: 'success', count: statusCounts.success },
+              { type: 'aborted', count: statusCounts.aborted },
+              { type: 'failed', count: statusCounts.failed },
             ]}
-            totalTests={14}
+            totalTests={statusCounts.total}
             onEdit={() => {
               // Handle edit functionality
             }}
           />
-          <Typography.Title ellipsis className="test-title" level={5}>
+          <Typography.Text ellipsis className="test-title">
             {t('label.test-case-plural')}
-          </Typography.Title>
+          </Typography.Text>
           <Row className="m-b-lg" gutter={[8, 8]}>
             <Col span={8}>
               <Button
@@ -440,7 +452,33 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 size="small"
                 onClick={() => handleFilterChange('success')}
               >
-                {t('label.success')} {statusCounts.success}
+                {t('label.success')}
+                <span
+                  className={`test-case-count ${
+                    activeFilter === 'success' ? 'active' : ''
+                  }`}
+                >
+                  {statusCounts.success}
+                </span>
+              </Button>
+            </Col>
+
+            <Col span={8}>
+              <Button
+                className={`filter-button aborted ${
+                  activeFilter === 'aborted' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleFilterChange('aborted')}
+              >
+                {t('label.aborted')}
+                <span
+                  className={`test-case-count ${
+                    activeFilter === 'aborted' ? 'active' : ''
+                  }`}
+                >
+                  {statusCounts.aborted}
+                </span>
               </Button>
             </Col>
             <Col span={8}>
@@ -451,18 +489,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 size="small"
                 onClick={() => handleFilterChange('failed')}
               >
-                {t('label.failed')} {statusCounts.failed}
-              </Button>
-            </Col>
-            <Col span={8}>
-              <Button
-                className={`filter-button aborted ${
-                  activeFilter === 'aborted' ? 'active' : ''
-                }`}
-                size="small"
-                onClick={() => handleFilterChange('aborted')}
-              >
-                {t('label.aborted')} {statusCounts.aborted}
+                {t('label.failed')}
+                <span
+                  className={`test-case-count ${
+                    activeFilter === 'failed' ? 'active' : ''
+                  }`}
+                >
+                  {statusCounts.failed}
+                </span>
               </Button>
             </Col>
           </Row>
@@ -501,11 +535,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
               <Typography.Title className="incidents-title" level={5}>
                 {t('label.incident-plural')}
               </Typography.Title>
-              <div className="incidents-badge">
-                <Typography.Text className="incidents-count">
-                  {incidentCounts.total}
-                </Typography.Text>
-              </div>
+              <Badge
+                className="data-quality-badge"
+                color="#F9FAFC"
+                count={incidentCounts.total}
+                style={{
+                  color: '#364254',
+                  marginLeft: '8px',
+                  fontWeight: 500,
+                  border: '1px solid #E3E8F0',
+                  fontSize: '10px',
+                }}
+              />
             </div>
 
             <div className="incidents-cards">
@@ -560,45 +601,77 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
           {/* Test Cases Section */}
           <div className="test-cases-section">
-            <Typography.Title ellipsis className="test-title" level={5}>
+            <Typography.Text ellipsis className="incident-test-title">
               {t('label.test-case-plural')}
-            </Typography.Title>
+            </Typography.Text>
 
-            <Row className="m-b-lg" gutter={[8, 8]}>
-              <Col span={8}>
-                <Button
-                  className={`incident-filter-button ${
+            <div className="incident-filter-buttons-container">
+              <Button
+                className={`incident-filter-button ${
+                  activeIncidentFilter === 'new' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleIncidentFilterChange('new')}
+              >
+                {t('label.new')}
+                <span
+                  className={`incident-test-case-count ${
                     activeIncidentFilter === 'new' ? 'active' : ''
                   }`}
-                  size="small"
-                  onClick={() => handleIncidentFilterChange('new')}
                 >
-                  {t('label.new')} {incidentCounts.new}
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  className={`incident-filter-button ${
+                  {incidentCounts.new}
+                </span>
+              </Button>
+
+              <Button
+                className={`incident-filter-button ${
+                  activeIncidentFilter === 'ack' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleIncidentFilterChange('ack')}
+              >
+                {t('label.ack')}
+                <span
+                  className={`incident-test-case-count ${
+                    activeIncidentFilter === 'ack' ? 'active' : ''
+                  }`}
+                >
+                  {incidentCounts.ack}
+                </span>
+              </Button>
+              <Button
+                className={`incident-filter-button ${
+                  activeIncidentFilter === 'assigned' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleIncidentFilterChange('assigned')}
+              >
+                {t('label.assigned')}
+                <span
+                  className={`incident-test-case-count ${
                     activeIncidentFilter === 'assigned' ? 'active' : ''
                   }`}
-                  size="small"
-                  onClick={() => handleIncidentFilterChange('assigned')}
                 >
-                  {t('label.ack')} {incidentCounts.assigned}
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button
-                  className={`incident-filter-button ${
+                  {incidentCounts.assigned}
+                </span>
+              </Button>
+              <Button
+                className={`incident-filter-button ${
+                  activeIncidentFilter === 'resolved' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleIncidentFilterChange('resolved')}
+              >
+                {t('label.resolved')}
+                <span
+                  className={`incident-test-case-count ${
                     activeIncidentFilter === 'resolved' ? 'active' : ''
                   }`}
-                  size="small"
-                  onClick={() => handleIncidentFilterChange('resolved')}
                 >
-                  {t('label.resolve')} {incidentCounts.resolved}
-                </Button>
-              </Col>
-            </Row>
+                  {incidentCounts.resolved}
+                </span>
+              </Button>
+            </div>
 
             {/* Incident Cards */}
             <div className="incident-cards-section">
