@@ -49,12 +49,14 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { setInlineAlertDetails } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -289,20 +291,28 @@ const TeamsPage = () => {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
+        setInlineAlertDetails({
+          type: 'error',
+          heading: t('label.error'),
+          description: t('server.entity-already-exist', {
             entity: t('label.team'),
             entityPlural: t('label.team-plural-lowercase'),
             name: data.name,
-          })
-        );
+          }),
+          onClose: () => setInlineAlertDetails(undefined),
+        });
       } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.team-lowercase'),
-          })
-        );
+        setInlineAlertDetails({
+          type: 'error',
+          heading: t('label.error'),
+          description: getErrorText(
+            error as AxiosError,
+            t('server.create-entity-error', {
+              entity: t('label.team-lowercase'),
+            })
+          ),
+          onClose: () => setInlineAlertDetails(undefined),
+        });
       }
     } finally {
       setIsLoading(false);
