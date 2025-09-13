@@ -26,6 +26,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { getEncodedFqn } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
   createColumnRowDetails,
@@ -250,7 +251,7 @@ test.describe('Bulk Edit Entity', () => {
       );
 
       const databaseResponse = page.waitForResponse(
-        `/api/v1/databases/name/*${table.database.name}?**`
+        `/api/v1/databases/name/*${getEncodedFqn(table.database.name)}?**`
       );
       await page.getByTestId(table.database.name).click();
       await databaseResponse;
@@ -391,12 +392,12 @@ test.describe('Bulk Edit Entity', () => {
       );
 
       const databaseResponse = page.waitForResponse(
-        `/api/v1/databases/name/*${table.database.name}?**`
+        `/api/v1/databases/name/*${getEncodedFqn(table.database.name)}?**`
       );
       await page.getByTestId(table.database.name).click();
       await databaseResponse;
       const databaseSchemaResponse = page.waitForResponse(
-        `/api/v1/databaseSchemas/name/*${table.schema.name}?*`
+        `/api/v1/databaseSchemas/name/*${getEncodedFqn(table.schema.name)}?*`
       );
       await page.getByTestId(table.schema.name).click();
       await databaseSchemaResponse;
