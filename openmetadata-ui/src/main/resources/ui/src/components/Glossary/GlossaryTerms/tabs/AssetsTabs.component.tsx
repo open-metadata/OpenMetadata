@@ -231,6 +231,7 @@ const AssetsTabs = forwardRef(
       }) => {
         try {
           setIsLoading(true);
+
           const res = await searchQuery({
             pageNumber: page,
             pageSize: pageSize,

@@ -40,9 +40,8 @@ import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
-import { SearchResponse } from '../../../../../interface/search.interface';
 import { ImportType } from '../../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { searchData } from '../../../../../rest/miscAPI';
+import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
@@ -135,22 +134,30 @@ export const UserTab = ({
 
   const searchUsers = (text: string, currentPage: number) => {
     setIsLoading(true);
-    searchData(
-      text,
-      currentPage,
+    searchQuery({
+      query: text ? `*${text}*` : '*',
+      pageNumber: currentPage,
       pageSize,
-      `(teams.id:${currentTeam?.id})`,
-      '',
-      '',
-      SearchIndex.USER
-    )
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'teams.id': currentTeam?.id,
+                },
+              },
+            ],
+          },
+        },
+      },
+      searchIndex: SearchIndex.USER,
+    })
       .then((res) => {
-        const data = formatUsersResponse(
-          (res.data as SearchResponse<SearchIndex.USER>).hits.hits
-        );
+        const data = formatUsersResponse(res.hits.hits);
         setUsers(data);
         handlePagingChange({
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
         });
       })
       .catch(() => {

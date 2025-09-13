@@ -92,20 +92,38 @@ describe('getTagAssetsQueryFilter', () => {
     const tagFQN = 'Tier.Tier1';
     const result = getTagAssetsQueryFilter(tagFQN);
 
-    expect(result).toBe(`(tier.tagFQN:"${tagFQN}")`);
+    expect(result).toEqual({
+      query: {
+        term: {
+          'tier.tagFQN': tagFQN,
+        },
+      },
+    });
   });
 
   it('returns query filter for tagFQN starting with "Certification"', () => {
     const tagFQN = 'Certification.Gold';
     const result = getTagAssetsQueryFilter(tagFQN);
 
-    expect(result).toBe(`(certification.tagLabel.tagFQN:"${tagFQN}")`);
+    expect(result).toEqual({
+      query: {
+        term: {
+          'certification.tagLabel.tagFQN': tagFQN,
+        },
+      },
+    });
   });
 
   it('returns common query filter for tagFQN starting with any name expect "Tier and Certification"', () => {
     const tagFQN = 'ClassificationTag.Gold';
     const result = getTagAssetsQueryFilter(tagFQN);
 
-    expect(result).toBe(`(tags.tagFQN:"${tagFQN}")`);
+    expect(result).toEqual({
+      query: {
+        term: {
+          'tags.tagFQN': tagFQN,
+        },
+      },
+    });
   });
 });
