@@ -123,11 +123,15 @@ export interface Aggregation {
     /**
      * The field on which this aggregation is performed.
      */
-    field: string;
+    field?: string;
     /**
      * A descriptive name for the aggregation.
      */
     name: string;
+    /**
+     * Optional script to apply on the terms aggregation.
+     */
+    script?: string;
     /**
      * The type of aggregation to perform.
      */

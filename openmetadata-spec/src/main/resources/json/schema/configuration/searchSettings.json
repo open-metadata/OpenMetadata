@@ -380,9 +380,14 @@
         "field": {
           "type": "string",
           "description": "The field on which this aggregation is performed."
+        },
+        "script": {
+          "type": "string",
+          "description": "Optional script to apply on the terms aggregation.",
+          "default": ""
         }
       },
-      "required": ["name", "type", "field"],
+      "required": ["name", "type"],
       "additionalProperties": false
     },
     "allowedSearchFields": {

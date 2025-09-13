@@ -41,6 +41,16 @@
         "field": "tags.tagFQN"
       },
       {
+        "name": "classificationTags",
+        "type": "terms",
+        "script": "def classificationTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } } return classificationTags;"
+      },
+      {
+        "name": "glossaryTags",
+        "type": "terms",
+        "script": "def glossaryTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } } return glossaryTags;"
+      },
+      {
         "name": "certification.tagLabel.tagFQN",
         "type": "terms",
         "field": "certification.tagLabel.tagFQN"
@@ -1369,6 +1379,11 @@
           "name": "fqnParts_agg",
           "type": "terms",
           "field": "fqnParts"
+        },
+        {
+          "name": "domainType.keyword",
+          "type": "terms",
+          "field": "domainType.keyword"
         }
       ],
       "scoreMode": "sum",

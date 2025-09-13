@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
@@ -39,6 +40,7 @@ import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuild
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 
@@ -125,11 +127,21 @@ public class OpenSearchSourceBuilderFactory
         .getGlobalSettings()
         .getAggregations()
         .forEach(
-            agg ->
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+            agg -> {
+              TermsAggregationBuilder termsAgg =
+                  AggregationBuilders.terms(agg.getName())
+                      .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+              if (!nullOrEmpty(agg.getField())) {
+                termsAgg.field(agg.getField());
+              }
+
+              if (!nullOrEmpty(agg.getScript())) {
+                termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
+              }
+
+              searchSourceBuilder.aggregation(termsAgg);
+            });
     return searchSourceBuilder;
   }
 
@@ -647,10 +659,20 @@ public class OpenSearchSourceBuilderFactory
 
     for (var entry : aggregations.entrySet()) {
       Aggregation agg = entry.getValue();
-      searchSourceBuilder.aggregation(
+
+      TermsAggregationBuilder termsAgg =
           AggregationBuilders.terms(agg.getName())
-              .field(agg.getField())
-              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize());
+
+      if (!nullOrEmpty(agg.getField())) {
+        termsAgg.field(agg.getField());
+      }
+
+      if (!nullOrEmpty(agg.getScript())) {
+        termsAgg.script(new os.org.opensearch.script.Script(agg.getScript()));
+      }
+
+      searchSourceBuilder.aggregation(termsAgg);
     }
   }
 
