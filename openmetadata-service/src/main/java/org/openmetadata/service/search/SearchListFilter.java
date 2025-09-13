@@ -23,6 +23,25 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   @Override
   public String getCondition(String entityType) {
+    String conditionFilter = buildConditionFilter(entityType);
+    String sourceFilter = getExcludeIncludeFields();
+    return buildQueryFilter(conditionFilter, sourceFilter);
+  }
+
+  /**
+   * Get only the query part (without _source) for use in filter aggregations.
+   * Filter aggregations expect just the query structure, not the full query document.
+   */
+  public String getFilterQuery(String entityType) {
+    String conditionFilter = buildConditionFilter(entityType);
+    return buildQueryOnly(conditionFilter);
+  }
+
+  /**
+   * Shared method to build condition filter - implements DRY principle.
+   * This method contains the core logic for building query conditions.
+   */
+  private String buildConditionFilter(String entityType) {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
@@ -34,10 +53,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
       conditions.add(
           entityType.equals(Entity.TEST_CASE_RESULT) ? getTestCaseResultCondition() : null);
+      conditions.add(
+          entityType.equals(Entity.TEST_CASE_RESOLUTION_STATUS)
+              ? getTestCaseResolutionStatusCondition()
+              : null);
     }
-    String conditionFilter = addCondition(conditions);
-    String sourceFilter = getExcludeIncludeFields();
-    return buildQueryFilter(conditionFilter, sourceFilter);
+    return addCondition(conditions);
   }
 
   @Override
@@ -132,15 +153,35 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
+    String queryPart = buildQueryPart(conditionFilter);
     String q = queryParams.get("q");
     boolean isQEmpty = nullOrEmpty(q);
+
     if (!conditionFilter.isEmpty()) {
-      return String.format(
-          "{%s,\"query\": {\"bool\": {\"filter\": [%s]}}}", sourceFilter, conditionFilter);
+      return String.format("{%s,\"query\": %s}", sourceFilter, queryPart);
     } else if (!isQEmpty) {
       return String.format("{%s}", sourceFilter);
     } else {
-      return String.format("{%s,\"query\": {\"match_all\": {}}}", sourceFilter);
+      return String.format("{%s,\"query\": %s}", sourceFilter, queryPart);
+    }
+  }
+
+  /**
+   * Helper method to build query-only format (without _source) for filter aggregations.
+   */
+  private String buildQueryOnly(String conditionFilter) {
+    return buildQueryPart(conditionFilter);
+  }
+
+  /**
+   * Core method to build the query part - implements DRY principle for query construction.
+   * This method contains the shared logic for building the actual query structure.
+   */
+  private String buildQueryPart(String conditionFilter) {
+    if (!conditionFilter.isEmpty()) {
+      return String.format("{\"bool\": {\"filter\": [%s]}}", conditionFilter);
+    } else {
+      return "{\"match_all\": {}}";
     }
   }
 
@@ -317,5 +358,41 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
     return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+  }
+
+  private String getTestCaseResolutionStatusCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String testCaseResolutionStatusType = getQueryParam("testCaseResolutionStatusType");
+    String assignee = getQueryParam("assignee");
+    String testCaseFqn = getQueryParam("testCaseFqn");
+    String originEntityFQN = getQueryParam("originEntityFQN");
+
+    if (testCaseResolutionStatusType != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCaseResolutionStatusType\": \"%s\"}}",
+              escapeDoubleQuotes(testCaseResolutionStatusType)));
+    }
+
+    if (assignee != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCaseResolutionStatusDetails.assignee.name\": \"%s\"}}",
+              escapeDoubleQuotes(assignee)));
+    }
+
+    if (testCaseFqn != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testCase.fullyQualifiedName.keyword\": \"%s\"}}",
+              escapeDoubleQuotes(testCaseFqn)));
+    }
+
+    if (originEntityFQN != null) {
+      conditions.add(getTestCaseForEntityCondition(originEntityFQN, "testCase.entityFQN.keyword"));
+    }
+
+    return addCondition(conditions);
   }
 }

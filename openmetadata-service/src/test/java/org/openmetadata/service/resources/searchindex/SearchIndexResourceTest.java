@@ -34,6 +34,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.script.Script;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.BaseAggregationBuilder;
@@ -801,6 +802,91 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         ElasticAggregationsBuilder.buildAggregation(
             aggregation.getAggregationTree(), null, new ArrayList<>());
 
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 10. Max aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,"
+            + "bucketName=maxPrice:aggType=max:field=price.adjusted";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "terms", "entityLinks", Map.of("field", "entityLinks.nonNormalized"));
+    node2 = new SearchAggregationNode("max", "maxPrice", Map.of("field", "price.adjusted"));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("entityLinks.nonNormalized"))
+            .withKeys(List.of("sterms#entityLinks", "max#maxPrice"))
+            .withMetrics(List.of("price.adjusted"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityLinks")
+            .field("entityLinks.nonNormalized")
+            .subAggregation(AggregationBuilders.max("maxPrice").field("price.adjusted")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 11. Filter aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=filteredData:aggType=filter:query=\"{\\\"term\\\":{\\\"status\\\":\\\"active\\\"}}\"";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "filter", "filteredData", Map.of("query", "{\"term\":{\"status\":\"active\"}}"));
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(new ArrayList<>())
+            .withKeys(List.of("filter#filteredData"))
+            .withMetrics(List.of("document_count"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+    expectedAggregations.add(
+        AggregationBuilders.filter("filteredData", QueryBuilders.termQuery("status", "active")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 12. Value count aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,"
+            + "bucketName=fieldCount:aggType=value_count:field=fieldName";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "terms", "entityLinks", Map.of("field", "entityLinks.nonNormalized"));
+    node2 = new SearchAggregationNode("value_count", "fieldCount", Map.of("field", "fieldName"));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("entityLinks.nonNormalized"))
+            .withKeys(List.of("sterms#entityLinks", "value_count#fieldCount"))
+            .withMetrics(List.of("fieldName"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityLinks")
+            .field("entityLinks.nonNormalized")
+            .subAggregation(AggregationBuilders.count("fieldCount").field("fieldName")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
     validateAggregation(actualElasticAggregations, expectedAggregations);
   }
 

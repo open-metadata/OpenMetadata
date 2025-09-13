@@ -10,15 +10,15 @@ import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 
 @Setter
 @Getter
-public class OpenMinAggregations implements OpenAggregations {
-  static final String aggregationType = "min";
+public class OpenMaxAggregations implements OpenAggregations {
+  static final String aggregationType = "max";
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     AggregationBuilder aggregationBuilders =
-        AggregationBuilders.min(node.getName()).field(params.get("field"));
+        AggregationBuilders.max(node.getName()).field(params.get("field"));
     setElasticAggregationBuilder(aggregationBuilders);
   }
 

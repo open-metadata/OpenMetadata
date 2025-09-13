@@ -30,7 +30,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
-import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -392,17 +392,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   @SuppressWarnings("unchecked")
   public ResultList<T> listLatestFromSearch(
-      EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
+      EntityUtil.Fields fields, SearchListFilter contentFilter, String groupBy, String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
+    SearchListFilter searchListFilter = new SearchListFilter();
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
-    String aggregationStr =
-        "bucketName=byTerms:aggType=terms:field=%s&size=100,"
-            + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
-    aggregationStr = String.format(aggregationStr, groupBy);
-    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
+    SearchAggregation searchAggregation = buildComplexAggregation(groupBy, contentFilter);
     JsonObject jsonObjResults =
         searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
 
@@ -432,6 +429,42 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
           }
         });
     return new ResultList<>(entityList, null, null, entityList.size());
+  }
+
+  private SearchAggregation buildComplexAggregation(
+      String groupBy, SearchListFilter contentFilter) {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    // Create terms aggregation by groupBy field
+    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy);
+
+    // Add latest_overall (replaces the old "latest" aggregation for parsing compatibility)
+    termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
+
+    // Add max_timestamp for bucket selector
+    termsAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
+
+    // Get content filters using the new getFilterQuery method for filter aggregations
+    String contentFilters = contentFilter.getFilterQuery(entityType);
+
+    // Create content filter aggregation
+    SearchAggregationNode filterAgg =
+        SearchAggregation.filter("with_content_filters", contentFilters);
+    filterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
+    filterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
+
+    termsAgg.addChild(filterAgg);
+
+    // Add bucket selector to filter buckets where latest timestamp equals matching timestamp
+    termsAgg.addChild(
+        SearchAggregation.bucketSelector(
+            "filter_groups",
+            "if (params.matching_count == 0) return false; return params.latest_timestamp == params.matching_timestamp;",
+            "latest_timestamp,matching_count,matching_timestamp",
+            "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
+
+    root.addChild(termsAgg);
+    return SearchAggregation.fromTree(root);
   }
 
   public T latestFromSearch(EntityUtil.Fields fields, SearchListFilter searchListFilter, String q)

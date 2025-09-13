@@ -38,6 +38,9 @@ public class OpenAggregationsBuilder {
       case "terms" -> new OpenTermsAggregations();
       case "avg" -> new OpenAvgAggregations();
       case "min" -> new OpenMinAggregations();
+      case "max" -> new OpenMaxAggregations();
+      case "filter" -> new OpenFilterAggregations();
+      case "value_count" -> new OpenValueCountAggregations();
       case "cardinality" -> new OpenCardinalityAggregations();
       case "nested" -> new OpenNestedAggregations();
       case "top_hits" -> new OpenTopHitsAggregations();
