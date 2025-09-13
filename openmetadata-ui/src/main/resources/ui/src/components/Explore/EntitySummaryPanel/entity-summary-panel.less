@@ -14,14 +14,57 @@
 @import (reference) '../../../styles/variables.less';
 @import (reference) '../../../styles/components/card.less';
 
+.entity-summary-panel-container {
+  // display: flex;
+  height: 100%;
+  background: #fff;
+
+  .entity-title-link {
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: none;
+    }
+
+    &:visited {
+      text-decoration: none;
+    }
+
+    &:active {
+      text-decoration: none;
+    }
+  }
+  .summary-panel-container {
+    flex: 1;
+    // padding:16px;
+
+    .entity-summary-panel-tab-content {
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+}
+
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
   font-size: 14px;
   overflow-x: hidden;
+  overflow-y: auto;
   -ms-overflow-style: none;
   scrollbar-width: none;
   height: 100%;
+
+  /* Hide scrollbar but keep the space reserved to prevent layout shift */
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+
+  /* Reserve space for scrollbar to prevent layout shift */
+  scrollbar-gutter: stable;
 
   .ant-card-head {
     border-bottom: none;
@@ -30,7 +73,11 @@
 
   .ant-card-body {
     padding-top: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
     .scrollable-card-body();
+    width: 100%;
   }
 
   .ant-divider {
@@ -101,4 +148,15 @@
 .summary-panel-card {
   background-color: @grey-9;
   border: 0.5px solid #eaecf5;
+}
+.title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 16px;
+  height: 49px;
+  border: 1px solid #d9d9d9;
+  background-color: #f9fafc;
+  border-top-right-radius: 10px;
+  border-top-left-radius: 10px;
 }
