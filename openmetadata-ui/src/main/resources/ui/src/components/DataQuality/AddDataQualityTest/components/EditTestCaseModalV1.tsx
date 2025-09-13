@@ -54,6 +54,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
+  createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
@@ -109,6 +110,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   const isComputeRowCountFieldVisible = useMemo(() => {
     return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
   }, [selectedDefinition]);
+
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
   const { tags, glossaryTerms, tierTag } = useMemo(() => {
     if (!testCase?.tags) {
@@ -453,12 +456,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             form={form}
             layout="vertical"
             name="tableTestForm"
-            scrollToFirstError={{
-              behavior: 'smooth',
-              block: 'center',
-              scrollMode: 'if-needed',
-            }}
             onFinish={handleFormSubmit}
+            onFinishFailed={scrollToError}
             onFocus={handleFieldFocus}>
             {!showOnlyParameter && (
               <Card className="form-card-section">

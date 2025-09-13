@@ -60,7 +60,10 @@ import {
   replaceAllSpacialCharWith_,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { generateFormFields } from '../../../utils/formUtils';
+import {
+  createScrollToErrorHandler,
+  generateFormFields,
+} from '../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServiceUtils';
 import { generateUUID } from '../../../utils/StringsUtils';
@@ -114,6 +117,14 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       (feature) => feature.name === 'dataQuality'
     )?.pipelineSchedules;
   }, [config]);
+
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        scrollContainer: '.ant-drawer-body', // BundleSuiteForm uses drawer body as scroll container
+      }),
+    []
+  );
 
   const schedulerOptions = useMemo(() => {
     if (isEmpty(pipelineSchedules) || !pipelineSchedules) {
@@ -359,12 +370,8 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
           ...initialValues,
         }}
         layout="vertical"
-        scrollToFirstError={{
-          behavior: 'smooth',
-          block: 'center',
-          scrollMode: 'if-needed',
-        }}
-        onFinish={handleFormSubmit}>
+        onFinish={handleFormSubmit}
+        onFinishFailed={scrollToError}>
         {/* Basic Information */}
         <Card className="form-card-section" data-testid="basic-info-card">
           {generateFormFields(basicInfoFormFields)}
