@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-mvn spotless:apply
+mvn spotless:apply 
