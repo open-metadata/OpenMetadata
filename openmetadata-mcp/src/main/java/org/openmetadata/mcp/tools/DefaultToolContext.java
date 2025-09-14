@@ -2,7 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
-import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpSchema; 
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
