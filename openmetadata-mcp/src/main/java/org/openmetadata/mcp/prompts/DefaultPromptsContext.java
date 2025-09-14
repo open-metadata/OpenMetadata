@@ -1,6 +1,6 @@
 package org.openmetadata.mcp.prompts;
 
-import static org.openmetadata.mcp.McpUtils.getPrompts;
+import static  org.openmetadata.mcp.McpUtils.getPrompts;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
