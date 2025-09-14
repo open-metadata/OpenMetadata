@@ -65,6 +65,11 @@ export interface SearchRequest {
      */
     isHierarchy?: boolean;
     /**
+     * Language locale for search (e.g., 'en', 'es', 'fr'). Used to prioritize translated
+     * content in search results.
+     */
+    locale?: string;
+    /**
      * Elasticsearch query that will be used as a post_filter
      */
     postFilter?: string;
