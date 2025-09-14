@@ -15,19 +15,20 @@ package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.get;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testTableSearchWithSpanishTranslations() throws IOException {
+  void testTableSearchWithSpanishTranslations() throws IOException, InterruptedException {
     // Create a table with Spanish translations
     String tableName = "customer_orders" + System.currentTimeMillis();
     List<Column> columns =
@@ -103,74 +104,56 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     assertNotNull(table);
 
-    // Add Spanish translations
-    List<Translation> translations =
-        List.of(
-            new Translation()
-                .withLocale("es")
-                .withDisplayName("Órdenes de Clientes")
-                .withDescription("Tabla de seguimiento de órdenes de clientes"));
+    // Update table with Spanish translations using locale parameter
+    // This approach mimics how the UI would update translations and triggers inline indexing
+    Table tableToUpdate = tableResourceTest.getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(tableToUpdate);
 
-    // Add column translations
-    List<Translation> orderIdTranslations =
-        List.of(
-            new Translation()
-                .withLocale("es")
-                .withDisplayName("ID de Orden")
-                .withDescription("Identificador de la orden"));
+    // Set Spanish display name and description
+    tableToUpdate.setDisplayName("Órdenes de Clientes");
+    tableToUpdate.setDescription("Tabla de seguimiento de órdenes de clientes");
 
-    List<Translation> customerNameTranslations =
-        List.of(
-            new Translation()
-                .withLocale("es")
-                .withDisplayName("Nombre del Cliente")
-                .withDescription("Nombre completo del cliente"));
+    // Update column display names and descriptions in Spanish
+    tableToUpdate.getColumns().get(0).setDisplayName("ID de Orden");
+    tableToUpdate.getColumns().get(0).setDescription("Identificador de la orden");
+    tableToUpdate.getColumns().get(1).setDisplayName("Nombre del Cliente");
+    tableToUpdate.getColumns().get(1).setDescription("Nombre completo del cliente");
+    tableToUpdate.getColumns().get(2).setDisplayName("Monto Total");
+    tableToUpdate.getColumns().get(2).setDescription("Monto total de la orden");
 
-    List<Translation> totalAmountTranslations =
-        List.of(
-            new Translation()
-                .withLocale("es")
-                .withDisplayName("Monto Total")
-                .withDescription("Monto total de la orden"));
+    String updatedJson = JsonUtils.pojoToJson(tableToUpdate);
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
 
-    // Update table with translations via PATCH
-    String patchJson =
-        JsonUtils.pojoToJson(
-            List.of(
-                Map.of(
-                    "op", "add",
-                    "path", "/translations",
-                    "value", new Translations().withTranslations(translations)),
-                Map.of(
-                    "op", "add",
-                    "path", "/columns/0/translations",
-                    "value", new Translations().withTranslations(orderIdTranslations)),
-                Map.of(
-                    "op", "add",
-                    "path", "/columns/1/translations",
-                    "value", new Translations().withTranslations(customerNameTranslations)),
-                Map.of(
-                    "op", "add",
-                    "path", "/columns/2/translations",
-                    "value", new Translations().withTranslations(totalAmountTranslations))));
+    // Patch with Spanish locale - this stores as translations and triggers inline indexing
+    // Use the resource path directly
+    WebTarget target = getResource("tables/" + table.getId());
+    target = target.queryParam("locale", "es");
+    Table patchedTable = TestUtils.patch(target, patch, Table.class, ADMIN_AUTH_HEADERS);
 
-    tableResourceTest.patchEntity(table.getId(), JsonUtils.readTree(patchJson), ADMIN_AUTH_HEADERS);
+    // Wait for search index to be updated asynchronously
+    Thread.sleep(5000); // Wait 5 seconds for OpenSearch/Elasticsearch to index the data
 
-    // Verify the table has translations after patch
-    Table updatedTable = tableResourceTest.getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
-    assertNotNull(updatedTable.getTranslations(), "Table should have translations after patch");
-    assertFalse(updatedTable.getTranslations().getTranslations().isEmpty(), "Table should have non-empty translations");
-    LOG.info("Updated table has {} translations", updatedTable.getTranslations().getTranslations().size());
-    
-    // Wait longer for indexing to complete
-    TestUtils.simulateWork(10);
+    // Debug: Get the actual document from the index to see what was indexed
+    WebTarget searchTarget = getResource("search/query");
+    searchTarget = searchTarget.queryParam("q", "id:" + table.getId());
+    searchTarget = searchTarget.queryParam("index", "table_search_index");
+    searchTarget = searchTarget.queryParam("size", 1);
+    String docJson = get(searchTarget, String.class, TEST_AUTH_HEADERS);
+    LOG.info("DEBUG: Indexed document search result: {}", docJson);
+
+    // First, let's try searching without locale to see if the translationsSearchText field is
+    // searchable at all
+    Response plainSearchResponse = searchWithLocale("Órdenes", "table_search_index", null);
+    assertEquals(200, plainSearchResponse.getStatus());
+    String plainResponseBody = (String) plainSearchResponse.getEntity();
+    LOG.info("Plain search response for 'Órdenes' (no locale): {}", plainResponseBody);
 
     // Test 1: Search in Spanish for "órdenes" should find the table
     Response spanishSearchResponse = searchWithLocale("órdenes", "table_search_index", "es");
     assertEquals(200, spanishSearchResponse.getStatus());
     String responseBody = (String) spanishSearchResponse.getEntity();
     LOG.info("Spanish search response for 'órdenes': {}", responseBody);
-    
+
     // Parse JSON response to check hits
     JsonNode jsonResponse = mapper.readTree(responseBody);
     assertTrue(jsonResponse.has("hits"), "Response should have hits");
@@ -212,7 +195,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testTopicSearchWithFrenchTranslations() throws IOException {
+  void testTopicSearchWithFrenchTranslations() throws IOException, InterruptedException {
     // Create a topic with French translations
     String topicName = "user_events_" + System.currentTimeMillis();
     List<Field> schemaFields =
@@ -286,7 +269,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     topicResourceTest.patchEntity(topic.getId(), JsonUtils.readTree(patchJson), ADMIN_AUTH_HEADERS);
 
     // Wait for indexing
-    TestUtils.simulateWork(3);
+    Thread.sleep(5000); // Wait for search index to be updated
 
     // Test 1: Search in French for "événements" should find the topic
     Response frenchSearchResponse = searchWithLocale("événements", "topic_search_index", "fr");
@@ -296,7 +279,8 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
         responseBody.contains(topicName), "French search for 'événements' should find the topic");
 
     // Test 2: Search in French for "utilisateur" should find the topic
-    Response utilisateurSearchResponse = searchWithLocale("utilisateur", "topic_search_index", "fr");
+    Response utilisateurSearchResponse =
+        searchWithLocale("utilisateur", "topic_search_index", "fr");
     assertEquals(200, utilisateurSearchResponse.getStatus());
     responseBody = (String) utilisateurSearchResponse.getEntity();
     assertTrue(
@@ -312,7 +296,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testSearchWithLocaleFallback() throws IOException {
+  void testSearchWithLocaleFallback() throws IOException, InterruptedException {
     // Create a table with translations in base language (es) but search with regional variant
     // (es-MX)
     String tableName = "product_catalog_" + System.currentTimeMillis();
@@ -351,7 +335,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     tableResourceTest.patchEntity(table.getId(), JsonUtils.readTree(patchJson), ADMIN_AUTH_HEADERS);
 
     // Wait for indexing
-    TestUtils.simulateWork(3);
+    Thread.sleep(5000); // Wait for search index to be updated
 
     // Search with regional variant es-MX should fall back to es translations
     Response searchResponse = searchWithLocale("catálogo", "table_search_index", "es-MX");
@@ -363,7 +347,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testGlobalSearchWithMultipleLanguages() throws IOException {
+  void testGlobalSearchWithMultipleLanguages() throws IOException, InterruptedException {
     // Create entities with different language translations
     String timestamp = String.valueOf(System.currentTimeMillis());
 
@@ -425,7 +409,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
         topic.getId(), JsonUtils.readTree(topicTranslationPatch), ADMIN_AUTH_HEADERS);
 
     // Wait for indexing
-    TestUtils.simulateWork(5);
+    Thread.sleep(5000); // Wait for search index to be updated
 
     // Test global search with German locale
     Response germanSearchResponse = searchWithLocale("Bestandsverwaltung", "all", "de");
@@ -452,7 +436,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testSearchPerformanceWithTranslations() throws IOException {
+  void testSearchPerformanceWithTranslations() throws IOException, InterruptedException {
     // Create multiple tables with translations to test performance
     List<Table> tables = new ArrayList<>();
     String timestamp = String.valueOf(System.currentTimeMillis());
@@ -499,7 +483,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     }
 
     // Wait for all entities to be indexed
-    TestUtils.simulateWork(5);
+    Thread.sleep(5000); // Wait for search index to be updated
 
     // Measure search performance with translations
     long startTime = System.currentTimeMillis();
@@ -539,7 +523,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     WebTarget target = getResource("search/query");
     target = target.queryParam("q", URLEncoder.encode(query, StandardCharsets.UTF_8));
     target = target.queryParam("index", index);
-    
+
     try {
       String result = get(target, String.class, ADMIN_AUTH_HEADERS);
       return Response.ok(result).build();
@@ -557,7 +541,7 @@ public class MultiLanguageSearchTest extends OpenMetadataApplicationTest {
     target = target.queryParam("from", 0);
     target = target.queryParam("size", 10);
     target = target.queryParam("track_total_hits", true);
-    
+
     try {
       String result = get(target, String.class, ADMIN_AUTH_HEADERS);
       return Response.ok(result).build();

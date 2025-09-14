@@ -226,7 +226,8 @@ public class SearchResource {
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
-            .withSemanticSearch(semanticSearch);
+            .withSemanticSearch(semanticSearch)
+            .withLocale(locale);
     return searchRepository.search(request, subjectContext);
   }
 

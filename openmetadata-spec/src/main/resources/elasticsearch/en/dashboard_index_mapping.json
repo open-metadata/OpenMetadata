@@ -602,6 +602,14 @@
             "format": "strict_date_optional_time||epoch_millis"
           }
         }
+      },
+      "translations": {
+        "type": "object",
+        "properties": {},
+        "dynamic": true
+      },
+      "availableTranslationLocales": {
+        "type": "keyword"
       }
     }
   }

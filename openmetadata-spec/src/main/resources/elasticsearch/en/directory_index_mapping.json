@@ -428,6 +428,14 @@
             "path": "deleted"
           }
         ]
+      },
+      "translations": {
+        "type": "object",
+        "properties": {},
+        "dynamic": true
+      },
+      "availableTranslationLocales": {
+        "type": "keyword"
       }
     }
   }

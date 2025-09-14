@@ -72,6 +72,8 @@ import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -103,7 +105,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.MultiLanguageSearchQueryBuilder;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -419,8 +420,20 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
 
     // Apply locale-aware search if locale is specified
+    LOG.info(
+        "DEBUG: SearchRequest locale = '{}', query = '{}'",
+        request.getLocale(),
+        request.getQuery());
     if (request.getLocale() != null && !request.getLocale().equals("en")) {
-      enhanceQueryWithLocale(searchSourceBuilder, request.getQuery(), request.getLocale());
+      LOG.info("DEBUG: Calling enhanceQueryWithLocale for locale '{}'", request.getLocale());
+      enhanceQueryWithLocale(
+          searchSourceBuilder,
+          request.getQuery(),
+          request.getLocale(),
+          request.getIndex(),
+          searchSettings);
+    } else {
+      LOG.info("DEBUG: NOT enhancing query - locale is '{}' (null or 'en')", request.getLocale());
     }
 
     // Add Query Filter
@@ -3144,63 +3157,258 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   /**
-   * Enhances the search query with locale-aware field selection.
-   * Prioritizes translation fields for non-English locales.
+   * Enhances the search query to include translation fields for the specified locale.
+   * This method dynamically maps all searchable fields to their translation equivalents
+   * based on the searchSettings configuration.
    */
   private void enhanceQueryWithLocale(
-      SearchSourceBuilder searchSourceBuilder, String searchText, String locale) {
-    if (searchSourceBuilder.query() == null || nullOrEmpty(searchText)) {
+      SearchSourceBuilder searchSourceBuilder,
+      String searchText,
+      String locale,
+      String indexName,
+      SearchSettings searchSettings) {
+    if (nullOrEmpty(searchText) || nullOrEmpty(locale) || "en".equals(locale)) {
+      // For English or no locale, use the original query as-is
       return;
     }
 
-    QueryBuilder currentQuery = searchSourceBuilder.query();
+    // Get the existing query from the search source builder
+    QueryBuilder existingQuery = searchSourceBuilder.query();
+
+    // Create a bool query that will search in translation fields
     BoolQueryBuilder enhancedQuery = QueryBuilders.boolQuery();
 
-    // Build locale fallback chain (e.g., es-MX -> es)
-    List<String> localeChain = MultiLanguageSearchQueryBuilder.buildLocaleFallbackChain(locale);
+    // Get asset type configuration for this index
+    AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName, searchSettings);
 
-    // Add locale-specific queries with boosting
-    BoolQueryBuilder localeQueries = QueryBuilders.boolQuery();
-    double boostMultiplier = 2.0;
-    boolean hasNonEnglishLocale = false;
+    // Build translation queries dynamically based on searchSettings
+    BoolQueryBuilder translationQuery =
+        buildTranslationQueriesFromConfig(searchText, locale, assetConfig);
 
-    for (String searchLocale : localeChain) {
-      if ("en".equals(searchLocale)) {
-        continue; // English is handled by default fields
-      }
-      hasNonEnglishLocale = true;
-
-      // Search in locale-specific display name
-      localeQueries.should(
-          QueryBuilders.matchQuery(
-                  String.format("translations.%s.displayName", searchLocale), searchText)
-              .boost((float) (5.0 * boostMultiplier)));
-
-      // Search in locale-specific description
-      localeQueries.should(
-          QueryBuilders.matchQuery(
-                  String.format("translations.%s.description", searchLocale), searchText)
-              .boost((float) (2.0 * boostMultiplier)));
-
-      boostMultiplier *= 0.8; // Reduce boost for fallback locales
+    // Prioritize translation fields
+    if (translationQuery != null) {
+      enhancedQuery.should(translationQuery.boost(2.0f));
     }
 
-    // If we have locale-specific queries, use them as primary search with original as fallback
-    if (hasNonEnglishLocale && localeQueries.hasClauses()) {
-      // Primary search in translation fields
-      enhancedQuery.should(localeQueries);
-      // Fallback to original query with lower boost
-      enhancedQuery.should(QueryBuilders.constantScoreQuery(currentQuery).boost(0.5f));
-      // Add fuzzy search on translations text
-      enhancedQuery.should(
-          QueryBuilders.matchQuery("translationsSearchText", searchText)
-              .fuzziness(Fuzziness.AUTO)
-              .boost(0.3f));
-    } else {
-      // No locale or English locale - use original query
-      enhancedQuery.must(currentQuery);
+    // Keep original query as fallback with lower boost
+    if (existingQuery != null) {
+      enhancedQuery.should(existingQuery.boost(0.5f));
     }
 
+    // Ensure at least one match
+    enhancedQuery.minimumShouldMatch(1);
+
+    // Replace the query with the enhanced version
     searchSourceBuilder.query(enhancedQuery);
+    LOG.debug("Enhanced query for locale '{}' with dynamic translation field mapping", locale);
+  }
+
+  /**
+   * Gets the appropriate asset configuration for the given index.
+   */
+  private AssetTypeConfiguration getAssetConfiguration(
+      String indexName, SearchSettings searchSettings) {
+    String resolvedIndex = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
+
+    // For aggregate indices, build composite configuration
+    if (resolvedIndex.equals("all") || resolvedIndex.equals("dataAsset")) {
+      return buildCompositeAssetConfig(searchSettings);
+    }
+
+    // Find specific asset type configuration
+    return findAssetTypeConfig(indexName, searchSettings);
+  }
+
+  /**
+   * Finds the asset type configuration for a specific index.
+   */
+  private AssetTypeConfiguration findAssetTypeConfig(
+      String indexName, SearchSettings searchSettings) {
+    // Map index name to asset type
+    String assetTypeLower = indexName.toLowerCase();
+    final String assetType;
+    if (assetTypeLower.endsWith("_search_index")) {
+      assetType = assetTypeLower.substring(0, assetTypeLower.indexOf("_search_index"));
+    } else {
+      assetType = assetTypeLower;
+    }
+
+    // Find matching configuration
+    return searchSettings.getAssetTypeConfigurations().stream()
+        .filter(config -> config.getAssetType().equalsIgnoreCase(assetType))
+        .findFirst()
+        .orElse(createDefaultAssetConfig());
+  }
+
+  /**
+   * Creates a default asset configuration.
+   */
+  private AssetTypeConfiguration createDefaultAssetConfig() {
+    AssetTypeConfiguration config = new AssetTypeConfiguration();
+    config.setAssetType("default");
+    List<FieldBoost> defaultFields = new ArrayList<>();
+    defaultFields.add(createFieldBoost("displayName", 10.0, "standard"));
+    defaultFields.add(createFieldBoost("description", 2.0, "standard"));
+    config.setSearchFields(defaultFields);
+    return config;
+  }
+
+  /**
+   * Creates a field boost configuration.
+   */
+  private FieldBoost createFieldBoost(String field, Double boost, String matchType) {
+    FieldBoost fieldBoost = new FieldBoost();
+    fieldBoost.setField(field);
+    fieldBoost.setBoost(boost);
+    // Convert string to MatchType enum
+    if (matchType != null) {
+      try {
+        fieldBoost.setMatchType(FieldBoost.MatchType.fromValue(matchType));
+      } catch (IllegalArgumentException e) {
+        // Default to standard if invalid match type
+        fieldBoost.setMatchType(FieldBoost.MatchType.STANDARD);
+      }
+    }
+    return fieldBoost;
+  }
+
+  /**
+   * Builds composite asset configuration for aggregate indices.
+   */
+  private AssetTypeConfiguration buildCompositeAssetConfig(SearchSettings searchSettings) {
+    AssetTypeConfiguration compositeConfig = new AssetTypeConfiguration();
+    compositeConfig.setAssetType("all");
+
+    Set<FieldBoost> allFields = new HashSet<>();
+    for (AssetTypeConfiguration config : searchSettings.getAssetTypeConfigurations()) {
+      if (config.getSearchFields() != null) {
+        allFields.addAll(config.getSearchFields());
+      }
+    }
+
+    compositeConfig.setSearchFields(new ArrayList<>(allFields));
+    return compositeConfig;
+  }
+
+  /**
+   * Builds queries for translation fields dynamically based on configuration.
+   * Maps standard fields to their translation equivalents under translations.{locale}.
+   */
+  private BoolQueryBuilder buildTranslationQueriesFromConfig(
+      String searchText, String locale, AssetTypeConfiguration assetConfig) {
+    BoolQueryBuilder translationQuery = QueryBuilders.boolQuery();
+
+    if (assetConfig.getSearchFields() == null) {
+      // Fallback to searching entire locale object
+      String localeTranslationsField = String.format("translations.%s", locale);
+      translationQuery.should(
+          QueryBuilders.matchQuery(localeTranslationsField, searchText).boost(5.0f));
+      return translationQuery;
+    }
+
+    // Process each field from the configuration
+    for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+      String originalField = fieldBoost.getField();
+      Float boost = fieldBoost.getBoost() != null ? fieldBoost.getBoost().floatValue() : 1.0f;
+      String matchType =
+          fieldBoost.getMatchType() != null ? fieldBoost.getMatchType().value() : "standard";
+
+      // Map the field to its translation equivalent
+      String translationField = mapToTranslationField(originalField, locale);
+      if (translationField != null) {
+        // Add query based on match type
+        addTranslationQuery(translationQuery, translationField, searchText, boost, matchType);
+      }
+    }
+
+    // Also search in the entire locale object for nested fields
+    // This is important for column-level and other nested field searches
+    // The translations.{locale} field contains all nested translations as indexed text
+    String localeTranslationsField = String.format("translations.%s", locale);
+
+    // Use multiple query types to improve matching on nested JSON content
+
+    // 1. Standard match query for general text matching
+    translationQuery.should(
+        QueryBuilders.matchQuery(localeTranslationsField, searchText).boost(5.0f));
+
+    // 2. Match phrase prefix for partial matching (e.g., "monto" in "Monto Total")
+    translationQuery.should(
+        QueryBuilders.matchPhrasePrefixQuery(localeTranslationsField, searchText).boost(4.0f));
+
+    // 3. Fuzzy match for handling variations and nested text
+    translationQuery.should(
+        QueryBuilders.matchQuery(localeTranslationsField, searchText)
+            .fuzziness("AUTO")
+            .boost(3.0f));
+
+    // 4. Match query with AND operator for better precision
+    translationQuery.should(
+        QueryBuilders.matchQuery(localeTranslationsField, searchText)
+            .operator(Operator.AND)
+            .boost(2.0f));
+
+    return translationQuery;
+  }
+
+  /**
+   * Maps a field to its translation equivalent.
+   */
+  private String mapToTranslationField(String field, String locale) {
+    // Remove any .keyword or .ngram suffixes
+    String baseField = field.replaceAll("\\.keyword$|\\.ngram$", "");
+
+    // Map known fields to their translation paths
+    if (baseField.equals("displayName") || baseField.equals("name")) {
+      return String.format("translations.%s.displayName", locale);
+    } else if (baseField.equals("description")) {
+      return String.format("translations.%s.description", locale);
+    } else if (baseField.startsWith("columns.") || baseField.contains(".columns.")) {
+      // For column fields, we can't create specific paths due to dynamic column names
+      // Return null to skip and rely on the general locale search
+      return null;
+    } else if (baseField.startsWith("schemaFields.") || baseField.contains(".schemaFields.")) {
+      // Similar for schema fields
+      return null;
+    }
+
+    // For other fields, try direct mapping
+    if (baseField.contains("displayName") || baseField.contains("description")) {
+      // Already handled above
+      return null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Adds a translation query based on match type.
+   */
+  private void addTranslationQuery(
+      BoolQueryBuilder translationQuery,
+      String field,
+      String searchText,
+      Float boost,
+      String matchType) {
+    switch (matchType.toLowerCase()) {
+      case "exact":
+        // For exact match, add .keyword suffix if not present
+        String exactField = field.endsWith(".keyword") ? field : field + ".keyword";
+        translationQuery.should(
+            QueryBuilders.termQuery(exactField, searchText.toLowerCase()).boost(boost * 1.5f));
+        break;
+      case "phrase":
+        translationQuery.should(
+            QueryBuilders.matchPhraseQuery(field, searchText).boost(boost * 1.2f));
+        break;
+      case "fuzzy":
+        translationQuery.should(
+            QueryBuilders.matchQuery(field, searchText).fuzziness("AUTO").boost(boost * 0.8f));
+        break;
+      case "standard":
+      default:
+        translationQuery.should(QueryBuilders.matchQuery(field, searchText).boost(boost));
+        break;
+    }
   }
 }

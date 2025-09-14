@@ -477,6 +477,14 @@
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "translations": {
+        "type": "object",
+        "properties": {},
+        "dynamic": true
+      },
+      "availableTranslationLocales": {
+        "type": "keyword"
       }
     }
   }

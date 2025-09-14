@@ -324,6 +324,14 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "translations": {
+        "type": "object",
+        "properties": {},
+        "dynamic": true
+      },
+      "availableTranslationLocales": {
+        "type": "keyword"
       }
     }
   }

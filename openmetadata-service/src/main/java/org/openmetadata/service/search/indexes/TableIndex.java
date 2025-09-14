@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeSummaryMap;
@@ -14,6 +15,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenColumn;
 
+@Slf4j
 public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmbedding {
   private static final Set<String> excludeFields =
       Set.of(
@@ -86,13 +88,17 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndexWithEmb
     enrichWithSemanticData(doc, table);
 
     // Add multi-language translations for search
+    // The translations are indexed as nested objects: translations.{locale}.displayName/description
     org.openmetadata.service.search.MultiLanguageSearchIndexing.addTranslationsToDocument(
         doc, table);
-    String multiLangSearchText =
-        org.openmetadata.service.search.MultiLanguageSearchIndexing.generateMultiLanguageSearchText(
-            table);
-    if (!multiLangSearchText.isEmpty()) {
-      doc.put("translationsSearchText", multiLangSearchText);
+
+    if (table.getTranslations() != null && table.getTranslations().getTranslations() != null) {
+      LOG.info(
+          "DEBUG: Added translations to index for table {}: locales={}",
+          table.getId(),
+          table.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+    } else {
+      LOG.info("DEBUG: No translations for table {}", table.getId());
     }
 
     return doc;

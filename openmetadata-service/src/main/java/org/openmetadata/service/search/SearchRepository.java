@@ -1183,6 +1183,10 @@ public class SearchRepository {
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    LOG.info(
+        "DEBUG SearchRepository: search called with locale='{}', query='{}'",
+        request.getLocale(),
+        request.getQuery());
     return searchClient.search(request, subjectContext);
   }
 

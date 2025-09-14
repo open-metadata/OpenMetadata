@@ -74,6 +74,50 @@
     }
   },
   "mappings": {
+    "dynamic_templates": [
+      {
+        "translation_fields": {
+          "path_match": "translations.*.displayName",
+          "mapping": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              }
+            }
+          }
+        }
+      },
+      {
+        "translation_descriptions": {
+          "path_match": "translations.*.description",
+          "mapping": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          }
+        }
+      },
+      {
+        "translation_column_names": {
+          "path_match": "translations.*.columns.*.displayName",
+          "mapping": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          }
+        }
+      },
+      {
+        "translation_column_descriptions": {
+          "path_match": "translations.*.columns.*.description",
+          "mapping": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          }
+        }
+      }
+    ],
     "properties": {
       "id": {
         "type": "text",
@@ -734,6 +778,10 @@
       "changeSummary": {
         "type": "object",
         "dynamic": false
+      },
+      "translations": {
+        "type": "object",
+        "dynamic": true
       }
     }
   }
