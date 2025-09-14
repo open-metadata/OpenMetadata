@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -109,6 +109,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1);
 
@@ -116,6 +119,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2);
     });
@@ -158,6 +164,10 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
@@ -166,6 +176,10 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
