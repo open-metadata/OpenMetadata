@@ -2,7 +2,7 @@ package org.openmetadata.mcp.prompts;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.Setter; 
 
 @Getter
 @Setter
