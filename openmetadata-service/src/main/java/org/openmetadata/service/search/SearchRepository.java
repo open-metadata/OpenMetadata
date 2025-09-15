@@ -1060,7 +1060,9 @@ public class SearchRepository {
           searchClient.updateChildren(
               indexMapping.getChildAliases(clusterAlias),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
-              new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
+              new ImmutablePair<>(
+                  REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
+                  Collections.singletonMap("suiteId", testSuite.getId().toString())));
         }
       }
       case Entity.DASHBOARD_SERVICE,
@@ -1413,7 +1415,8 @@ public class SearchRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
-        new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+        new ImmutablePair<>(
+            REMOVE_ENTITY_RELATIONSHIP, Collections.singletonMap("docId", relationDocId)));
   }
 
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
