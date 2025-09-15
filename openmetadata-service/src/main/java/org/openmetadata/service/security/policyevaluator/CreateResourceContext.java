@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -124,6 +125,8 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
             case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
             case Entity.TAG -> List.of(((Tag) entity).getClassification());
             case Entity.DATA_PRODUCT -> entity.getDomains();
+              // Is this ok? I see that a team can have multiple parents
+            case Entity.TEAM -> ((Team) entity).getParents();
             default -> null;
           };
 
