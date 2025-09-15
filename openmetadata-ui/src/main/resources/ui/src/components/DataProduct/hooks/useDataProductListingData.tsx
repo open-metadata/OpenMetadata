@@ -94,7 +94,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     queryConfig,
     columns,
     renderers,
-    basePath: '/data-product',
+    basePath: '/dataProduct',
   });
 
   return listingData;

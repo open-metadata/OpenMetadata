@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-import { useCallback, useMemo } from 'react';
-import { TABLE_CARD_PAGE_SIZE } from '../../../../constants/constants';
-import { SearchIndex } from '../../../../enums/search.enum';
+import { useMemo } from 'react';
+import { useDomainListing } from '../../../../components/common/atoms/domain/compositions/useDomainListing';
+import { ListingData } from '../../../../components/common/atoms/shared/types';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { TagSource } from '../../../../generated/type/tagLabel';
-import { useListingData } from '../../../common/atoms/compositions/useListingData';
-import {
-  CellRenderer,
-  ColumnConfig,
-  ListingData,
-} from '../../../common/atoms/shared/types';
-import { COMMON_FILTER_FIELDS } from '../../../common/atoms/shared/utils/commonFilterConfigs';
-import { DomainTypeChip } from '../../../DomainListing/components/DomainTypeChip';
 
 interface UseSubdomainListingDataProps {
   parentDomainFqn: string;
@@ -32,96 +23,13 @@ interface UseSubdomainListingDataProps {
 export const useSubdomainListingData = ({
   parentDomainFqn,
 }: UseSubdomainListingDataProps): ListingData<Domain> => {
-  const filterKeys = useMemo(
-    () => ['owner', 'tags', 'glossary', 'domainType'],
-    []
-  );
-
-  const queryConfig = useMemo(
-    () => ({
-      owner: 'owners.displayName.keyword',
-      tags: 'tags.tagFQN',
-      glossary: 'tags.tagFQN',
-      domainType: 'domainType',
-    }),
-    []
-  );
-
-  const filterFields = useMemo(
-    () => [
-      COMMON_FILTER_FIELDS.owners,
-      COMMON_FILTER_FIELDS.tags,
-      COMMON_FILTER_FIELDS.glossary,
-      COMMON_FILTER_FIELDS.domainTypes,
-    ],
-    []
-  );
-
-  const getGlossaryTags = useCallback(
-    (domain: Domain) =>
-      domain.tags?.filter((tag) => tag.source === TagSource.Glossary) || [],
-    []
-  );
-
-  const getClassificationTags = useCallback(
-    (domain: Domain) =>
-      domain.tags?.filter((tag) => tag.source === TagSource.Classification) ||
-      [],
-    []
-  );
-
-  const columns: ColumnConfig<Domain>[] = useMemo(
-    () => [
-      { key: 'name', labelKey: 'label.sub-domain', render: 'entityName' },
-      { key: 'owners', labelKey: 'label.owner', render: 'owners' },
-      {
-        key: 'glossaryTerms',
-        labelKey: 'label.glossary-term-plural',
-        render: 'tags',
-        getValue: getGlossaryTags,
-      },
-      {
-        key: 'domainType',
-        labelKey: 'label.domain-type',
-        render: 'custom',
-        customRenderer: 'domainTypeChip',
-      },
-      {
-        key: 'classificationTags',
-        labelKey: 'label.tag-plural',
-        render: 'tags',
-        getValue: getClassificationTags,
-      },
-    ],
-    [getGlossaryTags, getClassificationTags]
-  );
-
-  const renderers: CellRenderer<Domain> = useMemo(
-    () => ({
-      domainTypeChip: (domain: Domain) => (
-        <DomainTypeChip domainType={domain.domainType} />
-      ),
-    }),
-    []
-  );
-
-  // Create base filter for subdomains - opposite of domain listing
   const baseFilter = useMemo(
     () => `(parent.fullyQualifiedName:"${parentDomainFqn}")`,
     [parentDomainFqn]
   );
 
-  const listingData = useListingData<Domain>({
-    searchIndex: SearchIndex.DOMAIN,
+  return useDomainListing({
     baseFilter,
-    pageSize: TABLE_CARD_PAGE_SIZE,
-    filterKeys,
-    filterFields,
-    queryConfig,
-    columns,
-    renderers,
-    basePath: '/domain',
+    nameLabelKey: 'label.sub-domain',
   });
-
-  return listingData;
 };
