@@ -1179,6 +1179,7 @@
     "pipeline-state": "Estado do Pipeline",
     "pipeline-type": "Tipo de Pipeline",
     "platform": "Plataforma",
+    "platform-service-client-unavailable": "Cliente do Serviço de Plataforma Indisponível",
     "platform-type-lineage": "{{platformType}} Linhagem",
     "play": "Reproduzir",
     "please-enter-value": "Por favor, insira o valor de {{name}}",

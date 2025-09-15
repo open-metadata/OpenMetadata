@@ -1179,6 +1179,7 @@
     "pipeline-state": "สถานะท่อ",
     "pipeline-type": "ประเภทท่อ",
     "platform": "แพลตฟอร์ม",
+    "platform-service-client-unavailable": "ไคลเอนต์ของบริการแพลตฟอร์มไม่พร้อมใช้งาน",
     "platform-type-lineage": "{{platformType}} ลำดับชั้น",
     "play": "เล่น",
     "please-enter-value": "กรุณากรอกค่าของ {{name}}",

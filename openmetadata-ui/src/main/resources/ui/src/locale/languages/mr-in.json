@@ -1179,6 +1179,7 @@
     "pipeline-state": "पाइपलाइन स्थिती",
     "pipeline-type": "पाइपलाइन प्रकार",
     "platform": "प्लॅटफॉर्म",
+    "platform-service-client-unavailable": "प्लॅटफॉर्म सेवा क्लायंट उपलब्ध नाही",
     "platform-type-lineage": "{{platformType}} वंशावळ",
     "play": "प्ले",
     "please-enter-value": "कृपया {{name}} मूल्य प्रविष्ट करा",

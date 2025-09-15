@@ -1179,6 +1179,7 @@
     "pipeline-state": "パイプライン状態",
     "pipeline-type": "パイプラインタイプ",
     "platform": "プラットフォーム",
+    "platform-service-client-unavailable": "プラットフォームサービスクライアントが利用できません",
     "platform-type-lineage": "{{platformType}}リネージ",
     "play": "再生",
     "please-enter-value": "{{name}} の値を入力してください",

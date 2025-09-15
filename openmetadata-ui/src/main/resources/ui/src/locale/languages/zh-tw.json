@@ -1179,6 +1179,7 @@
     "pipeline-state": "管線狀態",
     "pipeline-type": "Pipeline Type",
     "platform": "平台",
+    "platform-service-client-unavailable": "平台服務客戶端無法使用",
     "platform-type-lineage": "{{platformType}} 血緣",
     "play": "播放",
     "please-enter-value": "請輸入 {{name}} 值",

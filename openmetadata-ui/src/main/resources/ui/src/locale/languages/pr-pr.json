@@ -1179,6 +1179,7 @@
     "pipeline-state": "وضعیت خط لوله",
     "pipeline-type": "نوع خط لوله",
     "platform": "پلتفرم",
+    "platform-service-client-unavailable": "پلیٹ فارم سروس کلائنٹ دستیاب نہیں",
     "platform-type-lineage": "{{platformType}} شجره داده",
     "play": "پخش",
     "please-enter-value": "لطفاً مقدار {{name}} را وارد کنید",
