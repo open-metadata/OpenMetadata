@@ -730,8 +730,7 @@ public class TableRepository extends EntityRepository<Table> {
       String fqn,
       Long startTs,
       Long endTs,
-      Authorizer authorizer,
-      SecurityContext securityContext) {
+      Boolean authorizePII) {
     List<EntityProfile> entityProfiles;
     List<ColumnProfile> columnProfiles;
     entityProfiles =

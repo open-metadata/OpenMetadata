@@ -32,7 +32,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableProfile;
-import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityProfileRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
