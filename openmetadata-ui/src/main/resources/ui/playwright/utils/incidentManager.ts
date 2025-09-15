@@ -67,11 +67,22 @@ export const assignIncident = async (data: {
   await page.click('[data-testid="test-case-resolution-status-type"]');
   await page.click('[title="Assigned"]');
   await page.waitForSelector('#testCaseResolutionStatusDetails_assignee');
+  await page.click('#testCaseResolutionStatusDetails_assignee');
+  await page
+    .locator(
+      '.ant-select-dropdown #testCaseResolutionStatusDetails_assignee_list + .rc-virtual-list'
+    )
+    .waitFor({ state: 'visible' });
+  await page.waitForLoadState('networkidle');
+
+  const searchUserResponse = page.waitForResponse(
+    'api/v1/search/query?q=*&index=user_search_index*'
+  );
   await page.fill(
     '#testCaseResolutionStatusDetails_assignee',
     user.displayName
   );
-  await page.waitForResponse('/api/v1/search/query?q=*');
+  await searchUserResponse;
   await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
   const updateIncident = page.waitForResponse(
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
