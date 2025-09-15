@@ -109,6 +109,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1);
 
@@ -116,6 +119,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2);
     });
@@ -159,6 +165,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
@@ -168,6 +177,9 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
