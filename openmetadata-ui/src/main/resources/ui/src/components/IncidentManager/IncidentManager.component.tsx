@@ -21,7 +21,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_BASE,
+} from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -38,6 +41,7 @@ import {
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -46,7 +50,7 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
-  getListTestCaseIncidentStatus,
+  getListTestCaseIncidentStatusFromSearch,
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
@@ -90,6 +94,7 @@ const IncidentManager = ({
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
   const navigate = useNavigate();
+  const { activeDomain } = useDomainStore();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -152,11 +157,13 @@ const IncidentManager = ({
     async (params: TestCaseIncidentStatusParams) => {
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
-        const { data, paging } = await getListTestCaseIncidentStatus({
+        const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
           limit: pageSize,
           latest: true,
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
+          domain:
+            activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
@@ -187,7 +194,7 @@ const IncidentManager = ({
         setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [pageSize, setTestCaseListData]
+    [pageSize, setTestCaseListData, activeDomain]
   );
 
   const fetchTestCasePermissions = async () => {
@@ -232,7 +239,9 @@ const IncidentManager = ({
       fetchTestCaseIncidents({
         ...filters,
         [cursorType]: paging?.[cursorType],
-        offset: paging?.[cursorType],
+        offset: paging?.[cursorType]
+          ? parseInt(paging?.[cursorType] ?? '', 10)
+          : undefined,
       });
     }
     handlePageChange(currentPage);
@@ -375,7 +384,7 @@ const IncidentManager = ({
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [commonTestCasePermission, pageSize, filters]);
+  }, [commonTestCasePermission, pageSize, filters, activeDomain]);
 
   useEffect(() => {
     if (testCaseListData.data.length > 0) {
