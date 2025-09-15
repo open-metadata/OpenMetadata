@@ -110,6 +110,7 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
     case FieldTypes.PASSWORD:
       fieldElement = (
         <Input.Password

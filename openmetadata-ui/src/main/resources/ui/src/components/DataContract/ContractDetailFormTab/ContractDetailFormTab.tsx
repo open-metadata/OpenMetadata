@@ -102,11 +102,7 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button className="contract-prev-button" type="default">
-          {t('label.contract-detail-plural')}
-        </Button>
-
+      <div className="d-flex justify-end  m-t-md">
         <Button
           className="contract-next-button"
           htmlType="submit"
