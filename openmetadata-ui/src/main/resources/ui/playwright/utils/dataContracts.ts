@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { DataContractSecuritySlaData } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
 import { getApiContext } from './common';
 import { sidebarClick } from './sidebar';
@@ -109,4 +110,108 @@ export const waitForDataContractExecution = async (
     .toEqual(
       expect.stringMatching(/(Aborted|Success|Failed|PartialSuccess|Queued)/)
     );
+};
+
+export const saveSecurityAndSLADetails = async (
+  page: Page,
+  data: DataContractSecuritySlaData
+) => {
+  await page.getByRole('tab', { name: 'Security' }).click();
+
+  await page.getByTestId('access-policy-input').fill(data.accessPolicyName);
+  await page
+    .getByTestId('data-classification-input')
+    .fill(data.dataClassificationName);
+
+  await page.getByRole('tab', { name: 'SLA' }).click();
+
+  await page
+    .getByTestId('refresh-frequency-interval-input')
+    .fill(data.refreshFrequencyIntervalInput);
+  await page
+    .getByTestId('max-latency-value-input')
+    .fill(data.maxLatencyValueInput);
+  await page
+    .getByTestId('retention-period-input')
+    .fill(data.retentionPeriodInput);
+
+  await page.locator('.availability-time-picker').click();
+
+  await page.waitForSelector('.ant-picker-dropdown', {
+    state: 'attached',
+  });
+
+  await page.getByTestId('availability').fill(data.availability);
+
+  await page.locator('.ant-picker-ok .ant-btn').click();
+
+  await page.getByTestId('refresh-frequency-unit-select').click();
+  await page
+    .locator(
+      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+    )
+    .click();
+
+  await page.getByTestId('max-latency-unit-select').click();
+  await page
+    .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
+    .click();
+
+  await page.getByTestId('retention-unit-select').click();
+  await page
+    .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+    .click();
+
+  await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
+
+  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
+  await page.getByTestId('save-contract-btn').click();
+  await saveContractResponse;
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
+
+export const validateSecurityAndSLADetails = async (
+  page: Page,
+  data: DataContractSecuritySlaData
+) => {
+  await page.getByRole('tab', { name: 'Security' }).click();
+
+  await expect(page.getByTestId('access-policy-input')).toHaveValue(
+    data.accessPolicyName
+  );
+  await expect(page.getByTestId('data-classification-input')).toHaveValue(
+    data.dataClassificationName
+  );
+
+  await page.getByRole('tab', { name: 'SLA' }).click();
+
+  await expect(
+    page.getByTestId('refresh-frequency-interval-input')
+  ).toHaveValue(data.refreshFrequencyIntervalInput);
+
+  await expect(page.getByTestId('max-latency-value-input')).toHaveValue(
+    data.maxLatencyValueInput
+  );
+
+  await expect(page.getByTestId('retention-period-input')).toHaveValue(
+    data.retentionPeriodInput
+  );
+
+  await expect(page.getByTestId('availability')).toHaveValue(data.availability);
+
+  await expect(page.getByTestId('refresh-frequency-unit-select')).toContainText(
+    data.refreshFrequencyUnitSelect
+  );
+
+  await expect(page.getByTestId('max-latency-unit-select')).toContainText(
+    data.maxLatencyUnitSelect
+  );
+
+  await expect(page.getByTestId('retention-unit-select')).toContainText(
+    data.retentionUnitSelect
+  );
 };
