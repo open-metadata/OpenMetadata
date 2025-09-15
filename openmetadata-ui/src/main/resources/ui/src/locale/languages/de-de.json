@@ -2447,6 +2447,7 @@
     "team-moved-success": "Team erfolgreich verschoben!",
     "team-no-asset": "Ihr Team hat keine Vermögenswerte.",
     "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
+    "test-case-name-validation": "Der Name darf keine doppelten Doppelpunkte (::), Anführungszeichen (\") oder Größer-als-Symbole (>) enthalten.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
     "test-connection-cannot-be-triggered": "Die Testverbindung kann nicht ausgelöst werden.",
     "test-connection-taking-too-long": {
