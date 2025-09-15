@@ -56,6 +56,7 @@ import {
   selectSubDomain,
   setupAssetsForDomain,
   setupDomainOwnershipTest,
+  setupNoDomainRule,
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
@@ -1130,5 +1131,91 @@ test.describe('Data Consumer Domain Ownership', () => {
     );
 
     await consumerAfterAction();
+  });
+});
+
+test.describe('Domain Access with noDomain() Rule', () => {
+  test.slow(true);
+
+  let testResources: {
+    testUser: UserClass;
+    mainDomain: Domain;
+    domainTable: TableClass;
+    noDomainTable: TableClass;
+    domainPolicy: PolicyClass;
+    domainRole: RolesClass;
+    domainTeam: TeamClass;
+    cleanup: (cleanupContext: APIRequestContext) => Promise<void>;
+  };
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    testResources = await setupNoDomainRule(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testResources.cleanup(apiContext);
+    await afterAction();
+  });
+
+  test('User with noDomain() rule cannot access tables without domain', async ({
+    browser,
+  }) => {
+    const { page: userPage, afterAction: userAfterAction } =
+      await performUserLogin(browser, testResources.testUser);
+
+    await test.step(
+      'Verify user can access domain-assigned table',
+      async () => {
+        const domainTableFqn =
+          testResources.domainTable.entityResponseData.fullyQualifiedName;
+        await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify no permission error
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
+
+        // Verify table details are visible
+        await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Verify user gets permission error for table without domain',
+      async () => {
+        const noDomainTableFqn =
+          testResources.noDomainTable.entityResponseData.fullyQualifiedName;
+        await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify permission error is shown
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).toContainText(
+          "You don't have necessary permissions. Please check with the admin to get the View Table Details permission."
+        );
+
+        // Verify table details are not visible
+        await expect(
+          userPage.getByTestId('entity-header-title')
+        ).not.toBeVisible();
+      }
+    );
+
+    await userAfterAction();
   });
 });
