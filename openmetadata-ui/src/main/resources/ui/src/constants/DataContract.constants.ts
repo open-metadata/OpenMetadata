@@ -12,6 +12,7 @@
  */
 
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
 export enum DataContractMode {
   YAML,
@@ -28,7 +29,9 @@ export enum EDataContractTab {
   CONTRACT_DETAIL,
   SCHEMA,
   SEMANTICS,
+  SECURITY,
   QUALITY,
+  SLA,
 }
 
 export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
@@ -41,3 +44,10 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
   EntityReferenceFields.DISPLAY_NAME,
   EntityReferenceFields.DELETED,
 ];
+
+export const SEMANTIC_OPERATORS = [
+  ...(jsonLogicSearchClassBase.defaultSelectOperators ?? []),
+  'array_contains',
+];
+
+export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';

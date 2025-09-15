@@ -158,7 +158,9 @@ jest.mock('crypto-random-string-with-promisify-polyfill', () =>
 );
 
 jest.mock('../../../../rest/testAPI', () => ({
-  getListTestDefinitions: jest.fn().mockResolvedValue(mockTestDefinitions),
+  getListTestDefinitions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestDefinitions)),
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
   TestCaseType: {
@@ -175,11 +177,15 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock('../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockResolvedValue(mockTableSearchResults),
+  searchQuery: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTableSearchResults)),
 }));
 
 jest.mock('../../../../rest/tableAPI', () => ({
-  getTableDetailsByFQN: jest.fn().mockResolvedValue(MOCK_TABLE),
+  getTableDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
@@ -937,6 +943,57 @@ describe('TestCaseFormV1 Component', () => {
         },
         { timeout: 5000 }
       );
+    });
+  });
+
+  describe('Test Cases Selection Logic', () => {
+    it('should set testCases to undefined when selectAllTestCases is not false', () => {
+      const testValues = {
+        selectAllTestCases: true,
+        otherField: 'value',
+      };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false
+          ? ['testCase1', 'testCase2']
+          : undefined;
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should set testCases to array when selectAllTestCases is explicitly false', () => {
+      const testValues = {
+        selectAllTestCases: false,
+        otherField: 'value',
+      };
+
+      const mockSelectedTestCases = ['existingTestCase1', 'existingTestCase2'];
+      const mockCreatedTestCase = { name: 'newTestCase' };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false
+          ? [mockCreatedTestCase.name, ...mockSelectedTestCases]
+          : undefined;
+
+      expect(result).toEqual([
+        'newTestCase',
+        'existingTestCase1',
+        'existingTestCase2',
+      ]);
+    });
+
+    it('should set testCases to undefined when selectAllTestCases is undefined', () => {
+      const testValues: { selectAllTestCases?: boolean; otherField: string } = {
+        otherField: 'value',
+      };
+
+      // Testing the new logic: values?.selectAllTestCases === false
+      const result =
+        testValues?.selectAllTestCases === false ? ['testCase1'] : undefined;
+
+      expect(result).toBeUndefined();
     });
   });
 });

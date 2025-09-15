@@ -67,9 +67,6 @@ describe('ContractDetailFormTab', () => {
         <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
       );
 
-      expect(
-        screen.getByRole('button', { name: 'Contract Details' })
-      ).toBeInTheDocument();
       expect(screen.getByText('Enter contract details')).toBeInTheDocument();
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
@@ -148,9 +145,6 @@ describe('ContractDetailFormTab', () => {
         <ContractDetailFormTab onChange={mockOnChange} onNext={mockOnNext} />
       );
 
-      expect(
-        screen.getByRole('button', { name: 'Contract Details' })
-      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
     });
 
