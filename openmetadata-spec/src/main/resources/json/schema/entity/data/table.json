@@ -654,6 +654,34 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "cardinalityDistribution": {
+          "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
+          "type": "object",
+          "properties": {
+            "categories": {
+              "description": "List of category names including 'Others'.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "counts": {
+              "description": "List of counts corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "percentages": {
+              "description": "List of percentages corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
@@ -940,6 +968,11 @@
           "description": "Resource Type of the model.",
           "type": "string"
         },
+        "dbtSourceProject": {
+          "description": "The DBT project name that served as the source for ingesting this table's metadata and lineage information.",
+          "type": "string",
+          "default": null
+        },
         "description": {
           "description": "Description of the Table from the model.",
           "$ref": "../../type/basic.json#/definitions/markdown"
@@ -1210,6 +1243,11 @@
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Table.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": [

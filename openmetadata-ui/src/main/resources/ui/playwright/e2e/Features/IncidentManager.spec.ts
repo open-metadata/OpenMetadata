@@ -135,8 +135,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await incidentDetails;
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await page.waitForSelector('.ant-skeleton-content', {
+        state: 'detached',
+      });
+
+      await page.locator('role=button[name="down"]').scrollIntoViewIfNeeded();
+      await page.waitForSelector('role=button[name="down"]', {
+        state: 'visible',
+      });
 
       await page.getByRole('button', { name: 'down' }).click();
+      // there is no API call to wait for here, so adding a small timeout
+      await page.waitForTimeout(1000);
       await page.waitForSelector('role=menuitem[name="Reassign"]', {
         state: 'visible',
       });
