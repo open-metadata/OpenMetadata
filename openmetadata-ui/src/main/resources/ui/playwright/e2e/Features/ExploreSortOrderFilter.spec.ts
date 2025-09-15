@@ -95,25 +95,14 @@ test.describe('Explore Sort Order Filter', () => {
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
+      await page.waitForLoadState('networkidle');
       await verifyEntitiesAreSorted(page);
 
-      await page.getByTestId('search-dropdown-Data Assets').click();
+      const clearFilters = page.getByTestId('clear-filters');
 
-      await page.waitForSelector(
-        '[data-testid="drop-down-menu"] [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      expect(clearFilters).toBeVisible();
 
-      await page.waitForSelector(
-        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
-        {
-          state: 'visible',
-        }
-      );
-      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
-      await page.getByTestId('update-btn').click();
+      await clearFilters.click();
 
       await afterAction();
     });
