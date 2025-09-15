@@ -2448,6 +2448,7 @@
     "team-moved-success": "團隊移動成功！",
     "team-no-asset": "您的團隊沒有任何資產。",
     "test-case-insight-description": "根據設定的測試驗證，存取您資料集的健康狀況集中檢視。",
+    "test-case-name-validation": "名稱不能包含雙冒號(::)、引號(\")或大於符號(>)。",
     "test-case-schedule-description": "可以排程資料品質測試以所需的頻率執行。時區為 UTC。",
     "test-connection-cannot-be-triggered": "無法觸發測試連線。",
     "test-connection-taking-too-long": {
