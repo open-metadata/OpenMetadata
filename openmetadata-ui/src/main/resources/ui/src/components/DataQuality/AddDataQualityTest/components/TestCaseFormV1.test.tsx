@@ -152,7 +152,9 @@ jest.mock('crypto-random-string-with-promisify-polyfill', () =>
 );
 
 jest.mock('../../../../rest/testAPI', () => ({
-  getListTestDefinitions: jest.fn().mockResolvedValue(mockTestDefinitions),
+  getListTestDefinitions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestDefinitions)),
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
   getListTestCaseBySearch: jest.fn().mockResolvedValue({ data: [] }),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
@@ -173,11 +175,15 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock('../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockResolvedValue(mockTableSearchResults),
+  searchQuery: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTableSearchResults)),
 }));
 
 jest.mock('../../../../rest/tableAPI', () => ({
-  getTableDetailsByFQN: jest.fn().mockResolvedValue(MOCK_TABLE),
+  getTableDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
