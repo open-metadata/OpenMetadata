@@ -1192,6 +1192,7 @@
     "pipeline-state": "파이프라인 상태",
     "pipeline-type": "파이프라인 유형",
     "platform": "플랫폼",
+    "platform-service-client-unavailable": "플랫폼 서비스 클라이언트를 사용할 수 없음",
     "platform-type-lineage": "{{platformType}} 계보",
     "play": "재생",
     "please-enter-value": "{{name}} 값을 입력해주세요",

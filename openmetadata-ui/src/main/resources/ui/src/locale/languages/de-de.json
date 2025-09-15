@@ -1192,6 +1192,7 @@
     "pipeline-state": "Pipeline-Status",
     "pipeline-type": "Pipeline Typ",
     "platform": "Plattform",
+    "platform-service-client-unavailable": "Plattform-Service-Client nicht verfügbar",
     "platform-type-lineage": "{{platformType}} Abstammung",
     "play": "Abspielen",
     "please-enter-value": "Bitte einen Wert für {{name}} eingeben",

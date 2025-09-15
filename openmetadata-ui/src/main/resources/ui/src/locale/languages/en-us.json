@@ -1192,6 +1192,7 @@
     "pipeline-state": "Pipeline State",
     "pipeline-type": "Pipeline Type",
     "platform": "Platform",
+    "platform-service-client-unavailable": "Platform Service Client Unavailable",
     "platform-type-lineage": "{{platformType}} Lineage",
     "play": "Play",
     "please-enter-value": "Please enter {{name}} value",
