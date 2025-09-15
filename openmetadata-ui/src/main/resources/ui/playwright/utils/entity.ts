@@ -38,6 +38,29 @@ import {
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
 
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
+};
+
 export const waitForAllLoadersToDisappear = async (
   page: Page,
   dataTestId = 'loader'
@@ -88,7 +111,9 @@ export const visitEntityPage = async (data: {
   }
 
   const waitForSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*index=dataAsset*'
+    `/api/v1/search/query?q=*${getEncodedFqn(
+      escapeESReservedCharacters(searchTerm)
+    )}*index=dataAsset*`
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
@@ -1834,29 +1859,6 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
       .filter({ hasText: serviceType })
       .first()
   ).toHaveClass(/ant-tree-node-selected/);
-};
-
-export const escapeESReservedCharacters = (text?: string) => {
-  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
-  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
-
-  const getReplacedChar = (char: string) => {
-    return ES_RESERVED_CHARACTERS[char] ?? char;
-  };
-
-  return text && reHasUnescapedHtml.test(text)
-    ? text.replace(reUnescapedHtml, getReplacedChar)
-    : text ?? '';
-};
-
-export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
-  let uri = encodeURIComponent(fqn);
-
-  if (spaceAsPlus) {
-    uri = uri.replaceAll('%20', '+');
-  }
-
-  return uri;
 };
 
 export const getEntityDisplayName = (entity?: {
