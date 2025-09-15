@@ -3791,9 +3791,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             });
 
     queryParams.clear();
-    Long ts = TestUtils.dateToTimestamp("2021-09-01");
+    Long ts = TestUtils.dateToTimestamp("2021-09-09");
     queryParams.put("startTimestamp", ts.toString());
-    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-01").toString());
+    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-09").toString());
     queryParams.put("latest", "true");
     queryParams.put("testSuiteId", testCase.getTestSuite().getId().toString());
 
