@@ -727,10 +727,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<ColumnProfile> getColumnProfiles(
-      String fqn,
-      Long startTs,
-      Long endTs,
-      Boolean authorizePII) {
+      String fqn, Long startTs, Long endTs, Boolean authorizePII) {
     List<EntityProfile> entityProfiles;
     List<ColumnProfile> columnProfiles;
     entityProfiles =

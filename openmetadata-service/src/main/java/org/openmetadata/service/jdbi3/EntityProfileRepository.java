@@ -17,12 +17,12 @@ import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.entityProfiles.EntityProfileMapper;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityProfile> {
   public static final String COLLECTION_PATH = "v1/entity/profiles";
