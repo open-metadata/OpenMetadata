@@ -72,10 +72,12 @@ import {
 } from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
+  getBotsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -351,6 +353,12 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+
+      case EntityType.BOT:
+        return getBotsPath(fullyQualifiedName);
+
+      case EntityType.KPI:
+        return getKpiPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
