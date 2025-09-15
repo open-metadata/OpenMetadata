@@ -68,6 +68,21 @@ test.describe('Add TestCase New Flow', () => {
 
     await expect(page.locator('[data-id="name"]')).toBeVisible();
 
+    // test case name restriction for `:: " >` character
+    const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
+    for (const name of invalidTestCaseNames) {
+      await page.getByTestId('test-case-name').fill(name);
+      await page.waitForSelector(`#testCaseFormV1_testName_help`, {
+        state: 'visible',
+      });
+
+      await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
+        'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+      );
+
+      await page.getByTestId('test-case-name').clear();
+    }
+
     await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
     await page.click('[id="root\\/testType"]');
     await page.waitForSelector(`[data-id="testType"]`, { state: 'visible' });
