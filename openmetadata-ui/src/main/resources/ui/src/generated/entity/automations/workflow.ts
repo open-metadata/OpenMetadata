@@ -534,6 +534,10 @@ export enum VerifySSL {
  * Test Service Connection to test user provided configuration is valid or not.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Request
+ *
+ * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -574,6 +578,18 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
+    /**
+     * Spark Engine Configuration.
+     */
+    sparkEngine?: SparkEngineConfiguration;
 }
 
 /**
@@ -4450,7 +4466,7 @@ export interface Operation {
     /**
      * Type of operation to perform
      */
-    type: Type;
+    type: OperationType;
 }
 
 /**
@@ -4580,7 +4596,7 @@ export interface Style {
 /**
  * Type of operation to perform
  */
-export enum Type {
+export enum OperationType {
     UpdateDescription = "UPDATE_DESCRIPTION",
     UpdateOwner = "UPDATE_OWNER",
     UpdateTags = "UPDATE_TAGS",
@@ -4606,6 +4622,36 @@ export enum ServiceType {
 }
 
 /**
+ * Spark Engine Configuration.
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface SparkEngineConfiguration {
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote: string;
+    type:   SparkEngineType;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+export enum SparkEngineType {
+    Spark = "Spark",
+}
+
+/**
  * Pipeline type
  *
  * Reverse Ingestion Config Pipeline type
@@ -4621,6 +4667,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Response
  */
 export interface TestConnectionResult {
     /**
@@ -4629,6 +4677,8 @@ export interface TestConnectionResult {
     lastUpdatedAt?: number;
     /**
      * Test Connection Result computation status.
+     *
+     * Status of the query execution
      */
     status?: StatusType;
     /**
@@ -4641,8 +4691,10 @@ export interface TestConnectionResult {
     message?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * Results of the query execution
      */
-    results?: ReverseIngestionOperationResult[];
+    results?: ReverseIngestionOperationResult[] | TableData;
     /**
      * The id of the service to be modified
      */
@@ -4652,6 +4704,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
+     * Detailed error log in case of failure
+     */
+    errorLog?: string;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4671,9 +4731,29 @@ export interface ReverseIngestionOperationResult {
 }
 
 /**
+ * Results of the query execution
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Test Connection Result computation status.
  *
  * Enum defining possible Test Connection Result status
+ *
+ * Status of the query execution
+ *
+ * Enum defining possible Query Runner status
  */
 export enum StatusType {
     Failed = "Failed",
@@ -4727,6 +4807,8 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
+    TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",
 }

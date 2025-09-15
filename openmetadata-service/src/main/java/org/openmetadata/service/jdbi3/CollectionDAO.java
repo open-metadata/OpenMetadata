@@ -1464,7 +1464,7 @@ public interface CollectionDAO {
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<CollectionDAO.EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatch(
         @BindList("toIds") List<String> toIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType);
@@ -3069,6 +3069,26 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = POSTGRES)
+    List<String> getDistinctCustomUnitsOfMeasurement();
   }
 
   interface MlModelDAO extends EntityDAO<MlModel> {
@@ -6194,6 +6214,33 @@ public interface CollectionDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
+    }
+
+    @SqlQuery(
+        "SELECT json FROM <table> <cond> "
+            + "AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listEntityProfileAtTimestamp(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    default List<String> listEntityProfileData(ListFilter filter, Long startTs, Long endTs) {
+      return listEntityProfileAtTimestamp(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), startTs, endTs);
+    }
+
+    @SqlUpdate("DELETE FROM <table> <cond> AND timestamp = :timestamp")
+    void deleteEntityProfileData(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("timestamp") Long timestamp);
+
+    default void deleteEntityProfileData(ListFilter filter, Long timestamp) {
+      deleteEntityProfileData(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
   }
 

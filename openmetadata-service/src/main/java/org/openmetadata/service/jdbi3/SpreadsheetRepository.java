@@ -145,11 +145,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     if (nullOrEmpty(spreadsheet.getDomains())) {
       if (spreadsheet.getDirectory() != null) {
         Directory directory =
-            Entity.getEntity(spreadsheet.getDirectory(), "domains,service", Include.NON_DELETED);
+            Entity.getEntity(spreadsheet.getDirectory(), "domains,service", Include.ALL);
         inheritDomains(spreadsheet, fields, directory);
       } else {
         DriveService service =
-            Entity.getEntity(spreadsheet.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+            Entity.getEntity(spreadsheet.getService(), FIELD_DOMAINS, Include.ALL);
         inheritDomains(spreadsheet, fields, service);
       }
     }

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import {
   ContractAllResult,
   ContractResultFilter,
@@ -47,7 +49,7 @@ export const listContracts = async (params: ListContractsParams) => {
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/data-contracts/${fqn}`
+    `/dataContracts/name/${fqn}`
   );
 
   return response.data;
@@ -62,11 +64,11 @@ export const createContract = async (contract: CreateDataContract) => {
   return response.data;
 };
 
-export const updateContract = async (contract: CreateDataContract) => {
-  const response = await APIClient.put<CreateDataContract>(
-    `/dataContracts`,
-    contract
-  );
+export const updateContract = async (id: string, data: Operation[]) => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<CreateDataContract>
+  >(`/dataContracts/${id}`, data);
 
   return response.data;
 };
