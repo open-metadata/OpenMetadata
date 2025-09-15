@@ -12,8 +12,9 @@
  */
 
 import { Button, Card, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { get } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
@@ -25,6 +26,16 @@ import {
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -32,6 +43,7 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -60,12 +72,19 @@ export default function EntitySummaryPanel({
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
+  const [entityData, setEntityData] = useState<any>(null);
+  const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
+  const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
 
   const id = useMemo(() => {
     setIsPermissionLoading(true);
 
     return entityDetails?.details?.id ?? '';
   }, [entityDetails?.details?.id]);
+
+  const entityType = useMemo(() => {
+    return get(entityDetails, 'details.entityType') as EntityType;
+  }, [entityDetails]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
@@ -81,11 +100,106 @@ export default function EntitySummaryPanel({
     }
   };
 
+  const fetchEntityData = useCallback(async () => {
+    if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
+      return;
+    }
+
+    setIsEntityDataLoading(true);
+    try {
+      const fqn = entityDetails.details.fullyQualifiedName;
+      let entityPromise: Promise<any> | null = null;
+
+      switch (entityType) {
+        case EntityType.TABLE:
+          entityPromise = getTableDetailsByFQN(fqn, {
+            fields: 'extension',
+          });
+
+          break;
+
+        case EntityType.TOPIC:
+          entityPromise = getTopicByFqn(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.DASHBOARD:
+          entityPromise = getDashboardByFqn(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.PIPELINE:
+          entityPromise = getPipelineByFqn(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.MLMODEL:
+          entityPromise = getMlModelByFQN(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.DATABASE:
+          entityPromise = getDatabaseDetailsByFQN(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.DASHBOARD_DATA_MODEL:
+          entityPromise = getDataModelByFqn(fqn, { fields: 'extension' });
+
+          break;
+
+        case EntityType.SEARCH_INDEX:
+          entityPromise = getSearchIndexDetailsByFQN(fqn);
+
+          break;
+
+        case EntityType.STORED_PROCEDURE:
+          entityPromise = getStoredProceduresByFqn(fqn, {
+            fields: 'extension',
+          });
+
+          break;
+
+        default:
+          break;
+      }
+
+      if (entityPromise) {
+        const data = await entityPromise;
+        setEntityData(data);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEntityDataLoading(false);
+    }
+  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+
+  const fetchEntityTypeDetail = useCallback(async () => {
+    if (!entityType) {
+      return;
+    }
+
+    try {
+      const typeDetail = await getTypeByFQN(entityType);
+      setEntityTypeDetail(typeDetail);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [entityType]);
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
+      fetchEntityData();
+      fetchEntityTypeDetail();
+    }
+  }, [activeTab, fetchEntityData, fetchEntityTypeDetail]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -185,9 +299,6 @@ export default function EntitySummaryPanel({
     setActiveTab(tab);
   };
 
-  const entityType = (get(entityDetails, 'details.entityType') ??
-    EntityType.TABLE) as EntityType;
-
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
@@ -230,14 +341,140 @@ export default function EntitySummaryPanel({
             />
           </div>
         );
-      case EntityRightPanelTab.CUSTOM_PROPERTIES:
+      case EntityRightPanelTab.CUSTOM_PROPERTIES: {
+        if (isEntityDataLoading) {
+          return (
+            <div className="entity-summary-panel-tab-content">
+              <div className="p-lg">
+                <Loader size="default" />
+              </div>
+            </div>
+          );
+        }
+
+        const customProperties = entityTypeDetail?.customProperties || [];
+        const extensionData = entityData?.extension || {};
+
+        if (customProperties.length === 0) {
+          return (
+            <div className="entity-summary-panel-tab-content">
+              <div className="p-lg">
+                <Typography.Text className="text-grey-muted">
+                  {t('message.no-custom-properties-defined')}
+                </Typography.Text>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="entity-summary-panel-tab-content">
-            <div className="text-center text-grey-muted p-lg">
-              {t('message.custom-properties-content-placeholder')}
+            <div className="p-x-md">
+              <div className="custom-properties-list">
+                {customProperties.slice(0, 5).map((property: any) => {
+                  const value = extensionData[property.name];
+
+                  const formatValue = (val: any) => {
+                    if (!val) {
+                      return t('label.no-data-found');
+                    }
+
+                    if (typeof val === 'object') {
+                      if (Array.isArray(val)) {
+                        return val.join(', ');
+                      }
+                      if (val.name || val.displayName) {
+                        return val.name || val.displayName;
+                      }
+                      if (val.value) {
+                        return val.value;
+                      }
+                      // Handle table-type custom properties
+                      if (val.rows && val.columns) {
+                        return (
+                          <div className="custom-property-table">
+                            <table className="ant-table ant-table-small">
+                              <colgroup>
+                                {val.columns.map((_: string, index: number) => (
+                                  <col
+                                    key={index}
+                                    style={{ minWidth: '80px' }}
+                                  />
+                                ))}
+                              </colgroup>
+                              <thead>
+                                <tr>
+                                  {val.columns.map(
+                                    (column: string, index: number) => (
+                                      <th
+                                        className="ant-table-cell"
+                                        key={index}
+                                      >
+                                        {column}
+                                      </th>
+                                    )
+                                  )}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {val.rows.map((row: any, rowIndex: number) => (
+                                  <tr key={rowIndex}>
+                                    {val.columns.map(
+                                      (column: string, colIndex: number) => (
+                                        <td
+                                          className="ant-table-cell"
+                                          key={colIndex}
+                                        >
+                                          {row[column] || '-'}
+                                        </td>
+                                      )
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      }
+
+                      return JSON.stringify(val);
+                    }
+
+                    return String(val);
+                  };
+
+                  return (
+                    <div className="custom-property-item" key={property.name}>
+                      <Typography.Text strong className="property-name">
+                        {property.displayName || property.name}
+                      </Typography.Text>
+                      <Typography.Text className="property-value">
+                        {formatValue(value)}
+                      </Typography.Text>
+                    </div>
+                  );
+                })}
+                {customProperties.length > 5 && (
+                  <div className="m-t-md">
+                    <Link
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      to={getEntityLinkFromType(
+                        entityDetails.details.fullyQualifiedName || '',
+                        entityType as EntityType
+                      )}
+                    >
+                      <Button size="small" type="primary">
+                        {t('label.view-all')}
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
+      }
       default:
         return summaryComponent;
     }
@@ -288,9 +525,11 @@ export default function EntitySummaryPanel({
           style={{
             borderRadius: '0px',
             display: 'flex',
+            borderBottom: 'none',
+            height: '100%',
           }}
         >
-          <div style={{ width: '80%' }}>{renderTabContent()}</div>
+          <div style={{ width: '90%' }}>{renderTabContent()}</div>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
             entityType={entityType}
