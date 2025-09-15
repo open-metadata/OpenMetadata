@@ -143,7 +143,11 @@ test.describe('Add TestCase New Flow', () => {
     const testCaseDoc = page.waitForResponse(
       '/locales/en-US/OpenMetadata/TestCaseForm.md'
     );
+    const tableEntityResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=table_search_index*'
+    );
     await page.getByTestId('add-test-case-btn').click();
+    await tableEntityResponse;
     await page.waitForSelector('[data-testid="test-case-form-v1"]', {
       state: 'visible',
     });
