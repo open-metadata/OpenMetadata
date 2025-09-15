@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { forwardRef } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -160,7 +154,11 @@ jest.mock('crypto-random-string-with-promisify-polyfill', () =>
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestDefinitions: jest.fn().mockResolvedValue(mockTestDefinitions),
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
+  getListTestCaseBySearch: jest.fn().mockResolvedValue({ data: [] }),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
+  createTestCase: jest
+    .fn()
+    .mockResolvedValue({ id: 'new-test-case-id', name: 'new_test_case' }),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -937,6 +935,93 @@ describe('TestCaseFormV1 Component', () => {
         },
         { timeout: 5000 }
       );
+    });
+  });
+
+  describe('Test Case Name Validation', () => {
+    it('should validate forbidden characters using TEST_CASE_NAME_REGEX', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const testNameField = screen.getByTestId('test-case-name');
+
+      // Test core forbidden characters
+      const invalidName = 'test::case"name>invalid';
+
+      await act(async () => {
+        fireEvent.change(testNameField, { target: { value: invalidName } });
+        fireEvent.blur(testNameField);
+      });
+
+      // Trigger form validation
+      const form = screen.getByTestId('test-case-form-v1');
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      // Should show validation error
+      await waitFor(() => {
+        expect(
+          screen.getByText(/message\.test-case-name-validation/)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should allow valid test case names', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const testNameField = screen.getByTestId('test-case-name');
+
+      // Test valid name format
+      const validName = 'table_column_count_equals';
+
+      await act(async () => {
+        fireEvent.change(testNameField, { target: { value: validName } });
+        fireEvent.blur(testNameField);
+      });
+
+      // Should not show validation error for name pattern
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/message\.test-case-name-validation/)
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('should validate maximum length constraint', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const testNameField = screen.getByTestId('test-case-name');
+
+      // Create a name longer than MAX_NAME_LENGTH (256 characters)
+      const longName = 'a'.repeat(257);
+
+      await act(async () => {
+        fireEvent.change(testNameField, { target: { value: longName } });
+        fireEvent.blur(testNameField);
+      });
+
+      // Trigger form validation
+      const form = screen.getByTestId('test-case-form-v1');
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      // Should show length validation error
+      await waitFor(() => {
+        expect(screen.getByText(/maximum.*size/i)).toBeInTheDocument();
+      });
     });
   });
 
