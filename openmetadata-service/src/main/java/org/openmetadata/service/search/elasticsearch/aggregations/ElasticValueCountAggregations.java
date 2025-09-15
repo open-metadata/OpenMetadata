@@ -1,24 +1,24 @@
-package org.openmetadata.service.search.opensearch.aggregations;
+package org.openmetadata.service.search.elasticsearch.aggregations;
 
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.search.aggregations.AggregationBuilder;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
 
 @Setter
 @Getter
-public class OpenMinAggregations implements OpenAggregations {
-  static final String aggregationType = "min";
+public class ElasticValueCountAggregations implements ElasticAggregations {
+  static final String aggregationType = "value_count";
   AggregationBuilder elasticAggregationBuilder;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     AggregationBuilder aggregationBuilders =
-        AggregationBuilders.min(node.getName()).field(params.get("field"));
+        AggregationBuilders.count(node.getName()).field(params.get("field"));
     setElasticAggregationBuilder(aggregationBuilders);
   }
 
