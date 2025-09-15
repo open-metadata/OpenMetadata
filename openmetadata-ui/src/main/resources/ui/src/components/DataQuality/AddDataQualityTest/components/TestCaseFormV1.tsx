@@ -99,6 +99,7 @@ import {
 import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
+  createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
@@ -202,6 +203,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
 
   const [activeField, setActiveField] = useState<string>('');
+
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
   // =============================================
   // HOOKS - Form Watches
@@ -1029,12 +1032,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         layout="vertical"
         name="testCaseFormV1"
         preserve={false}
-        scrollToFirstError={{
-          behavior: 'smooth',
-          block: 'center',
-          scrollMode: 'if-needed',
-        }}
         onFinish={handleSubmit}
+        onFinishFailed={scrollToError}
         onFocus={handleFieldFocus}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
