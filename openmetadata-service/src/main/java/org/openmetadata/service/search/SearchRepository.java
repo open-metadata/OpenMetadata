@@ -1197,6 +1197,11 @@ public class SearchRepository {
     return searchClient.searchWithNLQ(request, subjectContext);
   }
 
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithDirectQuery(request, subjectContext);
+  }
+
   public Response getDocument(String indexName, UUID entityId) throws IOException {
     return searchClient.getDocByID(indexName, entityId.toString());
   }

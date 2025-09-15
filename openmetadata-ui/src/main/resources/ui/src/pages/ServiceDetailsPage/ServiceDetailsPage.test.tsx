@@ -499,10 +499,6 @@ describe('ServiceDetailsPage', () => {
     jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
   const renderComponent = async (props = {}) => {
     return await act(async () => {
       render(
@@ -521,7 +517,7 @@ describe('ServiceDetailsPage', () => {
         </MemoryRouter>
       );
 
-      expect(await screen.findByTestId('loader')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
     it('should render service details when loaded', async () => {
