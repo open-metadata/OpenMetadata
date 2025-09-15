@@ -1192,6 +1192,7 @@
     "pipeline-state": "工作流状态",
     "pipeline-type": "工作流类型",
     "platform": "平台",
+    "platform-service-client-unavailable": "平台服务客户端不可用",
     "platform-type-lineage": "{{platformType}} 血缘关系",
     "play": "Play",
     "please-enter-value": "请输入{{name}}值",
