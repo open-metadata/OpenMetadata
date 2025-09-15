@@ -57,6 +57,23 @@ test.describe('Add TestCase New Flow', () => {
       paramsValue,
       expectSchedulerCard = true,
     } = data;
+    await page.getByTestId('test-case-name').click();
+
+    // test case name restriction for `:: " >` character
+    const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
+    for (const name of invalidTestCaseNames) {
+      await page.getByTestId('test-case-name').fill(name);
+      await page.waitForSelector(`#testCaseFormV1_testName_help`, {
+        state: 'visible',
+      });
+
+      await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
+        'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+      );
+
+      await page.getByTestId('test-case-name').clear();
+    }
+
     await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
     await page.click('#testCaseFormV1_testTypeId');
     await page.fill('#testCaseFormV1_testTypeId', testType);

@@ -2424,6 +2424,7 @@
     "team-moved-success": "L'équipe a été déplacée avec succès !",
     "team-no-asset": "Votre équipe n'a pas d'actifs de données",
     "test-case-insight-description": "Accédez à une vue centralisée de la santé de votre dataset basée sur les validations de test configurées.",
+    "test-case-name-validation": "Le nom ne peut pas contenir de double deux-points (::), de guillemets (\") ou de symboles supérieur à (>).",
     "test-case-schedule-description": "Les tests de quelité de données peuvent être planifiés pour tourner à la fréquence désirée. La timezone est en UTC.",
     "test-connection-cannot-be-triggered": "Le test de connexion ne peut pas être déclenché.",
     "test-connection-taking-too-long": {

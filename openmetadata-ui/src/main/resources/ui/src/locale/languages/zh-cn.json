@@ -2424,6 +2424,7 @@
     "team-moved-success": "团队移动成功",
     "team-no-asset": "您的团队没有任何资产",
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
+    "test-case-name-validation": "名称不能包含双冒号(::)、引号(\")或大于符号(>)。",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
     "test-connection-taking-too-long": {
