@@ -49,6 +49,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1131,7 +1132,8 @@ public class LineageRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-        new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
+        new ImmutablePair<>(
+            REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
 
   private EntityLineage getLineage(
