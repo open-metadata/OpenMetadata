@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) '../../styles/variables.less';
+
 .lineage-button-group {
   background: #fff;
   border-radius: 12px;
@@ -29,9 +32,7 @@
       background: #eaf2ff;
       color: #2563eb;
     }
-    &.ant-btn-primary,
-    &.active,
-    &.selected {
+    &.ant-btn-primary {
       background: #dbeafe;
       color: #2563eb;
       font-weight: 700;
@@ -46,5 +47,25 @@
       background: transparent;
       font-weight: 500;
     }
+  }
+}
+
+.filter-icon-button.anticon {
+  padding: 10px;
+  border-radius: 8px;
+  color: @primary-color;
+  border: 1px solid @border-color;
+  background: @white;
+
+  &.active {
+    border-color: @primary-color;
+    background: #eff8ff;
+  }
+
+  /* Shadow/xs */
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+  svg {
+    height: 20px;
+    width: 20px;
   }
 }

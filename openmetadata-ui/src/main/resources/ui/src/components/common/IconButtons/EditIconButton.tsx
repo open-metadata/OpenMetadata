@@ -198,9 +198,9 @@ export const FilterLinesIconButton = ({
 }: IconButtonPropsInternal) => {
   return (
     <Tooltip title={title}>
-      <Button
-        className={classNames('bordered', className)}
-        icon={<FilterLinesIcon />}
+      <Icon
+        className={className}
+        component={FilterLinesIcon}
         size={size}
         {...props}
       />

@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import Icon, { SettingOutlined, ShareAltOutlined } from '@ant-design/icons';
+import Icon, { SettingOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import ButtonGroup from 'antd/lib/button/button-group';
 import Card from 'antd/lib/card/Card';
+import classNames from 'classnames';
 import { filter, get, isEmpty, map, omit, pick, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
-import { ReactComponent as SwitchVerticalIcon } from '../../assets/svg/ic-switch-vertical.svg';
+import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share-new.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
-import { NO_DATA, PAGE_SIZE_LARGE } from '../../constants/constants';
+import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
+import { NO_DATA } from '../../constants/constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -32,12 +34,10 @@ import { SearchIndex } from '../../enums/search.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
-import { getAssetsPageQuickFilters } from '../../utils/AdvancedSearchUtils';
 import {
   getPartialNameFromTableFQN,
   Transi18next,
@@ -48,12 +48,10 @@ import {
   highlightSearchText,
 } from '../../utils/EntityUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
-import { LINEAGE_DEPENDENCY_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import { FilterLinesIconButton } from '../common/IconButtons/EditIconButton';
-import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import Table from '../common/Table/Table';
@@ -63,17 +61,12 @@ import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
 import LineageConfigModal from '../Entity/EntityLineage/LineageConfigModal';
 import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../Explore/ExploreQuickFilters';
-import { AssetsOfEntity } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LineageNode } from '../Lineage/Lineage.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './lineage-table.less';
+import { EImpactLevel } from './LineageTable.interface';
 
-enum EImpactLevel {
-  TableLevel = 'table',
-  ColumnLevel = 'column',
-}
-
-const ImpactOptions = [
+export const ImpactOptions = [
   { label: 'Table Level', key: EImpactLevel.TableLevel },
   { label: 'Column Level', key: EImpactLevel.ColumnLevel },
 ];
@@ -94,42 +87,35 @@ const LineageTable = () => {
   const [filterNodes, setFilterNodes] = useState<LineageNode[]>([]);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [searchValue, setSearchValue] = React.useState<string>('');
-  const { currentPage, pageSize, handlePageChange } =
-    usePaging(PAGE_SIZE_LARGE);
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const [impactLevel, setSelectedImpactLevel] = useState<EImpactLevel>(
     EImpactLevel.TableLevel
   );
-  const [selectedDependencyType, setSelectedDependencyType] =
-    useState<string>('direct');
   const [upstreamColumnLineageNodes, setUpstreamColumnLineageNodes] = useState<
     LineageNode[]
   >([]);
   const [downstreamColumnLineageNodes, setDownstreamColumnLineageNodes] =
     useState<LineageNode[]>([]);
 
-  const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get('fullscreen') === 'true';
+  const [lineageDirection, setLineageDirection] =
+    React.useState<LineageDirection>(LineageDirection.Downstream);
+
+  const isFullScreen = useMemo(() => {
+    const queryParams = new URLSearchParams(location.search);
+
+    return queryParams.get('fullscreen') === 'true';
+  }, [location.search]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
     // Implement save logic here
     onLineageConfigUpdate?.(newConfig);
     setDialogVisible(false);
   };
-
-  const onSearch = useCallback((text: string) => {
-    // Implement search logic here
-    setSearchValue(text);
-  }, []);
-
-  const [lineageDirection, setLineageDirection] =
-    React.useState<LineageDirection>(LineageDirection.Downstream);
 
   const isFilterVisible = useMemo(() => {
     return filterSelectionActive || isFullScreen;
@@ -171,41 +157,21 @@ const LineageTable = () => {
 
   const reqLineageConfig = useMemo(() => {
     const upstreamDepth =
-      lineageDirection === LineageDirection.Upstream
-        ? selectedDependencyType === 'direct'
-          ? 1
-          : lineageConfig.upstreamDepth
-        : 0;
+      lineageDirection === LineageDirection.Upstream ? 1 : 0;
 
     const downstreamDepth =
-      lineageDirection === LineageDirection.Downstream
-        ? selectedDependencyType === 'direct'
-          ? 1
-          : lineageConfig.downstreamDepth
-        : 0;
+      lineageDirection === LineageDirection.Downstream ? 1 : 0;
 
     return {
       upstreamDepth,
       downstreamDepth,
       nodesPerLayer: 50,
     };
-  }, [lineageDirection, selectedDependencyType, lineageConfig]);
-
-  const handleDependencyTypeChange = useCallback(({ key }: { key: string }) => {
-    setSelectedDependencyType(key);
-  }, []);
+  }, [lineageDirection, lineageConfig]);
 
   const handleImpactLevelChange = useCallback(({ key }: { key: string }) => {
     setSelectedImpactLevel(key as EImpactLevel);
   }, []);
-
-  const dependencyDropdownMenu: MenuProps = useMemo(() => {
-    return {
-      items: LINEAGE_DEPENDENCY_OPTIONS,
-      selectedKeys: [selectedDependencyType],
-      onClick: handleDependencyTypeChange,
-    };
-  }, [selectedDependencyType]);
 
   const impactDropdownMenu: MenuProps = useMemo(() => {
     return {
@@ -220,25 +186,6 @@ const LineageTable = () => {
       <div className="d-flex justify-between items-center w-full">
         <div>{streamButtonGroup}</div>
         <div className="d-flex gap-4 items-center">
-          <Dropdown menu={dependencyDropdownMenu}>
-            <Button
-              icon={
-                <Icon
-                  component={SwitchVerticalIcon}
-                  style={{ fontSize: '18px' }}
-                />
-              }
-              type="text">
-              <Space size={4}>
-                <Transi18next
-                  i18nKey="label.dependency-direction"
-                  renderElement={<span className="text-primary" />}
-                  values={{ direction: t(`label.${selectedDependencyType}`) }}
-                />
-                <Icon component={DropdownIcon} />
-              </Space>
-            </Button>
-          </Dropdown>
           <Dropdown menu={impactDropdownMenu}>
             <Button
               icon={
@@ -267,11 +214,11 @@ const LineageTable = () => {
       </div>
     );
   }, [
-    dependencyDropdownMenu,
+    // dependencyDropdownMenu,
     navigate,
     impactDropdownMenu,
     streamButtonGroup,
-    selectedDependencyType,
+    // selectedDependencyType,
     impactLevel,
   ]);
 
@@ -460,22 +407,21 @@ const LineageTable = () => {
   }, [queryFilter, reqLineageConfig]);
 
   useEffect(() => {
-    fetchLineageData(
-      fqn,
-      entityType,
-      selectedDependencyType === 'indirect'
-        ? reqLineageConfig
-        : {
-            upstreamDepth: 0,
-            downstreamDepth: 0,
-            nodesPerLayer: 50,
-          }
-    );
-  }, [queryFilter, selectedDependencyType, reqLineageConfig]);
+    fetchLineageData(fqn, entityType, {
+      upstreamDepth: 0,
+      downstreamDepth: 0,
+      nodesPerLayer: 50,
+    });
+  }, [queryFilter, reqLineageConfig]);
 
   const toggleFilterSelection = () => {
     setFilterSelectionActive((pre) => !pre);
   };
+
+  const onSearch = useCallback((text: string) => {
+    // Implement search logic here
+    setSearchValue(text);
+  }, []);
 
   const cardHeader = useMemo(() => {
     return (
@@ -483,18 +429,21 @@ const LineageTable = () => {
         <div className="d-flex justify-between items-center">
           <div className="d-flex gap-2">
             <FilterLinesIconButton
+              className={classNames('filter-icon-button', {
+                active: filterSelectionActive,
+              })}
               size="large"
               title={t('label.apply-filters')}
-              type={filterSelectionActive ? 'primary' : 'default'}
               onClick={toggleFilterSelection}
             />
 
             <Searchbar
+              removeMargin
               placeholder={t('label.search-for-type', {
                 type: t('label.entity'),
               })}
               searchValue={searchValue}
-              typingInterval={300}
+              typingInterval={0}
               onSearch={onSearch}
             />
           </div>
@@ -511,7 +460,7 @@ const LineageTable = () => {
               onClick={() => navigate({ search: '?mode=impact_analysis' })}>
               Impact Analysis
             </Button>
-            <Button icon={<ShareAltOutlined />} />
+            <Button icon={<ShareIcon />} />
             <Button
               icon={<SettingOutlined />}
               onClick={() => setDialogVisible(true)}
@@ -665,6 +614,35 @@ const LineageTable = () => {
   const columnImpactColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
+        title: 'Source Table',
+        dataIndex:
+          lineageDirection === LineageDirection.Downstream
+            ? 'fromEntity'
+            : 'toEntity',
+        key:
+          lineageDirection === LineageDirection.Downstream
+            ? 'fromEntity'
+            : 'toEntity',
+        sorter: true,
+        render: (record?: SearchSourceAlias) => (
+          <Link
+            to={getEntityLinkFromType(
+              record?.fullyQualifiedName ?? '',
+              EntityType.TABLE,
+              record
+            )}>
+            {stringToHTML(
+              highlightSearchText(
+                getPartialNameFromTableFQN(record?.fullyQualifiedName ?? '', [
+                  FqnPart.Table,
+                ]),
+                searchValue
+              )
+            )}
+          </Link>
+        ),
+      },
+      {
         title: 'Source Column',
         dataIndex:
           lineageDirection === LineageDirection.Downstream
@@ -688,16 +666,16 @@ const LineageTable = () => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias) => (
           <Link
             to={getEntityLinkFromType(
-              record.fullyQualifiedName ?? '',
+              record?.fullyQualifiedName ?? '',
               EntityType.TABLE,
               record
             )}>
             {stringToHTML(
               highlightSearchText(
-                getPartialNameFromTableFQN(record.fullyQualifiedName ?? '', [
+                getPartialNameFromTableFQN(record?.fullyQualifiedName ?? '', [
                   FqnPart.Table,
                 ]),
                 searchValue
@@ -725,15 +703,15 @@ const LineageTable = () => {
   );
 
   useEffect(() => {
-    const updatedQuickFilters = filters
-      .filter((filter) => selectedFilter.includes(filter.key))
-      .map((selectedFilterItem) => {
-        const originalFilterItem = selectedQuickFilters?.find(
-          (filter) => filter.key === selectedFilterItem.key
-        );
+    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.filter((filter) =>
+      selectedFilter.includes(filter.key)
+    ).map((selectedFilterItem) => {
+      const originalFilterItem = selectedQuickFilters?.find(
+        (filter) => filter.key === selectedFilterItem.key
+      );
 
-        return originalFilterItem || selectedFilterItem;
-      });
+      return { ...(originalFilterItem || selectedFilterItem), value: [] };
+    });
 
     const newItems = updatedQuickFilters.filter(
       (item) =>
@@ -745,42 +723,7 @@ const LineageTable = () => {
     if (newItems.length > 0) {
       setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
     }
-  }, [selectedFilter, selectedQuickFilters, filters]);
-
-  useEffect(() => {
-    const dropdownItems = getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE);
-
-    setFilters(
-      dropdownItems.map((item) => ({
-        ...item,
-        value: [],
-      }))
-    );
-
-    const defaultFilterValues = dropdownItems.map((item) => item.key);
-
-    setSelectedFilter(defaultFilterValues);
-  }, []);
-
-  const handleLineagePageChange = useCallback(
-    ({ currentPage }: PagingHandlerParams) => {
-      handlePageChange(currentPage);
-    },
-    [handlePageChange]
-  );
-
-  const pagingProps = useMemo(
-    () => ({
-      pageSize,
-      currentPage,
-      paging: {
-        total: filterNodes.length,
-      },
-      pagingHandler: handleLineagePageChange,
-      showPagination: true,
-    }),
-    [pageSize, currentPage, filterNodes.length, handleLineagePageChange]
-  );
+  }, [selectedFilter, selectedQuickFilters]);
 
   const { columns, dataSource } = useMemo(() => {
     if (impactLevel === 'table') {
@@ -814,7 +757,6 @@ const LineageTable = () => {
       <Table
         bordered
         columns={columns}
-        customPaginationProps={pagingProps}
         dataSource={dataSource}
         defaultVisibleColumns={[
           'name',

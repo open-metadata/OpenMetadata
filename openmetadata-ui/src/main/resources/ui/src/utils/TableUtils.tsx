@@ -897,7 +897,7 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.LINEAGE,
       children: (
         <EntityLineageTab
-          deleted={!deleted}
+          deleted={Boolean(deleted)}
           entity={tableDetails as SourceType}
           entityType={EntityType.TABLE}
           hasEditAccess={editLineagePermission}

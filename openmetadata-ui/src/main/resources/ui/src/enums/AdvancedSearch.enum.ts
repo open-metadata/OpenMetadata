@@ -77,6 +77,7 @@ export enum EntityFields {
   TAGS_LABEL_TYPE = 'tags.labelType',
   TIER_LABEL_TYPE = 'tier.labelType',
   CREATED_BY = 'createdBy',
+  NODE_DEPTH = 'nodeDepth',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
