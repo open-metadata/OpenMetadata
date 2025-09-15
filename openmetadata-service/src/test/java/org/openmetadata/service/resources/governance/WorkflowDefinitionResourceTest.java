@@ -709,11 +709,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(2)
-  void test_DeprecateStaleGlossaryTerms(TestInfo test)
+  void test_DeprecateStaleEntities(TestInfo test)
       throws IOException, HttpResponseException, InterruptedException {
-    LOG.info("Starting test_DeprecateStaleGlossaryTerms");
+    LOG.info("Starting test_DeprecateStaleEntities for GlossaryTerm, Table, and Tag");
 
-    // Create glossary and glossary term
+    // === CREATE GLOSSARY TERM ===
     CreateGlossary createGlossary =
         new CreateGlossary()
             .withName("test_glossary_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
@@ -732,20 +732,86 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         glossaryTermTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     LOG.debug("Created glossary term: {}", glossaryTerm.getName());
 
+    // === CREATE TABLE ===
+    // Create database service
+    CreateDatabaseService createDbService =
+        databaseServiceTest.createRequest(
+            "test_deprecate_db_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
+    DatabaseService dbService =
+        databaseServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database service for deprecation test: {}", dbService.getName());
+
+    // Create database
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName("test_deprecate_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withService(dbService.getFullyQualifiedName())
+            .withDescription("Test database for deprecation");
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database: {}", database.getName());
+
+    // Create database schema
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(
+                "test_deprecate_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Test schema for deprecation");
+    DatabaseSchema dbSchema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database schema: {}", dbSchema.getName());
+
+    // Create table
+    CreateTable createTable =
+        new CreateTable()
+            .withName(
+                "test_deprecate_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Table for testing deprecation")
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)));
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created table: {}", table.getName());
+
+    // === CREATE TAG ===
+    // Create classification first
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(
+                "test_classification_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Test Classification")
+            .withDescription("Classification for testing deprecation");
+    Classification classification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created classification: {}", classification.getName());
+
+    // Create tag under the classification
+    CreateTag createTag =
+        new CreateTag()
+            .withName("test_tag_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Test Tag")
+            .withDescription("Tag for testing deprecation")
+            .withClassification(classification.getName());
+    Tag tag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created tag: {}", tag.getName());
+
     // Create workflow with dynamic timestamp (tomorrow)
     long tomorrowMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000L);
     String workflowJson =
         String.format(
             """
     {
-      "name": "DeprecateStaleGlossaryTerms",
-      "displayName": "DeprecateStaleGlossaryTerms",
-      "description": "Custom workflow created with Workflow Builder",
+      "name": "DeprecateStaleEntities",
+      "displayName": "DeprecateStaleEntities",
+      "description": "Workflow to deprecate stale GlossaryTerms, Tables, and Tags",
       "trigger": {
         "type": "periodicBatchEntity",
         "config": {
           "entityTypes": [
-            "glossaryTerm"
+            "glossaryTerm",
+            "table",
+            "tag"
           ],
           "schedule": {
             "scheduleTimeline": "None"
@@ -858,7 +924,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         || response.getStatus() == Response.Status.OK.getStatusCode()) {
       WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
       assertNotNull(createdWorkflow);
-      LOG.debug("DeprecateStaleGlossaryTerms workflow created successfully");
+      LOG.debug("DeprecateStaleEntities workflow created successfully");
     } else {
       String responseBody = response.readEntity(String.class);
       LOG.error(
@@ -871,8 +937,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Trigger the workflow
     Response triggerResponse =
         SecurityUtil.addHeaders(
-                getResource(
-                    "governance/workflowDefinitions/name/DeprecateStaleGlossaryTerms/trigger"),
+                getResource("governance/workflowDefinitions/name/DeprecateStaleEntities/trigger"),
                 ADMIN_AUTH_HEADERS)
             .post(Entity.json("{}"));
 
@@ -882,36 +947,82 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       LOG.warn("Workflow trigger response: {}", triggerResponse.getStatus());
     }
 
-    // Wait for workflow to process using Awaitility
+    // Store IDs for lambda expressions
+    final UUID glossaryTermId = glossaryTerm.getId();
+    final UUID tableId = table.getId();
+    final UUID tagId = tag.getId();
+
+    // Wait for workflow to process all three entity types using Awaitility
     await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
         .until(
             () -> {
               try {
+                // Check GlossaryTerm
                 GlossaryTerm checkTerm =
-                    glossaryTermTest.getEntity(glossaryTerm.getId(), "", ADMIN_AUTH_HEADERS);
-                LOG.debug("Checking glossary term status: {}", checkTerm.getEntityStatus());
-                return checkTerm.getEntityStatus() != null
-                    && "Deprecated".equals(checkTerm.getEntityStatus().toString());
+                    glossaryTermTest.getEntity(glossaryTermId, "", ADMIN_AUTH_HEADERS);
+                boolean termDeprecated =
+                    checkTerm.getEntityStatus() != null
+                        && "Deprecated".equals(checkTerm.getEntityStatus().toString());
+                LOG.debug("GlossaryTerm status: {}", checkTerm.getEntityStatus());
+
+                // Check Table
+                Table checkTable = tableTest.getEntity(tableId, "", ADMIN_AUTH_HEADERS);
+                boolean tableDeprecated =
+                    checkTable.getEntityStatus() != null
+                        && "Deprecated".equals(checkTable.getEntityStatus().toString());
+                LOG.debug("Table status: {}", checkTable.getEntityStatus());
+
+                // Check Tag
+                Tag checkTag = tagTest.getEntity(tagId, "", ADMIN_AUTH_HEADERS);
+                boolean tagDeprecated =
+                    checkTag.getEntityStatus() != null
+                        && "Deprecated".equals(checkTag.getEntityStatus().toString());
+                LOG.debug("Tag status: {}", checkTag.getEntityStatus());
+
+                // All three should be deprecated
+                return termDeprecated && tableDeprecated && tagDeprecated;
               } catch (Exception e) {
-                LOG.warn("Error checking glossary term status: {}", e.getMessage());
+                LOG.warn("Error checking entity statuses: {}", e.getMessage());
                 return false;
               }
             });
 
-    // Verify glossary term is deprecated
+    // Verify all three entities are deprecated
+
+    // Verify GlossaryTerm
     GlossaryTerm updatedTerm =
         glossaryTermTest.getEntity(glossaryTerm.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(updatedTerm);
     assertNotNull(updatedTerm.getEntityStatus());
     assertEquals("Deprecated", updatedTerm.getEntityStatus().toString());
     LOG.debug(
-        "Glossary term {} status successfully updated to: {}",
+        "GlossaryTerm {} status successfully updated to: {}",
         updatedTerm.getName(),
         updatedTerm.getEntityStatus());
 
-    LOG.info("test_DeprecateStaleGlossaryTerms completed successfully");
+    // Verify Table
+    Table updatedTable = tableTest.getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedTable);
+    assertNotNull(updatedTable.getEntityStatus());
+    assertEquals("Deprecated", updatedTable.getEntityStatus().toString());
+    LOG.debug(
+        "Table {} status successfully updated to: {}",
+        updatedTable.getName(),
+        updatedTable.getEntityStatus());
+
+    // Verify Tag
+    Tag updatedTag = tagTest.getEntity(tag.getId(), "", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedTag);
+    assertNotNull(updatedTag.getEntityStatus());
+    assertEquals("Deprecated", updatedTag.getEntityStatus().toString());
+    LOG.debug(
+        "Tag {} status successfully updated to: {}",
+        updatedTag.getName(),
+        updatedTag.getEntityStatus());
+
+    LOG.info("test_DeprecateStaleEntities completed successfully for all three entity types");
   }
 
   @Test

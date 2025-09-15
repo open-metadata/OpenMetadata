@@ -549,31 +549,41 @@ public class EntityFieldUtils {
    */
   public static void setEntityStatus(EntityInterface entity, String statusValue) {
     try {
-      // Handle GlossaryTerm status (uses Status enum)
-      if (entity instanceof GlossaryTerm) {
-        GlossaryTerm glossaryTerm = (GlossaryTerm) entity;
-        try {
-          // Try to parse as GlossaryTerm.Status enum
-          EntityStatus status = EntityStatus.fromValue(statusValue);
-          glossaryTerm.setEntityStatus(status);
-          return;
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to set GlossaryTerm status to '{}', falling back to string setter",
-              statusValue);
-        }
+      // Try to parse as EntityStatus enum and use the EntityInterface method
+      // This works for all entities that support entityStatus field
+      try {
+        EntityStatus status = EntityStatus.fromValue(statusValue);
+        entity.setEntityStatus(status);
+        LOG.debug(
+            "Successfully set entityStatus to '{}' on entity type: {}",
+            statusValue,
+            entity.getClass().getSimpleName());
+        return;
+      } catch (IllegalArgumentException e) {
+        // Not a valid EntityStatus enum value
+        LOG.warn(
+            "Invalid EntityStatus value '{}' for entity type: {}",
+            statusValue,
+            entity.getClass().getSimpleName());
+      } catch (UnsupportedOperationException e) {
+        // Entity doesn't support entityStatus
+        LOG.debug(
+            "Entity type {} doesn't support entityStatus field, trying legacy status field",
+            entity.getClass().getSimpleName());
       }
 
-      // For other entities or fallback, try reflection with string values
-      setSimpleStringField(entity, "status", statusValue);
-
-      // Also try entityStatus field for newer entities
+      // Fallback: Try to set legacy "status" field for entities that don't support entityStatus
+      // This maintains backward compatibility with older entities
       try {
-        setSimpleStringField(entity, "entityStatus", statusValue);
-      } catch (Exception e) {
-        // Ignore if entityStatus field doesn't exist
+        setSimpleStringField(entity, "status", statusValue);
         LOG.debug(
-            "entityStatus field not found on entity type: {}", entity.getClass().getSimpleName());
+            "Successfully set legacy status field to '{}' on entity type: {}",
+            statusValue,
+            entity.getClass().getSimpleName());
+      } catch (Exception e) {
+        LOG.debug(
+            "Entity type {} doesn't have a legacy status field either",
+            entity.getClass().getSimpleName());
       }
 
     } catch (Exception e) {

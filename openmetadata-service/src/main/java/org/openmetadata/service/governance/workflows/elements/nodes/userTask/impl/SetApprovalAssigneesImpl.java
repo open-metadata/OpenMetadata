@@ -52,8 +52,19 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       }
 
       // Persist the list as JSON array so TaskListener can read it
-      execution.setVariableLocal(
+      // Using setVariable instead of setVariableLocal to ensure visibility across subprocess
+      execution.setVariable(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
+
+      // Set the hasAssignees variable for the ExclusiveGateway to route correctly
+      // This MUST be explicitly true or false, never null
+      boolean hasAssignees = !assignees.isEmpty();
+      execution.setVariable("hasAssignees", hasAssignees);
+
+      LOG.debug(
+          "Set hasAssignees={} for process instance {}",
+          hasAssignees,
+          execution.getProcessInstanceId());
     } catch (Exception exc) {
       LOG.error(
           String.format(

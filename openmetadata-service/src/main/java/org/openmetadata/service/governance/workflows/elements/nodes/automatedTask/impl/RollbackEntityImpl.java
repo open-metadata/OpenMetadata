@@ -241,19 +241,13 @@ public class RollbackEntityImpl implements JavaDelegate {
       EntityInterface previousEntity,
       String updatedBy) {
     try {
-      // Get current entity using getVersion (same loading method as previous)
       currentEntity =
           repository.getVersion(currentEntity.getId(), currentEntity.getVersion().toString());
 
-      // Get previous entity using getVersion (already loaded this way)
-      // previousEntity is already from getVersion in the calling method
-
-      // Now both loaded the same way - create PATCH
       String currentJson = JsonUtils.pojoToJson(currentEntity);
       String previousJson = JsonUtils.pojoToJson(previousEntity);
       jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(currentJson, previousJson);
 
-      // Apply PATCH using FQN (not ID) with the updatedBy user
       repository.patch(null, currentEntity.getFullyQualifiedName(), updatedBy, patch);
 
       LOG.info(
