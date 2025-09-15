@@ -101,10 +101,10 @@ public interface SearchClient<T> {
           + "}";
 
   String REMOVE_LINEAGE_SCRIPT =
-      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == '%s')";
+      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == '%s')";
+      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
 
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
@@ -155,7 +155,7 @@ public interface SearchClient<T> {
         ctx._source.tags = uniqueTags;
         """;
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
-      "ctx._source.testSuites.removeIf(suite -> suite.id == '%s')";
+      "ctx._source.testSuites.removeIf(suite -> suite.id == params.suiteId)";
 
   String ADD_OWNERS_SCRIPT =
       "if (ctx._source.owners == null || ctx._source.owners.isEmpty() || "
