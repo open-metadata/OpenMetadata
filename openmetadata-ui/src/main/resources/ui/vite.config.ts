@@ -54,7 +54,8 @@ export default defineConfig(({ mode }) => {
         checker({
           typescript: true,
           eslint: {
-            lintCommand: 'eslint "./**/*.{js,jsx,ts,tsx,json}"',
+            lintCommand:
+              'eslint "./**/*.{js,jsx,ts,tsx,json}" --ignore-pattern playwright/',
           },
           overlay: {
             initialIsOpen: false,
