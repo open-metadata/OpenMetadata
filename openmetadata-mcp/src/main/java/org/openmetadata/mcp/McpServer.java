@@ -130,7 +130,6 @@ public class McpServer implements McpServerProvider {
   private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) ->
-            promptsContext.callPrompt(jwtFilter, prompt.name(), arguments).getResult());
+        (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
   }
 }

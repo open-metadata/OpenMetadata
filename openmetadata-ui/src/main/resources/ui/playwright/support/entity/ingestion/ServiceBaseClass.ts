@@ -560,9 +560,21 @@ class ServiceBaseClass {
 
     // update description
     await page.click('[data-testid="edit-description"]');
-    await page.click(descriptionBox);
-    await page.fill(descriptionBox, '');
-    await page.fill(descriptionBox, description);
+    await page.waitForSelector(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      {
+        state: 'visible',
+      }
+    );
+    await page.click(`.description-markdown-editor:visible ${descriptionBox}`);
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      ''
+    );
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      description
+    );
 
     await page.click('[data-testid="save"]');
 
