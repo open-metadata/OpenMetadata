@@ -13,6 +13,9 @@
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
 
+// Default callback URL for SSO configuration
+export const DEFAULT_CALLBACK_URL = 'http://localhost:8585/callback';
+
 // Common UI field configurations to reduce duplication
 export const COMMON_UI_FIELDS = {
   clientId: {

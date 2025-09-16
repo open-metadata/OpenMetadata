@@ -32,6 +32,7 @@ import {
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
   COMMON_AUTH_FIELDS_TO_REMOVE,
   DEFAULT_AUTHORIZER_CLASS_NAME,
+  DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
@@ -58,7 +59,6 @@ import {
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
-import { getBasePath } from '../../../utils/HistoryUtils';
 import { getProviderDisplayName } from '../../../utils/SSOUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
@@ -109,14 +109,6 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
-
-  const getDefaultCallbackUrl = useCallback(() => {
-    const origin = window.location.origin;
-    const basePath = getBasePath();
-    const callbackUrl = `${origin}${basePath}/callback`;
-
-    return callbackUrl;
-  }, []);
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
@@ -264,7 +256,7 @@ const SSOConfigurationFormRJSF = ({
                   customParams: {},
                   tenant: '',
                   serverUrl: '',
-                  callbackUrl: getDefaultCallbackUrl(),
+                  callbackUrl: DEFAULT_CALLBACK_URL,
                   maxAge: 0,
                   prompt: '',
                   sessionExpiry: 0,
@@ -274,7 +266,7 @@ const SSOConfigurationFormRJSF = ({
                 // For public clients, use root level fields
                 authority: '',
                 clientId: '',
-                callbackUrl: getDefaultCallbackUrl(),
+                callbackUrl: DEFAULT_CALLBACK_URL,
                 publicKeyUrls: [],
                 tokenValidationAlgorithm: 'RS256',
                 jwtPrincipalClaims: [],
@@ -293,7 +285,7 @@ const SSOConfigurationFormRJSF = ({
 
       setInternalData(freshFormData);
     }
-  }, [selectedProvider, getDefaultCallbackUrl]);
+  }, [selectedProvider]);
 
   const handleValidationErrors = useCallback(
     (validationResult: SecurityValidationResponse) => {
@@ -813,7 +805,7 @@ const SSOConfigurationFormRJSF = ({
             authConfig.callbackUrl = oidcConfig.callbackUrl as string;
           } else if (!authConfig.callbackUrl) {
             // Set default callback URL if not present
-            authConfig.callbackUrl = getDefaultCallbackUrl();
+            authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
           }
         }
         // If switching from Public to Confidential, move callback URL from root to OIDC
@@ -832,7 +824,7 @@ const SSOConfigurationFormRJSF = ({
             oidcConfig.callbackUrl = authConfig.callbackUrl;
           } else if (!oidcConfig.callbackUrl) {
             // Set default callback URL if not present
-            oidcConfig.callbackUrl = getDefaultCallbackUrl();
+            oidcConfig.callbackUrl = DEFAULT_CALLBACK_URL;
           }
         }
       }
@@ -1158,7 +1150,7 @@ const SSOConfigurationFormRJSF = ({
                 customParams: {},
                 tenant: '',
                 serverUrl: '',
-                callbackUrl: getDefaultCallbackUrl(),
+                callbackUrl: DEFAULT_CALLBACK_URL,
                 maxAge: 0,
                 prompt: '',
                 sessionExpiry: 0,
@@ -1168,7 +1160,7 @@ const SSOConfigurationFormRJSF = ({
               // For public clients, use root level fields
               authority: '',
               clientId: '',
-              callbackUrl: getDefaultCallbackUrl(),
+              callbackUrl: DEFAULT_CALLBACK_URL,
               publicKeyUrls: [],
               tokenValidationAlgorithm: 'RS256',
               jwtPrincipalClaims: [],
