@@ -2295,17 +2295,17 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(9)
-  void test_ChangeReviewTaskWithoutReviewerSupport() {
-    LOG.info("Starting test_ChangeReviewTaskWithoutReviewerSupport");
+  void test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport() {
+    LOG.info("Starting test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport");
 
-    // Create a workflow with change review task for multiple entity types,
+    // Create a workflow with user approval task (with suggestions) for multiple entity types,
     // including one that doesn't support reviewers
     String invalidWorkflowJson =
         """
     {
-      "name": "multiEntityChangeReviewWorkflow",
-      "displayName": "Multi-Entity Change Review Workflow",
-      "description": "Invalid workflow with change review task for entities without reviewer support",
+      "name": "multiEntityUserApprovalWorkflow",
+      "displayName": "Multi-Entity User Approval Workflow",
+      "description": "Invalid workflow with user approval task (with suggestions) for entities without reviewer support",
       "trigger": {
         "type": "periodicBatchEntity",
         "config": {
@@ -2327,13 +2327,14 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "name": "ReviewChanges",
           "displayName": "Review Changes",
           "type": "userTask",
-          "subType": "changeReviewTask",
+          "subType": "userApprovalTask",
           "config": {
             "assignees": {
               "addReviewers": true
             },
             "approvalThreshold": 1,
-            "rejectionThreshold": 1
+            "rejectionThreshold": 1,
+            "supportsSuggestions": true
           }
         },
         {
@@ -2362,7 +2363,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     CreateWorkflowDefinition invalidWorkflow =
         JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
 
-    // Try to create the workflow with change review task for entities without reviewer support
+    // Try to create the workflow with user approval task (with suggestions) for entities without
+    // reviewer support
     Response response =
         SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
             .post(Entity.json(invalidWorkflow));
@@ -2375,7 +2377,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "Expected error status code >= 400, got: " + response.getStatus());
 
     LOG.debug(
-        "Workflow with change review task for non-reviewer entities failed as expected with status: {}",
+        "Workflow with user approval task (with suggestions) for non-reviewer entities failed as expected with status: {}",
         response.getStatus());
 
     // Verify error message contains expected validation error
@@ -2386,7 +2388,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "Error message should mention reviewer support issue. Got: " + errorResponse);
     LOG.debug("Error message: {}", errorResponse);
 
-    LOG.info("test_ChangeReviewTaskWithoutReviewerSupport completed successfully");
+    LOG.info("test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport completed successfully");
   }
 
   @Test

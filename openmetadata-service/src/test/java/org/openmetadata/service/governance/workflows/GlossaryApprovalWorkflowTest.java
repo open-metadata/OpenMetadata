@@ -306,9 +306,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     Thread taskThread =
         threads.getData().stream()
             .filter(t -> t.getTask() != null) // First ensure the thread has a task
-            .filter(t -> t.getTask().getType() == TaskType.ChangeReview) // Then check task type
+            .filter(t -> t.getTask().getType() == TaskType.RequestApproval) // Then check task type
             .findFirst()
-            .orElseThrow(() -> new AssertionError("No open change review task found"));
+            .orElseThrow(() -> new AssertionError("No open approval task found"));
 
     // Prepare the resolve payload
     ResolveTask resolveTask = new ResolveTask().withNewValue("approved");
@@ -318,7 +318,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     // Wait for workflow instance to finish
     WorkflowInstance instance =
-        waitForWorkflowInstanceCompletion(workflowInstanceId, "ChangeReviewEnd");
+        waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovalEnd");
 
     // Fetch workflow states using the enhanced API that gets states from latest workflow instance
     List<WorkflowInstanceState> states =
@@ -338,9 +338,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             "CheckGlossaryTermIsReadyToBeReviewed",
             "CheckIfGlossaryTermIsNew",
             "SetGlossaryTermStatusToInReviewForUpdate",
-            "ChangeReviewForUpdates",
-            "SetGlossaryTermStatusToApprovedDetailed",
-            "ChangeReviewEnd");
+            "ApprovalForUpdates",
+            "SetGlossaryTermStatusToApprovedAfterReview",
+            "ApprovalEnd");
     assertWorkflowStatesSequence(states, expectedStages);
 
     // Assert specific displayNames for known stages based on the actual workflow definition
@@ -354,10 +354,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
                 "Check if Glossary Term is Ready to be Reviewed",
             "CheckIfGlossaryTermIsNew", "Check if Glossary Term is New",
             "SetGlossaryTermStatusToInReviewForUpdate", "Set Status to 'In Review' (Update)",
-            "ChangeReviewForUpdates", "Review Changes for Updates",
-            "SetGlossaryTermStatusToApprovedDetailed",
-                "Set Status to 'Approved' (After Detailed Review)",
-            "ChangeReviewEnd", "Approved After Change Review");
+            "ApprovalForUpdates", "Review Changes for Updates",
+            "SetGlossaryTermStatusToApprovedAfterReview", "Set Status to 'Approved' (After Review)",
+            "ApprovalEnd", "Approved After Unified Review");
     assertStageDisplayNames(states, expectedDisplayNames);
 
     // Assert that the workflow instance is finished

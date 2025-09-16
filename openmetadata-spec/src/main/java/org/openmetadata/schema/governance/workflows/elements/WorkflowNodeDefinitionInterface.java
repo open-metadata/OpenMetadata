@@ -15,7 +15,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ChangeReviewTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "subType")
@@ -31,7 +30,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(value = StartEventDefinition.class, name = "startEvent"),
   @JsonSubTypes.Type(value = EndEventDefinition.class, name = "endEvent"),
   @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
-  @JsonSubTypes.Type(value = ChangeReviewTaskDefinition.class, name = "changeReviewTask"),
   @JsonSubTypes.Type(
       value = CreateAndRunIngestionPipelineTaskDefinition.class,
       name = "createAndRunIngestionPipelineTask"),

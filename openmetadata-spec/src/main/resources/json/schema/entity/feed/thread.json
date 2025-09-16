@@ -88,6 +88,11 @@
         "testCaseResolutionStatusId": {
           "description": "The test case resolution status id for which the task is created.",
           "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "supportsSuggestions": {
+          "description": "When true, reviewers can provide suggestions for changes. This is typically enabled for entity updates where reviewers can propose modifications.",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": ["id", "assignees", "type"],
