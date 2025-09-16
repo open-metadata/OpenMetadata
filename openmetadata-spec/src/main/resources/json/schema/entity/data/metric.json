@@ -79,7 +79,8 @@
             "SIZE",
             "REQUESTS",
             "EVENTS",
-            "TRANSACTIONS"
+            "TRANSACTIONS",
+            "OTHER"
         ]
     },
     "metricGranularity": {
@@ -130,6 +131,10 @@
     "unitOfMeasurement": {
       "description": "Unit of measurement for the metric.",
       "$ref": "#/definitions/unitOfMeasurement"
+    },
+    "customUnitOfMeasurement": {
+      "description": "Custom unit of measurement when unitOfMeasurement is OTHER.",
+      "type": "string"
     },
     "granularity": {
       "description": "Metric's granularity.",

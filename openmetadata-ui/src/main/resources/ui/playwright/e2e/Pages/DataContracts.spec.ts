@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
+  DATA_CONTRACT_SECURITY_DETAILS_1,
+  DATA_CONTRACT_SECURITY_DETAILS_2,
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
@@ -37,7 +39,9 @@ import {
 } from '../../utils/common';
 import {
   saveAndTriggerDataContractValidation,
+  saveSecurityAndSLADetails,
   validateDataContractInsideBundleTestSuites,
+  validateSecurityAndSLADetails,
   waitForDataContractExecution,
 } from '../../utils/dataContracts';
 import {
@@ -481,7 +485,16 @@ test.describe('Data Contracts', () => {
 
         await page.getByTestId('contract-edit-button').click();
 
+        const qualityResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list**'
+        );
+
         await page.getByRole('tab', { name: 'Quality' }).click();
+
+        await qualityResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -1618,5 +1631,50 @@ test.describe('Data Contracts', () => {
     await expect(
       page.getByTestId('contract-semantics-card-1')
     ).not.toBeVisible();
+  });
+
+  test('Add and update Security and SLA tabs', async ({ page }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+
+    await test.step('Add Security and SLA Details', async () => {
+      await page.click('[data-testid="contract"]');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await page.getByTestId('add-contract-button').click();
+
+      await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_1);
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DATA_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Validate Security and SLA Details', async () => {
+      await page.getByTestId('contract-edit-button').click();
+      await validateSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_1
+      );
+    });
+
+    await test.step('Update Security and SLA Details', async () => {
+      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_2);
+    });
+
+    await test.step(
+      'Validate the updated values Security and SLA Details',
+      async () => {
+        await page.getByTestId('contract-edit-button').click();
+        await validateSecurityAndSLADetails(
+          page,
+          DATA_CONTRACT_SECURITY_DETAILS_2
+        );
+      }
+    );
   });
 });

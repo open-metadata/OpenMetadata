@@ -104,7 +104,8 @@ public abstract class ExternalSecretsManagerTest {
     // Encrypt the workflow and ensure password and secrete key are encrypted
     actualWorkflow = secretsManager.encryptWorkflow(actualWorkflow);
     assertNotEquals(password, getPassword(actualWorkflow));
-    assertNotEquals(
+    // JWT token is not encrypted since it's not stored in the db. It's handled at runtime.
+    assertEquals(
         secretKey,
         actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
 

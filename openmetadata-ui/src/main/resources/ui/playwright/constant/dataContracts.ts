@@ -71,3 +71,39 @@ export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
     },
   ],
 };
+
+export interface DataContractSecuritySlaData {
+  accessPolicyName: string;
+  dataClassificationName: string;
+  refreshFrequencyIntervalInput: string;
+  maxLatencyValueInput: string;
+  retentionPeriodInput: string;
+  availability: string;
+  refreshFrequencyUnitSelect: string;
+  maxLatencyUnitSelect: string;
+  retentionUnitSelect: string;
+}
+
+export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
+  accessPolicyName: 'Test Policy Security',
+  dataClassificationName: 'PII',
+  refreshFrequencyIntervalInput: '10',
+  maxLatencyValueInput: '20',
+  retentionPeriodInput: '30',
+  availability: '12:15 UTC',
+  refreshFrequencyUnitSelect: 'Day',
+  maxLatencyUnitSelect: 'Hour',
+  retentionUnitSelect: 'Week',
+};
+
+export const DATA_CONTRACT_SECURITY_DETAILS_2: DataContractSecuritySlaData = {
+  accessPolicyName: 'Updated Policy Security',
+  dataClassificationName: 'PersonalData',
+  refreshFrequencyIntervalInput: '50',
+  maxLatencyValueInput: '60',
+  retentionPeriodInput: '70',
+  availability: '05:34 UTC',
+  refreshFrequencyUnitSelect: 'Hour',
+  maxLatencyUnitSelect: 'Minute',
+  retentionUnitSelect: 'Year',
+};

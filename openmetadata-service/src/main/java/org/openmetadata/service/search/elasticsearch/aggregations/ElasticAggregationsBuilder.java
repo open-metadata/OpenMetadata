@@ -38,6 +38,9 @@ public class ElasticAggregationsBuilder {
       case "terms" -> new ElasticTermsAggregations();
       case "avg" -> new ElasticAvgAggregations();
       case "min" -> new ElasticMinAggregations();
+      case "max" -> new ElasticMaxAggregations();
+      case "filter" -> new ElasticFilterAggregations();
+      case "value_count" -> new ElasticValueCountAggregations();
       case "cardinality" -> new ElasticCardinalityAggregations();
       case "nested" -> new ElasticNestedAggregations();
       case "top_hits" -> new ElasticTopHitsAggregations();
