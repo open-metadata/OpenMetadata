@@ -811,7 +811,6 @@ class SampleDataSource(
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_domains()
-        yield from self.ingest_glossaries()
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
@@ -843,6 +842,7 @@ class SampleDataSource(
         self.modify_column_descriptions()
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
+        yield from self.ingest_glossaries()
 
     def ingest_domains(self):
         """Ingest domains with pagination test data: 1 parent domain + 60 subdomains."""
