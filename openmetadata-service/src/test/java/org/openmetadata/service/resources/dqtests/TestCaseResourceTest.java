@@ -4175,7 +4175,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       assertNull(retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
     } else {
       // The incident status type may have changed from Assigned to something else after user deletion
-      assertFalse(retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
+      assertFalse(
+          retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
           "Incident should no longer have an assigned status after user deletion");
     }
   }
