@@ -133,7 +133,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -934,6 +936,25 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return lineageGraphBuilder.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
