@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -76,6 +77,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -127,10 +130,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   private static DatabaseService databaseService;
   private static Database database;
   private static DatabaseSchema databaseSchema;
-  private static List<Table> testTables = new ArrayList<>();
+  private static final List<Table> testTables = new ArrayList<>();
+  private TestInfo test;
 
   @BeforeAll
-  public static void setup() throws IOException, HttpResponseException {
+  public static void setup() throws IOException {
     databaseServiceTest = new DatabaseServiceResourceTest();
     databaseTest = new DatabaseResourceTest();
     schemaTest = new DatabaseSchemaResourceTest();
@@ -409,7 +413,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.debug("Created {} test tables", testTables.size());
   }
 
-  private void createDataCompletenessWorkflow() throws IOException {
+  private void createDataCompletenessWorkflow() {
     String workflowJson =
         """
     {
@@ -770,8 +774,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(2)
-  void test_DeprecateStaleEntities(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
+  void test_DeprecateStaleEntities(TestInfo test) throws IOException {
     LOG.info("Starting test_DeprecateStaleEntities for GlossaryTerm, Table, and Tag");
 
     // === CREATE GLOSSARY TERM ===
@@ -1015,8 +1018,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Wait for workflow to process all three entity types using Awaitility
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {
               try {
@@ -1088,8 +1091,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(3)
-  void test_SetTierForMLModels(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
+  void test_SetTierForMLModels(TestInfo test) throws IOException {
     LOG.info("Starting test_SetTierForMLModels");
 
     // Initialize MLFLOW_REFERENCE by calling setupMlModelServices
@@ -1285,7 +1287,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(4)
-  void test_PrepareMethodValidation_OnCreate(TestInfo test) {
+  void test_PrepareMethodValidation_OnCreate() {
     // Test that validation is triggered during workflow creation via prepare()
 
     // Test 1: Create with cyclic workflow - should fail
@@ -1428,6 +1430,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   @Test
   @Order(5)
   void test_PrepareMethodValidation_OnUpdate(TestInfo test) {
+    this.test = test;
     // Test that validation is triggered during workflow update via prepare()
 
     // First create a valid workflow
@@ -1560,7 +1563,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   @Test
   @Order(6)
   void test_EventBasedWorkflowForMultipleEntities(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
+      throws IOException, InterruptedException {
     LOG.info("Starting test_EventBasedWorkflowForMultipleEntities");
 
     // Create API Service
@@ -1782,7 +1785,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   @Test
   @Order(5)
   void test_MultiEntityPeriodicQueryWithFilters(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
+      throws IOException, InterruptedException {
     LOG.info("Starting test_MultiEntityPeriodicQueryWithFilters");
 
     // Step 1: Create database service, database and schema with specific name
@@ -2093,7 +2096,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(6)
-  void test_InvalidWorkflowDefinition(TestInfo test) throws IOException {
+  void test_InvalidWorkflowDefinition() {
     LOG.info("Starting test_InvalidWorkflowDefinition");
 
     // Create a workflow with invalid definition - edge connects to non-existent node
@@ -2178,7 +2181,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(7)
-  void test_UserApprovalTaskWithoutReviewerSupport(TestInfo test) throws IOException {
+  void test_UserApprovalTaskWithoutReviewerSupport() {
     LOG.info("Starting test_UserApprovalTaskWithoutReviewerSupport");
 
     // Create a workflow with user approval task for an entity type that doesn't support reviewers
@@ -2269,465 +2272,6 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("test_UserApprovalTaskWithoutReviewerSupport completed successfully");
   }
 
-  //  @Test
-  //  @Order(13)
-  //  void test_AutoApprovalWhenNoReviewers(TestInfo test)
-  //      throws IOException, HttpResponseException, InterruptedException {
-  //    LOG.info("Starting test_AutoApprovalWhenNoReviewers");
-  //    ensureWorkflowEventConsumerIsActive();
-  //
-  //    // Create workflow that uses addReviewers but entity has no reviewers
-  //    String workflowDefinition = """
-  //        {
-  //          "name": "autoApprovalTest",
-  //          "displayName": "Auto Approval Test Workflow",
-  //          "description": "Test workflow to verify auto-approval when no reviewers",
-  //          "workflowType": "entityLifecycleWorkflow",
-  //          "trigger": {
-  //            "type": "eventBasedEntityTrigger",
-  //            "config": {
-  //              "events": ["ENTITY_CREATED"],
-  //              "entities": ["container"]
-  //            }
-  //          },
-  //          "nodes": [
-  //            {
-  //              "name": "start",
-  //              "type": "startEvent"
-  //            },
-  //            {
-  //              "name": "approvalTask",
-  //              "type": "userApprovalTask",
-  //              "config": {
-  //                "assignees": {
-  //                  "addReviewers": true
-  //                },
-  //                "approvalThreshold": 1,
-  //                "rejectionThreshold": 1
-  //              }
-  //            },
-  //            {
-  //              "name": "end",
-  //              "type": "endEvent"
-  //            }
-  //          ],
-  //          "edges": [
-  //            {
-  //              "from": "start",
-  //              "to": "approvalTask"
-  //            },
-  //            {
-  //              "from": "approvalTask",
-  //              "to": "end"
-  //            }
-  //          ]
-  //        }
-  //        """;
-  //
-  //    CreateWorkflowDefinition createWorkflowDefinition =
-  //        JsonUtils.readValue(workflowDefinition, CreateWorkflowDefinition.class);
-  //    WorkflowDefinition workflowDef =
-  //        createAndCheckEntity(createWorkflowDefinition, ADMIN_AUTH_HEADERS);
-  //    LOG.debug("Created workflow definition: {}", workflowDef.getName());
-  //
-  //    // Create a container without reviewers
-  //    CreateContainer createContainerReq =
-  //        containerTest
-  //            .createRequest(test)
-  //            .withService(STORAGE_SERVICE_REFERENCE.getFullyQualifiedName())
-  //            .withDescription("Test container for auto-approval")
-  //            .withDataModel(
-  //                new ContainerDataModel()
-  //                    .withIsPartitioned(false)
-  //                    .withColumns(
-  //                        List.of(
-  //                            new Column()
-  //                                .withName("column1")
-  //                                .withDataType(ColumnDataType.BIGINT)
-  //                                .withDescription("Test column 1"))));
-  //    // Explicitly not setting reviewers - container will have empty reviewers
-  //    createContainerReq.withReviewers(new ArrayList<>());
-  //
-  //    Container container = containerTest.createEntity(createContainerReq, ADMIN_AUTH_HEADERS);
-  //    LOG.debug("Created container: {} with no reviewers", container.getName());
-  //
-  //    // Wait for the workflow to trigger
-  //    Thread.sleep(5000);
-  //
-  //    // Check if the workflow instance was created
-  //    ResultList<WorkflowInstance> instances =
-  //        listWorkflowInstances(null, null, null, null, workflowDef.getId(), 10000, null,
-  // ADMIN_AUTH_HEADERS);
-  //
-  //    assertFalse(instances.getData().isEmpty(), "Workflow instance should be created");
-  //    WorkflowInstance instance = instances.getData().get(0);
-  //    LOG.debug("Found workflow instance: {} in state: {}", instance.getId(),
-  // instance.getState());
-  //
-  //    // Wait for auto-approval to complete
-  //    int maxAttempts = 20;
-  //    int attempts = 0;
-  //    while (attempts < maxAttempts &&
-  // !instance.getState().equals(WorkflowInstanceState.COMPLETED)) {
-  //      Thread.sleep(1000);
-  //      instance = getWorkflowInstance(instance.getId(), ADMIN_AUTH_HEADERS);
-  //      LOG.debug("Workflow instance state after {} seconds: {}", attempts, instance.getState());
-  //      attempts++;
-  //    }
-  //
-  //    assertEquals(
-  //        WorkflowInstanceState.COMPLETED,
-  //        instance.getState(),
-  //        "Workflow should auto-complete when no reviewers are present");
-  //    LOG.info("Workflow auto-approved successfully when no reviewers were present");
-  //
-  //    // Clean up
-  //    containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS);
-  //    deleteEntity(workflowDef.getId(), ADMIN_AUTH_HEADERS);
-  //    LOG.info("test_AutoApprovalWhenNoReviewers completed successfully");
-  //  }
-
-  @Test
-  @Order(14)
-  void test_CustomApprovalWorkflowForNewEntities(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
-    LOG.info("Starting test_CustomApprovalWorkflowForNewEntities");
-
-    // Create a reviewer user for this test
-    CreateUser createReviewer =
-        new CreateUser()
-            .withName("test_reviewer_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withEmail("test_reviewer@example.com")
-            .withDisplayName("Test Reviewer");
-    User reviewerUser = userTest.createEntity(createReviewer, ADMIN_AUTH_HEADERS);
-    EntityReference reviewerRef = reviewerUser.getEntityReference();
-    LOG.debug("Created reviewer user: {}", reviewerUser.getName());
-
-    // Step 1: Create a single workflow for all three entity types
-    String unifiedApprovalWorkflowJson =
-        """
-    {
-      "name": "UnifiedApprovalWorkflow",
-      "displayName": "Unified Approval Workflow",
-      "description": "Custom approval workflow for dataContracts, tags, and dataProducts",
-      "trigger": {
-        "type": "eventBasedEntity",
-        "config": {
-          "entityTypes": ["dataContract", "tag", "dataProduct"],
-          "events": ["Created", "Updated"],
-          "exclude": ["reviewers"],
-          "filter": ""
-        },
-        "output": ["relatedEntity", "updatedBy"]
-      },
-      "nodes": [
-        {
-          "type": "startEvent",
-          "subType": "startEvent",
-          "name": "StartNode",
-          "displayName": "Start"
-        },
-        {
-          "type": "endEvent",
-          "subType": "endEvent",
-          "name": "EndNode",
-          "displayName": "End"
-        },
-        {
-          "type": "userTask",
-          "subType": "userApprovalTask",
-          "name": "UserApproval",
-          "displayName": "User Approval",
-          "config": {
-            "assignees": {
-              "addReviewers": true
-            },
-            "approvalThreshold": 1,
-            "rejectionThreshold": 1
-          },
-          "input": ["relatedEntity"],
-          "inputNamespaceMap": {
-            "relatedEntity": "global"
-          },
-          "output": ["updatedBy"],
-          "branches": ["true", "false"]
-        },
-        {
-          "type": "automatedTask",
-          "subType": "setEntityAttributeTask",
-          "name": "SetDescription",
-          "displayName": "Set Description",
-          "config": {
-            "fieldName": "description",
-            "fieldValue": "Updated by Workflow"
-          },
-          "input": ["relatedEntity", "updatedBy"],
-          "inputNamespaceMap": {
-            "relatedEntity": "global",
-            "updatedBy": "UserApproval"
-          },
-          "output": []
-        }
-      ],
-      "edges": [
-        {"from": "StartNode", "to": "UserApproval"},
-        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
-        {"from": "SetDescription", "to": "EndNode"},
-        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
-      ],
-      "config": {"storeStageStatus": true}
-    }
-    """;
-
-    CreateWorkflowDefinition unifiedWorkflow =
-        JsonUtils.readValue(unifiedApprovalWorkflowJson, CreateWorkflowDefinition.class);
-    createOrUpdateWorkflow(unifiedWorkflow);
-    LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
-
-    // Step 2: Create database infrastructure with short names
-    String dbId = UUID.randomUUID().toString().substring(0, 4);
-    CreateDatabaseService createDbService = databaseServiceTest.createRequest("dbs" + dbId);
-    DatabaseService dbService =
-        databaseServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
-    LOG.debug("Created database service: {}", dbService.getName());
-
-    CreateDatabase createDatabase =
-        new CreateDatabase()
-            .withName("db" + dbId)
-            .withService(dbService.getFullyQualifiedName())
-            .withDescription("Test database for custom approval workflow");
-    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-    LOG.debug("Created database: {}", database.getName());
-
-    CreateDatabaseSchema createSchema =
-        new CreateDatabaseSchema()
-            .withName("sc" + dbId)
-            .withDatabase(database.getFullyQualifiedName())
-            .withDescription("Test schema for custom approval workflow");
-    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    LOG.debug("Created database schema: {}", schema.getName());
-
-    // Create a table for dataContract
-    List<Column> columns =
-        List.of(
-            new Column()
-                .withName("id")
-                .withDataType(ColumnDataType.INT)
-                .withDescription("ID column"),
-            new Column()
-                .withName("name")
-                .withDataType(ColumnDataType.STRING)
-                .withDescription("Name column"));
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName("test_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withDescription("Test table for data contract")
-            .withColumns(columns);
-    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-    LOG.debug("Created table: {}", table.getName());
-
-    // Step 3: Create dataContract with reviewers (USER1 as reviewer)
-    org.openmetadata.schema.api.data.CreateDataContract createDataContract =
-        new org.openmetadata.schema.api.data.CreateDataContract()
-            .withName("test_datacontract_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withDescription("Initial data contract description")
-            .withEntity(table.getEntityReference())
-            .withReviewers(listOf(reviewerRef));
-
-    org.openmetadata.schema.entity.data.DataContract dataContract =
-        TestUtils.post(
-            getResource("dataContracts"),
-            createDataContract,
-            org.openmetadata.schema.entity.data.DataContract.class,
-            ADMIN_AUTH_HEADERS);
-    LOG.debug("Created data contract: {} with initial description", dataContract.getName());
-
-    // Step 4: Create classification and tag with reviewers (USER1 as reviewer)
-    CreateClassification createClassification =
-        new CreateClassification()
-            .withName(
-                "test_classification_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withDescription("Test classification for workflow");
-    Classification classification =
-        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
-
-    CreateTag createTag =
-        new CreateTag()
-            .withName("test_tag")
-            .withDescription("Initial tag description")
-            .withClassification(classification.getName())
-            .withReviewers(listOf(reviewerRef));
-    Tag tag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
-    LOG.debug("Created tag: {} with initial description", tag.getName());
-
-    // Step 5: Create dataProduct with reviewers (dedicated reviewer)
-    org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
-        new org.openmetadata.schema.api.domains.CreateDataProduct()
-            .withName("test_dataproduct_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
-            .withDescription("Initial data product description")
-            .withDomains(List.of())
-            .withReviewers(List.of(reviewerRef))
-            .withAssets(List.of(table.getEntityReference()));
-
-    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
-        TestUtils.post(
-            getResource("dataProducts"),
-            createDataProduct,
-            org.openmetadata.schema.entity.domains.DataProduct.class,
-            ADMIN_AUTH_HEADERS);
-    LOG.debug("Created data product: {} with initial description", dataProduct.getName());
-
-    // Wait for workflow tasks to be created
-    java.lang.Thread.sleep(5000);
-
-    // Step 6: Find and resolve approval tasks for each entity
-    LOG.debug("Finding and resolving approval tasks");
-
-    // Resolve DataContract approval task using MessageParser.EntityLink
-    String dataContractEntityLink =
-        new MessageParser.EntityLink(
-                org.openmetadata.service.Entity.DATA_CONTRACT, dataContract.getFullyQualifiedName())
-            .getLinkString();
-    ThreadList dataContractThreads =
-        feedResourceTest.listTasks(
-            dataContractEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!dataContractThreads.getData().isEmpty()) {
-      Thread dataContractTask = dataContractThreads.getData().getFirst();
-      LOG.debug("Found approval task for dataContract: {}", dataContractTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          dataContractTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved data contract approval task");
-    }
-
-    // Resolve Tag approval task using MessageParser.EntityLink
-    String tagEntityLink =
-        new MessageParser.EntityLink(
-                org.openmetadata.service.Entity.TAG, tag.getFullyQualifiedName())
-            .getLinkString();
-    ThreadList tagThreads =
-        feedResourceTest.listTasks(
-            tagEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!tagThreads.getData().isEmpty()) {
-      Thread tagTask = tagThreads.getData().getFirst();
-      LOG.debug("Found approval task for tag: {}", tagTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          tagTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved tag approval task");
-    }
-
-    // Resolve DataProduct approval task using MessageParser.EntityLink
-    String dataProductEntityLink =
-        new MessageParser.EntityLink(
-                org.openmetadata.service.Entity.DATA_PRODUCT, dataProduct.getFullyQualifiedName())
-            .getLinkString();
-    ThreadList dataProductThreads =
-        feedResourceTest.listTasks(
-            dataProductEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!dataProductThreads.getData().isEmpty()) {
-      Thread dataProductTask = dataProductThreads.getData().getFirst();
-      LOG.debug("Found approval task for dataProduct: {}", dataProductTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          dataProductTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved data product approval task");
-    }
-
-    // Step 7: Verify descriptions were updated by workflows after approval
-    // The verifyEntityDescriptionsUpdated method already uses await() with proper polling (120s
-    // timeout)
-    verifyEntityDescriptionsUpdated(dataContract.getId(), tag.getId(), dataProduct.getId());
-
-    // Step 8: Update entities with different descriptions to trigger workflows again
-    LOG.debug("Updating entities with new descriptions to trigger workflows again");
-
-    // Update dataContract description
-    String dataContractPatch =
-        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed data contract description\"}]";
-    dataContract =
-        TestUtils.patch(
-            getResource("dataContracts/" + dataContract.getId()),
-            JsonUtils.readTree(dataContractPatch),
-            org.openmetadata.schema.entity.data.DataContract.class,
-            ADMIN_AUTH_HEADERS);
-
-    // Update tag description
-    String tagPatch =
-        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed tag description\"}]";
-    tag =
-        TestUtils.patch(
-            getResource("tags/" + tag.getId()),
-            JsonUtils.readTree(tagPatch),
-            Tag.class,
-            ADMIN_AUTH_HEADERS);
-
-    // Update dataProduct description
-    String dataProductPatch =
-        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed data product description\"}]";
-    dataProduct =
-        TestUtils.patch(
-            getResource("dataProducts/" + dataProduct.getId()),
-            JsonUtils.readTree(dataProductPatch),
-            org.openmetadata.schema.entity.domains.DataProduct.class,
-            ADMIN_AUTH_HEADERS);
-
-    // Wait for new tasks to be created
-    java.lang.Thread.sleep(10000);
-
-    // Step 9: Find and resolve new approval tasks
-    LOG.debug("Finding and resolving new approval tasks after updates");
-
-    // Resolve new DataContract approval task
-    dataContractThreads =
-        feedResourceTest.listTasks(
-            dataContractEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!dataContractThreads.getData().isEmpty()) {
-      Thread newDataContractTask = dataContractThreads.getData().getFirst();
-      LOG.debug("Found new approval task for dataContract: {}", newDataContractTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          newDataContractTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved new data contract approval task");
-    }
-
-    // Resolve new Tag approval task
-    tagThreads =
-        feedResourceTest.listTasks(
-            tagEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!tagThreads.getData().isEmpty()) {
-      Thread newTagTask = tagThreads.getData().getFirst();
-      LOG.debug("Found new approval task for tag: {}", newTagTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          newTagTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved new tag approval task");
-    }
-
-    // Resolve new DataProduct approval task
-    dataProductThreads =
-        feedResourceTest.listTasks(
-            dataProductEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
-    if (!dataProductThreads.getData().isEmpty()) {
-      Thread newDataProductTask = dataProductThreads.getData().getFirst();
-      LOG.debug("Found new approval task for dataProduct: {}", newDataProductTask.getId());
-      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
-      feedResourceTest.resolveTask(
-          newDataProductTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
-      LOG.debug("Resolved new data product approval task");
-    }
-
-    // Wait for workflows to complete after approval
-    java.lang.Thread.sleep(5000);
-
-    // Step 10: Verify descriptions were updated back by workflows
-    verifyEntityDescriptionsUpdated(dataContract.getId(), tag.getId(), dataProduct.getId());
-
-    LOG.info("test_CustomApprovalWorkflowForNewEntities completed successfully");
-  }
-
   private void createOrUpdateWorkflow(CreateWorkflowDefinition workflow) {
     Response response =
         SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
@@ -2749,76 +2293,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     }
   }
 
-  private void verifyEntityDescriptionsUpdated(UUID dataContractId, UUID tagId, UUID dataProductId)
-      throws HttpResponseException {
-    // Verify DataContract description update
-    LOG.info("Verifying DataContract description update...");
-    await()
-        .atMost(Duration.ofSeconds(120))
-        .pollInterval(Duration.ofSeconds(1))
-        .until(
-            () -> {
-              try {
-                org.openmetadata.schema.entity.data.DataContract contract =
-                    TestUtils.get(
-                        getResource("dataContracts/" + dataContractId),
-                        org.openmetadata.schema.entity.data.DataContract.class,
-                        ADMIN_AUTH_HEADERS);
-                LOG.debug("DataContract description: {}", contract.getDescription());
-                return "Updated by Workflow".equals(contract.getDescription());
-              } catch (Exception e) {
-                LOG.warn("Error checking DataContract description: {}", e.getMessage());
-                return false;
-              }
-            });
-    LOG.info("✓ DataContract description successfully updated to 'Updated by Workflow'");
-
-    // Verify Tag description update
-    LOG.info("Verifying Tag description update...");
-    await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              try {
-                Tag updatedTag = tagTest.getEntity(tagId, "", ADMIN_AUTH_HEADERS);
-                LOG.debug("Tag description: {}", updatedTag.getDescription());
-                return "Updated by Workflow".equals(updatedTag.getDescription());
-              } catch (Exception e) {
-                LOG.warn("Error checking Tag description: {}", e.getMessage());
-                return false;
-              }
-            });
-    LOG.info("✓ Tag description successfully updated to 'Updated by Workflow'");
-
-    // Verify DataProduct description update
-    LOG.info("Verifying DataProduct description update...");
-    await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              try {
-                org.openmetadata.schema.entity.domains.DataProduct product =
-                    TestUtils.get(
-                        getResource("dataProducts/" + dataProductId),
-                        org.openmetadata.schema.entity.domains.DataProduct.class,
-                        ADMIN_AUTH_HEADERS);
-                LOG.debug("DataProduct description: {}", product.getDescription());
-                return "Updated by Workflow".equals(product.getDescription());
-              } catch (Exception e) {
-                LOG.warn("Error checking DataProduct description: {}", e.getMessage());
-                return false;
-              }
-            });
-    LOG.info("✓ DataProduct description successfully updated to 'Updated by Workflow'");
-
-    LOG.info("All entity descriptions successfully updated to 'Updated by Workflow'");
-  }
-
   @Test
   @Order(9)
-  void test_ChangeReviewTaskWithoutReviewerSupport(TestInfo test) throws IOException {
+  void test_ChangeReviewTaskWithoutReviewerSupport() {
     LOG.info("Starting test_ChangeReviewTaskWithoutReviewerSupport");
 
     // Create a workflow with change review task for multiple entity types,
@@ -2914,7 +2391,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(9)
-  void test_EventBasedMultipleEntitiesWithoutReviewerSupport(TestInfo test) throws IOException {
+  void test_EventBasedMultipleEntitiesWithoutReviewerSupport() {
     LOG.info("Starting test_EventBasedMultipleEntitiesWithoutReviewerSupport");
 
     // Create a workflow with user approval task for multiple entity types using eventBasedEntity
@@ -3010,7 +2487,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(10)
-  void test_MixedEntityTypesWithReviewerSupport(TestInfo test) throws IOException {
+  void test_MixedEntityTypesWithReviewerSupport() {
     LOG.info("Starting test_MixedEntityTypesWithReviewerSupport");
 
     // Create a workflow with user approval task mixing entities with and without reviewer support
@@ -3104,7 +2581,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(11)
-  void test_WorkflowValidationEndpoint(TestInfo test) throws IOException {
+  void test_WorkflowValidationEndpoint() {
     LOG.info("Starting test_WorkflowValidationEndpoint");
 
     // Test 1: Valid workflow should pass validation
@@ -4103,8 +3580,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
   @Test
   @Order(12)
-  void test_MutualExclusivitySmartReplacement(TestInfo test)
-      throws IOException, HttpResponseException, InterruptedException {
+  void test_MutualExclusivitySmartReplacement(TestInfo test) throws IOException {
     LOG.info("Starting test_MutualExclusivitySmartReplacement");
 
     // Ensure we have database schema for table creation
@@ -4437,12 +3913,439 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     LOG.debug(
         "Smart replacement successful. Final tags: {}",
-        updatedTable.getTags().stream().map(t -> t.getTagFQN()).toList());
+        updatedTable.getTags().stream().map(TagLabel::getTagFQN).toList());
 
     // Verify exactly 2 tags remain (tag2 and term2)
     assertEquals(
         2, updatedTable.getTags().size(), "Should have exactly 2 tags after smart replacement");
 
     LOG.info("test_MutualExclusivitySmartReplacement completed successfully");
+  }
+
+  @Test
+  @Order(13)
+  void test_CustomApprovalWorkflowForNewEntities(TestInfo test)
+      throws IOException, InterruptedException {
+    LOG.info("Starting test_CustomApprovalWorkflowForNewEntities");
+
+    // Create a reviewer user for this test
+    CreateUser createReviewer =
+        new CreateUser()
+            .withName("test_reviewer_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withEmail("test_reviewer@example.com")
+            .withDisplayName("Test Reviewer");
+    User reviewerUser = userTest.createEntity(createReviewer, ADMIN_AUTH_HEADERS);
+    EntityReference reviewerRef = reviewerUser.getEntityReference();
+    LOG.debug("Created reviewer user: {}", reviewerUser.getName());
+
+    // Step 1: Create a single workflow for all three entity types
+    String unifiedApprovalWorkflowJson =
+        """
+        {
+          "name": "UnifiedApprovalWorkflow",
+          "displayName": "Unified Approval Workflow",
+          "description": "Custom approval workflow for dataContracts, tags, and dataProducts",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataContract", "tag", "dataProduct"],
+              "events": ["Created", "Updated"],
+              "exclude": ["reviewers"],
+              "filter": ""
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {
+              "type": "startEvent",
+              "subType": "startEvent",
+              "name": "StartNode",
+              "displayName": "Start"
+            },
+            {
+              "type": "endEvent",
+              "subType": "endEvent",
+              "name": "EndNode",
+              "displayName": "End"
+            },
+            {
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "name": "UserApproval",
+              "displayName": "User Approval",
+              "config": {
+                "assignees": {
+                  "addReviewers": true
+                },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global"
+              },
+              "output": ["updatedBy"],
+              "branches": ["true", "false"]
+            },
+            {
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "name": "SetDescription",
+              "displayName": "Set Description",
+              "config": {
+                "fieldName": "description",
+                "fieldValue": "Updated by Workflow"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "UserApproval"
+              },
+              "output": []
+            }
+          ],
+          "edges": [
+            {"from": "StartNode", "to": "UserApproval"},
+            {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+            {"from": "SetDescription", "to": "EndNode"},
+            {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """;
+
+    CreateWorkflowDefinition unifiedWorkflow =
+        JsonUtils.readValue(unifiedApprovalWorkflowJson, CreateWorkflowDefinition.class);
+    createOrUpdateWorkflow(unifiedWorkflow);
+    LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
+
+    // Step 2: Create database infrastructure with short names
+    String dbId = UUID.randomUUID().toString().substring(0, 4);
+    CreateDatabaseService createDbService = databaseServiceTest.createRequest("dbs" + dbId);
+    DatabaseService dbService =
+        databaseServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database service: {}", dbService.getName());
+
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName("db" + dbId)
+            .withService(dbService.getFullyQualifiedName())
+            .withDescription("Test database for custom approval workflow");
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database: {}", database.getName());
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName("sc" + dbId)
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Test schema for custom approval workflow");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created database schema: {}", schema.getName());
+
+    // Create a table for dataContract
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("id")
+                .withDataType(ColumnDataType.INT)
+                .withDescription("ID column"),
+            new Column()
+                .withName("name")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Name column"));
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("test_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Test table for data contract")
+            .withColumns(columns);
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created table: {}", table.getName());
+
+    // Step 3: Create dataContract with reviewers (USER1 as reviewer)
+    org.openmetadata.schema.api.data.CreateDataContract createDataContract =
+        new org.openmetadata.schema.api.data.CreateDataContract()
+            .withName("test_datacontract_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDescription("Initial data contract description")
+            .withEntity(table.getEntityReference())
+            .withReviewers(listOf(reviewerRef));
+
+    org.openmetadata.schema.entity.data.DataContract dataContract =
+        TestUtils.post(
+            getResource("dataContracts"),
+            createDataContract,
+            org.openmetadata.schema.entity.data.DataContract.class,
+            ADMIN_AUTH_HEADERS);
+    LOG.debug("Created data contract: {} with initial description", dataContract.getName());
+
+    // Step 4: Create classification and tag with reviewers (USER1 as reviewer)
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(
+                "test_classification_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDescription("Test classification for workflow");
+    Classification classification =
+        classificationTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName("test_tag")
+            .withDescription("Initial tag description")
+            .withClassification(classification.getName())
+            .withReviewers(listOf(reviewerRef));
+    Tag tag = tagTest.createEntity(createTag, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created tag: {} with initial description", tag.getName());
+
+    // Step 5: Create dataProduct with reviewers (dedicated reviewer)
+    org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName("test_dataproduct_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDescription("Initial data product description")
+            .withDomains(List.of())
+            .withReviewers(List.of(reviewerRef))
+            .withAssets(List.of(table.getEntityReference()));
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        TestUtils.post(
+            getResource("dataProducts"),
+            createDataProduct,
+            org.openmetadata.schema.entity.domains.DataProduct.class,
+            ADMIN_AUTH_HEADERS);
+    LOG.debug("Created data product: {} with initial description", dataProduct.getName());
+
+    // Step 6: Find and resolve approval tasks for each entity
+    LOG.debug("Finding and resolving approval tasks");
+
+    // Helper lambda to wait for and resolve a task
+    BiConsumer<String, String> waitAndResolveTask =
+        (entityLink, entityType) -> {
+          try {
+            LOG.info("Waiting for approval task for {}...", entityType);
+            await()
+                .atMost(Duration.ofMinutes(1))
+                .pollInterval(Duration.ofSeconds(2))
+                .until(
+                    () -> {
+                      boolean taskExists =
+                          !feedResourceTest
+                              .listTasks(
+                                  entityLink,
+                                  null,
+                                  null,
+                                  TaskStatus.Open,
+                                  1,
+                                  authHeaders(reviewerUser.getName()))
+                              .getData()
+                              .isEmpty();
+                      if (!taskExists) {
+                        LOG.info("Approval task for {} not found yet, retrying...", entityType);
+                      }
+                      return taskExists;
+                    });
+
+            LOG.info("Approval task for {} found. Proceeding with resolution.", entityType);
+            ThreadList threads =
+                feedResourceTest.listTasks(
+                    entityLink,
+                    null,
+                    null,
+                    TaskStatus.Open,
+                    1,
+                    authHeaders(reviewerUser.getName()));
+            Thread task = threads.getData().getFirst();
+            LOG.debug("Found approval task for {}: {}", entityType, task.getId());
+            ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+            feedResourceTest.resolveTask(
+                task.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
+            LOG.debug("Resolved {} approval task", entityType);
+          } catch (Exception e) {
+            LOG.error(
+                "Error while waiting for or resolving task for {}: {}",
+                entityType,
+                e.getMessage(),
+                e);
+            fail("Failed to find or resolve task for " + entityType, e);
+          }
+        };
+
+    // Resolve DataContract approval task
+    String dataContractEntityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.DATA_CONTRACT, dataContract.getFullyQualifiedName())
+            .getLinkString();
+    waitAndResolveTask.accept(dataContractEntityLink, "DataContract");
+
+    // Resolve Tag approval task
+    String tagEntityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.TAG, tag.getFullyQualifiedName())
+            .getLinkString();
+    waitAndResolveTask.accept(tagEntityLink, "Tag");
+
+    // Resolve DataProduct approval task
+    String dataProductEntityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.DATA_PRODUCT, dataProduct.getFullyQualifiedName())
+            .getLinkString();
+    waitAndResolveTask.accept(dataProductEntityLink, "DataProduct");
+
+    // Step 7: Verify descriptions were updated by workflows after approval
+    // The verifyEntityDescriptionsUpdated method already uses await() with proper polling (120s
+    // timeout)
+    verifyEntityDescriptionsUpdated(dataContract.getId(), tag.getId(), dataProduct.getId());
+
+    // Step 8: Update entities with different descriptions to trigger workflows again
+    LOG.debug("Updating entities with new descriptions to trigger workflows again");
+
+    // Update dataContract description
+    String dataContractPatch =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed data contract description\"}]";
+    dataContract =
+        TestUtils.patch(
+            getResource("dataContracts/" + dataContract.getId()),
+            JsonUtils.readTree(dataContractPatch),
+            org.openmetadata.schema.entity.data.DataContract.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Update tag description
+    String tagPatch =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed tag description\"}]";
+    tag =
+        TestUtils.patch(
+            getResource("tags/" + tag.getId()),
+            JsonUtils.readTree(tagPatch),
+            Tag.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Update dataProduct description
+    String dataProductPatch =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed data product description\"}]";
+    dataProduct =
+        TestUtils.patch(
+            getResource("dataProducts/" + dataProduct.getId()),
+            JsonUtils.readTree(dataProductPatch),
+            org.openmetadata.schema.entity.domains.DataProduct.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Wait for new tasks to be created
+    java.lang.Thread.sleep(10000);
+
+    // Step 9: Find and resolve new approval tasks
+    LOG.debug("Finding and resolving new approval tasks after updates");
+
+    // Resolve new DataContract approval task
+    ThreadList dataContractThreads =
+        feedResourceTest.listTasks(
+            dataContractEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
+    if (!dataContractThreads.getData().isEmpty()) {
+      Thread newDataContractTask = dataContractThreads.getData().getFirst();
+      LOG.debug("Found new approval task for dataContract: {}", newDataContractTask.getId());
+      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+      feedResourceTest.resolveTask(
+          newDataContractTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
+      LOG.debug("Resolved new data contract approval task");
+    }
+
+    // Resolve new Tag approval task
+    ThreadList tagThreads =
+        feedResourceTest.listTasks(
+            tagEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
+    if (!tagThreads.getData().isEmpty()) {
+      Thread newTagTask = tagThreads.getData().getFirst();
+      LOG.debug("Found new approval task for tag: {}", newTagTask.getId());
+      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+      feedResourceTest.resolveTask(
+          newTagTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
+      LOG.debug("Resolved new tag approval task");
+    }
+
+    // Resolve new DataProduct approval task
+    ThreadList dataProductThreads =
+        feedResourceTest.listTasks(
+            dataProductEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
+    if (!dataProductThreads.getData().isEmpty()) {
+      Thread newDataProductTask = dataProductThreads.getData().getFirst();
+      LOG.debug("Found new approval task for dataProduct: {}", newDataProductTask.getId());
+      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+      feedResourceTest.resolveTask(
+          newDataProductTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
+      LOG.debug("Resolved new data product approval task");
+    }
+
+    // Wait for workflows to complete after approval
+    java.lang.Thread.sleep(5000);
+
+    // Step 10: Verify descriptions were updated back by workflows
+    verifyEntityDescriptionsUpdated(dataContract.getId(), tag.getId(), dataProduct.getId());
+
+    LOG.info("test_CustomApprovalWorkflowForNewEntities completed successfully");
+  }
+
+  private void verifyEntityDescriptionsUpdated(
+      UUID dataContractId, UUID tagId, UUID dataProductId) {
+    // Verify DataContract description update
+    LOG.info("Verifying DataContract description update...");
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              try {
+                org.openmetadata.schema.entity.data.DataContract contract =
+                    TestUtils.get(
+                        getResource("dataContracts/" + dataContractId),
+                        org.openmetadata.schema.entity.data.DataContract.class,
+                        ADMIN_AUTH_HEADERS);
+                LOG.debug("DataContract description: {}", contract.getDescription());
+                return "Updated by Workflow".equals(contract.getDescription());
+              } catch (Exception e) {
+                LOG.warn("Error checking DataContract description: {}", e.getMessage());
+                return false;
+              }
+            });
+    LOG.info("✓ DataContract description successfully updated to 'Updated by Workflow'");
+
+    // Verify Tag description update
+    LOG.info("Verifying Tag description update...");
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                Tag updatedTag = tagTest.getEntity(tagId, "", ADMIN_AUTH_HEADERS);
+                LOG.debug("Tag description: {}", updatedTag.getDescription());
+                return "Updated by Workflow".equals(updatedTag.getDescription());
+              } catch (Exception e) {
+                LOG.warn("Error checking Tag description: {}", e.getMessage());
+                return false;
+              }
+            });
+    LOG.info("✓ Tag description successfully updated to 'Updated by Workflow'");
+
+    // Verify DataProduct description update
+    LOG.info("Verifying DataProduct description update...");
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                org.openmetadata.schema.entity.domains.DataProduct product =
+                    TestUtils.get(
+                        getResource("dataProducts/" + dataProductId),
+                        org.openmetadata.schema.entity.domains.DataProduct.class,
+                        ADMIN_AUTH_HEADERS);
+                LOG.debug("DataProduct description: {}", product.getDescription());
+                return "Updated by Workflow".equals(product.getDescription());
+              } catch (Exception e) {
+                LOG.warn("Error checking DataProduct description: {}", e.getMessage());
+                return false;
+              }
+            });
+    LOG.info("✓ DataProduct description successfully updated to 'Updated by Workflow'");
+
+    LOG.info("All entity descriptions successfully updated to 'Updated by Workflow'");
   }
 }
