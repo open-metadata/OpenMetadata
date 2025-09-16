@@ -523,7 +523,7 @@ public class LineageResource {
   public SearchLineageResult getLineageByEntityCount(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "fqn", required = true) @QueryParam("fqn") String fqn,
       @Parameter(description = "Direction of lineage traversal", required = true)
           @QueryParam("direction")
           LineageDirection direction,
@@ -534,11 +534,11 @@ public class LineageResource {
           int from,
       @Parameter(description = "Number of entities to return in this page")
           @QueryParam("size")
-          @DefaultValue("50")
-          @Min(1)
-          @Max(1000)
+          @DefaultValue("10000")
           int size,
-      @Parameter(description = "Filter entities by specific node depth level (optional)")
+      @Parameter(
+              description = "Filter entities by specific node depth level (optional)",
+              required = true)
           @QueryParam("nodeDepth")
           Integer nodeDepth,
       @Parameter(description = "Maximum depth to traverse in the specified direction")

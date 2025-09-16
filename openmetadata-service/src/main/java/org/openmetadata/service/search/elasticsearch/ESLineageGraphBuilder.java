@@ -623,6 +623,7 @@ public class ESLineageGraphBuilder {
 
     for (int depth = startingOffset; depth < maxDepth; depth++) {
       if (currentLevel.isEmpty()) break;
+      visitedFqns.addAll(currentLevel.values());
 
       Map<String, Set<String>> directionKeyAndValues =
           buildDirectionToFqnSet(
@@ -692,6 +693,7 @@ public class ESLineageGraphBuilder {
 
     for (int depth = 1; depth <= maxDepth; depth++) {
       if (currentLevel.isEmpty()) break;
+      visitedFqns.addAll(currentLevel.values());
 
       Map<String, Set<String>> directionKeyAndValues =
           buildDirectionToFqnSet(getLineageDirection(direction, false), currentLevel.keySet());
@@ -815,6 +817,7 @@ public class ESLineageGraphBuilder {
     // Traverse to the target depth
     for (int depth = startingOffset; depth <= targetDepth; depth++) {
       if (currentLevel.isEmpty()) break;
+      visitedFqns.addAll(currentLevel.values());
 
       Map<String, Set<String>> directionKeyAndValues =
           buildDirectionToFqnSet(
