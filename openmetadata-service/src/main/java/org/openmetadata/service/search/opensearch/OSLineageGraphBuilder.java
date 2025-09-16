@@ -13,6 +13,7 @@ import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageList
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
+import static org.openmetadata.service.util.LineageUtil.getNodeInformationWithCleanedEntity;
 
 import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
@@ -83,7 +84,7 @@ public class OSLineageGraphBuilder {
               String fqn = sourceMap.get(FQN_FIELD).toString();
               result
                   .getNodes()
-                  .putIfAbsent(fqn, new NodeInformation().withEntity(sourceMap).withNodeDepth(0));
+                  .putIfAbsent(fqn, getNodeInformationWithCleanedEntity(sourceMap, null, null, 0));
 
               List<EsLineageData> upstreamLineageList = getUpstreamLineageListIfExist(sourceMap);
               for (EsLineageData esLineageData : upstreamLineageList) {
@@ -154,10 +155,9 @@ public class OSLineageGraphBuilder {
             .getNodes()
             .putIfAbsent(
                 fqn,
-                new NodeInformation()
-                    .withEntity(esDoc)
-                    .withPaging(new LayerPaging().withEntityUpstreamCount(upStreamEntities.size()))
-                    .withNodeDepth(-1 * currentDepth));
+                getNodeInformationWithCleanedEntity(
+                    esDoc, null, upStreamEntities.size(), -1 * currentDepth));
+
         List<EsLineageData> paginatedUpstreamEntities =
             paginateList(
                 upStreamEntities, lineageRequest.getLayerFrom(), lineageRequest.getLayerSize());
@@ -259,12 +259,7 @@ public class OSLineageGraphBuilder {
           int currentDepth = calculateCurrentDepth(lineageRequest, remainingDepth);
           result
               .getNodes()
-              .put(
-                  fqn,
-                  new NodeInformation()
-                      .withEntity(entityMap)
-                      .withPaging(new LayerPaging().withEntityDownstreamCount(0))
-                      .withNodeDepth(currentDepth));
+              .put(fqn, getNodeInformationWithCleanedEntity(entityMap, 0, null, currentDepth));
         }
 
         List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityMap);
@@ -420,13 +415,8 @@ public class OSLineageGraphBuilder {
       int downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
 
       NodeInformation rootNode =
-          new NodeInformation()
-              .withEntity(rootEntityMap)
-              .withNodeDepth(0)
-              .withPaging(
-                  new LayerPaging()
-                      .withEntityUpstreamCount(upstreamEntities.size())
-                      .withEntityDownstreamCount(downstreamCount));
+          getNodeInformationWithCleanedEntity(
+              rootEntityMap, downstreamCount, upstreamEntities.size(), 0);
 
       result.getNodes().put(rootFqn, rootNode);
     }
@@ -758,12 +748,7 @@ public class OSLineageGraphBuilder {
 
         result
             .getNodes()
-            .put(
-                entityFqn,
-                new NodeInformation()
-                    .withEntity(entityDoc)
-                    .withNodeDepth(nodeDepth)
-                    .withPaging(new LayerPaging()));
+            .put(entityFqn, getNodeInformationWithCleanedEntity(entityDoc, null, null, nodeDepth));
 
         // Add lineage edges
         addLineageEdges(result, entityDoc, request);
@@ -852,11 +837,7 @@ public class OSLineageGraphBuilder {
             result
                 .getNodes()
                 .put(
-                    entityFqn,
-                    new NodeInformation()
-                        .withEntity(esDoc)
-                        .withNodeDepth(targetDepth)
-                        .withPaging(new LayerPaging()));
+                    entityFqn, getNodeInformationWithCleanedEntity(esDoc, null, null, targetDepth));
             addLineageEdges(result, esDoc, request);
           }
 
