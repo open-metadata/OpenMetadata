@@ -65,7 +65,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -124,6 +124,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -138,7 +139,6 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -3791,9 +3791,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             });
 
     queryParams.clear();
-    Long ts = TestUtils.dateToTimestamp("2021-09-01");
+    Long ts = TestUtils.dateToTimestamp("2021-09-09");
     queryParams.put("startTimestamp", ts.toString());
-    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-01").toString());
+    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-09").toString());
     queryParams.put("latest", "true");
     queryParams.put("testSuiteId", testCase.getTestSuite().getId().toString());
 

@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
 export const GenericAuthenticator = forwardRef(
@@ -42,7 +42,7 @@ export const GenericAuthenticator = forwardRef(
 
     const handleSilentSignIn = async () => {
       const resp = await renewToken(navigate);
-      setOidcToken(resp.accessToken);
+      await setOidcToken(resp.accessToken);
 
       return resp;
     };

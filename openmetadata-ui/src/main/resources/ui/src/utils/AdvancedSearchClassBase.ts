@@ -575,7 +575,41 @@ class AdvancedSearchClassBase {
       ...this.baseConfig,
       types: this.configTypes,
       widgets: this.configWidgets,
-      operators: this.configOperators,
+      operators: {
+        ...this.configOperators,
+        like: {
+          ...this.baseConfig.operators.like,
+          elasticSearchQueryType: 'wildcard',
+        },
+        ...(isExplorePage
+          ? {}
+          : {
+              equal: {
+                ...this.baseConfig.operators.equal,
+                label: t('label.is'),
+              },
+              not_equal: {
+                ...this.baseConfig.operators.not_equal,
+                label: t('label.is-not'),
+              },
+              select_equals: {
+                ...this.baseConfig.operators.select_equals,
+                label: t('label.is'),
+              },
+              select_not_equals: {
+                ...this.baseConfig.operators.select_not_equals,
+                label: t('label.is-not'),
+              },
+              is_null: {
+                ...this.baseConfig.operators.is_null,
+                label: t('label.is-not-set'),
+              },
+              is_not_null: {
+                ...this.baseConfig.operators.is_not_null,
+                label: t('label.is-set'),
+              },
+            }),
+      },
       settings: {
         ...this.baseConfig.settings,
         showLabels: isExplorePage,
@@ -740,6 +774,19 @@ class AdvancedSearchClassBase {
               (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
             ],
             entityField: EntityFields.TAG,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityFields.CERTIFICATION]: {
+        label: t('label.certification'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.DATA_ASSET],
+            entityField: EntityFields.CERTIFICATION,
           }),
           useAsyncSearch: true,
         },
