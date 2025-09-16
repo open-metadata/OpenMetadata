@@ -125,7 +125,7 @@ $$section
 
 List of database service names to include when processing cross-database lineage. This is required when `Process Cross Database Lineage` is enabled. Specify the service names that should be considered for cross-database lineage analysis.
 
-Example: `["database_service_1", "database_service_2"]`
+Example: `database_service_1`, `database_service_2`
 $$
 
 $$section
