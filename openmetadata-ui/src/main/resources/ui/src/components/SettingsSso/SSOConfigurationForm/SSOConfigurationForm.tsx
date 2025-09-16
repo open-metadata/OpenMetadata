@@ -58,6 +58,7 @@ import {
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
+import { getBasePath } from '../../../utils/HistoryUtils';
 import { getProviderDisplayName } from '../../../utils/SSOUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
@@ -108,6 +109,14 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
+
+  const getDefaultCallbackUrl = useCallback(() => {
+    const origin = window.location.origin;
+    const basePath = getBasePath();
+    const callbackUrl = `${origin}${basePath}/callback`;
+
+    return callbackUrl;
+  }, []);
 
   const getProviderIcon = (provider: string) => {
     switch (provider) {
@@ -222,21 +231,22 @@ const SSOConfigurationFormRJSF = ({
       setIsInitializing(false);
 
       // Create fresh form data for the new provider with all required fields
-      const isConfidentialClient = !(
+      // SAML and LDAP are always public clients, OAuth providers default to confidential but can be changed
+      const defaultClientType =
         selectedProvider === AuthProvider.Saml ||
         selectedProvider === AuthProvider.LDAP
-      );
+          ? ClientType.Public
+          : ClientType.Confidential;
 
       const freshFormData = {
         authenticationConfiguration: {
           provider: selectedProvider as AuthProvider,
           providerName: selectedProvider,
           enableSelfSignup: true,
-          clientType: isConfidentialClient
-            ? ClientType.Confidential
-            : ClientType.Public,
-          // For confidential clients (OAuth providers), fields go in oidcConfiguration
-          ...(isConfidentialClient
+          clientType: defaultClientType,
+          // For confidential clients, fields go in oidcConfiguration
+          // For public clients, use root level fields
+          ...(defaultClientType === ClientType.Confidential
             ? {
                 oidcConfiguration: {
                   type: selectedProvider,
@@ -254,17 +264,17 @@ const SSOConfigurationFormRJSF = ({
                   customParams: {},
                   tenant: '',
                   serverUrl: '',
-                  callbackUrl: '',
+                  callbackUrl: getDefaultCallbackUrl(),
                   maxAge: 0,
                   prompt: '',
                   sessionExpiry: 0,
                 },
               }
             : {
-                // For public clients (SAML/LDAP), use root level fields
+                // For public clients, use root level fields
                 authority: '',
                 clientId: '',
-                callbackUrl: '',
+                callbackUrl: getDefaultCallbackUrl(),
                 publicKeyUrls: [],
                 tokenValidationAlgorithm: 'RS256',
                 jwtPrincipalClaims: [],
@@ -283,7 +293,7 @@ const SSOConfigurationFormRJSF = ({
 
       setInternalData(freshFormData);
     }
-  }, [selectedProvider]);
+  }, [selectedProvider, getDefaultCallbackUrl]);
 
   const handleValidationErrors = useCallback(
     (validationResult: SecurityValidationResponse) => {
@@ -717,6 +727,15 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+    } else if (
+      currentProvider === AuthProvider.Saml ||
+      currentProvider === AuthProvider.LDAP
+    ) {
+      // Hide clientType for SAML/LDAP since they're always public
+      authConfig.clientType = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
     }
 
     // Show oidcConfiguration for confidential clients, hide for public clients
@@ -725,6 +744,11 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+      // Ensure callback URL is visible for public clients
+      authConfig.callbackUrl = {
+        'ui:title': 'Callback URL',
+        'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+      } as UISchemaObject;
     } else if (currentClientType === ClientType.Confidential) {
       // The schema will be shown with OIDC prefixed labels from the constants
       if (!authConfig['oidcConfiguration']) {
@@ -743,10 +767,11 @@ const SSOConfigurationFormRJSF = ({
       };
     }
 
-    return {
+    const finalSchema = {
       ...baseSchema,
       authenticationConfiguration: {
         ...baseSchema.authenticationConfiguration,
+        ...authConfig,
         'ui:classNames': 'hide-section-title',
       },
       authorizerConfiguration: {
@@ -754,6 +779,8 @@ const SSOConfigurationFormRJSF = ({
         'ui:classNames': 'hide-section-title',
       },
     };
+
+    return finalSchema;
   }, [
     currentProvider,
     internalData?.authenticationConfiguration?.clientType,
@@ -765,10 +792,55 @@ const SSOConfigurationFormRJSF = ({
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
     if (e.formData) {
-      setInternalData(e.formData);
+      const newFormData = { ...e.formData };
+      const authConfig = newFormData.authenticationConfiguration;
+
+      // Check if client type changed
+      const previousClientType =
+        internalData?.authenticationConfiguration?.clientType;
+      const newClientType = authConfig?.clientType;
+
+      if (previousClientType !== newClientType && authConfig) {
+        // If switching from Confidential to Public, move callback URL from OIDC to root
+        if (
+          newClientType === ClientType.Public &&
+          previousClientType === ClientType.Confidential
+        ) {
+          const oidcConfig = authConfig.oidcConfiguration as
+            | Record<string, unknown>
+            | undefined;
+          if (!authConfig.callbackUrl && oidcConfig?.callbackUrl) {
+            authConfig.callbackUrl = oidcConfig.callbackUrl as string;
+          } else if (!authConfig.callbackUrl) {
+            // Set default callback URL if not present
+            authConfig.callbackUrl = getDefaultCallbackUrl();
+          }
+        }
+        // If switching from Public to Confidential, move callback URL from root to OIDC
+        else if (
+          newClientType === ClientType.Confidential &&
+          previousClientType === ClientType.Public
+        ) {
+          if (!authConfig.oidcConfiguration) {
+            authConfig.oidcConfiguration = {};
+          }
+          const oidcConfig = authConfig.oidcConfiguration as Record<
+            string,
+            unknown
+          >;
+          if (!oidcConfig.callbackUrl && authConfig.callbackUrl) {
+            oidcConfig.callbackUrl = authConfig.callbackUrl;
+          } else if (!oidcConfig.callbackUrl) {
+            // Set default callback URL if not present
+            oidcConfig.callbackUrl = getDefaultCallbackUrl();
+          }
+        }
+      }
+
+      setInternalData(newFormData);
 
       // Check if provider changed
-      const newProvider = e.formData?.authenticationConfiguration?.provider;
+      const newProvider = newFormData?.authenticationConfiguration?.provider;
       if (newProvider && newProvider !== currentProvider) {
         setCurrentProvider(newProvider);
         // Notify parent component about provider change
@@ -1054,20 +1126,21 @@ const SSOConfigurationFormRJSF = ({
     }
 
     // Initialize form data with selected provider for new configuration with all required fields
-    const isConfidentialClient = !(
+    // SAML and LDAP are always public clients, OAuth providers default to confidential but can be changed
+    const defaultClientType =
       provider === AuthProvider.Saml || provider === AuthProvider.LDAP
-    );
+        ? ClientType.Public
+        : ClientType.Confidential;
 
     setInternalData({
       authenticationConfiguration: {
         provider: provider,
         providerName: provider,
         enableSelfSignup: false,
-        clientType: isConfidentialClient
-          ? ClientType.Confidential
-          : ClientType.Public,
-        // For confidential clients (OAuth providers), fields go in oidcConfiguration
-        ...(isConfidentialClient
+        clientType: defaultClientType,
+        // For confidential clients, fields go in oidcConfiguration
+        // For public clients, use root level fields
+        ...(defaultClientType === ClientType.Confidential
           ? {
               oidcConfiguration: {
                 type: provider,
@@ -1085,17 +1158,17 @@ const SSOConfigurationFormRJSF = ({
                 customParams: {},
                 tenant: '',
                 serverUrl: '',
-                callbackUrl: '',
+                callbackUrl: getDefaultCallbackUrl(),
                 maxAge: 0,
                 prompt: '',
                 sessionExpiry: 0,
               },
             }
           : {
-              // For public clients (SAML/LDAP), use root level fields
+              // For public clients, use root level fields
               authority: '',
               clientId: '',
-              callbackUrl: '',
+              callbackUrl: getDefaultCallbackUrl(),
               publicKeyUrls: [],
               tokenValidationAlgorithm: 'RS256',
               jwtPrincipalClaims: [],
