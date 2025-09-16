@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "NODE_OPTIONS='--max-old-space-size=3072' vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
