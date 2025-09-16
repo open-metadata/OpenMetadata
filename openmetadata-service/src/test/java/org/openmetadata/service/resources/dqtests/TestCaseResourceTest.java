@@ -4125,4 +4125,64 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
     assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
   }
+
+  @Test
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
+      throws HttpResponseException, ParseException {
+    // Create a test user
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
+    User testUser = userResourceTest.createAndCheckEntity(createUser, ADMIN_AUTH_HEADERS);
+    EntityReference testUserRef = testUser.getEntityReference();
+
+    // Create a test case
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+
+    // Add a failed test case result, which will create a NEW incident
+    postTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("test failure result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Assign the test user to the test case incident
+    CreateTestCaseResolutionStatus createAssignedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
+
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
+
+    // Verify the user is assigned to the incident
+    assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
+    assertTrue(assignedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned);
+    Assigned assignedDetails = (Assigned) assignedIncident.getTestCaseResolutionStatusDetails();
+    assertEquals(testUserRef.getId(), assignedDetails.getAssignee().getId());
+    assertEquals(testUserRef.getName(), assignedDetails.getAssignee().getName());
+
+    // Delete the user
+    userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // Retrieve the incident status and verify the user assignment is removed after user deletion
+    TestCaseResolutionStatus retrievedIncident = getTestCaseFailureStatus(assignedIncident.getId());
+
+    // The user should no longer be assigned to the incident after deletion
+    // The incident should either have no assignee or the assignee reference should be null
+    if (retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned) {
+      Assigned retrievedAssignedDetails =
+          (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
+      assertNull(
+          retrievedAssignedDetails.getAssignee(),
+          "User should no longer be assigned after deletion");
+    } else {
+      // The incident status type may have changed from Assigned to something else after user
+      // deletion
+      assertFalse(
+          retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
+          "Incident should no longer have an assigned status after user deletion");
+    }
+  }
 }
