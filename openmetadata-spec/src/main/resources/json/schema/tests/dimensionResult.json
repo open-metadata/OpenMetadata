@@ -7,10 +7,10 @@
   "type": "object",
   "properties": {
     "dimensionValues": {
-      "description": "Map of dimension column names to their values for this result",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
+      "description": "Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value': 'mumbai'}, {'name': 'product', 'value': 'laptop'}])",
+      "type": "array",
+      "items": {
+        "$ref": "basic.json#/definitions/dimensionValue"
       }
     },
     "testCaseStatus": {

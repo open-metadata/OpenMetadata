@@ -150,3 +150,9 @@ ingestion/.nox/
 # Temporary files
 *.tmp
 *.temp 
+
+# Claude
+.claude/
+
+# BMAD Method
+.bmad-core/

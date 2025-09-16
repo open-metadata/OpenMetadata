@@ -24,7 +24,7 @@ from metadata.data_quality.validations.models import (
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -571,3 +571,192 @@ def test_suite_validation_database(
         assert res.failedRowsPercentage is not None
         assert res.passedRows is not None
         assert res.passedRowsPercentage is not None
+
+
+# Test cases for dimensional validation
+def test_column_values_to_be_in_set_backward_compatibility(create_sqlite_table):
+    """Test backward compatibility: non-dimensional ColumnValuesToBeInSet still works"""
+    from uuid import uuid4
+
+    from metadata.generated.schema.type.entityReference import EntityReference
+
+    test_case = TestCase(
+        name="test_dimensional_backward_compatibility",
+        entityLink="<#E::table::service.db.users::columns::nickname>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="allowedValues", value='["john", "jane", "bob"]'
+            ),
+            TestCaseParameterValue(name="matchEnum", value="false"),
+        ],
+        # No dimensionColumns - this should work exactly as before
+    )
+
+    test_handler_obj = import_test_case_class(
+        "COLUMN",
+        "sqlalchemy",
+        "columnValuesToBeInSet",
+    )
+
+    test_handler = test_handler_obj(
+        create_sqlite_table,
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    # Verify this is not a dimensional test
+    assert not test_handler.is_dimensional_test()
+
+    # Mock the query result
+    with patch.object(test_handler, "_run_results", return_value=25):
+        res = test_handler.run_validation()
+
+    # Verify standard behavior
+    assert isinstance(res, TestCaseResult)
+    assert res.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
+    assert res.dimensionResults is None  # No dimensional results
+    assert len(res.testResultValue) == 1
+    assert res.testResultValue[0].name == "allowedValueCount"
+
+
+def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
+    """Test dimensional validation functionality"""
+    from uuid import uuid4
+
+    from metadata.generated.schema.type.entityReference import EntityReference
+
+    test_case = TestCase(
+        id=uuid4(),
+        name="my_test_case",
+        fullyQualifiedName="my_test_case_fqn",
+        entityLink="<#E::table::service.db.users::columns::nickname>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="allowedValues", value='["john", "jane", "bob"]'
+            ),
+            TestCaseParameterValue(name="matchEnum", value="false"),
+        ],
+        dimensionColumns=["name"],  # Enable dimensional analysis on name column
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+    test_handler_obj = import_test_case_class(
+        "COLUMN",
+        "sqlalchemy",
+        "columnValuesToBeInSet",
+    )
+
+    test_handler = test_handler_obj(
+        create_sqlite_table,
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    # Verify this is a dimensional test
+    assert test_handler.is_dimensional_test()
+
+    # Mock the main query result and dimensional query results
+    mock_dimensional_data = [
+        ("John", 1),  # name=John, count_in_set=1
+        ("Jane", 1),  # name=Jane, count_in_set=1
+        ("Bob", 1),  # name=Bob, count_in_set=1
+    ]
+
+    with patch.object(test_handler, "_run_results", return_value=23), patch.object(
+        test_handler.runner,
+        "select_all_from_sample",
+        return_value=mock_dimensional_data,
+    ), patch.object(test_handler, "_get_column_name") as mock_get_column:
+
+        # Mock column objects with required attributes for COUNT_IN_SET metric
+        from sqlalchemy import String
+
+        mock_main_column = type("Column", (), {"name": "nickname", "type": String()})()
+        mock_name_column = type("Column", (), {"name": "name", "type": String()})()
+
+        def mock_get_column_side_effect(column_name=None):
+            if column_name == "name":
+                return mock_name_column
+            return mock_main_column
+
+        mock_get_column.side_effect = mock_get_column_side_effect
+
+        res = test_handler.run_validation()
+
+    # Verify main test result
+    assert isinstance(res, TestCaseResult)
+    assert res.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
+    assert len(res.testResultValue) == 1
+    assert res.testResultValue[0].name == "allowedValueCount"
+
+    # Verify dimensional results exist
+    assert res.dimensionResults is not None
+    assert len(res.dimensionResults) == 3  # Three dimension values: John, Jane, Bob
+
+    # Verify first dimensional result structure
+    dim_result = res.dimensionResults[0]
+    assert "name" in dim_result.dimensionValues
+    assert dim_result.dimensionKey.startswith("name=")
+    assert dim_result.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
+    assert dim_result.testResultValue is not None
+    assert len(dim_result.testResultValue) == 1
+    assert dim_result.testResultValue[0].name == "allowedValueCount"
+
+
+def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table):
+    """Test error handling for invalid dimension columns"""
+    from uuid import uuid4
+
+    from metadata.generated.schema.type.entityReference import EntityReference
+
+    test_case = TestCase(
+        name="test_invalid_dimension_column",
+        entityLink="<#E::table::service.db.users::columns::nickname>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="allowedValues", value='["john", "jane", "bob"]'
+            ),
+        ],
+        dimensionColumns=["invalid_column"],  # Invalid dimension column
+    )
+
+    test_handler_obj = import_test_case_class(
+        "COLUMN",
+        "sqlalchemy",
+        "columnValuesToBeInSet",
+    )
+
+    test_handler = test_handler_obj(
+        create_sqlite_table,
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    # Verify this is a dimensional test
+    assert test_handler.is_dimensional_test()
+
+    # Mock column resolution to raise ValueError for invalid column
+    with patch.object(test_handler, "_run_results", return_value=23), patch.object(
+        test_handler, "_get_column_name"
+    ) as mock_get_column:
+
+        def mock_get_column_side_effect(column_name=None):
+            if column_name == "invalid_column":
+                raise ValueError(f"Cannot find column {column_name}")
+            return type("Column", (), {"name": "address_id"})()
+
+        mock_get_column.side_effect = mock_get_column_side_effect
+
+        res = test_handler.run_validation()
+
+    # Should return aborted status due to invalid dimension column
+    assert isinstance(res, TestCaseResult)
+    assert res.testCaseStatus == TestCaseStatus.Aborted
+    assert "Dimensional validation failed" in res.result
+    assert "invalid_column" in res.result

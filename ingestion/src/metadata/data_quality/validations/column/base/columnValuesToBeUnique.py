@@ -15,20 +15,17 @@ Validator for column values to be unique test case
 
 import traceback
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from sqlalchemy import Column
 
-from metadata.data_quality.validations.base_test_handler import (
-    BaseTestValidator,
-    DimensionResultsDict,
-)
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
-    DimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -82,7 +79,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             passed_rows=unique_count,
         )
 
-    def _run_dimensional_validation(self) -> DimensionResultsDict:
+    def _run_dimensional_validation(self) -> List[DimensionResult]:
         """Execute dimensional validation for column values to be unique
 
         The new approach runs separate queries for each dimension column instead of
@@ -92,13 +89,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
 
         Returns:
-            DimensionResultsDict: Dictionary structure with results per dimension
+            List[DimensionResult]: List of dimension-specific test results
         """
         try:
             # Get dimension columns from test case
             dimension_columns = self.test_case.dimensionColumns or []
             if not dimension_columns:
-                return {}
+                return []
 
             # Get the column to validate (same as _run_validation)
             column: Union[SQALikeColumn, Column] = self._get_column_name()
@@ -110,26 +107,33 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             }
 
             # Execute separate queries for each dimension column
-            dimension_results = {}
+            dimension_results = []
             for dimension_column in dimension_columns:
-                # Get dimension column object
-                dimension_col = self._get_column_name(dimension_column)
+                try:
+                    # Get dimension column object
+                    dimension_col = self._get_column_name(dimension_column)
 
-                # Execute dimensional query for this single dimension
-                # This will return results grouped by this dimension only
-                single_dimension_results = self._execute_dimensional_query(
-                    column, dimension_col, metrics_to_compute
-                )
+                    # Execute dimensional query for this single dimension
+                    # This will return results grouped by this dimension only
+                    single_dimension_results = self._execute_dimensional_query(
+                        column, dimension_col, metrics_to_compute
+                    )
 
-                # Add to overall results dictionary
-                dimension_results[dimension_column] = single_dimension_results
+                    # Add to overall results list (now directly a list)
+                    dimension_results.extend(single_dimension_results)
+
+                except Exception as exc:
+                    logger.warning(
+                        f"Error executing dimensional query for column {dimension_column}: {exc}"
+                    )
+                    continue
 
             return dimension_results
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional validation: {exc}")
-            # Return empty dict on error (test continues without dimensions)
-            return {}
+            # Return empty list on error (test continues without dimensions)
+            return []
 
     @abstractmethod
     def _get_column_name(self, column_name: Optional[str] = None):
@@ -173,7 +177,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         column: Union[SQALikeColumn, Column],
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
-    ) -> Dict[str, DimensionResult]:
+    ) -> List[DimensionResult]:
         """Execute dimensional query for a single dimension
 
         This method should implement the engine-specific logic for executing
@@ -196,7 +200,24 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
-            Example: {"Spain": DimensionResult(...), "Argentina": DimensionResult(...)}
+            List[DimensionResult]: List of dimension results for this dimension column
+            Example: [DimensionResult(dimensionValues={"country": "Spain"}, ...), DimensionResult(dimensionValues={"country": "Argentina"}, ...)]
         """
         raise NotImplementedError
+
+    def get_dimension_column(self, column_name: str):
+        """Get column object for dimension validation
+
+        This method is called by the base class to validate that dimension columns exist.
+        It delegates to the existing _get_column_name method that child classes already implement.
+
+        Args:
+            column_name: Name of the dimension column
+
+        Returns:
+            Column object for the dimension column
+
+        Raises:
+            ValueError: If column doesn't exist
+        """
+        return self._get_column_name(column_name)

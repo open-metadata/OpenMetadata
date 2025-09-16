@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import Dict, Optional
+from typing import List, Optional
 
 from sqlalchemy import Column, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
@@ -110,7 +110,7 @@ class ColumnValuesToBeUniqueValidator(
 
     def _execute_dimensional_query(
         self, column: Column, dimension_col: Column, metrics_to_compute: dict
-    ) -> Dict[str, DimensionResult]:
+    ) -> List[DimensionResult]:
         """Execute dimensional query for column values to be unique using SQLAlchemy
 
         This method follows the same pattern as _run_results but executes a GROUP BY query
@@ -122,9 +122,9 @@ class ColumnValuesToBeUniqueValidator(
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
+            List[DimensionResult]: List of dimension results for this dimension column
         """
-        dimension_results = {}
+        dimension_results = []
 
         try:
 
@@ -212,12 +212,12 @@ class ColumnValuesToBeUniqueValidator(
                     # failed_rows will be auto-calculated as (total_count - unique_count)
                 )
 
-                # Add to results dictionary with dimension value as key
-                dimension_results[dimension_value] = dimension_result
+                # Add to results list
+                dimension_results.append(dimension_result)
 
         except Exception as exc:
             # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
-            # Return empty dict on error (test continues without dimensions)
+            # Return empty list on error (test continues without dimensions)
 
         return dimension_results

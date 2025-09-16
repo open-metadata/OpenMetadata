@@ -16,34 +16,34 @@ Base validator class
 from __future__ import annotations
 
 import reprlib
+import traceback
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
+from uuid import uuid4
 
 from pydantic import BaseModel
 
 from metadata.data_quality.validations import utils
 from metadata.generated.schema.tests.basic import (
-    DimensionResult,
+    TestCaseDimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import test_suite_logger
 
 if TYPE_CHECKING:
     from pandas import DataFrame
 
-    # Import DimensionResult for type checking
-    from metadata.generated.schema.tests.dimensionResult import DimensionResult
+logger = test_suite_logger()
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 S = TypeVar("S", bound=BaseModel)
-
-# Type alias for dimensional results structure
-DimensionResultsDict = Dict[str, Dict[str, "DimensionResult"]]
 
 
 class BaseTestValidator(ABC):
@@ -92,13 +92,51 @@ class BaseTestValidator(ABC):
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
+            logger.debug(
+                f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}"
+            )
+            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
+
+            # Validate dimension columns exist in the target table
+            validation_error = self.validate_dimension_columns()
+            if validation_error:
+                logger.warning(f"Dimensional validation aborted: {validation_error}")
+                return self.get_test_case_result_object(
+                    self.execution_date,
+                    TestCaseStatus.Aborted,
+                    f"Dimensional validation failed: {validation_error}",
+                    test_result.testResultValue or [],
+                )
+
             try:
                 dimension_results = self._run_dimensional_validation()
-                test_result.dimensionResults = dimension_results
+                if dimension_results:
+                    logger.debug(
+                        f"Dimensional validation completed with {len(dimension_results)} results"
+                    )
+
+                    test_case_dimension_results = (
+                        self._convert_to_test_case_dimension_results(
+                            dimension_results, test_result
+                        )
+                    )
+
+                    test_result.dimensionResults = test_case_dimension_results
+                    logger.debug(
+                        f"Attached {len(test_case_dimension_results)} dimension results to main test result"
+                    )
+                else:
+                    logger.debug("Dimensional validation completed with no results")
+
             except NotImplementedError:
-                # Fallback: dimensional validation not implemented yet
-                # This allows gradual migration of validators
-                pass
+                logger.debug(
+                    "Dimensional validation not yet implemented for this validator"
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
 
         return test_result
 
@@ -115,7 +153,7 @@ class BaseTestValidator(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_dimensional_validation(self) -> DimensionResultsDict:
+    def _run_dimensional_validation(self) -> List[DimensionResult]:
         """Execute dimensional validation for this test
 
         This method should implement the dimensional logic specific to each test type.
@@ -198,6 +236,72 @@ class BaseTestValidator(ABC):
 
         return test_case_result
 
+    def _convert_to_test_case_dimension_results(
+        self,
+        dimension_results: List[DimensionResult],
+        test_result: TestCaseResult,
+    ) -> List[TestCaseDimensionResult]:
+        """Convert DimensionResult objects to TestCaseDimensionResult objects"""
+        test_case_dimension_results = []
+
+        for dim_result in dimension_results:
+            dimension_key = ",".join(
+                [
+                    f"{dim_val.name}={dim_val.value}"
+                    for dim_val in dim_result.dimensionValues
+                ]
+            )
+
+            test_case_dim_result = TestCaseDimensionResult(
+                id=str(uuid4()),
+                testCaseResultId=test_result.id or str(uuid4()),
+                testCase=None,  # Backend will populate EntityReference during retrieval using testCaseFQN
+                timestamp=test_result.timestamp,
+                dimensionValues=dim_result.dimensionValues,
+                dimensionKey=dimension_key,
+                testCaseStatus=dim_result.testCaseStatus,
+                result=dim_result.result,
+                testResultValue=dim_result.testResultValue,
+                passedRows=dim_result.passedRows,
+                failedRows=dim_result.failedRows,
+                passedRowsPercentage=dim_result.passedRowsPercentage,
+                failedRowsPercentage=dim_result.failedRowsPercentage,
+            )
+
+            test_case_dimension_results.append(test_case_dim_result)
+
+        return test_case_dimension_results
+
+    def validate_dimension_columns(self) -> Optional[str]:
+        """Validate that all dimension columns exist in the target table
+
+        Returns:
+            Optional[str]: Error message if validation fails, None if successful
+        """
+        if not self.is_dimensional_test():
+            return None
+
+        try:
+            missing_columns = []
+            for dim_col in self.test_case.dimensionColumns:
+                try:
+                    # Delegate to child classes via get_dimension_column method
+                    # which uses the _get_column_name(column_name) pattern
+                    self.get_dimension_column(dim_col)
+                except ValueError:
+                    missing_columns.append(dim_col)
+                except AttributeError:
+                    # Child class doesn't support dimensional validation yet
+                    return f"Validator does not support dimensional column validation"
+
+            if missing_columns:
+                return f"Dimension columns not found in table: {', '.join(missing_columns)}"
+
+            return None
+
+        except Exception as exc:
+            return f"Unable to validate dimension columns: {exc}"
+
     def get_dimension_result_object(
         self,
         dimension_values: dict,
@@ -222,6 +326,8 @@ class BaseTestValidator(ABC):
         Returns:
             DimensionResult: Dimension result object with calculated percentages
         """
+        from metadata.generated.schema.tests.basic import DimensionValue
+
         # Auto-calculate failed rows if not provided
         if failed_rows is None:
             failed_rows = total_rows - passed_rows
@@ -234,8 +340,14 @@ class BaseTestValidator(ABC):
             (failed_rows / total_rows * 100) if total_rows > 0 else 0
         )
 
+        # Convert dictionary to array of DimensionValue objects
+        dimension_values_array = [
+            DimensionValue(name=name, value=value)
+            for name, value in dimension_values.items()
+        ]
+
         dimension_result = DimensionResult(
-            dimensionValues=dimension_values,
+            dimensionValues=dimension_values_array,
             testCaseStatus=test_case_status,
             result=result,
             testResultValue=test_result_value,

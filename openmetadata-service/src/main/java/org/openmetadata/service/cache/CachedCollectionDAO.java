@@ -170,6 +170,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public TestCaseDimensionResultTimeSeriesDAO testCaseDimensionResultTimeSeriesDao() {
+    return delegate.testCaseDimensionResultTimeSeriesDao();
+  }
+
+  @Override
   public PersonaDAO personaDAO() {
     return delegate.personaDAO();
   }

@@ -16,18 +16,18 @@ Validator for column value to be in set test case
 import traceback
 from abc import abstractmethod
 from ast import literal_eval
-from typing import List, Union
+from typing import List, Optional, Union
 
 from sqlalchemy import Column
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
-    DimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -95,20 +95,99 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         )
 
     def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for this test
+        """Execute dimensional validation for column values to be in set
 
-        This method should implement the dimensional logic specific to each test type.
-        It will be called automatically by the template method when dimensionColumns
-        are configured in the test case.
+        The new approach runs separate queries for each dimension column instead of
+        combining them with GROUP BY. For example, if dimensionColumns = ["region", "age"],
+        this method will:
+        1. Run one query: GROUP BY region -> {"mumbai": result1, "delhi": result2}
+        2. Run another query: GROUP BY age -> {"25": result3, "30": result4}
 
         Returns:
             List[DimensionResult]: List of dimension-specific test results
         """
-        # Default implementation returns empty list
-        return []
+        try:
+            # Get dimension columns from test case
+            dimension_columns = self.test_case.dimensionColumns or []
+            if not dimension_columns:
+                return []
+
+            # Get the column to validate (same as _run_validation)
+            column: Union[SQALikeColumn, Column] = self._get_column_name()
+
+            # Get test parameters (same as _run_validation)
+            allowed_values = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "allowedValues",
+                literal_eval,
+            )
+
+            match_enum = utils.get_bool_test_case_param(
+                self.test_case.parameterValues, "matchEnum"
+            )
+
+            # Define the metrics to compute (same as _run_validation)
+            metrics_to_compute = {
+                "count_in_set": Metrics.COUNT_IN_SET,
+            }
+
+            # Add row count metric if match_enum is enabled
+            if match_enum:
+                metrics_to_compute["row_count"] = Metrics.ROW_COUNT
+
+            # Store test parameters for child class
+            test_params = {
+                "allowed_values": allowed_values,
+                "match_enum": match_enum,
+            }
+
+            # Execute separate queries for each dimension column
+            dimension_results = []
+            for dimension_column in dimension_columns:
+                try:
+                    # Get dimension column object
+                    dimension_col = self._get_column_name(dimension_column)
+
+                    # Execute dimensional query for this single dimension
+                    single_dimension_results = self._execute_dimensional_query(
+                        column, dimension_col, metrics_to_compute, test_params
+                    )
+
+                    # Add to overall results list (now directly a list)
+                    dimension_results.extend(single_dimension_results)
+
+                except Exception as exc:
+                    logger.warning(
+                        f"Error executing dimensional query for column {dimension_column}: {exc}"
+                    )
+                    continue
+
+            return dimension_results
+
+        except Exception as exc:
+            logger.warning(f"Error executing dimensional validation: {exc}")
+            # Return empty list on error (test continues without dimensions)
+            return []
 
     @abstractmethod
-    def _get_column_name(self):
+    def _execute_dimensional_query(
+        self, column, dimension_col, metrics_to_compute, test_params
+    ):
+        """Execute dimensional query for column values to be in set
+
+        Args:
+            column: The main column being validated
+            dimension_col: Single dimension column object
+            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+            test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
+
+        Returns:
+            List[DimensionResult]: List of dimension results for this dimension column
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_column_name(self, column_name: Optional[str] = None):
         raise NotImplementedError
 
     @abstractmethod
@@ -136,3 +215,17 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             Tuple[int, int]:
         """
         return self.compute_row_count(self._get_column_name())
+
+    def get_dimension_column(self, column_name: str):
+        """Get dimension column object by name for validation
+
+        Args:
+            column_name: Name of the dimension column to retrieve
+
+        Returns:
+            Column object (type depends on implementation)
+
+        Raises:
+            ValueError: If column is not found in the data source
+        """
+        return self._get_column_name(column_name)
