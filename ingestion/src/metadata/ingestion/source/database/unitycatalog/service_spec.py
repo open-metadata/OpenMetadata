@@ -26,5 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=UnityCatalogProfilerInterface,
     test_suite_class=UnityCatalogTestSuiteInterface,
     sampler_class=UnityCatalogSamplerInterface,
-    data_diff=UnityCatalogTableParameter
+    data_diff=UnityCatalogTableParameter,
 )
