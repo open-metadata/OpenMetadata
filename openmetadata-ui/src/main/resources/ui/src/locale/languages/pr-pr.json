@@ -1192,6 +1192,7 @@
     "pipeline-state": "وضعیت خط لوله",
     "pipeline-type": "نوع خط لوله",
     "platform": "پلتفرم",
+    "platform-service-client-unavailable": "پلیٹ فارم سروس کلائنٹ دستیاب نہیں",
     "platform-type-lineage": "{{platformType}} شجره داده",
     "play": "پخش",
     "please-enter-value": "لطفاً مقدار {{name}} را وارد کنید",
@@ -2447,6 +2448,7 @@
     "team-moved-success": "تیم با موفقیت منتقل شد!",
     "team-no-asset": "تیم شما هیچ دارایی ندارد.",
     "test-case-insight-description": "دسترسی به نمای متمرکز سلامت مجموعه داده‌های شما بر اساس اعتبارسنجی‌های آزمایش پیکربندی شده.",
+    "test-case-name-validation": "نام نمی‌تواند شامل دو نقطه دوگانه (::)، نقل قول (\") یا نمادهای بزرگتر از (>) باشد.",
     "test-case-schedule-description": "آزمون‌های کیفیت داده می‌توانند به صورت دوره‌ای برنامه‌ریزی شوند. منطقه زمانی به صورت UTC است.",
     "test-connection-cannot-be-triggered": "اتصال تست نمی‌تواند اجرا شود.",
     "test-connection-taking-too-long": {
