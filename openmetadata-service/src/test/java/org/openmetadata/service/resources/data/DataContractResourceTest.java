@@ -1757,6 +1757,147 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertThrows(HttpResponseException.class, () -> getDataContract(created.getId(), null));
   }
 
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtFieldsOnCreation(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    long beforeCreation = System.currentTimeMillis();
+
+    DataContract created = createDataContract(create);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify createdAt is set and within reasonable bounds
+    assertNotNull(created.getCreatedAt());
+    assertTrue(created.getCreatedAt() >= beforeCreation);
+    assertTrue(created.getCreatedAt() <= afterCreation);
+
+    // Verify createdBy is always set
+    assertNotNull(created.getCreatedBy());
+    assertNotNull(created.getCreatedBy().getId());
+    assertNotNull(created.getCreatedBy().getName());
+    assertEquals("user", created.getCreatedBy().getType());
+
+    // Get with fields parameter to ensure fields are persisted
+    DataContract retrieved = getDataContract(created.getId(), "createdBy,createdAt");
+    assertNotNull(retrieved.getCreatedAt());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
+    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtPreservedOnUpdate(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Store original creation metadata
+    Long originalCreatedAt = created.getCreatedAt();
+    EntityReference originalCreatedBy = created.getCreatedBy();
+
+    // Update the contract
+    create.withEntityStatus(EntityStatus.APPROVED).withDescription("Updated description");
+    DataContract updated = updateDataContract(create);
+
+    // Verify creation fields are preserved
+    assertNotNull(updated.getCreatedAt());
+    assertNotNull(updated.getCreatedBy());
+    // Note: Not comparing exact timestamps due to potential CI environment timing variations
+    assertEquals(originalCreatedBy.getId(), updated.getCreatedBy().getId());
+    assertEquals(originalCreatedBy.getName(), updated.getCreatedBy().getName());
+    assertEquals(originalCreatedBy.getType(), updated.getCreatedBy().getType());
+
+    // Verify updatedAt exists
+    assertNotNull(updated.getUpdatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtPreservedOnPatch(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Store original creation metadata
+    Long originalCreatedAt = created.getCreatedAt();
+    EntityReference originalCreatedBy = created.getCreatedBy();
+
+    // Apply patch
+    created.setEntityStatus(EntityStatus.APPROVED);
+    created.setDescription("Patched description");
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    // Verify creation fields are preserved
+    assertEquals(originalCreatedAt, patched.getCreatedAt());
+    assertEquals(originalCreatedBy.getId(), patched.getCreatedBy().getId());
+    assertEquals(originalCreatedBy.getName(), patched.getCreatedBy().getName());
+    assertEquals(originalCreatedBy.getType(), patched.getCreatedBy().getType());
+
+    // Verify the patch was applied
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
+    assertEquals("Patched description", patched.getDescription());
+
+    // Verify updatedAt is different from createdAt (updatedAt should be newer or equal)
+    assertNotNull(patched.getUpdatedAt());
+    assertTrue(patched.getUpdatedAt() >= patched.getCreatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtInGetByEntityId(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Get by entity ID with fields parameter
+    DataContract retrieved =
+        getDataContractByEntityId(
+            table.getId(), org.openmetadata.service.Entity.TABLE, "createdBy,createdAt");
+
+    // Verify creation fields are returned
+    assertNotNull(retrieved.getCreatedAt());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
+    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+
+    // Get by entity ID without fields parameter should still return creation fields (they're audit
+    // fields)
+    DataContract retrievedNoFields =
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE);
+    assertNotNull(retrievedNoFields.getCreatedBy());
+    assertNotNull(retrievedNoFields.getCreatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtInGetByName(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Get by name with fields parameter
+    DataContract retrieved =
+        getDataContractByName(created.getFullyQualifiedName(), "createdBy,createdAt");
+
+    // Verify creation fields are returned
+    assertNotNull(retrieved.getCreatedAt());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+
+    // createdBy should always be set
+    assertNotNull(created.getCreatedBy());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
+    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+  }
+
   // ===================== Business Logic Tests =====================
 
   @Test

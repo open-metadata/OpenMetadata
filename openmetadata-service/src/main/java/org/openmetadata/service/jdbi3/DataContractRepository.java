@@ -1049,7 +1049,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withName(original.getName())
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withUpdatedAt(original.getUpdatedAt())
-        .withUpdatedBy(original.getUpdatedBy());
+        .withUpdatedBy(original.getUpdatedBy())
+        .withCreatedAt(original.getCreatedAt())
+        .withCreatedBy(original.getCreatedBy());
   }
 
   private void validateEntityReference(EntityReference entity) {
