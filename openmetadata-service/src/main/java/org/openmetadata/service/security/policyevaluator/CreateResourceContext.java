@@ -125,7 +125,6 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
             case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
             case Entity.TAG -> List.of(((Tag) entity).getClassification());
             case Entity.DATA_PRODUCT -> entity.getDomains();
-              // Is this ok? I see that a team can have multiple parents
             case Entity.TEAM -> ((Team) entity).getParents();
             default -> null;
           };
