@@ -334,6 +334,8 @@ public interface SearchClient<T> {
 
   boolean isClientAvailable();
 
+  boolean isNewClientAvailable();
+
   ElasticSearchConfiguration.SearchType getSearchType();
 
   boolean indexExists(String indexName);

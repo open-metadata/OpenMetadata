@@ -27,6 +27,24 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- New OpenSearch Java API Client -->
+        <dependency>
+            <groupId>org.opensearch.client</groupId>
+            <artifactId>opensearch-java</artifactId>
+            <version>2.13.0</version>
+            <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.parsson</groupId>
+                    <artifactId>parsson</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
@@ -121,6 +139,19 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>os.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <!-- New OpenSearch Java API Client relocations -->
+                        <relocation>
+                            <pattern>org.opensearch.client.json</pattern>
+                            <shadedPattern>os.org.opensearch.client.json</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.opensearch.client.transport</pattern>
+                            <shadedPattern>os.org.opensearch.client.transport</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>jakarta.json</pattern>
+                            <shadedPattern>os.jakarta.json</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>

@@ -21,6 +21,10 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitie
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
@@ -44,10 +48,7 @@ import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
-import es.org.elasticsearch.client.indices.CreateIndexRequest;
-import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.DeleteDataStreamRequest;
-import es.org.elasticsearch.client.indices.GetIndexRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
@@ -100,6 +101,7 @@ import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -207,10 +209,15 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Getter
   protected final RestHighLevelClient client;
 
+  // New Java API client support for migration
+  @Getter protected final ElasticsearchClient newClient;
+
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
 
   private final boolean isClientAvailable;
+
+  private final boolean isNewClientAvailable;
 
   private final String clusterAlias;
 
@@ -237,9 +244,12 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private NLQService nlqService;
 
   public ElasticSearchClient(ElasticSearchConfiguration config) {
-    this.client = createElasticSearchClient(config);
+    RestClient lowLevelClient = getLowLevelRestClient(config);
+    this.client = createElasticSearchLegacyClient(lowLevelClient);
+    this.newClient = createElasticSearchNewClient(lowLevelClient);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
@@ -253,46 +263,67 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     this.nlqService = nlqService;
   }
 
+  private ElasticsearchClient createElasticSearchNewClient(RestClient lowLevelClient) {
+    try {
+      // Create transport and new client
+      RestClientTransport transport =
+          new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+      ElasticsearchClient newClient = new ElasticsearchClient(transport);
+
+      LOG.info("Successfully initialized new Elasticsearch Java API client");
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Elasticsearch client", e);
+      return null;
+    }
+  }
+
   @Override
   public boolean isClientAvailable() {
     return isClientAvailable;
   }
 
   @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
     try {
-      GetIndexRequest gRequest = new GetIndexRequest(indexName);
-      gRequest.local(false);
-      return client.indices().exists(gRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to check if index %s exists due to", indexName), e);
+      return newClient.indices().exists(e -> e.index(getIndexName(indexName))).value();
+    } catch (IOException e) {
+      LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
   }
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (Boolean.TRUE.equals(isClientAvailable)) {
+    if (isNewClientAvailable) {
       try {
+        String indexName = indexMapping.getIndexName(clusterAlias);
+
         CreateIndexRequest request =
-            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
-        request.source(indexMappingContent, XContentType.JSON);
-        CreateIndexResponse createIndexResponse =
-            client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.debug(
-            "{} Created {}",
-            indexMapping.getIndexName(clusterAlias),
-            createIndexResponse.isAcknowledged());
+                CreateIndexRequest.of(
+                        builder -> {
+                          builder.index(indexName);
+                          if (indexMappingContent != null) {
+                            builder.withJson(new StringReader(indexMappingContent));
+                          }
+                          return builder;
+                        });
+
+        newClient.indices().create(request);
+
+        LOG.info("Successfully created index: {}", indexName);
         createAliases(indexMapping);
+
       } catch (Exception e) {
-        LOG.error(
-            String.format(
-                "Failed to create index for %s due to", indexMapping.getIndexName(clusterAlias)),
-            e);
+        LOG.error("Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
       }
     } else {
-      LOG.error(
-          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
+      LOG.error("Failed to create Elasticsearch index: client is not properly configured. Check your OpenMetadata configuration.");
     }
   }
 
@@ -2421,7 +2452,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  public RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
+  public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -2456,14 +2487,25 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
-        return new RestHighLevelClientBuilder(restClientBuilder.build())
-            .setApiCompatibilityMode(true)
-            .build();
+        return restClientBuilder.build();
       } catch (Exception e) {
-        LOG.error("Failed to create elastic search client ", e);
+        LOG.error("Failed to create low level rest client ", e);
         return null;
       }
     } else {
+      LOG.error("Failed to create low level rest client as esConfig is null");
+      return null;
+    }
+  }
+
+  public RestHighLevelClient createElasticSearchLegacyClient(RestClient lowLevelClient) {
+    try {
+      RestHighLevelClientBuilder restHighLevelClientBuilder =
+          new RestHighLevelClientBuilder(lowLevelClient).setApiCompatibilityMode(true);
+      LOG.info("Successfully initialized legacy Elasticsearch Java API client");
+      return restHighLevelClientBuilder.build();
+    } catch (Exception e) {
+      LOG.error("Failed to initialize legacy Elasticsearch client", e);
       return null;
     }
   }
@@ -3093,5 +3135,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
+  }
+
+  private String getIndexName(String indexName) {
+    return clusterAlias != null ? clusterAlias + "_" + indexName : indexName;
   }
 }

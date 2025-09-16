@@ -163,10 +163,12 @@ import os.org.opensearch.client.indices.DataStream;
 import os.org.opensearch.client.indices.DeleteDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
-import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.transport.endpoints.BooleanResponse;
+import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
@@ -229,6 +231,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
+  // New OpenSearch Java API client
+  @Getter
+  private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  private final boolean isNewClientAvailable;
+
   private final OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
@@ -264,13 +271,34 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
-    this.client = createOpenSearchClient(config);
+    RestClientBuilder restClientBuilder = getLowLevelClient(config);
+    this.client = createOpenSearchLegacyClient(restClientBuilder);
+    this.newClient = createOpenSearchNewClient(restClientBuilder);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
+  }
+
+  private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
+      RestClientBuilder restClientBuilder
+  ) {
+    try {
+      // Create transport and new client
+      RestClientTransport transport =
+          new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+      os.org.opensearch.client.opensearch.OpenSearchClient newClient =
+          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+
+      LOG.info("Successfully initialized new OpenSearch Java API client");
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Opensearch client", e);
+      return null;
+    }
   }
 
   @Override
@@ -279,13 +307,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
     try {
-      GetIndexRequest gRequest = new GetIndexRequest(indexName);
-      gRequest.local(false);
-      return client.indices().exists(gRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to check if index %s exists due to", indexName), e);
+      BooleanResponse response = newClient.indices().exists(e -> e.index(indexName));
+      return response.value();
+    } catch (IOException e) {
+      LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
   }
@@ -2563,7 +2595,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  public RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
+  private RestClientBuilder getLowLevelClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -2598,12 +2630,24 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
-        return new RestHighLevelClient(restClientBuilder);
+        return restClientBuilder;
       } catch (Exception e) {
-        LOG.error("Failed to create open search client ", e);
+        LOG.error("Failed to create low level rest client ", e);
         return null;
       }
     } else {
+      LOG.error("Failed to create low level rest client as esConfig is null");
+      return null;
+    }
+  }
+
+  public RestHighLevelClient createOpenSearchLegacyClient(RestClientBuilder restClientBuilder) {
+    try {
+      RestHighLevelClient legacyClient = new RestHighLevelClient(restClientBuilder);
+      LOG.info("Successfully initialized legacy OpenSearch Java API client");
+      return legacyClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize legacy OpenSearch client", e);
       return null;
     }
   }
