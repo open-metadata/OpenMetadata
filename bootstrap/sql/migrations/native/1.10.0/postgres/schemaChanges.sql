@@ -30,6 +30,24 @@ CREATE INDEX idx_metric_custom_unit ON metric_entity(customUnitOfMeasurement);
 -- Fetch updated searchSettings
 DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
 
+-- Create notification_template_entity table following OpenMetadata patterns
+CREATE TABLE IF NOT EXISTS notification_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    provider VARCHAR(32) GENERATED ALWAYS AS (json ->> 'provider') STORED,
+
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_template_name ON notification_template_entity(name);
+CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_template_entity(provider);
+
 -- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
 ALTER TABLE ACT_RU_EVENT_SUBSCR ALTER COLUMN ACTIVITY_ID_ TYPE varchar(255);
 
