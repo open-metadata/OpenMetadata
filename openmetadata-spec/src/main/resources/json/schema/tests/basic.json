@@ -144,11 +144,13 @@
         },
         "passedRows": {
           "description": "Number of rows that passed.",
-          "type": "integer"
+          "type": "integer",
+          "existingJavaType": "java.lang.Long"
         },
         "failedRows": {
           "description": "Number of rows that failed.",
-          "type": "integer"
+          "type": "integer",
+          "existingJavaType": "java.lang.Long"
         },
         "passedRowsPercentage": {
           "description": "Percentage of rows that passed.",

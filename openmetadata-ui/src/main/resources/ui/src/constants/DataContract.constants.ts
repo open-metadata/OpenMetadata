@@ -30,7 +30,9 @@ export enum EDataContractTab {
   CONTRACT_DETAIL,
   SCHEMA,
   SEMANTICS,
+  SECURITY,
   QUALITY,
+  SLA,
 }
 
 export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [

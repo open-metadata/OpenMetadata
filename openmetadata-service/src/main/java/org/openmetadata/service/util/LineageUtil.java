@@ -8,6 +8,7 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -122,7 +123,8 @@ public class LineageUtil {
         .updateChildren(
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-            new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
+            new ImmutablePair<>(
+                REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
 
   private static void insertDomainLineage(EntityReference fromDomain, EntityReference toDomain) {

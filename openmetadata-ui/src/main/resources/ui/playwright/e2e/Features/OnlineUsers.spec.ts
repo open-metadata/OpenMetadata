@@ -11,56 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
-
-const adminUser = new UserClass();
-const dataConsumerUser = new UserClass();
-
-const test = base.extend<{
-  page: Page;
-  dataConsumerPage: Page;
-}>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-  dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await dataConsumerUser.login(page);
-    await use(page);
-    await page.close();
-  },
-});
-
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await dataConsumerUser.create(apiContext);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-
-  await afterAction();
-});
+import { test } from '../fixtures/pages';
 
 test.describe('Online Users Feature', () => {
   test.beforeEach(async ({ page }) => {
