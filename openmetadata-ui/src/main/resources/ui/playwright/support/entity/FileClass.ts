@@ -101,7 +101,7 @@ export class FileClass extends EntityClass {
     };
   }
 
-  async patchAsset({
+  async patch({
     apiContext,
     patchData,
   }: {

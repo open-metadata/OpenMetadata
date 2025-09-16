@@ -100,7 +100,7 @@ export class DirectoryClass extends EntityClass {
     };
   }
 
-  async patchAsset({
+  async patch({
     apiContext,
     patchData,
   }: {

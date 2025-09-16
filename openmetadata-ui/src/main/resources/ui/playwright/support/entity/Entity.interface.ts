@@ -38,6 +38,7 @@ export enum EntityTypeEndpoint {
   SearchIndex = 'searchIndexes',
   SearchService = 'services/searchServices',
   StorageService = 'services/storageServices',
+  DriveService = 'services/driveServices',
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   Teams = 'teams',

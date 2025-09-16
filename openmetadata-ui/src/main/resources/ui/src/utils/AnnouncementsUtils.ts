@@ -35,6 +35,7 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.METADATA_SERVICE,
   EntityType.SEARCH_SERVICE,
   EntityType.API_SERVICE,
+  EntityType.DRIVE_SERVICE,
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,

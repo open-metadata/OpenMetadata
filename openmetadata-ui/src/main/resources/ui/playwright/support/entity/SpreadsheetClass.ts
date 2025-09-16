@@ -113,7 +113,7 @@ export class SpreadsheetClass extends EntityClass {
     };
   }
 
-  async patchAsset({
+  async patch({
     apiContext,
     patchData,
   }: {
