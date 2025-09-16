@@ -1270,6 +1270,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Now set all the fields from the grouped relationships - NO additional queries!
+    // IMPORTANT: Only set fields that are requested to avoid overwriting existing values
     if (fields.contains(FIELD_OWNERS)) {
       entity.setOwners(
           toRelationships.getOrDefault(Relationship.OWNS.ordinal(), Collections.emptyList()));
@@ -1286,12 +1287,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> hasRelationships =
         toRelationships.getOrDefault(Relationship.HAS.ordinal(), Collections.emptyList());
 
-    // Always set domains (filter HAS relationships for DOMAIN type)
-    List<EntityReference> domains =
-        hasRelationships.stream()
-            .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
-            .collect(Collectors.toList());
-    entity.setDomains(domains);
+    if (fields.contains(FIELD_DOMAINS)) {
+      // Filter HAS relationships for DOMAIN type
+      List<EntityReference> domains =
+          hasRelationships.stream()
+              .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
+              .collect(Collectors.toList());
+      entity.setDomains(domains);
+    }
+    // Don't set domains if not requested - leave existing value
 
     if (fields.contains(FIELD_DATA_PRODUCTS)) {
       // Filter HAS relationships for DATA_PRODUCT type
@@ -1301,6 +1305,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .collect(Collectors.toList());
       entity.setDataProducts(dataProducts);
     }
+    // Don't set dataProducts if not requested - leave existing value
 
     if (fields.contains(FIELD_CHILDREN)) {
       List<EntityReference> children = new ArrayList<>();
@@ -1475,103 +1480,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Write-through cache implementation - stores entity in cache after DB operations
+   * Write to Redis cache after DB operations
+   * This is completely separate from Guava cache which manages itself through loaders
+   * Redis cache is optional and only used when configured for distributed caching
    */
   protected void writeThroughCache(T entity, boolean update) {
+    // This method should ONLY handle Redis cache, not Guava cache
+    // Guava cache is self-managing through its CacheLoader implementation
+
+    // Only write to Redis if configured
+    writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write entity to Redis cache if available
+   * This reduces database calls in distributed deployments
+   */
+  private void writeToRedisCache(T entity, boolean update) {
+    // Only proceed if Redis cache is configured
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null) {
+      return; // No Redis cache configured
+    }
+
     try {
-      // Validate entity before caching
+      // Validate entity
       if (!isValidEntityForCache(entity)) {
-        LOG.error(
-            "CACHE: Cannot cache invalid entity - Type: {}, ID: {}, FQN: {}",
+        LOG.debug(
+            "Invalid entity for Redis cache: {} {}",
             entityType,
-            entity != null ? entity.getId() : "null",
-            entity != null ? entity.getFullyQualifiedName() : "null");
+            entity != null ? entity.getId() : "null");
         return;
       }
 
-      // Skip caching for user entities to avoid authentication issues
+      // Skip user entities
       if ("user".equals(entityType)) {
-        LOG.debug("CACHE: Skipping cache write for user entity: {}", entity.getId());
         return;
       }
 
-      LOG.info(
-          "CACHE: Writing entity to cache - Type: {}, ID: {}, FQN: {}, Update: {}",
-          entityType,
-          entity.getId(),
-          entity.getFullyQualifiedName(),
-          update);
-
-      // Update Guava LoadingCache for local caching
-      CACHE_WITH_ID.put(new ImmutablePair<>(entityType, entity.getId()), entity);
-      CACHE_WITH_NAME.put(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()), entity);
-      LOG.info("CACHE: Updated Guava LoadingCache for {}", entity.getId());
-
-      // Update Redis cache for distributed caching
-      var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      LOG.info("CACHE: CachedEntityDao check - available: {}", cachedEntityDao != null);
-      if (cachedEntityDao != null && entity.getId() != null) {
-        // IMPORTANT: Fetch the raw JSON from database instead of serializing the entity
-        // This ensures we cache the JSON with null relationship fields, just like it's stored in DB
+      if (update) {
+        // For updates, invalidate Redis cache to ensure consistency
+        cachedEntityDao.deleteBase(entityType, entity.getId());
+        if (entity.getFullyQualifiedName() != null) {
+          cachedEntityDao.deleteByName(entityType, entity.getFullyQualifiedName());
+        }
+        LOG.debug("Invalidated Redis cache after update: {} {}", entityType, entity.getId());
+      } else {
+        // For creates, populate Redis cache with complete entity
         String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
-        LOG.info(
-            "CACHE: Fetched entity JSON from DB, length: {}",
-            entityJson != null ? entityJson.length() : 0);
         if (entityJson != null && !entityJson.isEmpty()) {
           cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
-          LOG.info("CACHE: Stored raw entity JSON in Redis by ID - {}", entity.getId());
-
-          // Also store by name for fast lookups
           if (entity.getFullyQualifiedName() != null) {
             cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
-            LOG.info(
-                "CACHE: Stored raw entity JSON in Redis by name - {}",
-                entity.getFullyQualifiedName());
           }
-        } else {
-          LOG.warn(
-              "CACHE: Could not fetch entity JSON from database for caching - Type: {}, ID: {}",
-              entityType,
-              entity.getId());
+          LOG.debug("Populated Redis cache for new entity: {} {}", entityType, entity.getId());
         }
-
-        // Store relationships if present
-        var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-        if (cachedRelationshipDao != null) {
-          if (entity.getOwners() != null && !entity.getOwners().isEmpty()) {
-            String ownersJson = JsonUtils.pojoToJson(entity.getOwners());
-            cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
-          }
-          if (entity.getDomains() != null && !entity.getDomains().isEmpty()) {
-            String domainsJson = JsonUtils.pojoToJson(entity.getDomains());
-            cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
-          }
-        }
-
-        // Store tags if present
-        var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
-        if (cachedTagUsageDao != null && entity.getTags() != null && !entity.getTags().isEmpty()) {
-          String tagsJson = JsonUtils.pojoToJson(entity.getTags());
-          cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
-        }
-
-        // Store entity reference for fast reference lookups
-        EntityReference entityRef = entity.getEntityReference();
-        if (entityRef != null) {
-          String refJson = JsonUtils.pojoToJson(entityRef);
-          cachedEntityDao.putReference(entityType, entity.getId(), refJson);
-          cachedEntityDao.putReferenceByName(entityType, entity.getFullyQualifiedName(), refJson);
-        }
-
-        LOG.debug(
-            "Write-through cache: stored {} {} in cache (update={})",
-            entityType,
-            entity.getId(),
-            update);
       }
     } catch (Exception e) {
-      // Cache write failures should not fail the operation
-      LOG.warn("Failed to write entity to cache: {} {}", entityType, entity.getId(), e);
+      // Redis cache failures should not affect the operation
+      LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
     }
   }
 
@@ -5581,9 +5548,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             String.format("Invalid entity from database: %s %s", entityType, fqn));
       }
 
-      // Write-through to external cache when loading from database
-      LOG.debug("Writing entity to cache after database load: {} {}", entityType, fqn);
-      repository.writeThroughCacheForEntity(entity, false);
+      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
+      // Redis caching is handled separately by writeThroughCache after DB operations
+      // This maintains clean separation between Guava (local) and Redis (distributed) caching
 
       return entity;
     }
@@ -5673,9 +5640,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
 
-      // Write-through to external cache when loading from database
-      LOG.debug("Writing entity to cache after database load: {} {}", entityType, id);
-      repository.writeThroughCacheForEntity(entity, false);
+      // Note: Do NOT write to Redis cache here - this loader is part of Guava cache
+      // Redis caching is handled separately by writeThroughCache after DB operations
+      // This maintains clean separation between Guava (local) and Redis (distributed) caching
 
       return entity;
     }

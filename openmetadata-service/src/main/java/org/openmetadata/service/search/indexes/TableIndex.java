@@ -81,7 +81,7 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
             .map(ChangeDescription::getChangeSummary)
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
-    
+
     return doc;
   }
 

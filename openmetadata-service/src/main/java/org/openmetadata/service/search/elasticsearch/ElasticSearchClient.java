@@ -1598,6 +1598,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       updateElasticSearch(updateRequest);
     }
@@ -1644,6 +1645,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       updateElasticSearch(updateRequest);
     }
@@ -1701,6 +1703,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       Script script =
           new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateRequest.script(script);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateElasticSearch(updateRequest);
     }
   }
@@ -1734,6 +1737,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
               ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateElasticSearch(updateRequest);
     }
   }
