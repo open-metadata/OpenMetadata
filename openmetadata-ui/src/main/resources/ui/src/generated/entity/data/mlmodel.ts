@@ -131,6 +131,14 @@ export interface Mlmodel {
      */
     target?: string;
     /**
+     * Datasets used for final model testing and evaluation.
+     */
+    testDatasets?: EntityReference[];
+    /**
+     * Datasets (tables, files, feature stores) used to train this ML Model.
+     */
+    trainingDatasets?: EntityReference[];
+    /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
      */
@@ -143,6 +151,10 @@ export interface Mlmodel {
      * Latest usage information for this ML Model.
      */
     usageSummary?: UsageDetails;
+    /**
+     * Datasets used for model validation during training.
+     */
+    validationDatasets?: EntityReference[];
     /**
      * Metadata version of the entity.
      */
@@ -543,6 +555,10 @@ export interface MlHyperParameter {
  * Location containing the ML Model. It can be a storage layer and/or a container repository.
  */
 export interface MlStore {
+    /**
+     * URI pointing to the model artifacts location (e.g., gs://, s3://, hdfs://, file://).
+     */
+    artifactUri?: string;
     /**
      * Container Repository with the ML Model image.
      */
