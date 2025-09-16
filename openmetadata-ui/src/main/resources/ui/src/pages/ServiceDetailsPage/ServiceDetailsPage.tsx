@@ -1437,27 +1437,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 })}
               </Button>
             </Tooltip>
-            {allowTestConn && isAirflowAvailable && (
-              <Tooltip
-                title={
-                  servicePermission.EditAll
-                    ? t('label.test-entity', {
-                        entity: t('label.connection'),
-                      })
-                    : t('message.no-permission-for-action')
-                }>
-                <TestConnection
-                  connectionType={serviceDetails?.serviceType ?? ''}
-                  getData={() => connectionDetails}
-                  hostIp={hostIp}
-                  isTestingDisabled={isTestingDisabled}
-                  serviceCategory={serviceCategory as ServiceCategory}
-                  serviceName={serviceDetails?.name}
-                  // validation is not required as we have all the data available and not in edit mode
-                  shouldValidateForm={false}
-                  showDetails={false}
-                />
-              </Tooltip>
+            {allowTestConn && (
+              <TestConnection
+                connectionType={serviceDetails?.serviceType ?? ''}
+                getData={() => connectionDetails}
+                hostIp={hostIp}
+                isTestingDisabled={isTestingDisabled}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceName={serviceDetails?.name}
+                // validation is not required as we have all the data available and not in edit mode
+                shouldValidateForm={false}
+                showDetails={false}
+              />
             )}
           </Space>
         </div>
@@ -1473,7 +1464,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [
     servicePermission.EditAll,
     allowTestConn,
-    isAirflowAvailable,
     goToEditConnection,
     serviceDetails,
     connectionDetails,

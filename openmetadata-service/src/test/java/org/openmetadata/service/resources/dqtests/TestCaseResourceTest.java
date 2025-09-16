@@ -65,7 +65,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -3791,9 +3791,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             });
 
     queryParams.clear();
-    Long ts = TestUtils.dateToTimestamp("2021-09-01");
+    Long ts = TestUtils.dateToTimestamp("2021-09-09");
     queryParams.put("startTimestamp", ts.toString());
-    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-01").toString());
+    queryParams.put("endTimestamp", TestUtils.dateToTimestamp("2021-09-09").toString());
     queryParams.put("latest", "true");
     queryParams.put("testSuiteId", testCase.getTestSuite().getId().toString());
 
