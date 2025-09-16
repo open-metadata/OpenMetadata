@@ -94,7 +94,7 @@ export interface ColumnConfig<T> {
 }
 
 export interface CellRenderer<T> {
-  [key: string]: (entity: T) => ReactNode;
+  [key: string]: (entity: T, column?: ColumnConfig<T>) => ReactNode;
 }
 
 export interface ActionHandlers<T> {

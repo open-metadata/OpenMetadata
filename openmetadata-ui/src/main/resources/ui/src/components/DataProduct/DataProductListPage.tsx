@@ -13,14 +13,18 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useDelete } from '../common/atoms/actions/useDelete';
+import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterConfig } from '../common/atoms/filters/useFilterConfig';
 import { useFilterDropdowns } from '../common/atoms/filters/useFilterDropdowns';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
+import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { DATA_PRODUCT_FILTER_CONFIGS } from '../common/atoms/shared/utils/commonFilterConfigs';
+import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
@@ -66,10 +70,18 @@ const DataProductListPage = () => {
     filters: dropdownConfigs,
   });
 
+  const { view, viewToggle } = useViewToggle();
+  const { dataProductCardTemplate } = useDomainCardTemplates();
+
   const { dataTable } = useDataTable({
     listing: dataProductListing,
     enableSelection: true,
     entityLabelKey: 'label.data-product',
+  });
+
+  const { cardView } = useCardView({
+    listing: dataProductListing,
+    cardTemplate: dataProductCardTemplate,
   });
 
   const { paginationControls } = usePaginationControls({
@@ -79,6 +91,16 @@ const DataProductListPage = () => {
     pageSize: dataProductListing.pageSize,
     onPageChange: dataProductListing.handlePageChange,
     loading: dataProductListing.loading,
+  });
+
+  const { deleteIconButton, deleteModal } = useDelete({
+    entityType: 'dataProducts',
+    entityLabel: 'Data Product',
+    selectedEntities: dataProductListing.selectedEntities,
+    onDeleteComplete: () => {
+      dataProductListing.clearSelection();
+      dataProductListing.refetch();
+    },
   });
 
   return (
@@ -100,12 +122,16 @@ const DataProductListPage = () => {
           {titleAndCount}
           {search}
           {filterDropdowns}
+          <Box ml="auto" />
+          {viewToggle}
+          {deleteIconButton}
         </Box>
 
-        {dataTable}
+        {view === 'table' ? dataTable : cardView}
 
         {paginationControls}
       </TableContainer>
+      {deleteModal}
     </>
   );
 };
