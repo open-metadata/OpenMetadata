@@ -54,7 +54,8 @@ export default defineConfig(({ mode }) => {
         checker({
           typescript: true,
           eslint: {
-            lintCommand: 'eslint "./**/*.{js,jsx,ts,tsx,json}"',
+            lintCommand:
+              'eslint "./**/*.{js,jsx,ts,tsx,json}" --ignore-pattern playwright/',
           },
           overlay: {
             initialIsOpen: false,
@@ -122,7 +123,7 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       copyPublicDir: true,
       sourcemap: false,
-      minify: mode === 'production' ? 'terser' : false,
+      minify: mode === 'production' ? 'esbuild' : false,
       rollupOptions: {
         output: {
           manualChunks: {
