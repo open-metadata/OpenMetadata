@@ -80,7 +80,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -1211,7 +1211,9 @@ public class SearchRepository {
           searchClient.updateChildren(
               indexMapping.getChildAliases(clusterAlias),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
-              new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
+              new ImmutablePair<>(
+                  REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
+                  Collections.singletonMap("suiteId", testSuite.getId().toString())));
         }
       }
       case Entity.DASHBOARD_SERVICE,
@@ -1346,6 +1348,11 @@ public class SearchRepository {
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
     return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithDirectQuery(request, subjectContext);
   }
 
   public Response getDocument(String indexName, UUID entityId) throws IOException {
@@ -1559,7 +1566,8 @@ public class SearchRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
-        new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+        new ImmutablePair<>(
+            REMOVE_ENTITY_RELATIONSHIP, Collections.singletonMap("docId", relationDocId)));
   }
 
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
