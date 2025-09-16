@@ -51,7 +51,7 @@
     "component-library"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "NODE_OPTIONS='--max-old-space-size=3072' vite build",
     "build:watch": "vite build --watch",
     "dev": "vite build --watch",
     "type-check": "tsc --noEmit",
