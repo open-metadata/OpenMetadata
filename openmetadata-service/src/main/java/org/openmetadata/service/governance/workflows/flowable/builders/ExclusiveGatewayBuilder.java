@@ -5,7 +5,7 @@ import org.flowable.bpmn.model.ExclusiveGateway;
 public class ExclusiveGatewayBuilder extends FlowableElementBuilder<ExclusiveGatewayBuilder> {
 
   private boolean async = true;
-  private boolean exclusive = false;
+  private boolean exclusive = true;
   private String name;
 
   public ExclusiveGatewayBuilder setAsync(boolean async) {

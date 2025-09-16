@@ -1143,10 +1143,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       boolean hasEditedContent = false;
 
       // Check if it's a simple approval/rejection
-      if (newValue.equalsIgnoreCase("approved") || newValue.equalsIgnoreCase("approve")) {
+      if (newValue.equalsIgnoreCase("approved")
+          || newValue.equalsIgnoreCase("entityStatus: approved")) {
         isApproved = true;
         hasEditedContent = false;
-      } else if (newValue.equalsIgnoreCase("rejected") || newValue.equalsIgnoreCase("reject")) {
+      } else if (newValue.equalsIgnoreCase("rejected")
+          || newValue.equalsIgnoreCase("entityStatus: rejected")) {
         isApproved = false;
         hasEditedContent = false;
       } else {

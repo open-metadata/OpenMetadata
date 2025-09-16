@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.services.CreateApiService;
@@ -61,6 +62,8 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -72,6 +75,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -80,6 +84,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -168,6 +173,62 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         };
     apiServiceTest.setupAPIService(testInfo);
     storageServiceTest.setupStorageService(testInfo);
+
+    // Ensure WorkflowEventConsumer subscription exists and is active
+    ensureWorkflowEventConsumerIsActive();
+  }
+
+  // Ensure WorkflowEventConsumer subscription is active for workflow events to be processed
+  private static void ensureWorkflowEventConsumerIsActive() {
+    try {
+      EventSubscriptionResourceTest eventSubscriptionResourceTest =
+          new EventSubscriptionResourceTest();
+
+      EventSubscription existing = null;
+      try {
+        existing =
+            eventSubscriptionResourceTest.getEntityByName(
+                "WorkflowEventConsumer", null, ADMIN_AUTH_HEADERS);
+      } catch (Exception e) {
+        // Subscription doesn't exist, we'll create it
+      }
+
+      if (existing == null) {
+        // Create the WorkflowEventConsumer subscription with same configuration as production
+        CreateEventSubscription createSubscription =
+            new CreateEventSubscription()
+                .withName("WorkflowEventConsumer")
+                .withDisplayName("Workflow Event Consumer")
+                .withDescription(
+                    "Consumers EntityChange Events in order to trigger Workflows, if they exist.")
+                .withAlertType(CreateEventSubscription.AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+                .withResources(List.of("all"))
+                .withProvider(ProviderType.SYSTEM)
+                .withPollInterval(10)
+                .withEnabled(true)
+                .withDestinations(
+                    List.of(
+                        new SubscriptionDestination()
+                            .withId(UUID.fromString("fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a60"))
+                            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                            .withType(
+                                SubscriptionDestination.SubscriptionType
+                                    .GOVERNANCE_WORKFLOW_CHANGE_EVENT)
+                            .withEnabled(true)));
+
+        eventSubscriptionResourceTest.createEntity(createSubscription, ADMIN_AUTH_HEADERS);
+        java.lang.Thread.sleep(1000); // Give it time to initialize
+      } else if (!existing.getEnabled()) {
+        // Enable if disabled
+        String json = JsonUtils.pojoToJson(existing);
+        existing.setEnabled(true);
+        eventSubscriptionResourceTest.patchEntity(
+            existing.getId(), json, existing, ADMIN_AUTH_HEADERS);
+        java.lang.Thread.sleep(1000);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to ensure WorkflowEventConsumer is active: {}", e.getMessage(), e);
+    }
   }
 
   @Test
@@ -2208,8 +2269,126 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("test_UserApprovalTaskWithoutReviewerSupport completed successfully");
   }
 
+  //  @Test
+  //  @Order(13)
+  //  void test_AutoApprovalWhenNoReviewers(TestInfo test)
+  //      throws IOException, HttpResponseException, InterruptedException {
+  //    LOG.info("Starting test_AutoApprovalWhenNoReviewers");
+  //    ensureWorkflowEventConsumerIsActive();
+  //
+  //    // Create workflow that uses addReviewers but entity has no reviewers
+  //    String workflowDefinition = """
+  //        {
+  //          "name": "autoApprovalTest",
+  //          "displayName": "Auto Approval Test Workflow",
+  //          "description": "Test workflow to verify auto-approval when no reviewers",
+  //          "workflowType": "entityLifecycleWorkflow",
+  //          "trigger": {
+  //            "type": "eventBasedEntityTrigger",
+  //            "config": {
+  //              "events": ["ENTITY_CREATED"],
+  //              "entities": ["container"]
+  //            }
+  //          },
+  //          "nodes": [
+  //            {
+  //              "name": "start",
+  //              "type": "startEvent"
+  //            },
+  //            {
+  //              "name": "approvalTask",
+  //              "type": "userApprovalTask",
+  //              "config": {
+  //                "assignees": {
+  //                  "addReviewers": true
+  //                },
+  //                "approvalThreshold": 1,
+  //                "rejectionThreshold": 1
+  //              }
+  //            },
+  //            {
+  //              "name": "end",
+  //              "type": "endEvent"
+  //            }
+  //          ],
+  //          "edges": [
+  //            {
+  //              "from": "start",
+  //              "to": "approvalTask"
+  //            },
+  //            {
+  //              "from": "approvalTask",
+  //              "to": "end"
+  //            }
+  //          ]
+  //        }
+  //        """;
+  //
+  //    CreateWorkflowDefinition createWorkflowDefinition =
+  //        JsonUtils.readValue(workflowDefinition, CreateWorkflowDefinition.class);
+  //    WorkflowDefinition workflowDef =
+  //        createAndCheckEntity(createWorkflowDefinition, ADMIN_AUTH_HEADERS);
+  //    LOG.debug("Created workflow definition: {}", workflowDef.getName());
+  //
+  //    // Create a container without reviewers
+  //    CreateContainer createContainerReq =
+  //        containerTest
+  //            .createRequest(test)
+  //            .withService(STORAGE_SERVICE_REFERENCE.getFullyQualifiedName())
+  //            .withDescription("Test container for auto-approval")
+  //            .withDataModel(
+  //                new ContainerDataModel()
+  //                    .withIsPartitioned(false)
+  //                    .withColumns(
+  //                        List.of(
+  //                            new Column()
+  //                                .withName("column1")
+  //                                .withDataType(ColumnDataType.BIGINT)
+  //                                .withDescription("Test column 1"))));
+  //    // Explicitly not setting reviewers - container will have empty reviewers
+  //    createContainerReq.withReviewers(new ArrayList<>());
+  //
+  //    Container container = containerTest.createEntity(createContainerReq, ADMIN_AUTH_HEADERS);
+  //    LOG.debug("Created container: {} with no reviewers", container.getName());
+  //
+  //    // Wait for the workflow to trigger
+  //    Thread.sleep(5000);
+  //
+  //    // Check if the workflow instance was created
+  //    ResultList<WorkflowInstance> instances =
+  //        listWorkflowInstances(null, null, null, null, workflowDef.getId(), 10000, null,
+  // ADMIN_AUTH_HEADERS);
+  //
+  //    assertFalse(instances.getData().isEmpty(), "Workflow instance should be created");
+  //    WorkflowInstance instance = instances.getData().get(0);
+  //    LOG.debug("Found workflow instance: {} in state: {}", instance.getId(),
+  // instance.getState());
+  //
+  //    // Wait for auto-approval to complete
+  //    int maxAttempts = 20;
+  //    int attempts = 0;
+  //    while (attempts < maxAttempts &&
+  // !instance.getState().equals(WorkflowInstanceState.COMPLETED)) {
+  //      Thread.sleep(1000);
+  //      instance = getWorkflowInstance(instance.getId(), ADMIN_AUTH_HEADERS);
+  //      LOG.debug("Workflow instance state after {} seconds: {}", attempts, instance.getState());
+  //      attempts++;
+  //    }
+  //
+  //    assertEquals(
+  //        WorkflowInstanceState.COMPLETED,
+  //        instance.getState(),
+  //        "Workflow should auto-complete when no reviewers are present");
+  //    LOG.info("Workflow auto-approved successfully when no reviewers were present");
+  //
+  //    // Clean up
+  //    containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS);
+  //    deleteEntity(workflowDef.getId(), ADMIN_AUTH_HEADERS);
+  //    LOG.info("test_AutoApprovalWhenNoReviewers completed successfully");
+  //  }
+
   @Test
-  @Order(13)
+  @Order(14)
   void test_CustomApprovalWorkflowForNewEntities(TestInfo test)
       throws IOException, HttpResponseException, InterruptedException {
     LOG.info("Starting test_CustomApprovalWorkflowForNewEntities");
@@ -2457,10 +2636,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       LOG.debug("Resolved data product approval task");
     }
 
-    // Wait for workflows to complete after approval
-    java.lang.Thread.sleep(10000);
-
     // Step 7: Verify descriptions were updated by workflows after approval
+    // The verifyEntityDescriptionsUpdated method already uses await() with proper polling (120s
+    // timeout)
     verifyEntityDescriptionsUpdated(dataContract.getId(), tag.getId(), dataProduct.getId());
 
     // Step 8: Update entities with different descriptions to trigger workflows again
