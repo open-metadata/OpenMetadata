@@ -533,7 +533,7 @@ export default function EntitySummaryPanel({
             height: '100%',
           }}
         >
-          <div style={{ width: '90%' }}>{renderTabContent()}</div>
+          <div style={{ width: '80%' }}>{renderTabContent()}</div>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
             entityType={entityType}
