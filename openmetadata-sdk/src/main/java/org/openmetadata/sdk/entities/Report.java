@@ -63,20 +63,17 @@ public class Report extends org.openmetadata.schema.entity.data.Report {
   }
 
   // Export/Import methods
-  public static String exportCsv() throws OpenMetadataException {
-    return OpenMetadata.client().reports().exportCsv();
-  }
-
   public static String exportCsv(String name) throws OpenMetadataException {
     return OpenMetadata.client().reports().exportCsv(name);
   }
 
-  public static String importCsv(String csvData) throws OpenMetadataException {
-    return OpenMetadata.client().reports().importCsv(csvData);
+  public static String importCsv(String name, String csvData) throws OpenMetadataException {
+    return OpenMetadata.client().reports().importCsv(name, csvData);
   }
 
-  public static String importCsv(String csvData, boolean dryRun) throws OpenMetadataException {
-    return OpenMetadata.client().reports().importCsv(csvData, dryRun);
+  public static String importCsv(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
+    return OpenMetadata.client().reports().importCsv(name, csvData, dryRun);
   }
 
   // Instance methods
@@ -142,7 +139,7 @@ public class Report extends org.openmetadata.schema.entity.data.Report {
     }
 
     public ListBuilder include(String include) {
-      params.setInclude(include);
+      params.setFields(include);
       return this;
     }
 

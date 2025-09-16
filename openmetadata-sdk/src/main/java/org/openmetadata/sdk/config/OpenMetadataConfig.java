@@ -56,6 +56,10 @@ public class OpenMetadataConfig {
     return testMode;
   }
 
+  public String getServerUrl() {
+    return baseUrl;
+  }
+
   public static Builder builder() {
     return new Builder();
   }

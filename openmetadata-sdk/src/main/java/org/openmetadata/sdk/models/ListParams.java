@@ -3,23 +3,16 @@ package org.openmetadata.sdk.models;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Parameters for list operations.
+ */
 public class ListParams {
-  private String fields;
   private Integer limit;
-  private String before;
   private String after;
-  private String include;
-
-  public ListParams() {}
-
-  public String getFields() {
-    return fields;
-  }
-
-  public ListParams setFields(String fields) {
-    this.fields = fields;
-    return this;
-  }
+  private String before;
+  private String fields;
+  private final Map<String, String> filters = new HashMap<>();
+  private final Map<String, String> queryParams = new HashMap<>();
 
   public Integer getLimit() {
     return limit;
@@ -27,15 +20,6 @@ public class ListParams {
 
   public ListParams setLimit(Integer limit) {
     this.limit = limit;
-    return this;
-  }
-
-  public String getBefore() {
-    return before;
-  }
-
-  public ListParams setBefore(String before) {
-    this.before = before;
     return this;
   }
 
@@ -48,22 +32,61 @@ public class ListParams {
     return this;
   }
 
-  public String getInclude() {
-    return include;
+  public String getBefore() {
+    return before;
   }
 
-  public ListParams setInclude(String include) {
-    this.include = include;
+  public ListParams setBefore(String before) {
+    this.before = before;
+    return this;
+  }
+
+  public String getFields() {
+    return fields;
+  }
+
+  public ListParams setFields(String fields) {
+    this.fields = fields;
+    return this;
+  }
+
+  public Map<String, String> getFilters() {
+    return filters;
+  }
+
+  public ListParams addFilter(String key, String value) {
+    filters.put(key, value);
     return this;
   }
 
   public Map<String, String> toQueryParams() {
-    Map<String, String> params = new HashMap<>();
-    if (fields != null) params.put("fields", fields);
-    if (limit != null) params.put("limit", limit.toString());
-    if (before != null) params.put("before", before);
-    if (after != null) params.put("after", after);
-    if (include != null) params.put("include", include);
+    Map<String, String> params = new HashMap<>(queryParams);
+    params.putAll(filters);
+
+    if (limit != null) {
+      params.put("limit", limit.toString());
+    }
+    if (after != null) {
+      params.put("after", after);
+    }
+    if (before != null) {
+      params.put("before", before);
+    }
+    if (fields != null) {
+      params.put("fields", fields);
+    }
+
     return params;
+  }
+
+  public ListParams copy() {
+    ListParams copy = new ListParams();
+    copy.limit = this.limit;
+    copy.after = this.after;
+    copy.before = this.before;
+    copy.fields = this.fields;
+    copy.filters.putAll(this.filters);
+    copy.queryParams.putAll(this.queryParams);
+    return copy;
   }
 }

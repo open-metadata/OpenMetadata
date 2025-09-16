@@ -124,14 +124,12 @@ public class Table {
     return CompletableFuture.supplyAsync(() -> exportCsv(name));
   }
 
-  public static String importCsv(String name, String csvData) {
-    // The importCsv method doesn't take a name parameter for tables
-    return getClient().tables().importCsv(csvData, false);
+  public static String importCsv(String name, String csvData, boolean dryRun) {
+    return getClient().tables().importCsv(name, csvData, dryRun);
   }
 
-  public static CompletableFuture<String> importCsvAsync(
-      String name, String csvData, boolean dryRun) {
-    return CompletableFuture.supplyAsync(() -> getClient().tables().importCsv(csvData, dryRun));
+  public static CompletableFuture<String> importCsvAsync(String name, String csvData) {
+    return CompletableFuture.supplyAsync(() -> getClient().tables().importCsvAsync(name, csvData));
   }
 
   // Collection class with iterator support

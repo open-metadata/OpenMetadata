@@ -5,32 +5,73 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.openmetadata.sdk.client.OpenMetadata;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
-public class TestCase extends org.openmetadata.schema.tests.TestCase {
+/**
+ * SDK wrapper for TestCase operations.
+ * This class provides static methods for TestCase CRUD operations.
+ * It does NOT extend the schema TestCase class to avoid naming conflicts.
+ */
+public class TestCase {
 
-  public static TestCase create(org.openmetadata.schema.tests.TestCase entity)
+  private static OpenMetadataClient defaultClient;
+
+  public static void setDefaultClient(OpenMetadataClient client) {
+    defaultClient = client;
+  }
+
+  private static OpenMetadataClient getClient() {
+    if (defaultClient == null) {
+      return OpenMetadata.client();
+    }
+    return defaultClient;
+  }
+
+  // Static methods for CRUD operations
+  public static org.openmetadata.schema.tests.TestCase create(
+      org.openmetadata.schema.tests.TestCase testCase) throws OpenMetadataException {
+    return getClient().testCases().create(testCase);
+  }
+
+  public static org.openmetadata.schema.tests.TestCase retrieve(String id)
       throws OpenMetadataException {
-    return (TestCase) OpenMetadata.client().testCases().create(entity);
+    return getClient().testCases().get(id);
   }
 
-  public static TestCase retrieve(String id) throws OpenMetadataException {
-    return (TestCase) OpenMetadata.client().testCases().get(id);
+  public static org.openmetadata.schema.tests.TestCase retrieve(String id, String fields)
+      throws OpenMetadataException {
+    return getClient().testCases().get(id, fields);
   }
 
-  public static TestCase retrieve(UUID id) throws OpenMetadataException {
+  public static org.openmetadata.schema.tests.TestCase retrieve(UUID id)
+      throws OpenMetadataException {
     return retrieve(id.toString());
   }
 
-  public static TestCase retrieveByName(String name) throws OpenMetadataException {
-    return (TestCase) OpenMetadata.client().testCases().getByName(name);
+  public static org.openmetadata.schema.tests.TestCase retrieveByName(String name)
+      throws OpenMetadataException {
+    return getClient().testCases().getByName(name);
   }
 
-  public static TestCase update(String id, org.openmetadata.schema.tests.TestCase patch)
+  public static org.openmetadata.schema.tests.TestCase retrieveByName(String name, String fields)
       throws OpenMetadataException {
-    return (TestCase) OpenMetadata.client().testCases().update(id, patch);
+    return getClient().testCases().getByName(name, fields);
+  }
+
+  public static org.openmetadata.schema.tests.TestCase update(
+      String id, org.openmetadata.schema.tests.TestCase patch) throws OpenMetadataException {
+    return getClient().testCases().update(id, patch);
+  }
+
+  public static void delete(String id) throws OpenMetadataException {
+    getClient().testCases().delete(id);
+  }
+
+  public static void delete(UUID id) throws OpenMetadataException {
+    getClient().testCases().delete(id);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)
@@ -38,20 +79,18 @@ public class TestCase extends org.openmetadata.schema.tests.TestCase {
     Map<String, String> params = new HashMap<>();
     params.put("recursive", String.valueOf(recursive));
     params.put("hardDelete", String.valueOf(hardDelete));
-    OpenMetadata.client().testCases().delete(id, params);
+    getClient().testCases().delete(id, params);
   }
 
-  public static ListResponse<org.openmetadata.schema.tests.TestCase> list()
-      throws OpenMetadataException {
-    return OpenMetadata.client().testCases().list();
+  // Async delete methods
+  public static CompletableFuture<Void> deleteAsync(String id) {
+    return getClient().testCases().deleteAsync(id);
   }
 
-  public static ListResponse<org.openmetadata.schema.tests.TestCase> list(ListParams params)
-      throws OpenMetadataException {
-    return OpenMetadata.client().testCases().list(params);
+  public static CompletableFuture<Void> deleteAsync(UUID id) {
+    return getClient().testCases().deleteAsync(id);
   }
 
-  // Add async delete for all entities extending EntityServiceBase
   public static CompletableFuture<Void> deleteAsync(
       String id, boolean recursive, boolean hardDelete) {
     return CompletableFuture.runAsync(
@@ -62,5 +101,15 @@ public class TestCase extends org.openmetadata.schema.tests.TestCase {
             throw new RuntimeException(e);
           }
         });
+  }
+
+  public static ListResponse<org.openmetadata.schema.tests.TestCase> list()
+      throws OpenMetadataException {
+    return getClient().testCases().list();
+  }
+
+  public static ListResponse<org.openmetadata.schema.tests.TestCase> list(ListParams params)
+      throws OpenMetadataException {
+    return getClient().testCases().list(params);
   }
 }

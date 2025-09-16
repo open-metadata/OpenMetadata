@@ -3,14 +3,17 @@ package org.openmetadata.sdk.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
@@ -97,7 +100,41 @@ public abstract class EntityServiceBase<T> {
 
   public ListResponse<T> list(ListParams params) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().queryParams(params.toQueryParams()).build();
-    return httpClient.execute(HttpMethod.GET, basePath, null, getListResponseClass(), options);
+    // Use executeForString and manually deserialize with TypeReference to preserve generic type
+    String responseStr = httpClient.executeForString(HttpMethod.GET, basePath, null, options);
+    return deserializeListResponse(responseStr);
+  }
+
+  protected ListResponse<T> deserializeListResponse(String json) throws OpenMetadataException {
+    // Default implementation using Jackson with proper type handling
+    try {
+      // First parse as generic JSON to get the structure
+      JsonNode rootNode = objectMapper.readTree(json);
+
+      // Create new ListResponse
+      ListResponse<T> response = new ListResponse<>();
+
+      // Parse data array with proper type
+      if (rootNode.has("data") && rootNode.get("data").isArray()) {
+        List<T> items = new ArrayList<>();
+        for (JsonNode node : rootNode.get("data")) {
+          T item = objectMapper.treeToValue(node, getEntityClass());
+          items.add(item);
+        }
+        response.setData(items);
+      }
+
+      // Parse paging if present
+      if (rootNode.has("paging")) {
+        AllModels.Paging paging =
+            objectMapper.treeToValue(rootNode.get("paging"), AllModels.Paging.class);
+        response.setPaging(paging);
+      }
+
+      return response;
+    } catch (Exception e) {
+      throw new OpenMetadataException("Failed to deserialize list response: " + e.getMessage(), e);
+    }
   }
 
   public T update(UUID id, T entity) throws OpenMetadataException {
@@ -251,27 +288,48 @@ public abstract class EntityServiceBase<T> {
         HttpMethod.DELETE, basePath + "/" + id, null, Void.class, options);
   }
 
-  public String exportCsv() throws OpenMetadataException {
-    return httpClient.executeForString(HttpMethod.GET, basePath + "/export", null);
-  }
-
   public String exportCsv(String name) throws OpenMetadataException {
-    RequestOptions options = RequestOptions.builder().queryParam("name", name).build();
-    return httpClient.executeForString(HttpMethod.GET, basePath + "/export", null, options);
+    // Use the proper path with entity name
+    String path = basePath + "/name/" + name + "/export";
+    return httpClient.executeForString(HttpMethod.GET, path, null);
   }
 
-  public String importCsv(String csvData) throws OpenMetadataException {
+  public String exportCsvAsync(String name) throws OpenMetadataException {
+    // Use the proper path with entity name for async export
+    String path = basePath + "/name/" + name + "/exportAsync";
+    return httpClient.executeForString(HttpMethod.GET, path, null);
+  }
+
+  public String importCsv(String name, String csvData) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().header("Content-Type", "text/plain").build();
-    return httpClient.executeForString(HttpMethod.PUT, basePath + "/import", csvData, options);
+    String path = basePath + "/name/" + name + "/import";
+    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
   }
 
-  public String importCsv(String csvData, boolean dryRun) throws OpenMetadataException {
+  public String importCsv(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .header("Content-Type", "text/plain")
             .queryParam("dryRun", String.valueOf(dryRun))
             .build();
-    return httpClient.executeForString(HttpMethod.PUT, basePath + "/import", csvData, options);
+    String path = basePath + "/name/" + name + "/import";
+    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
+  }
+
+  public String importCsvAsync(String name, String csvData) throws OpenMetadataException {
+    return importCsvAsync(name, csvData, false);
+  }
+
+  public String importCsvAsync(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "text/plain")
+            .queryParam("dryRun", String.valueOf(dryRun))
+            .build();
+    String path = basePath + "/name/" + name + "/importAsync";
+    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
   }
 
   protected abstract Class<T> getEntityClass();

@@ -120,12 +120,13 @@ public class Database extends org.openmetadata.schema.entity.data.Database {
     return CompletableFuture.supplyAsync(() -> exportCsv(name));
   }
 
-  public static String importCsv(String csvData, boolean dryRun) {
-    return getClient().databases().importCsv(csvData, dryRun);
+  public static String importCsv(String name, String csvData, boolean dryRun) {
+    return getClient().databases().importCsv(name, csvData, dryRun);
   }
 
-  public static CompletableFuture<String> importCsvAsync(String csvData, boolean dryRun) {
-    return CompletableFuture.supplyAsync(() -> getClient().databases().importCsv(csvData, dryRun));
+  public static CompletableFuture<String> importCsvAsync(String name, String csvData) {
+    return CompletableFuture.supplyAsync(
+        () -> getClient().databases().importCsvAsync(name, csvData));
   }
 
   // Instance methods

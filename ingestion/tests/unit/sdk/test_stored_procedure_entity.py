@@ -1,0 +1,142 @@
+"""
+Comprehensive unit tests for Stored Procedure entity.
+"""
+import unittest
+from unittest.mock import MagicMock
+from uuid import UUID
+
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure as StoredProcedureEntity,
+)
+from metadata.sdk.entities.storedprocedure import StoredProcedure
+
+
+class TestStoredProcedureEntity(unittest.TestCase):
+    """Comprehensive tests for StoredProcedure entity operations"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_ometa = MagicMock()
+        StoredProcedure._default_client = self.mock_ometa
+
+        self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
+        self.entity_fqn = "service.stored_procedure.test_stored_procedure"
+
+    def test_create_stored_procedure(self):
+        """Test creating a stored procedure"""
+        create_request = MagicMock(spec=CreateStoredProcedureRequest)
+        create_request.name = "test_stored_procedure"
+        create_request.displayName = "Test Stored Procedure"
+        create_request.description = "Test stored procedure for unit tests"
+
+        expected_entity = MagicMock(spec=StoredProcedureEntity)
+        expected_entity.id = UUID(self.entity_id)
+        expected_entity.name = "test_stored_procedure"
+
+        self.mock_ometa.create_or_update.return_value = expected_entity
+
+        result = StoredProcedure.create(create_request)
+
+        self.assertEqual(str(result.id), self.entity_id)
+        self.assertEqual(result.name, "test_stored_procedure")
+        self.mock_ometa.create_or_update.assert_called_once_with(create_request)
+
+    def test_retrieve_stored_procedure_by_id(self):
+        """Test retrieving a stored procedure by ID"""
+        expected_entity = MagicMock(spec=StoredProcedureEntity)
+        expected_entity.id = UUID(self.entity_id)
+        expected_entity.name = "test_stored_procedure"
+
+        self.mock_ometa.get_by_id.return_value = expected_entity
+
+        result = StoredProcedure.retrieve(self.entity_id)
+
+        self.assertEqual(str(result.id), self.entity_id)
+        self.mock_ometa.get_by_id.assert_called_once_with(
+            entity=StoredProcedureEntity, entity_id=self.entity_id, fields=None
+        )
+
+    def test_retrieve_stored_procedure_by_name(self):
+        """Test retrieving a stored procedure by name"""
+        expected_entity = MagicMock(spec=StoredProcedureEntity)
+        expected_entity.fullyQualifiedName = self.entity_fqn
+
+        self.mock_ometa.get_by_name.return_value = expected_entity
+
+        result = StoredProcedure.retrieve_by_name(self.entity_fqn)
+
+        self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
+        self.mock_ometa.get_by_name.assert_called_once_with(
+            entity=StoredProcedureEntity, fqn=self.entity_fqn, fields=None
+        )
+
+    def test_update_stored_procedure(self):
+        """Test updating a stored procedure"""
+        entity_to_update = MagicMock(spec=StoredProcedureEntity)
+        entity_to_update.id = UUID(self.entity_id)
+        entity_to_update.description = "Updated description"
+
+        self.mock_ometa.create_or_update.return_value = entity_to_update
+
+        result = StoredProcedure.update(self.entity_id, entity_to_update)
+
+        self.assertEqual(result.description, "Updated description")
+        self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
+
+    def test_patch_stored_procedure(self):
+        """Test patching a stored procedure"""
+        json_patch = [
+            {"op": "add", "path": "/description", "value": "Patched description"},
+            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Important.High"}},
+        ]
+
+        patched_entity = MagicMock(spec=StoredProcedureEntity)
+        patched_entity.id = UUID(self.entity_id)
+        patched_entity.description = "Patched description"
+
+        self.mock_ometa.patch.return_value = patched_entity
+
+        result = StoredProcedure.patch(self.entity_id, json_patch)
+
+        self.assertEqual(result.description, "Patched description")
+        self.mock_ometa.patch.assert_called_once_with(
+            entity=StoredProcedureEntity,
+            entity_id=self.entity_id,
+            json_patch=json_patch,
+        )
+
+    def test_delete_stored_procedure(self):
+        """Test deleting a stored procedure"""
+        StoredProcedure.delete(self.entity_id, recursive=True, hard_delete=False)
+
+        self.mock_ometa.delete.assert_called_once_with(
+            entity=StoredProcedureEntity,
+            entity_id=self.entity_id,
+            recursive=True,
+            hard_delete=False,
+        )
+
+    def test_list_stored_procedures(self):
+        """Test listing stored procedures"""
+        mock_entity1 = MagicMock(spec=StoredProcedureEntity)
+        mock_entity1.name = "entity1"
+        mock_entity2 = MagicMock(spec=StoredProcedureEntity)
+        mock_entity2.name = "entity2"
+
+        mock_response = MagicMock()
+        mock_response.entities = [mock_entity1, mock_entity2]
+
+        self.mock_ometa.list_entities.return_value = mock_response
+
+        result = StoredProcedure.list(limit=10)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].name, "entity1")
+        self.mock_ometa.list_entities.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

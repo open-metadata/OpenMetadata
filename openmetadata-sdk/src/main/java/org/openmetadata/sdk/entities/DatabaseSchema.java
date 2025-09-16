@@ -117,13 +117,13 @@ public class DatabaseSchema extends org.openmetadata.schema.entity.data.Database
     return CompletableFuture.supplyAsync(() -> exportCsv(name));
   }
 
-  public static String importCsv(String csvData, boolean dryRun) {
-    return getClient().databaseSchemas().importCsv(csvData, dryRun);
+  public static String importCsv(String name, String csvData, boolean dryRun) {
+    return getClient().databaseSchemas().importCsv(name, csvData, dryRun);
   }
 
-  public static CompletableFuture<String> importCsvAsync(String csvData, boolean dryRun) {
+  public static CompletableFuture<String> importCsvAsync(String name, String csvData) {
     return CompletableFuture.supplyAsync(
-        () -> getClient().databaseSchemas().importCsv(csvData, dryRun));
+        () -> getClient().databaseSchemas().importCsvAsync(name, csvData));
   }
 
   // Instance methods

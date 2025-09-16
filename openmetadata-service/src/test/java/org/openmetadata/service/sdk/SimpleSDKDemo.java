@@ -8,6 +8,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 
 /**
@@ -40,12 +41,13 @@ public class SimpleSDKDemo extends OpenMetadataApplicationTest {
 
     // 2. Initialize OM wrapper with the client
     OM.init(client);
+    Tables.setDefaultClient(client);
     System.out.println("✓ OM wrapper initialized with client");
 
     // 3. Retrieve tables using the simplified SDK
     try {
       // Get a table by name if one exists
-      Table table = OM.Table.retrieveByName("sample_data.ecommerce_db.shopify.dim_address");
+      Table table = Tables.findByName("sample_data.ecommerce_db.shopify.dim_address").fetch().get();
       if (table != null) {
         System.out.println("✓ Retrieved table: " + table.getName());
         System.out.println("  - Fully Qualified Name: " + table.getFullyQualifiedName());
@@ -58,11 +60,11 @@ public class SimpleSDKDemo extends OpenMetadataApplicationTest {
     // 4. Demonstrate creating and updating a table
     try {
       // This would require a database service to exist first
-      System.out.println("✓ SDK provides simple CRUD operations through the OM wrapper");
-      System.out.println("  - OM.Table.create(createRequest)");
-      System.out.println("  - OM.Table.retrieve(id)");
-      System.out.println("  - OM.Table.update(table)");
-      System.out.println("  - OM.Table.delete(id)");
+      System.out.println("✓ SDK provides fluent API operations");
+      System.out.println("  - Tables.create().name(\"test\").execute()");
+      System.out.println("  - Tables.find(id).fetch()");
+      System.out.println("  - Tables.find(id).fetch().withDescription(\"new\").save()");
+      System.out.println("  - Tables.find(id).delete().confirm()");
     } catch (Exception e) {
       System.out.println("Note: Table operations require existing database service");
     }

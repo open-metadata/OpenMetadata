@@ -20,7 +20,9 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
@@ -55,12 +57,14 @@ import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -68,9 +72,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -97,6 +104,12 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.OM;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.fluent.Glossaries;
+import org.openmetadata.sdk.fluent.GlossaryTerms;
+import org.openmetadata.sdk.fluent.GlossaryTerms.FluentGlossaryTerm;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -117,6 +130,9 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(GlossaryResourceTest.class);
+  private static OpenMetadataClient sdkClient;
   private final FeedResourceTest feedTest = new FeedResourceTest();
 
   public GlossaryResourceTest() {
@@ -127,6 +143,32 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         "glossaries",
         GlossaryResource.FIELDS);
     supportsSearchIndex = true;
+  }
+
+  private void initializeFluentAPIs() {
+    // Initialize SDK client with admin auth headers for fluent API tests
+    if (sdkClient == null) {
+      int port = APP.getLocalPort();
+      String serverUrl = String.format("http://localhost:%d/api", port);
+
+      OpenMetadataConfig config =
+          OpenMetadataConfig.builder()
+              .serverUrl(serverUrl)
+              .apiKey("admin@open-metadata.org") // In tests, we pass email directly
+              .testMode(true) // Enable test mode for proper auth header handling
+              .connectTimeout(30000)
+              .readTimeout(60000)
+              .build();
+
+      sdkClient = new OpenMetadataClient(config);
+
+      // Initialize OM with the client for static APIs like Bulk
+      OM.init(sdkClient);
+
+      // Set default client for fluent APIs
+      Glossaries.setDefaultClient(sdkClient);
+      GlossaryTerms.setDefaultClient(sdkClient);
+    }
   }
 
   public void setupGlossaries() throws IOException {
@@ -831,13 +873,16 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertEquals("test value", customPropValue);
   }
 
+  @Order(1)
   @Test
   void testGlossaryImportExport() throws IOException {
     EventSubscriptionResourceTest eventSubscriptionResourceTest =
         new EventSubscriptionResourceTest();
     // Update poll Interval to allow Status change from workflow to take some time
     eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
-    Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
+    // Use unique name to avoid test interference
+    String uniqueGlossaryName = "importExportTest_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary = createEntity(createRequest(uniqueGlossaryName), ADMIN_AUTH_HEADERS);
     String user1 = USER1.getName();
     String user2 = USER2.getName();
     String team11 = TEAM11.getName();
@@ -999,21 +1044,38 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g2,dsp2,dsc3,h1;h3;h3,g1.g1t1;g2.g2t1,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,g1.g1t1;g2.g2t1,,,user:%s,team:%s,%s,",
-                reviewerRef.getFirst(), team11, "Draft"));
+                uniqueGlossaryName
+                    + ".g1,g11,dsp2,dsc11,h1;h3;h3,g1.g1t1;g2.g2t1,,,user:%s,team:%s,%s,",
+                reviewerRef.getFirst(),
+                team11,
+                "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;g2.g2t1;importExportTest.g2,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
-                reviewerRef.getFirst(), user1, "Approved", team11, user1, user2),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;g2.g2t1;"
+                    + uniqueGlossaryName
+                    + ".g2,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                reviewerRef.getFirst(),
+                user1,
+                "Approved",
+                team11,
+                user1,
+                user2),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,g1.g1t1;g2.g2t1;importExportTest.g1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
-                user1, user2, "Approved"),
+                ",g2,dsp2,new-dsc3,h1;h3;h3,g1.g1t1;g2.g2t1;"
+                    + uniqueGlossaryName
+                    + ".g1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                user1,
+                user2,
+                "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
-                reviewerRef.getFirst(), team11, "Draft"));
+                uniqueGlossaryName
+                    + ".g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
+                reviewerRef.getFirst(),
+                team11,
+                "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
@@ -1022,15 +1084,24 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     testImportExport(
         glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
 
+    // Clean up the test glossary
+    try {
+      deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+    } catch (Exception e) {
+      // Ignore errors during cleanup
+    }
+
     // Reset poll Interval to allow Status change from workflow
     eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
   }
 
+  @Order(2)
   @Test
   void testGlossaryFeedTasks() throws IOException {
-    // Create a new glossary
+    // Create a new glossary with unique name
+    String uniqueName = "testGlossary_" + UUID.randomUUID().toString().substring(0, 8);
     CreateGlossary createGlossary =
-        createRequest("testGlossary").withReviewers(listOf(USER1_REF, USER2_REF));
+        createRequest(uniqueName).withReviewers(listOf(USER1_REF, USER2_REF));
     Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
     String about = String.format("<#E::%s::%s>", Entity.GLOSSARY, glossary.getFullyQualifiedName());
 
@@ -1413,5 +1484,454 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     for (Glossary glossary : createdGlossaries) {
       deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
     }
+  }
+
+  @Test
+  void test_glossaryFluentAPICRUD(TestInfo test) {
+    initializeFluentAPIs();
+    String glossaryName = "test_glossary_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+
+    // Create Glossary using fluent API
+    Glossary glossary =
+        Glossaries.create()
+            .name(glossaryName)
+            .withDescription("Test glossary created with fluent API")
+            .withDisplayName("Test Glossary Fluent")
+            .execute();
+
+    assertNotNull(glossary);
+    assertNotNull(glossary.getId());
+    assertEquals(glossaryName, glossary.getName());
+    assertEquals("Test glossary created with fluent API", glossary.getDescription());
+
+    // Find and update glossary
+    var fluentGlossary = Glossaries.find(glossary.getId()).fetch();
+    assertNotNull(fluentGlossary);
+
+    fluentGlossary.withDescription("Updated description via fluent API");
+    Glossary updatedGlossary = fluentGlossary.save().get();
+    assertEquals("Updated description via fluent API", updatedGlossary.getDescription());
+
+    // List glossaries - now fixed with proper deserialization in SDK
+    var glossaries = Glossaries.list().limit(10).fetch();
+    assertTrue(glossaries.size() > 0, "List should return glossaries");
+
+    // Verify the list() method returns valid FluentGlossary objects
+    var firstGlossary = glossaries.get(0);
+    assertNotNull(firstGlossary.get());
+    assertNotNull(firstGlossary.get().getId());
+    assertNotNull(firstGlossary.get().getName());
+
+    // Delete glossary
+    Glossaries.find(glossary.getId()).delete().confirm();
+
+    // Verify deletion
+    assertThrows(
+        Exception.class,
+        () -> {
+          Glossaries.find(glossary.getId()).fetch();
+        });
+  }
+
+  @Test
+  void test_glossaryTermFluentAPICRUD(TestInfo test) {
+    initializeFluentAPIs();
+    // First create a parent glossary
+    String glossaryName = "parent_glossary_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary =
+        Glossaries.create()
+            .name(glossaryName)
+            .withDescription("Parent glossary for terms")
+            .execute();
+
+    assertNotNull(glossary);
+
+    // Create GlossaryTerm using fluent API
+    String termName = "test_term_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+    GlossaryTerm term =
+        GlossaryTerms.create()
+            .name(termName)
+            .withDescription("Test term created with fluent API")
+            .withDisplayName("Test Term Fluent")
+            .in(glossary.getFullyQualifiedName())
+            .execute();
+
+    assertNotNull(term);
+    assertNotNull(term.getId());
+    assertEquals(termName, term.getName());
+    assertEquals("Test term created with fluent API", term.getDescription());
+
+    // Find and update term
+    var fluentTerm = GlossaryTerms.find(term.getId()).fetch();
+    assertNotNull(fluentTerm);
+
+    fluentTerm.withDescription("Updated term description");
+    GlossaryTerm updatedTerm = fluentTerm.save().get();
+    assertEquals("Updated term description", updatedTerm.getDescription());
+
+    // List terms - now fixed with proper deserialization in SDK
+    var terms = GlossaryTerms.list().limit(10).fetch();
+    assertTrue(terms.size() > 0);
+    assertTrue(terms.stream().anyMatch(t -> t.get().getId().equals(term.getId())));
+
+    // Delete terms and glossary
+    GlossaryTerms.find(term.getId()).delete().confirm();
+    Glossaries.find(glossary.getId()).delete().recursively().confirm();
+  }
+
+  @Test
+  void test_csvImportExportGlossaryFluentAPI(TestInfo test) {
+    initializeFluentAPIs();
+
+    // First create a glossary using fluent API
+    String glossaryName = "csv_glossary_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary =
+        Glossaries.create()
+            .name(glossaryName)
+            .withDescription("CSV test glossary")
+            .withDisplayName("CSV Test Glossary")
+            .execute();
+
+    // Create some terms in the glossary
+    List<GlossaryTerm> terms = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      String termName = "csv_term_" + i + "_" + UUID.randomUUID().toString().substring(0, 8);
+      GlossaryTerm term =
+          GlossaryTerms.create()
+              .name(termName)
+              .withDescription("CSV test term " + i)
+              .in(glossary.getFullyQualifiedName())
+              .execute();
+      terms.add(term);
+    }
+
+    try {
+      // Test CSV export using fluent API pattern
+      String csvExport = Glossaries.exportCsv(glossary.getFullyQualifiedName()).execute();
+      assertNotNull(csvExport);
+      assertTrue(csvExport.contains("csv_term_"));
+
+      // Delete the terms first
+      for (GlossaryTerm term : terms) {
+        GlossaryTerms.find(term.getId()).delete().confirm();
+      }
+
+      // Test CSV import using fluent API pattern - reimport the exported data
+      String importResult =
+          Glossaries.importCsv(glossary.getFullyQualifiedName()).withData(csvExport).execute();
+      assertNotNull(importResult);
+
+      // Verify terms were imported back
+      var glossaryWithTerms = Glossaries.findByName(glossary.getFullyQualifiedName()).fetch();
+      assertNotNull(glossaryWithTerms);
+
+      // Check if terms exist by listing them
+      var allTerms = GlossaryTerms.list().limit(100).fetch();
+      long termCount =
+          allTerms.stream().filter(t -> t.get().getName().startsWith("csv_term_")).count();
+      assertTrue(termCount > 0, "Should have imported at least one term");
+
+    } finally {
+      // Final cleanup - delete the test glossary and all its terms
+      try {
+        Glossaries.find(glossary.getId()).delete().recursively().confirm();
+      } catch (Exception e) {
+        // Ignore errors during cleanup
+      }
+    }
+  }
+
+  @Test
+  void test_csvFluentAPIAdvancedFeatures(TestInfo test) throws Exception {
+    initializeFluentAPIs();
+
+    // Create a glossary
+    String glossaryName = "csv_advanced_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary =
+        Glossaries.create().name(glossaryName).withDescription("Advanced CSV test").execute();
+
+    // Create a term
+    String termName = "advanced_term_" + UUID.randomUUID().toString().substring(0, 8);
+    GlossaryTerm term =
+        GlossaryTerms.create()
+            .name(termName)
+            .withDescription("Advanced test term")
+            .in(glossary.getFullyQualifiedName())
+            .execute();
+
+    try {
+      // Test async export
+      String asyncExportResult =
+          Glossaries.exportCsv(glossary.getFullyQualifiedName()).async().execute();
+      assertNotNull(asyncExportResult);
+
+      // Regular export for testing import
+      String csvData = Glossaries.exportCsv(glossary.getFullyQualifiedName()).execute();
+
+      // Test dry run import - should not actually import
+      String dryRunResult =
+          Glossaries.importCsv(glossary.getFullyQualifiedName())
+              .withData(csvData)
+              .dryRun()
+              .execute();
+      assertNotNull(dryRunResult);
+
+      // Test the fluent toCsv() alias
+      String csvExport2 = Glossaries.exportCsv(glossary.getFullyQualifiedName()).toCsv();
+      assertNotNull(csvExport2);
+      assertEquals(csvData, csvExport2);
+
+      // Test the fluent apply() alias for import
+      GlossaryTerms.find(term.getId()).delete().confirm();
+      String applyResult =
+          Glossaries.importCsv(glossary.getFullyQualifiedName()).withData(csvData).apply();
+      assertNotNull(applyResult);
+
+    } finally {
+      Glossaries.find(glossary.getId()).delete().recursively().confirm();
+    }
+  }
+
+  @Test
+  void test_glossaryTermWithTagsFluentAPI(TestInfo test) {
+    initializeFluentAPIs();
+    // Create glossary
+    String glossaryName = "tagged_glossary_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary =
+        Glossaries.create()
+            .name(glossaryName)
+            .withDescription("Glossary for tagged terms")
+            .execute();
+
+    // Create term
+    String termName = "tagged_term_fluent_" + UUID.randomUUID().toString().substring(0, 8);
+    GlossaryTerm term =
+        GlossaryTerms.create()
+            .name(termName)
+            .withDescription("Term with tags")
+            .in(glossary.getFullyQualifiedName())
+            .execute();
+
+    // Add tags to term
+    var fluentTerm = GlossaryTerms.find(term.getId()).includeTags().fetch();
+    List<TagLabel> tags = new ArrayList<>();
+    tags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+
+    fluentTerm.get().setTags(tags);
+    GlossaryTerm taggedTerm = fluentTerm.save().get();
+
+    assertNotNull(taggedTerm.getTags());
+    assertEquals(1, taggedTerm.getTags().size());
+    assertEquals("PII.Sensitive", taggedTerm.getTags().get(0).getTagFQN());
+
+    // Clean up - need recursive delete since glossary has terms
+    GlossaryTerms.find(term.getId()).delete().confirm();
+    Glossaries.find(glossary.getId()).delete().recursively().confirm();
+  }
+
+  @Test
+  void test_comprehensiveImportExportFluentAPI(TestInfo test) throws Exception {
+    initializeFluentAPIs();
+
+    // Create a comprehensive glossary structure using fluent API
+    String glossaryName =
+        "import_export_comprehensive_" + UUID.randomUUID().toString().substring(0, 8);
+    Glossary glossary =
+        Glossaries.create()
+            .name(glossaryName)
+            .withDescription("Comprehensive import/export test glossary")
+            .withDisplayName("Import Export Test")
+            .execute();
+
+    // Create parent term with synonyms
+    String parentTermName = "parent_term_" + UUID.randomUUID().toString().substring(0, 8);
+    GlossaryTerm parentTerm =
+        GlossaryTerms.create()
+            .name(parentTermName)
+            .withDescription("Parent term for import/export test")
+            .withDisplayName("Parent Term")
+            .withSynonyms(Arrays.asList("synonym1", "synonym2", "synonym3"))
+            .in(glossary.getFullyQualifiedName())
+            .execute();
+
+    // Create child terms under parent using fluent API
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      String childTermName = "child_term_" + i + "_" + UUID.randomUUID().toString().substring(0, 8);
+      GlossaryTerm childTerm =
+          GlossaryTerms.create()
+              .name(childTermName)
+              .withDescription("Child term " + i + " description")
+              .withDisplayName("Child Term " + i)
+              .withSynonyms(List.of("child_syn_" + i))
+              .under(parentTerm.getFullyQualifiedName())
+              .in(glossary.getFullyQualifiedName())
+              .execute();
+      childTerms.add(childTerm);
+    }
+
+    // Create related terms
+    String relatedTermName = "related_term_" + UUID.randomUUID().toString().substring(0, 8);
+    GlossaryTerm relatedTerm =
+        GlossaryTerms.create()
+            .name(relatedTermName)
+            .withDescription("Related term for relationships")
+            .withDisplayName("Related Term")
+            .in(glossary.getFullyQualifiedName())
+            .execute();
+
+    try {
+      // Export the complete glossary structure
+      String exportedCsv = Glossaries.exportCsv(glossary.getFullyQualifiedName()).execute();
+      assertNotNull(exportedCsv, "Exported CSV should not be null");
+
+      // Verify export contains all terms
+      assertTrue(exportedCsv.contains(parentTermName), "Export should contain parent term");
+      assertTrue(exportedCsv.contains(relatedTermName), "Export should contain related term");
+      for (GlossaryTerm child : childTerms) {
+        assertTrue(
+            exportedCsv.contains(child.getName()),
+            "Export should contain child term: " + child.getName());
+      }
+
+      // Verify hierarchical structure is preserved (parent reference in children)
+      assertTrue(
+          exportedCsv.contains(glossary.getFullyQualifiedName() + "." + parentTermName),
+          "Export should contain parent FQN references");
+
+      // Delete all terms to prepare for re-import
+      // First delete children, then parent
+      for (GlossaryTerm child : childTerms) {
+        GlossaryTerms.find(child.getId()).delete().confirm();
+      }
+      GlossaryTerms.find(relatedTerm.getId()).delete().confirm();
+      // Parent must be deleted after all children - use recursively option
+      GlossaryTerms.find(parentTerm.getId()).delete().recursively().confirm();
+
+      // Re-import the CSV data
+      String importResult =
+          Glossaries.importCsv(glossary.getFullyQualifiedName()).withData(exportedCsv).execute();
+      assertNotNull(importResult, "Import result should not be null");
+
+      // Verify all terms were recreated
+      var allTermsAfterImport = GlossaryTerms.list().limit(100).fetch();
+      long recreatedTermCount =
+          allTermsAfterImport.stream()
+              .filter(t -> t.get().getGlossary().getName().equals(glossaryName))
+              .count();
+      assertEquals(
+          7,
+          recreatedTermCount,
+          "Should have recreated all 7 terms (1 parent + 5 children + 1 related)");
+
+      // Test dry run import - should not actually create anything
+      String newTermCsv =
+          "\"\",\"dry_run_term\",\"Dry Run Term\",\"Test dry run\",\"syn1;syn2\",\"\",\"\",\"\",\"\",\"\",\"Draft\",\"\"";
+      String dryRunResult =
+          Glossaries.importCsv(glossary.getFullyQualifiedName())
+              .withData(newTermCsv)
+              .dryRun()
+              .execute();
+      assertNotNull(dryRunResult, "Dry run result should not be null");
+
+      // Verify dry run didn't actually create the term
+      var termsAfterDryRun = GlossaryTerms.list().limit(100).fetch();
+      boolean dryRunTermExists =
+          termsAfterDryRun.stream().anyMatch(t -> t.get().getName().equals("dry_run_term"));
+      assertFalse(dryRunTermExists, "Dry run should not create actual term");
+
+      // Test async export
+      String asyncExportResult =
+          Glossaries.exportCsv(glossary.getFullyQualifiedName()).async().execute();
+      assertNotNull(asyncExportResult, "Async export result should not be null");
+
+      // Test async import with CompletableFuture pattern
+      String asyncTermCsv =
+          "\"\",\"async_term\",\"Async Term\",\"Test async import\",\"\",\"\",\"\",\"\",\"\",\"\",\"Draft\",\"\"";
+
+      // Test async import without WebSocket - must explicitly set dryRun to false to create
+      // entities
+      CompletableFuture<CsvImportResult> asyncImportFuture =
+          Glossaries.importCsv(glossary.getFullyQualifiedName())
+              .withData(asyncTermCsv)
+              .dryRun(false) // Explicitly set to false to create entities
+              .waitForCompletion(0) // Don't wait for WebSocket
+              .executeAsync();
+
+      // Get the result from the future (it completes immediately with job started)
+      CsvImportResult asyncImportResult = asyncImportFuture.get(5, TimeUnit.SECONDS);
+      assertNotNull(asyncImportResult, "Import result should not be null");
+
+      // Poll for the async import to complete on the server
+      int maxRetries = 15;
+      boolean asyncTermExists = false;
+      for (int i = 0; i < maxRetries && !asyncTermExists; i++) {
+        TestUtils.simulateWork(2000); // Wait 2 seconds between checks
+        var termsAfterAsync = GlossaryTerms.list().limit(100).fetch();
+        asyncTermExists =
+            termsAfterAsync.stream().anyMatch(t -> t.get().getName().equals("async_term"));
+      }
+      assertTrue(asyncTermExists, "Async import should create the term");
+
+    } finally {
+      // Clean up everything
+      try {
+        Glossaries.find(glossary.getId()).delete().recursively().confirm();
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCsvAsyncApisWithWebSocket() throws Exception {
+    initializeFluentAPIs();
+
+    CreateGlossary createGlossary =
+        createRequest("test_csv_websocket_glossary", "CSV WebSocket Test Glossary", "", null);
+    Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    String asyncTermCsv =
+        "\"parent\",\"name\",\"displayName\",\"description\",\"synonyms\",\"relatedTerms\",\"references\",\"tags\",\"status\",\"reviewers\",\"Status\",\"Tags\"\n"
+            + "\"\",\"websocket_test_term\",\"WebSocket Test Term\",\"Term for WebSocket test\",\"ws_term;socket_term\",\"\",\"\",\"\",\"\",\"\",\"Approved\",\"\"";
+
+    try {
+      CompletableFuture<CsvImportResult> asyncImportFuture =
+          Glossaries.importCsv(glossary.getFullyQualifiedName())
+              .withData(asyncTermCsv)
+              .waitForCompletion(30) // Use built-in WebSocket support
+              .executeAsync();
+
+      CsvImportResult wsImportResult = asyncImportFuture.get(35, TimeUnit.SECONDS);
+      assertNotNull(wsImportResult, "Import result should not be null");
+      LOG.info("CSV import completed via WebSocket notification");
+
+      List<FluentGlossaryTerm> importedTerms =
+          GlossaryTerms.list().limit(100).fetch().stream()
+              .filter(t -> t.get().getGlossary().getName().equals(glossary.getName()))
+              .toList();
+      assertFalse(importedTerms.isEmpty(), "Terms should have been imported");
+
+      CompletableFuture<String> exportFuture =
+          Glossaries.exportCsv(glossary.getFullyQualifiedName())
+              .waitForCompletion(30) // Use built-in WebSocket support
+              .executeAsync();
+
+      String exportedCsv = exportFuture.get(35, TimeUnit.SECONDS);
+      assertNotNull(exportedCsv, "CSV export should return data");
+      assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+      LOG.info("CSV export completed via WebSocket notification");
+
+    } catch (Exception e) {
+      LOG.error("WebSocket test failed: {}", e.getMessage(), e);
+      fail("WebSocket connection should work in test environment: " + e.getMessage());
+    }
+
+    Glossaries.find(glossary.getId()).delete().recursively().confirm();
   }
 }

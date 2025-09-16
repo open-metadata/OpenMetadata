@@ -1,11 +1,11 @@
 package org.openmetadata.sdk.client;
 
+import java.util.UUID;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
-import org.openmetadata.sdk.services.automations.WorkflowService;
 import org.openmetadata.sdk.services.bots.BotService;
 import org.openmetadata.sdk.services.bulk.BulkAPI;
 import org.openmetadata.sdk.services.classification.ClassificationService;
@@ -32,7 +32,6 @@ import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
-import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.sdk.services.services.APIServiceService;
 import org.openmetadata.sdk.services.services.DashboardServiceService;
@@ -45,7 +44,6 @@ import org.openmetadata.sdk.services.services.SearchServiceService;
 import org.openmetadata.sdk.services.services.StorageServiceService;
 import org.openmetadata.sdk.services.storages.ContainerService;
 import org.openmetadata.sdk.services.teams.PersonaService;
-import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.sdk.services.tests.TestCaseService;
@@ -86,9 +84,7 @@ public class OpenMetadataClient {
   private final ClassificationService classifications;
   private final TagService tags;
 
-  // Policies and Roles
-  private final PolicyService policies;
-  private final RoleService roles;
+  // Bots
   private final BotService bots;
 
   // Additional Data Assets
@@ -107,8 +103,7 @@ public class OpenMetadataClient {
   private final DataProductService dataProducts;
   private final DomainService domains;
 
-  // Automations & Events
-  private final WorkflowService workflows;
+  // Events
   private final EventSubscriptionService eventSubscriptions;
 
   // Tests
@@ -168,9 +163,7 @@ public class OpenMetadataClient {
     this.classifications = new ClassificationService(httpClient);
     this.tags = new TagService(httpClient);
 
-    // Initialize policy and role services
-    this.policies = new PolicyService(httpClient);
-    this.roles = new RoleService(httpClient);
+    // Initialize bot service
     this.bots = new BotService(httpClient);
 
     // Initialize additional data asset services
@@ -189,8 +182,7 @@ public class OpenMetadataClient {
     this.dataProducts = new DataProductService(httpClient);
     this.domains = new DomainService(httpClient);
 
-    // Initialize automation & event services
-    this.workflows = new WorkflowService(httpClient);
+    // Initialize event services
     this.eventSubscriptions = new EventSubscriptionService(httpClient);
 
     // Initialize test services
@@ -303,15 +295,7 @@ public class OpenMetadataClient {
     return tags;
   }
 
-  // Policy and Role Service Getters
-  public PolicyService policies() {
-    return policies;
-  }
-
-  public RoleService roles() {
-    return roles;
-  }
-
+  // Bot Service Getter
   public BotService bots() {
     return bots;
   }
@@ -359,11 +343,7 @@ public class OpenMetadataClient {
     return domains;
   }
 
-  // Automation & Event Service Getters
-  public WorkflowService workflows() {
-    return workflows;
-  }
-
+  // Event Service Getter
   public EventSubscriptionService eventSubscriptions() {
     return eventSubscriptions;
   }
@@ -430,5 +410,53 @@ public class OpenMetadataClient {
   // Ingestion Service Getters
   public IngestionPipelineService ingestionPipelines() {
     return ingestionPipelines;
+  }
+
+  /**
+   * Get the current user ID by determining it from the authentication token.
+   * In test mode with email auth, fetches the user by username.
+   * For production JWT tokens, would need to decode or call a /users/me endpoint.
+   */
+  public UUID getCurrentUserId() {
+    // Try to determine user from authentication
+    String auth = config.getAccessToken();
+    if (auth == null) {
+      return null;
+    }
+
+    try {
+      // Check if it's an email (test mode)
+      if (auth.contains("@")) {
+        // The auth is an email, fetch the user by name
+        String username = auth.split("@")[0];
+        var user = users().getByName(username);
+        if (user != null && user.getId() != null) {
+          return user.getId();
+        }
+      } else if (auth.startsWith("ey")) {
+        // Looks like a JWT token (starts with base64 encoded '{"')
+        // For JWT, we would need to decode it, but for now we fetch current user from API
+        // This would require a /users/me endpoint or similar
+        // For now, return null and let WebSocket be unavailable for JWT auth
+        return null;
+      }
+    } catch (Exception e) {
+      // Ignore - WebSocket will not be available
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the WebSocket URL for async operations.
+   * Derives from the server URL, replacing http with ws.
+   */
+  public String getWebSocketUrl() {
+    String serverUrl = config.getServerUrl();
+    if (serverUrl != null) {
+      // Convert http(s)://host:port/api to ws(s)://host:port
+      return serverUrl.replace("https://", "wss://").replace("http://", "ws://");
+    }
+    return null;
   }
 }

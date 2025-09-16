@@ -172,6 +172,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.OM;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -5223,6 +5224,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Initialize the SDK once
     OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
 
     // Create a table with columns
     String tableName = getEntityName(test) + "_sdk_columns";
@@ -5249,10 +5251,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(col1);
     columns.add(col2);
     columns.add(col3);
-    createRequest.withColumns(columns);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
 
-    // Create table with clean SDK API
-    Table createdTable = OM.Table.create(createRequest);
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
     assertNotNull(createdTable);
     assertEquals(3, createdTable.getColumns().size());
 
@@ -5271,7 +5275,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createdTable.getColumns().add(newCol);
 
     // Update the table using the clean API
-    Table updatedTable = OM.Table.update(createdTable);
+    var fluentTable = Tables.find(createdTable.getId().toString()).fetch();
+    fluentTable.get().setColumns(createdTable.getColumns());
+    Table updatedTable = fluentTable.save().get();
     assertNotNull(updatedTable);
     assertEquals(4, updatedTable.getColumns().size());
     assertEquals(
@@ -5282,7 +5288,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Second update: Add column-level tags
     // Fetch with tags field to ensure we get current tags
-    Table tableWithTags = OM.Table.retrieve(updatedTable.getId().toString(), "tags");
+    Table tableWithTags = Tables.find(updatedTable.getId().toString()).includeTags().fetch().get();
 
     // Add PII tag to email column
     List<TagLabel> emailTags = new ArrayList<>();
@@ -5303,7 +5309,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tableWithTags.getColumns().get(3).setTags(statusTags);
 
     // Update with column tags
-    Table taggedTable = OM.Table.update(tableWithTags);
+    var fluentTable2 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable2.get().setColumns(tableWithTags.getColumns());
+    Table taggedTable = fluentTable2.save().get();
     assertNotNull(taggedTable);
     assertEquals(1, taggedTable.getColumns().get(1).getTags().size());
     assertEquals("PII.Email", taggedTable.getColumns().get(1).getTags().get(0).getTagFQN());
@@ -5322,7 +5330,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     taggedTable.getColumns().get(1).setTags(newEmailTags);
 
     // Final update
-    Table finalTable = OM.Table.update(taggedTable);
+    var fluentTable3 = Tables.find(taggedTable.getId().toString()).fetch();
+    fluentTable3.get().setColumns(taggedTable.getColumns());
+    Table finalTable = fluentTable3.save().get();
     assertEquals(1, finalTable.getColumns().get(1).getTags().size());
     assertEquals("PII.Sensitive", finalTable.getColumns().get(1).getTags().get(0).getTagFQN());
 
@@ -5338,6 +5348,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
 
     OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
 
     // Create a table with columns
     String tableName = getEntityName(test) + "_sdk_column_tags";
@@ -5351,14 +5362,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(11);
     columns.add(col1);
     columns.add(col2);
-    createRequest.withColumns(columns);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
 
-    // Create table with SDK
-    Table createdTable = OM.Table.create(createRequest);
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
     assertNotNull(createdTable);
 
     // Fetch with tags field to get column tags
-    Table tableWithTags = OM.Table.retrieve(createdTable.getId().toString(), "tags");
+    Table tableWithTags = Tables.find(createdTable.getId().toString()).includeTags().fetch().get();
 
     // Add tags to columns
     List<TagLabel> emailTags = new ArrayList<>();
@@ -5383,7 +5396,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tableWithTags.getColumns().get(1).setTags(ssnTags);
 
     // Update table with column tags
-    Table updatedTable = OM.Table.update(tableWithTags);
+    var fluentTable4 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable4.get().setColumns(tableWithTags.getColumns());
+    Table updatedTable = fluentTable4.save().get();
     assertNotNull(updatedTable);
     assertEquals(1, updatedTable.getColumns().get(0).getTags().size());
     assertEquals("PII.Email", updatedTable.getColumns().get(0).getTags().get(0).getTagFQN());
@@ -5393,7 +5408,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     updatedTable.getColumns().get(1).getTags().remove(0);
 
     // Update again
-    Table finalTable = OM.Table.update(updatedTable);
+    var fluentTable5 = Tables.find(updatedTable.getId().toString()).fetch();
+    fluentTable5.get().setColumns(updatedTable.getColumns());
+    Table finalTable = fluentTable5.save().get();
     assertEquals(1, finalTable.getColumns().get(1).getTags().size());
     assertEquals(
         "PersonalData.SpecialCategory",

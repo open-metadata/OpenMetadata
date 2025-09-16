@@ -63,20 +63,17 @@ public class Metric extends org.openmetadata.schema.entity.data.Metric {
   }
 
   // Export/Import methods
-  public static String exportCsv() throws OpenMetadataException {
-    return OpenMetadata.client().metrics().exportCsv();
-  }
-
   public static String exportCsv(String name) throws OpenMetadataException {
     return OpenMetadata.client().metrics().exportCsv(name);
   }
 
-  public static String importCsv(String csvData) throws OpenMetadataException {
-    return OpenMetadata.client().metrics().importCsv(csvData);
+  public static String importCsv(String name, String csvData) throws OpenMetadataException {
+    return OpenMetadata.client().metrics().importCsv(name, csvData);
   }
 
-  public static String importCsv(String csvData, boolean dryRun) throws OpenMetadataException {
-    return OpenMetadata.client().metrics().importCsv(csvData, dryRun);
+  public static String importCsv(String name, String csvData, boolean dryRun)
+      throws OpenMetadataException {
+    return OpenMetadata.client().metrics().importCsv(name, csvData, dryRun);
   }
 
   // Instance methods
@@ -142,7 +139,7 @@ public class Metric extends org.openmetadata.schema.entity.data.Metric {
     }
 
     public ListBuilder include(String include) {
-      params.setInclude(include);
+      params.setFields(include);
       return this;
     }
 

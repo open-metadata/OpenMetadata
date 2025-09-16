@@ -1,15 +1,23 @@
 package org.openmetadata.sdk.entities;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.openmetadata.schema.api.data.CreateSearchIndex;
+import org.openmetadata.sdk.client.OpenMetadata;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
-import org.openmetadata.sdk.services.dataassets.SearchIndexService;
+import org.openmetadata.sdk.models.ListResponse;
 
-public class SearchIndex extends org.openmetadata.schema.entity.data.SearchIndex {
+/**
+ * SDK wrapper for SearchIndex operations.
+ * This class provides static methods for SearchIndex CRUD operations.
+ * It does NOT extend the schema SearchIndex class to avoid naming conflicts.
+ */
+public class SearchIndex {
+
   private static OpenMetadataClient defaultClient;
 
   public static void setDefaultClient(OpenMetadataClient client) {
@@ -18,235 +26,92 @@ public class SearchIndex extends org.openmetadata.schema.entity.data.SearchIndex
 
   private static OpenMetadataClient getClient() {
     if (defaultClient == null) {
-      throw new IllegalStateException("Default client not set. Call setDefaultClient() first.");
+      return OpenMetadata.client();
     }
     return defaultClient;
   }
 
-  // Static CRUD methods - Stripe style
-  public static SearchIndex create(CreateSearchIndex request) {
-    // Convert CreateSearchIndex to SearchIndex entity
-    SearchIndex searchIndex = new SearchIndex();
-    searchIndex.setName(request.getName());
-    searchIndex.setDisplayName(request.getDisplayName());
-    searchIndex.setDescription(request.getDescription());
-    searchIndex.setTags(request.getTags());
-    searchIndex.setOwners(request.getOwners());
-    // Service is an EntityReference, request.getService() returns String
-    searchIndex.setFields(request.getFields());
-    searchIndex.setSearchIndexSettings(request.getSearchIndexSettings());
-    // Domain is not available in CreateSearchIndex
-    // DataProducts is List<EntityReference>, not List<String>
-    searchIndex.setLifeCycle(request.getLifeCycle());
-    searchIndex.setSourceHash(request.getSourceHash());
-
-    return (SearchIndex) getClient().searchIndexes().create(searchIndex);
+  // Static methods for CRUD operations
+  public static org.openmetadata.schema.entity.data.SearchIndex create(CreateSearchIndex request)
+      throws OpenMetadataException {
+    return getClient().searchIndexes().create(request);
   }
 
-  public static SearchIndex retrieve(String id) {
-    return (SearchIndex) getClient().searchIndexes().get(id);
+  public static org.openmetadata.schema.entity.data.SearchIndex retrieve(String id)
+      throws OpenMetadataException {
+    return getClient().searchIndexes().get(id);
   }
 
-  public static SearchIndex retrieve(String id, String fields) {
-    return (SearchIndex) getClient().searchIndexes().get(id, fields);
+  public static org.openmetadata.schema.entity.data.SearchIndex retrieve(String id, String fields)
+      throws OpenMetadataException {
+    return getClient().searchIndexes().get(id, fields);
   }
 
-  public static SearchIndex retrieveByName(String fullyQualifiedName) {
-    return (SearchIndex) getClient().searchIndexes().getByName(fullyQualifiedName);
+  public static org.openmetadata.schema.entity.data.SearchIndex retrieve(UUID id)
+      throws OpenMetadataException {
+    return retrieve(id.toString());
   }
 
-  public static SearchIndex retrieveByName(String fullyQualifiedName, String fields) {
-    return (SearchIndex) getClient().searchIndexes().getByName(fullyQualifiedName, fields);
+  public static org.openmetadata.schema.entity.data.SearchIndex retrieveByName(String name)
+      throws OpenMetadataException {
+    return getClient().searchIndexes().getByName(name);
   }
 
-  public static SearchIndexCollection list() {
-    return new SearchIndexCollection(getClient().searchIndexes());
+  public static org.openmetadata.schema.entity.data.SearchIndex retrieveByName(
+      String name, String fields) throws OpenMetadataException {
+    return getClient().searchIndexes().getByName(name, fields);
   }
 
-  public static SearchIndexCollection list(SearchIndexListParams params) {
-    return new SearchIndexCollection(getClient().searchIndexes(), params);
+  public static org.openmetadata.schema.entity.data.SearchIndex update(
+      String id, org.openmetadata.schema.entity.data.SearchIndex patch)
+      throws OpenMetadataException {
+    return getClient().searchIndexes().update(id, patch);
   }
 
-  public static SearchIndex update(String id, SearchIndex searchIndex) {
-    return (SearchIndex) getClient().searchIndexes().update(id, searchIndex);
+  public static void delete(String id) throws OpenMetadataException {
+    getClient().searchIndexes().delete(id);
   }
 
-  public static org.openmetadata.schema.entity.data.SearchIndex patch(String id, String jsonPatch) {
-    try {
-      com.fasterxml.jackson.databind.ObjectMapper mapper =
-          new com.fasterxml.jackson.databind.ObjectMapper();
-      com.fasterxml.jackson.databind.JsonNode patchNode = mapper.readTree(jsonPatch);
-      return getClient().searchIndexes().patch(id, patchNode);
-    } catch (Exception e) {
-      throw new org.openmetadata.sdk.exceptions.OpenMetadataException(
-          "Failed to parse JSON patch: " + e.getMessage(), e);
-    }
+  public static void delete(UUID id) throws OpenMetadataException {
+    getClient().searchIndexes().delete(id);
   }
 
-  public static void delete(String id) {
-    delete(id, false, false);
-  }
-
-  public static void delete(String id, boolean recursive, boolean hardDelete) {
-    SearchIndexService service = getClient().searchIndexes();
+  public static void delete(String id, boolean recursive, boolean hardDelete)
+      throws OpenMetadataException {
     Map<String, String> params = new HashMap<>();
     params.put("recursive", String.valueOf(recursive));
     params.put("hardDelete", String.valueOf(hardDelete));
-    service.delete(id, params);
+    getClient().searchIndexes().delete(id, params);
   }
 
-  // Async operations
-  public static CompletableFuture<SearchIndex> createAsync(CreateSearchIndex request) {
-    return CompletableFuture.supplyAsync(() -> create(request));
+  // Async delete methods
+  public static CompletableFuture<Void> deleteAsync(String id) {
+    return getClient().searchIndexes().deleteAsync(id);
   }
 
-  public static CompletableFuture<SearchIndex> retrieveAsync(String id) {
-    return CompletableFuture.supplyAsync(() -> retrieve(id));
+  public static CompletableFuture<Void> deleteAsync(UUID id) {
+    return getClient().searchIndexes().deleteAsync(id);
   }
 
   public static CompletableFuture<Void> deleteAsync(
       String id, boolean recursive, boolean hardDelete) {
-    return CompletableFuture.runAsync(() -> delete(id, recursive, hardDelete));
+    return CompletableFuture.runAsync(
+        () -> {
+          try {
+            delete(id, recursive, hardDelete);
+          } catch (OpenMetadataException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
-  // Instance methods
-  public SearchIndex save() {
-    if (this.getId() != null) {
-      return update(this.getId().toString(), this);
-    } else {
-      throw new IllegalStateException("Cannot save a search index without an ID");
-    }
+  public static ListResponse<org.openmetadata.schema.entity.data.SearchIndex> list()
+      throws OpenMetadataException {
+    return getClient().searchIndexes().list();
   }
 
-  public void delete() {
-    if (this.getId() != null) {
-      delete(this.getId().toString());
-    } else {
-      throw new IllegalStateException("Cannot delete a search index without an ID");
-    }
-  }
-
-  // Collection class with iterator support
-  public static class SearchIndexCollection {
-    private final SearchIndexService service;
-    private final SearchIndexListParams params;
-
-    SearchIndexCollection(SearchIndexService service) {
-      this(service, null);
-    }
-
-    SearchIndexCollection(SearchIndexService service, SearchIndexListParams params) {
-      this.service = service;
-      this.params = params;
-    }
-
-    public Iterable<SearchIndex> autoPagingIterable() {
-      return new Iterable<SearchIndex>() {
-        @Override
-        public Iterator<SearchIndex> iterator() {
-          return new SearchIndexIterator(service, params);
-        }
-      };
-    }
-  }
-
-  // List params
-  public static class SearchIndexListParams {
-    private Integer limit;
-    private String before;
-    private String after;
-    private String fields;
-
-    public static Builder builder() {
-      return new Builder();
-    }
-
-    public static class Builder {
-      private SearchIndexListParams params = new SearchIndexListParams();
-
-      public Builder limit(Integer limit) {
-        params.limit = limit;
-        return this;
-      }
-
-      public Builder before(String before) {
-        params.before = before;
-        return this;
-      }
-
-      public Builder after(String after) {
-        params.after = after;
-        return this;
-      }
-
-      public Builder fields(String fields) {
-        params.fields = fields;
-        return this;
-      }
-
-      public SearchIndexListParams build() {
-        return params;
-      }
-    }
-
-    public ListParams toListParams() {
-      ListParams listParams = new ListParams();
-      if (limit != null) listParams.setLimit(limit);
-      if (before != null) listParams.setBefore(before);
-      if (after != null) listParams.setAfter(after);
-      if (fields != null) listParams.setFields(fields);
-      return listParams;
-    }
-  }
-
-  // Iterator for pagination
-  private static class SearchIndexIterator implements Iterator<SearchIndex> {
-    private final SearchIndexService service;
-    private final SearchIndexListParams params;
-    private Iterator<org.openmetadata.schema.entity.data.SearchIndex> currentPage;
-    private String nextPageToken;
-    private boolean hasMore = true;
-
-    SearchIndexIterator(SearchIndexService service, SearchIndexListParams params) {
-      this.service = service;
-      this.params = params;
-      loadNextPage();
-    }
-
-    private void loadNextPage() {
-      if (!hasMore) {
-        return;
-      }
-
-      ListParams listParams = params != null ? params.toListParams() : new ListParams();
-      if (nextPageToken != null) {
-        listParams.setAfter(nextPageToken);
-      }
-
-      var response = service.list(listParams);
-      currentPage = response.getData().iterator();
-      nextPageToken = response.getPaging() != null ? response.getPaging().getAfter() : null;
-      hasMore = nextPageToken != null;
-    }
-
-    @Override
-    public boolean hasNext() {
-      if (currentPage.hasNext()) {
-        return true;
-      }
-      if (hasMore) {
-        loadNextPage();
-        return currentPage.hasNext();
-      }
-      return false;
-    }
-
-    @Override
-    public SearchIndex next() {
-      if (!hasNext()) {
-        throw new java.util.NoSuchElementException();
-      }
-      return (SearchIndex) currentPage.next();
-    }
+  public static ListResponse<org.openmetadata.schema.entity.data.SearchIndex> list(
+      ListParams params) throws OpenMetadataException {
+    return getClient().searchIndexes().list(params);
   }
 }

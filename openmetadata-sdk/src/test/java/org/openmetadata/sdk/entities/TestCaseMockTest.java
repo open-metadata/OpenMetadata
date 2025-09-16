@@ -109,8 +109,7 @@ public class TestCaseMockTest {
     when(mockTestCaseService.get(testCaseId, fields)).thenReturn(expectedTestCase);
 
     // Act
-    // TestCase SDK doesn't have retrieve with fields - skip this variant
-    TestCase result = expectedTestCase; // Just return the mock for this test
+    TestCase result = org.openmetadata.sdk.entities.TestCase.retrieve(testCaseId, fields);
 
     // Assert
     assertNotNull(result);
@@ -198,10 +197,11 @@ public class TestCaseMockTest {
     when(mockTestCaseService.get(testCaseId, "parameterValues")).thenReturn(expectedTestCase);
 
     // Act
-    // TestCase SDK doesn't have retrieve with fields - skip this variant
-    TestCase result = expectedTestCase; // Just return the mock for this test
+    TestCase result =
+        org.openmetadata.sdk.entities.TestCase.retrieve(testCaseId, "parameterValues");
 
     // Assert
+    assertNotNull(result);
     // assertNotNull(result.getParameterValues());
     // assertEquals(1, result.getParameterValues().size());
     verify(mockTestCaseService).get(testCaseId, "parameterValues");

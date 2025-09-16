@@ -118,12 +118,13 @@ public class StoredProcedure extends org.openmetadata.schema.entity.data.StoredP
     return CompletableFuture.supplyAsync(() -> exportCsv(name));
   }
 
-  public static String importCsv(String csvData, boolean dryRun) {
-    return getClient().storedProcedures().importCsv(csvData, dryRun);
+  public static String importCsv(String name, String csvData, boolean dryRun) {
+    return getClient().storedProcedures().importCsv(name, csvData, dryRun);
   }
 
-  public static CompletableFuture<String> importCsvAsync(String csvData, boolean dryRun) {
-    return CompletableFuture.supplyAsync(() -> importCsv(csvData, dryRun));
+  public static CompletableFuture<String> importCsvAsync(String name, String csvData) {
+    return CompletableFuture.supplyAsync(
+        () -> getClient().storedProcedures().importCsvAsync(name, csvData));
   }
 
   // Instance methods

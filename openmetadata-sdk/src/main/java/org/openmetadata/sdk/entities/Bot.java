@@ -109,7 +109,7 @@ public class Bot extends org.openmetadata.schema.entity.Bot {
     }
 
     public ListBuilder include(String include) {
-      params.setInclude(include);
+      params.setFields(include);
       return this;
     }
 

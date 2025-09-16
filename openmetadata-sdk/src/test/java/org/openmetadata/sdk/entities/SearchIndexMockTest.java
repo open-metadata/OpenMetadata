@@ -46,7 +46,7 @@ public class SearchIndexMockTest {
     expectedIndex.setFullyQualifiedName("elasticsearch.products-index");
     expectedIndex.setDisplayName("Products Search Index");
 
-    when(mockSearchIndexService.create(any(SearchIndex.class))).thenReturn(expectedIndex);
+    when(mockSearchIndexService.create(any(CreateSearchIndex.class))).thenReturn(expectedIndex);
 
     // Act
     SearchIndex result = org.openmetadata.sdk.entities.SearchIndex.create(createRequest);
@@ -55,7 +55,7 @@ public class SearchIndexMockTest {
     assertNotNull(result);
     assertEquals("products-index", result.getName());
     assertEquals("Products Search Index", result.getDisplayName());
-    verify(mockSearchIndexService).create(any(SearchIndex.class));
+    verify(mockSearchIndexService).create(any(CreateSearchIndex.class));
   }
 
   @Test
@@ -153,15 +153,9 @@ public class SearchIndexMockTest {
         .thenReturn(expectedIndex);
 
     // Act
-    // Cast to SDK type for update
-    org.openmetadata.sdk.entities.SearchIndex sdkIndex =
-        new org.openmetadata.sdk.entities.SearchIndex();
-    sdkIndex.setId(indexToUpdate.getId());
-    sdkIndex.setName(indexToUpdate.getName());
-    sdkIndex.setDescription(indexToUpdate.getDescription());
-
     SearchIndex result =
-        org.openmetadata.sdk.entities.SearchIndex.update(sdkIndex.getId().toString(), sdkIndex);
+        org.openmetadata.sdk.entities.SearchIndex.update(
+            indexToUpdate.getId().toString(), expectedIndex);
 
     // Assert
     assertNotNull(result);
@@ -175,13 +169,13 @@ public class SearchIndexMockTest {
   void testDeleteSearchIndex() {
     // Arrange
     String indexId = UUID.randomUUID().toString();
-    doNothing().when(mockSearchIndexService).delete(eq(indexId), any());
+    doNothing().when(mockSearchIndexService).delete(indexId);
 
     // Act
     org.openmetadata.sdk.entities.SearchIndex.delete(indexId);
 
     // Assert
-    verify(mockSearchIndexService).delete(eq(indexId), any());
+    verify(mockSearchIndexService).delete(indexId);
   }
 
   @Test
@@ -195,8 +189,8 @@ public class SearchIndexMockTest {
     when(mockSearchIndexService.get(indexId)).thenReturn(expectedIndex);
 
     // Act
-    var future = org.openmetadata.sdk.entities.SearchIndex.retrieveAsync(indexId);
-    SearchIndex result = future.get();
+    // Note: retrieveAsync doesn't exist, using synchronous retrieve
+    SearchIndex result = org.openmetadata.sdk.entities.SearchIndex.retrieve(indexId);
 
     // Assert
     assertNotNull(result);
