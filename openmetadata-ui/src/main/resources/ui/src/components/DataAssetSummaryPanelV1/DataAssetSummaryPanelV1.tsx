@@ -25,23 +25,37 @@ import {
   getEntityOverview,
 } from '../../utils/EntityUtils';
 
+import { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
+import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { generateEntityLink } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
 import DomainsSection from '../common/DomainsSection/DomainsSection';
+import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+
+interface TestCaseStatusCounts {
+  success: number;
+  failed: number;
+  aborted: number;
+  ack: number;
+  total: number;
+}
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -63,7 +77,15 @@ export const DataAssetSummaryPanelV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
-
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
+    success: 0,
+    failed: 0,
+    aborted: 0,
+    ack: 0,
+    total: 0,
+  });
   const entityInfo = useMemo(
     () => getEntityOverview(entityType, dataAsset, additionalInfo),
     [dataAsset, additionalInfo, entityType]
@@ -120,6 +142,63 @@ export const DataAssetSummaryPanelV1 = ({
     }
   }, [dataAsset]);
 
+  const fetchTestCases = useCallback(async () => {
+    if (!dataAsset?.fullyQualifiedName) {
+      setIsTestCaseLoading(false);
+
+      return;
+    }
+
+    try {
+      setIsTestCaseLoading(true);
+      const entityLink = generateEntityLink(dataAsset?.fullyQualifiedName);
+
+      const response = await listTestCases({
+        entityLink,
+        includeAllTests: true,
+        limit: 100, // Get more test cases to ensure accurate counts
+        fields: ['testCaseResult', 'incidentId'],
+      });
+
+      setTestCases(response.data || []);
+
+      // Calculate status counts
+      const counts = (response.data || []).reduce(
+        (acc, testCase) => {
+          const status = testCase.testCaseResult?.testCaseStatus;
+          if (status) {
+            switch (status) {
+              case TestCaseStatus.Success:
+                acc.success++;
+
+                break;
+              case TestCaseStatus.Failed:
+                acc.failed++;
+
+                break;
+              case TestCaseStatus.Aborted:
+                acc.aborted++;
+
+                break;
+            }
+            acc.total++;
+          }
+
+          return acc;
+        },
+        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
+      );
+
+      setStatusCounts(counts);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setTestCases([]);
+      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
+    } finally {
+      setIsTestCaseLoading(false);
+    }
+  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+
   const fetchEntityBasedDetails = () => {
     switch (entityType) {
       case EntityType.TABLE:
@@ -149,9 +228,10 @@ export const DataAssetSummaryPanelV1 = ({
 
   useEffect(() => {
     if (entityPermissions) {
+      fetchTestCases();
       fetchEntityBasedDetails();
     }
-  }, [entityPermissions]);
+  }, [entityPermissions, dataAsset.fullyQualifiedName]);
 
   const commonEntitySummaryInfo = useMemo(() => {
     switch (entityType) {
@@ -199,17 +279,23 @@ export const DataAssetSummaryPanelV1 = ({
                 },
               ]}
             />
-            <DataQualitySection
-              tests={[
-                { type: 'success', count: 8 },
-                { type: 'aborted', count: 4 },
-                { type: 'failed', count: 2 },
-              ]}
-              totalTests={14}
-              onEdit={() => {
-                // Handle edit functionality
-              }}
-            />
+            {isTestCaseLoading ? (
+              <Loader size="small" />
+            ) : (
+              statusCounts.total > 0 && (
+                <DataQualitySection
+                  tests={[
+                    { type: 'success', count: statusCounts.success },
+                    { type: 'aborted', count: statusCounts.aborted },
+                    { type: 'failed', count: statusCounts.failed },
+                  ]}
+                  totalTests={statusCounts.total}
+                  onEdit={() => {
+                    // Handle edit functionality
+                  }}
+                />
+              )
+            )}
 
             <OwnersSection
               hasPermission={
@@ -226,16 +312,8 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={
                 entityPermissions?.EditAll || entityPermissions?.EditTags
               }
-              onEdit={() => {
-                // Handle edit functionality
-              }}
             />
-            <TagsSection
-              tags={dataAsset.tags}
-              onEdit={() => {
-                // Handle edit functionality
-              }}
-            />
+            <TagsSection tags={dataAsset.tags} />
             {/* <SummaryTagsDescription
               entityDetail={dataAsset}
               tags={
@@ -328,7 +406,7 @@ export const DataAssetSummaryPanelV1 = ({
       default:
         return null;
     }
-  }, [entityType, dataAsset, entityInfo, componentType]);
+  }, [entityType, dataAsset, entityInfo, componentType, statusCounts]);
 
   useEffect(() => {
     init();
