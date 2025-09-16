@@ -24,6 +24,10 @@ ADD COLUMN customUnitOfMeasurement VARCHAR(256)
 GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.customUnitOfMeasurement'))) VIRTUAL;
 -- Add index on the virtual column
 CREATE INDEX idx_metric_custom_unit ON metric_entity(customUnitOfMeasurement);
+
+-- Fetch updated searchSettings
+DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
+
 -- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
 ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY ACTIVITY_ID_ varchar(255);
 
