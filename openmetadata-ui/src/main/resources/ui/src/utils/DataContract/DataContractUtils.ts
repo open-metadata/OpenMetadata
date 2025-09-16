@@ -26,6 +26,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -211,13 +212,19 @@ export const downloadContractYamlFile = (contract: DataContract) => {
 };
 
 export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
-  return status === ContractExecutionStatus.Failed
-    ? ContractFailedIcon
-    : status === ContractExecutionStatus.Aborted
-    ? ContractAbortedIcon
-    : status === ContractExecutionStatus.Running
-    ? ContractRunningIcon
-    : null;
+  switch (status) {
+    case ContractExecutionStatus.Failed:
+      return ContractFailedIcon;
+
+    case ContractExecutionStatus.Aborted:
+      return ContractAbortedIcon;
+
+    case ContractExecutionStatus.Running:
+      return ContractRunningIcon;
+
+    default:
+      return null;
+  }
 };
 
 export const ContractTestTypeLabelMap = {
@@ -239,7 +246,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
@@ -265,7 +272,7 @@ export const getSematicRuleFields = () => {
         label: 'Tags',
         type: 'select',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
+        operators: SEMANTIC_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -280,13 +287,22 @@ export const getSematicRuleFields = () => {
 
   const tierField = {
     label: t('label.tier'),
-    type: 'select',
+    type: '!group',
+    mode: 'some',
     fieldName: 'tags',
-    mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-    operators: jsonLogicSearchClassBase.defaultSelectOperators,
-    fieldSettings: {
-      asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
-      useAsyncSearch: true,
+    defaultField: 'tagFQN',
+    subfields: {
+      tagFQN: {
+        label: 'Tags',
+        type: 'multiselect',
+        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
+        operators: SEMANTIC_OPERATORS,
+        fieldSettings: {
+          asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
+          useAsyncSearch: true,
+          listValues: jsonLogicSearchClassBase.autoCompleteTier,
+        },
+      },
     },
   };
 
@@ -297,4 +313,14 @@ export const getSematicRuleFields = () => {
   allFields[EntityReferenceFields.TIER] = tierField;
 
   return allFields;
+};
+
+// Utility function to convert string enum to options array for Ant Design Select
+export const enumToSelectOptions = <T extends Record<string, string>>(
+  enumObject: T
+): Array<{ label: string; value: string }> => {
+  return Object.values(enumObject).map((value) => ({
+    label: t(`label.${value}`),
+    value: value, // Use the enum value as the actual value (hour, day, week, etc.)
+  }));
 };

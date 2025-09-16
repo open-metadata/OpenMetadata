@@ -26,7 +26,6 @@ import {
   default as applicationsClassBase,
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
-import ApplicationConfiguration from '../../components/Settings/Applications/ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../../components/Settings/Applications/plugins/AppPlugin';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
@@ -41,8 +40,10 @@ import {
 } from '../../generated/entity/applications/createAppRequest';
 import {
   AppMarketPlaceDefinition,
+  AppType,
   ScheduleType,
 } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
@@ -68,6 +69,11 @@ const AppInstall = () => {
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
   const [pluginComponent, setPluginComponent] = useState<FC | null>(null);
   const { config, getResourceLimit } = useLimitStore();
+  const [selectedIngestionRunner, setSelectedIngestionRunner] = useState<
+    EntityReference | undefined
+  >(undefined);
+  const shouldShowIngestionRunner =
+    appData?.appType === AppType.External && appData?.supportsIngestionRunner;
 
   const { pipelineSchedules } =
     config?.limits?.config.featureLimits.find(
@@ -177,23 +183,41 @@ const AppInstall = () => {
       name: fqn,
       description: appData?.description,
       displayName: appData?.displayName,
+      ingestionRunner: shouldShowIngestionRunner
+        ? selectedIngestionRunner
+        : undefined,
     };
     installApp(data);
   };
 
-  const onSaveConfiguration = (data: IChangeEvent) => {
-    const updatedFormData = formatFormDataForSubmit(data.formData);
+  const onSaveConfiguration = (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => {
+    const { formData, ingestionRunner } = data;
+
+    const updatedFormData = formatFormDataForSubmit(formData);
     setAppConfiguration(updatedFormData);
+    const ingestionRunnerRef = ingestionRunner
+      ? {
+          id: ingestionRunner.id,
+          type: 'ingestionRunner',
+          name: ingestionRunner.name,
+          fullyQualifiedName: ingestionRunner.fullyQualifiedName,
+        }
+      : undefined;
+    setSelectedIngestionRunner(ingestionRunnerRef);
+
     if (appData?.scheduleType !== ScheduleType.NoSchedule) {
       setActiveServiceStep(3);
     } else {
-      const data: CreateAppRequest = {
+      const requestData: CreateAppRequest = {
         appConfiguration: updatedFormData,
         name: fqn,
         description: appData?.description,
         displayName: appData?.displayName,
+        ...(ingestionRunnerRef ? { ingestionRunner: ingestionRunnerRef } : {}),
       };
-      installApp(data);
+      installApp(requestData);
     }
   };
 
@@ -201,6 +225,9 @@ const AppInstall = () => {
     if (!appData || !jsonSchema) {
       return <></>;
     }
+
+    const ApplicationConfigurationComponent =
+      applicationsClassBase.getApplicationConfigurationComponent();
 
     switch (activeServiceStep) {
       case 1:
@@ -221,7 +248,7 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <ApplicationConfiguration
+          <ApplicationConfigurationComponent
             appData={appData}
             isLoading={false}
             jsonSchema={jsonSchema}
