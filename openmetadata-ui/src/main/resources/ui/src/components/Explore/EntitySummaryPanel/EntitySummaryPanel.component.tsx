@@ -376,7 +376,11 @@ export default function EntitySummaryPanel({
 
                   const formatValue = (val: any) => {
                     if (!val) {
-                      return t('label.no-data-found');
+                      return (
+                        <div className="text-center text-grey-muted p-sm">
+                          {t('label.no-data-found')}
+                        </div>
+                      );
                     }
 
                     if (typeof val === 'object') {
