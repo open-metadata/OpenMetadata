@@ -163,6 +163,13 @@ describe('AddDataContract', () => {
       expect(
         screen.getByRole('tab', { name: 'label.quality' })
       ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('tab', { name: 'label.security' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: 'label.sla' })
+      ).toBeInTheDocument();
     });
   });
 

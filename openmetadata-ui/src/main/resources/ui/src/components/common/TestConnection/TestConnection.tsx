@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
@@ -400,6 +400,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     setDialogOpen(false);
   };
 
+  const buttonTooltipTitle = useMemo(() => {
+    let title = t('label.test-entity', { entity: t('label.connection') });
+
+    if (!isAirflowAvailable) {
+      title = t('label.platform-service-client-unavailable');
+    }
+
+    return title;
+  }, [isAirflowAvailable]);
+
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
@@ -479,30 +489,34 @@ const TestConnection: FC<TestConnectionProps> = ({
               )}
             </div>
           </Space>
-          <Button
-            className={classNames({
-              'text-primary': !isTestConnectionDisabled,
-            })}
-            data-testid="test-connection-btn"
-            disabled={isTestConnectionDisabled}
-            loading={isTestingConnection}
-            size="middle"
-            type="default"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', { entity: t('label.connection') })}
-          </Button>
+          <Tooltip title={buttonTooltipTitle}>
+            <Button
+              className={classNames({
+                'text-primary': !isTestConnectionDisabled,
+              })}
+              data-testid="test-connection-btn"
+              disabled={isTestConnectionDisabled}
+              loading={isTestingConnection}
+              size="middle"
+              type="default"
+              onClick={handleTestConnection}>
+              {t('label.test-entity', { entity: t('label.connection') })}
+            </Button>
+          </Tooltip>
         </Space>
       ) : (
-        <Button
-          data-testid="test-connection-button"
-          disabled={isTestConnectionDisabled}
-          loading={isTestingConnection}
-          type="primary"
-          onClick={handleTestConnection}>
-          {t('label.test-entity', {
-            entity: t('label.connection'),
-          })}
-        </Button>
+        <Tooltip title={buttonTooltipTitle}>
+          <Button
+            data-testid="test-connection-button"
+            disabled={isTestConnectionDisabled}
+            loading={isTestingConnection}
+            type="primary"
+            onClick={handleTestConnection}>
+            {t('label.test-entity', {
+              entity: t('label.connection'),
+            })}
+          </Button>
+        </Tooltip>
       )}
       <TestConnectionModal
         errorMessage={errorMessage}
