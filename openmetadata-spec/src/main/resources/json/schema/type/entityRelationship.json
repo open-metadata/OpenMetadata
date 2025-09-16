@@ -34,7 +34,10 @@
         "expert",
         "editedBy",
         "defaultsTo",
-        "relatesTo"
+        "relatesTo",
+        "trainedWith",
+        "validatedWith",
+        "testedWith"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -59,7 +62,10 @@
         { "name": "EXPERT" },
         { "name": "EDITED_BY" },
         { "name":  "DEFAULTS_TO" },
-        { "name": "RELATES_TO" }
+        { "name": "RELATES_TO" },
+        { "name": "TRAINED_WITH" },
+        { "name": "VALIDATED_WITH" },
+        { "name": "TESTED_WITH" }
       ]
     }
   },

@@ -57,6 +57,18 @@
       "description": "Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "trainingDatasets": {
+      "description": "Datasets (tables, files, feature stores) used to train this ML Model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "validationDatasets": {
+      "description": "Datasets used for model validation during training.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testDatasets": {
+      "description": "Datasets used for final model testing and evaluation.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "tags": {
       "description": "Tags for this ML Model",
       "type": "array",
