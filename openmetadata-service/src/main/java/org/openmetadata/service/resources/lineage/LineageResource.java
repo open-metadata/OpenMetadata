@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.lineage;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
@@ -526,6 +527,7 @@ public class LineageResource {
       @Parameter(description = "fqn", required = true) @QueryParam("fqn") String fqn,
       @Parameter(description = "Direction of lineage traversal", required = true)
           @QueryParam("direction")
+          @Valid
           LineageDirection direction,
       @Parameter(description = "Starting offset for pagination (0-based)")
           @QueryParam("from")
@@ -560,6 +562,9 @@ public class LineageResource {
           @DefaultValue("*")
           String includeSourceFields)
       throws IOException {
+    if (nullOrEmpty(direction)) {
+      throw new IllegalArgumentException("Lineage Direction is required.");
+    }
     return Entity.getSearchRepository()
         .searchLineageByEntityCount(
             new EntityCountLineageRequest()
