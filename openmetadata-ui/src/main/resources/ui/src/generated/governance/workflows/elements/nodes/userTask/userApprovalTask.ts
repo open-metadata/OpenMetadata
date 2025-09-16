@@ -52,6 +52,11 @@ export interface NodeConfiguration {
      * but a single rejection can veto.
      */
     rejectionThreshold?: number;
+    /**
+     * When true, reviewers can provide suggestions for changes. This is typically enabled for
+     * entity updates where reviewers can propose modifications.
+     */
+    supportsSuggestions?: boolean;
 }
 
 /**

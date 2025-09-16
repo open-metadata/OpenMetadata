@@ -535,6 +535,11 @@ export interface TaskDetails {
      */
     suggestion?: string;
     /**
+     * When true, reviewers can provide suggestions for changes. This is typically enabled for
+     * entity updates where reviewers can propose modifications.
+     */
+    supportsSuggestions?: boolean;
+    /**
      * The test case resolution status id for which the task is created.
      */
     testCaseResolutionStatusId?: string;
