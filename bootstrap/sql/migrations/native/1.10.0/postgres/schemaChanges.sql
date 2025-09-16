@@ -26,3 +26,6 @@ ADD COLUMN customUnitOfMeasurement VARCHAR(256)
 GENERATED ALWAYS AS ((json->>'customUnitOfMeasurement')::VARCHAR(256)) STORED;
 -- Add index on the column
 CREATE INDEX idx_metric_custom_unit ON metric_entity(customUnitOfMeasurement);
+
+-- Fetch updated searchSettings
+DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
