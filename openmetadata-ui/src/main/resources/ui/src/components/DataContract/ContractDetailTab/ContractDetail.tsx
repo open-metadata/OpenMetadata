@@ -42,10 +42,12 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
   downloadContractYamlFile,
   getConstraintStatus,
@@ -53,6 +55,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -101,15 +104,15 @@ const ContractDetail: React.FC<{
     return getConstraintStatus(latestContractResults);
   }, [latestContractResults]);
 
-  //   const showContractStatusAlert = useMemo(() => {
-  //     const { result, contractExecutionStatus } = latestContractResults ?? {};
+  const showContractStatusAlert = useMemo(() => {
+    const { result, contractExecutionStatus } = latestContractResults ?? {};
 
-  //     return (
-  //       result &&
-  //       (contractExecutionStatus === ContractExecutionStatus.Failed ||
-  //         contractExecutionStatus === ContractExecutionStatus.Aborted)
-  //     );
-  //   }, [latestContractResults]);
+    return (
+      result &&
+      (contractExecutionStatus === ContractExecutionStatus.Failed ||
+        contractExecutionStatus === ContractExecutionStatus.Aborted)
+    );
+  }, [latestContractResults]);
 
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
@@ -118,7 +121,7 @@ const ContractDetail: React.FC<{
           <div
             className="contract-action-dropdown-item"
             data-testid="edit-contract-button">
-            <Icon component={EditIcon} />
+            <EditIcon className="anticon" />
 
             {t('label.edit')}
           </div>
@@ -130,7 +133,7 @@ const ContractDetail: React.FC<{
           <div
             className="contract-action-dropdown-item"
             data-testid="delete-contract-button">
-            <Icon component={RunIcon} />
+            <RunIcon className="anticon" />
 
             {t('label.run-now')}
           </div>
@@ -142,7 +145,7 @@ const ContractDetail: React.FC<{
           <div
             className="contract-action-dropdown-item"
             data-testid="export-contract-button">
-            <Icon component={ExportIcon} />
+            <ExportIcon className="anticon" />
 
             {t('label.export')}
           </div>
@@ -157,7 +160,7 @@ const ContractDetail: React.FC<{
           <div
             className="contract-action-dropdown-item contract-action-dropdown-delete-item"
             data-testid="delete-contract-button">
-            <Icon component={DeleteIcon} />
+            <DeleteIcon className="anticon" />
 
             {t('label.delete')}
           </div>
@@ -327,6 +330,17 @@ const ContractDetail: React.FC<{
         <ContractYaml contract={contract} />
       ) : (
         <Row className="contract-detail-container">
+          {showContractStatusAlert && (
+            <Col className="contract-card-items" span={24}>
+              <AlertBar
+                defafultExpand
+                className="h-full"
+                message={latestContractResults?.result ?? ''}
+                type="error"
+              />
+            </Col>
+          )}
+
           {/* Description Component */}
           <Col className="contract-card-items" span={24}>
             <div className="contract-card-header-container">
@@ -351,23 +365,22 @@ const ContractDetail: React.FC<{
               <Divider dashed />
             </div>
 
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant
-              markdown={contract.termsOfUse ?? ''}
-            />
+            {isDescriptionContentEmpty(contract.termsOfUse ?? '') ? (
+              <span className="text-grey-muted">
+                {t('label.no-entity', {
+                  entity: t('label.terms-of-service'),
+                })}
+              </span>
+            ) : (
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant
+                markdown={contract.termsOfUse ?? ''}
+              />
+            )}
           </Col>
 
           {/* SLA Component */}
-          <Col className="contract-card-items" span={24}>
-            <div className="contract-card-header-container">
-              <Typography.Text className="contract-card-header">
-                {t('label.service-level-agreement')}
-              </Typography.Text>
-              <Divider dashed />
-            </div>
-
-            <ContractSLA contract={contract} />
-          </Col>
+          <ContractSLA contract={contract} />
 
           {/* Schema Component */}
           {!isEmpty(schemaDetail) && (

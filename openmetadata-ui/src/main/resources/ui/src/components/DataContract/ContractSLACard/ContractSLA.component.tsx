@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Col, Divider, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,15 +106,28 @@ const ContractSLA: React.FC<{
     return slaList;
   }, [contract.sla]);
 
+  if (isEmpty(renderSLAData)) {
+    return null;
+  }
+
   return (
-    <div className="sla-item-container">
-      {renderSLAData.map((item) => (
-        <div className="sla-item" key={item.key}>
-          <Icon className="sla-icon" component={CheckIcon} />
-          <span className="sla-description">{item.label}</span>
-        </div>
-      ))}
-    </div>
+    <Col className="contract-card-items" span={24}>
+      <div className="contract-card-header-container">
+        <Typography.Text className="contract-card-header">
+          {t('label.service-level-agreement')}
+        </Typography.Text>
+        <Divider dashed />
+      </div>
+
+      <div className="sla-item-container">
+        {renderSLAData.map((item) => (
+          <div className="sla-item" key={item.key}>
+            <Icon className="sla-icon" component={CheckIcon} />
+            <span className="sla-description">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </Col>
   );
 };
 
