@@ -29,7 +29,9 @@ export enum EDataContractTab {
   CONTRACT_DETAIL,
   SCHEMA,
   SEMANTICS,
+  SECURITY,
   QUALITY,
+  SLA,
 }
 
 export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
@@ -47,3 +49,5 @@ export const SEMANTIC_OPERATORS = [
   ...(jsonLogicSearchClassBase.defaultSelectOperators ?? []),
   'array_contains',
 ];
+
+export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';

@@ -18,11 +18,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -59,6 +61,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.logstorage.LogStorageFactory;
+import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
@@ -509,6 +513,12 @@ public class SystemRepository {
         getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
     validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
     validation.setMigrations(getMigrationValidation(migrationValidationClient));
+
+    // Only add log storage validation if S3 storage is configured
+    StepValidation logStorageValidation = getLogStorageValidation(applicationConfig);
+    if (logStorageValidation != null) {
+      validation.setLogStorage(logStorageValidation);
+    }
 
     return validation;
   }
@@ -1025,6 +1035,47 @@ public class SystemRepository {
           .withComponent("authorizer")
           .withStatus("failed")
           .withMessage("Authorizer validation failed: " + e.getMessage());
+    }
+  }
+
+  private StepValidation getLogStorageValidation(OpenMetadataApplicationConfig applicationConfig) {
+    try {
+      if (applicationConfig.getPipelineServiceClientConfiguration() == null
+          || applicationConfig.getPipelineServiceClientConfiguration().getLogStorageConfiguration()
+              == null) {
+        return null;
+      }
+
+      LogStorageConfiguration logStorageConfig =
+          applicationConfig.getPipelineServiceClientConfiguration().getLogStorageConfiguration();
+
+      if (logStorageConfig.getType() != LogStorageConfiguration.Type.S_3) {
+        return null; // Not S3 storage, skip validation
+      }
+
+      LogStorageInterface logStorage =
+          LogStorageFactory.create(
+              logStorageConfig,
+              null, // We don't need pipeline service client for S3 storage
+              null // Metrics not available in migration context
+              );
+
+      String testPipelineFQN = "system.validation.test";
+      UUID testRunId = UUID.fromString("00000000-0000-0000-0000-000000000000");
+      logStorage.logsExist(testPipelineFQN, testRunId);
+
+      return new StepValidation()
+          .withDescription("S3 Log Storage")
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "Connected to S3 bucket: %s in region %s",
+                  logStorageConfig.getBucketName(), logStorageConfig.getRegion()));
+    } catch (Exception e) {
+      return new StepValidation()
+          .withDescription("S3 Log Storage")
+          .withPassed(Boolean.FALSE)
+          .withMessage(e.getMessage());
     }
   }
 }

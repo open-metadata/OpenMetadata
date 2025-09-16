@@ -31,6 +31,10 @@
       "description": "Unit of measurement for the metric.",
       "$ref": "../../entity/data/metric.json#/definitions/unitOfMeasurement"
     },
+    "customUnitOfMeasurement": {
+      "description": "Custom unit of measurement when unitOfMeasurement is OTHER.",
+      "type": "string"
+    },
     "granularity": {
       "description": "Metric's granularity.",
       "$ref": "../../entity/data/metric.json#/definitions/metricGranularity"
