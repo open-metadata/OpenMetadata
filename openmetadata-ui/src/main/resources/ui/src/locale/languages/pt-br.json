@@ -1192,6 +1192,7 @@
     "pipeline-state": "Estado do Pipeline",
     "pipeline-type": "Tipo de Pipeline",
     "platform": "Plataforma",
+    "platform-service-client-unavailable": "Cliente do Serviço de Plataforma Indisponível",
     "platform-type-lineage": "{{platformType}} Linhagem",
     "play": "Reproduzir",
     "please-enter-value": "Por favor, insira o valor de {{name}}",
@@ -2447,6 +2448,7 @@
     "team-moved-success": "Equipe movida com sucesso!",
     "team-no-asset": "Sua equipe não possui ativos.",
     "test-case-insight-description": "Acesse uma visão centralizada da saúde do seu dataset baseada em validações de teste configuradas.",
+    "test-case-name-validation": "O nome não pode conter dois pontos duplos (::), aspas (\") ou símbolos de maior que (>).",
     "test-case-schedule-description": "Os testes de qualidade de dados podem ser programados para serem executados na frequência desejada. O fuso horário está em UTC.",
     "test-connection-cannot-be-triggered": "Não é possível acionar o teste de conexão.",
     "test-connection-taking-too-long": {
