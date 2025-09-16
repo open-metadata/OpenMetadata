@@ -21,7 +21,9 @@
 
   .entity-title-link {
     text-decoration: none;
-
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
     &:hover {
       text-decoration: none;
     }
@@ -56,7 +58,9 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
   height: 100%;
-  border-bottom: none;
+  border-bottom: none !important;
+  border-radius: 0px !important;
+  display: flex;
 
   /* Hide scrollbar but keep the space reserved to prevent layout shift */
   &::-webkit-scrollbar {
@@ -269,6 +273,141 @@
       tbody > tr > td {
         padding-top: 10px;
         padding-bottom: 11px;
+      }
+    }
+  }
+}
+
+// Lineage Tab Styles
+.lineage-filter-button-count {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background-color: #f2f5f9;
+  border-radius: 9px;
+  margin-left: 4px;
+  color: #21263c;
+  font-size: 11px;
+  &.active {
+    color: #3a8ce9;
+  }
+}
+.service-icon {
+  width: 31px;
+  height: 27px;
+  border-radius: 6px;
+  border: 1px solid #e3e8f0;
+  background: #fff;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+.lineage-tab-content {
+  .lineage-filter-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    .lineage-filter-button {
+      border-radius: 16px;
+      font-size: 12px;
+      height: 28px;
+      padding: 0 7px;
+
+      border: 1px solid #e3e8f0;
+      background-color: #fff;
+      color: #595959;
+
+      &.active {
+        border: 1px solid #1b6ce7;
+        background-color: #1b6ce7;
+        color: #ffffff;
+      }
+    }
+  }
+  .lineage-card-content {
+    padding: 12px;
+  }
+  .lineage-items-list {
+    overflow-y: auto;
+
+    .lineage-item-card {
+      border: 1px solid #f0f0f0;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      background-color: #ffffff;
+      transition: all 0.2s ease;
+
+      .item-name-text {
+        color: #20293a;
+        text-transform: uppercase;
+        font-size: 13px;
+        font-weight: 600;
+        padding-top: 14px;
+      }
+      .item-direction-text {
+        color: #364254;
+        font-size: 9px;
+        text-transform: uppercase;
+        font-weight: 600;
+        line-height: 22px;
+      }
+      .lineage-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        padding-bottom: 12px;
+        background-color: #f9fafc;
+        border-top-right-radius: 10px;
+        border-top-left-radius: 10px;
+        padding-top: 14px;
+        padding-left: 12px;
+        padding-right: 12px;
+
+        .lineage-item-direction {
+          border-radius: 6px;
+          border: 0.8px solid #e3e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff;
+          padding: 3px 4px;
+          gap: 4px;
+
+          .ant-badge {
+            .ant-badge-status-text {
+              font-size: 11px;
+              font-weight: 500;
+            }
+          }
+        }
+      }
+
+      .lineage-item-path {
+        margin-bottom: 8px;
+        padding: 0 7px;
+        justify-content: center;
+        align-items: center;
+        border-radius: 5px;
+        border: 1px solid #e3e8f0;
+        background: #fff;
+        .item-path-text {
+          color: #364254;
+          font-size: 11px;
+          text-transform: uppercase;
+        }
+
+        .ant-badge {
+          .ant-badge-status-text {
+            font-size: 11px;
+            color: #8c8c8c;
+            background-color: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 12px;
+          }
+        }
       }
     }
   }

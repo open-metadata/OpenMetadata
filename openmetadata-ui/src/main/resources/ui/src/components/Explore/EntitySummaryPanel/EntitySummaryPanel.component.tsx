@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
+import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -29,6 +30,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
@@ -57,6 +59,7 @@ import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -75,6 +78,11 @@ export default function EntitySummaryPanel({
   const [entityData, setEntityData] = useState<any>(null);
   const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
   const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
+  const [lineageData, setLineageData] = useState<LineageData | null>(null);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
+    'upstream'
+  );
 
   const id = useMemo(() => {
     setIsPermissionLoading(true);
@@ -188,6 +196,31 @@ export default function EntitySummaryPanel({
     }
   }, [entityType]);
 
+  const fetchLineageData = useCallback(async () => {
+    const fqn = entityDetails?.details?.fullyQualifiedName;
+    if (!fqn || !entityType) {
+      return;
+    }
+
+    try {
+      setIsLineageLoading(true);
+      const response = await getLineageDataByFQN({
+        fqn,
+        entityType,
+        config: {
+          upstreamDepth: 2, // Backend subtracts 1, so this becomes 1
+          downstreamDepth: 1, // Backend subtracts 1, so this becomes 1
+          nodesPerLayer: 50,
+        },
+      });
+      setLineageData(response);
+    } catch (error) {
+      setLineageData(null);
+    } finally {
+      setIsLineageLoading(false);
+    }
+  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -198,8 +231,10 @@ export default function EntitySummaryPanel({
     if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
       fetchEntityData();
       fetchEntityTypeDetail();
+    } else if (activeTab === EntityRightPanelTab.LINEAGE) {
+      fetchLineageData();
     }
-  }, [activeTab, fetchEntityData, fetchEntityTypeDetail]);
+  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -302,17 +337,7 @@ export default function EntitySummaryPanel({
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
-        return (
-          <div
-            style={{
-              paddingLeft: '16px',
-              paddingRight: '16px',
-              paddingTop: '16px',
-            }}
-          >
-            {summaryComponentV1}
-          </div>
-        );
+        return <div className="p-x-md p-t-md">{summaryComponentV1}</div>;
       case EntityRightPanelTab.SCHEMA:
         return (
           <div className="entity-summary-panel-tab-content">
@@ -327,14 +352,29 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.LINEAGE:
         return (
           <div className="entity-summary-panel-tab-content">
-            <div className="text-center text-grey-muted p-lg">
-              {t('message.lineage-content-placeholder')}
+            <div className="p-x-md p-t-md">
+              {isLineageLoading ? (
+                <div className="flex-center p-lg">
+                  <Loader size="default" />
+                </div>
+              ) : lineageData ? (
+                <LineageTabContent
+                  entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
+                  filter={lineageFilter}
+                  lineageData={lineageData}
+                  onFilterChange={setLineageFilter}
+                />
+              ) : (
+                <div className="text-center text-grey-muted p-lg">
+                  {t('message.no-data-found')}
+                </div>
+              )}
             </div>
           </div>
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <div>
+          <div className="p-t-sm">
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
               entityType={entityType}
@@ -496,14 +536,14 @@ export default function EntitySummaryPanel({
             )}
             to={entityLink}
           >
-            <Typography.Text style={{ fontSize: '13px', fontWeight: 700 }}>
+            <Typography.Text>
               {entityIcon}
               {stringToHTML(
                 searchClassBase.getEntityName(entityDetails.details)
               )}
             </Typography.Text>
           </Link>
-          <div style={{ paddingRight: '16px' }}>
+          <div className="p-r-md">
             <Button
               className="entity-redirect-button"
               icon={<IconExternalLinkOutlined />}
@@ -524,15 +564,7 @@ export default function EntitySummaryPanel({
         </div>
       )}
       <div>
-        <Card
-          className="summary-panel-container"
-          style={{
-            borderRadius: '0px',
-            display: 'flex',
-            borderBottom: 'none',
-            height: '100%',
-          }}
-        >
+        <Card className="summary-panel-container">
           <div style={{ width: '80%' }}>{renderTabContent()}</div>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
