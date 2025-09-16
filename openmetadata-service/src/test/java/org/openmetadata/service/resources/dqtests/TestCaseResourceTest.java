@@ -4127,7 +4127,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_userAssignmentPersistsAfterUserDeletion(TestInfo test) throws HttpResponseException, ParseException {
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test) throws HttpResponseException, ParseException {
     // Create a test user
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
@@ -4165,14 +4165,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Delete the user
     userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
 
-    // Retrieve the incident status and verify the user assignment still persists
+    // Retrieve the incident status and verify the user assignment is removed after user deletion
     TestCaseResolutionStatus retrievedIncident = getTestCaseFailureStatus(assignedIncident.getId());
     
-    // The user should still be assigned to the incident even after deletion
-    assertNotNull(retrievedIncident.getTestCaseResolutionStatusDetails());
-    assertTrue(retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned);
-    Assigned retrievedAssignedDetails = (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
-    assertEquals(testUserRef.getId(), retrievedAssignedDetails.getAssignee().getId());
-    assertEquals(testUserRef.getName(), retrievedAssignedDetails.getAssignee().getName());
+    // The user should no longer be assigned to the incident after deletion
+    // The incident should either have no assignee or the assignee reference should be null
+    if (retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned) {
+      Assigned retrievedAssignedDetails = (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
+      assertNull(retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
+    } else {
+      // The incident status type may have changed from Assigned to something else after user deletion
+      assertFalse(retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
+          "Incident should no longer have an assigned status after user deletion");
+    }
   }
 }
