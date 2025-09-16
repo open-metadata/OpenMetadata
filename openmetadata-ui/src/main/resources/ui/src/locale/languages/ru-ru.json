@@ -1192,6 +1192,7 @@
     "pipeline-state": "Состояние",
     "pipeline-type": "Тип пайплайна",
     "platform": "Платформа",
+    "platform-service-client-unavailable": "Клиент сервиса платформы недоступен",
     "platform-type-lineage": "Происхождение {{platformType}}",
     "play": "Играть",
     "please-enter-value": "Пожалуйста введите значение {{name}} ",
@@ -2447,6 +2448,7 @@
     "team-moved-success": "Команда успешно переехала!",
     "team-no-asset": "У вашей команды нет объектов.",
     "test-case-insight-description": "Доступ к централизованному представлению состояния вашего набора данных на основе настроенных проверок тестов.",
+    "test-case-name-validation": "Имя не может содержать двойные двоеточия (::), кавычки (\") или символы больше (>).",
     "test-case-schedule-description": "Тесты качества данных можно запланировать на желаемую частоту. Часовой пояс — UTC.",
     "test-connection-cannot-be-triggered": "Тестовое соединение не может быть запущено.",
     "test-connection-taking-too-long": {

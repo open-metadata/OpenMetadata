@@ -1192,6 +1192,7 @@
     "pipeline-state": "Pipelinestatus",
     "pipeline-type": "Pipeline type",
     "platform": "Platform",
+    "platform-service-client-unavailable": "Platform Service Client Niet Beschikbaar",
     "platform-type-lineage": "{{platformType}} Herkomst",
     "play": "Play",
     "please-enter-value": "Voer alstublieft de waarde voor {{name}} in",
@@ -2447,6 +2448,7 @@
     "team-moved-success": "Team succesvol verplaatst!",
     "team-no-asset": "Je team heeft geen assets.",
     "test-case-insight-description": "Toegang tot een gecentraliseerde weergave van de gezondheid van uw dataset op basis van geconfigureerde testvalidaties.",
+    "test-case-name-validation": "Naam mag geen dubbele dubbelpunten (::), aanhalingstekens (\") of groter-dan symbolen (>) bevatten.",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Testconnectie kan niet worden geactiveerd.",
     "test-connection-taking-too-long": {
