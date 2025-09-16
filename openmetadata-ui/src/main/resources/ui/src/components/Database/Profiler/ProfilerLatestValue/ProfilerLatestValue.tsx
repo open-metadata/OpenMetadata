@@ -13,7 +13,6 @@
 
 import { Space, Statistic, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React from 'react';
 import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';

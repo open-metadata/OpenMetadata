@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -18,10 +18,10 @@ import org.openmetadata.schema.entity.applications.configuration.ApplicationConf
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -83,7 +83,7 @@ public class OmAppJobListener implements JobListener {
       if (jobExecutionContext.isRecovering()) {
         AppRunRecord latestRunRecord =
             repository.getLatestExtensionById(
-                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+                jobApp, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
         if (latestRunRecord != null) {
           runRecord = latestRunRecord;
         }
@@ -125,7 +125,17 @@ public class OmAppJobListener implements JobListener {
                 EntityReference.class));
       }
 
-      if (jobException == null
+      // Check if the job was stopped/interrupted
+      if (runRecord.getStatus() == AppRunRecord.Status.STOPPED
+          || runRecord.getStatus() == AppRunRecord.Status.STOP_IN_PROGRESS) {
+        runRecord.withStatus(AppRunRecord.Status.STOPPED);
+        SuccessContext context = new SuccessContext();
+        if (runRecord.getSuccessContext() != null) {
+          context = runRecord.getSuccessContext();
+        }
+        context.setStats(jobStats);
+        runRecord.setSuccessContext(context);
+      } else if (jobException == null
           && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
               || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
         runRecord.withStatus(AppRunRecord.Status.SUCCESS);

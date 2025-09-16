@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/semanticsValidation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SemanticsValidation",
+  "description": "Semantics validation details for data contract.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.SemanticsValidation",
+  "properties": {
+    "passed": {
+      "description": "Number of semantics rules passed.",
+      "type": "integer"
+    },
+    "failed": {
+      "description": "Number of semantics rules failed.",
+      "type": "integer"
+    },
+    "total": {
+      "description": "Total number of semantics rules.",
+      "type": "integer"
+    },
+    "failedRules": {
+      "description": "List of rules that failed validation.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

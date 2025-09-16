@@ -12,7 +12,6 @@
  */
 import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
-import React from 'react';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -89,6 +88,11 @@ jest.mock('../components/Tag/TagsV1/TagsV1.component', () => ({
 jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
   __esModule: true,
   OwnerLabel: jest.fn(),
+}));
+
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  __esModule: true,
+  DomainLabel: jest.fn(),
 }));
 
 jest.mock('../components/common/QueryCount/QueryCount.component', () => ({

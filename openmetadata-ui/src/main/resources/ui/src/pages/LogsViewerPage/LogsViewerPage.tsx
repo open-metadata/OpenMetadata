@@ -12,20 +12,20 @@
  */
 
 import { DownloadOutlined } from '@ant-design/icons';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
-import React, {
+import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
+import {
   Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
-import { useParams } from 'react-router-dom';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -60,12 +60,13 @@ import {
 } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useParams<LogViewerParams>();
+  const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -77,6 +78,7 @@ const LogsViewerPage = () => {
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
   const [isLogsLoading, setIsLogsLoading] = useState(true);
+  const lazyLogRef = useRef<LazyLog>(null);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -215,13 +217,17 @@ const LogsViewerPage = () => {
     }
   }, []);
 
-  const handleScroll = (event: Event) => {
-    const targetElement = event.target as HTMLDivElement;
-
-    const scrollTop = targetElement.scrollTop;
-    const scrollHeight = targetElement.scrollHeight;
-    const clientHeight = targetElement.clientHeight;
-    const isBottom = clientHeight + scrollTop === scrollHeight;
+  const handleScroll = (scrollValues: {
+    scrollTop: number;
+    scrollHeight: number;
+    clientHeight: number;
+  }) => {
+    const scrollTop = scrollValues.scrollTop;
+    const scrollHeight = scrollValues.scrollHeight;
+    const clientHeight = scrollValues.clientHeight;
+    // Fetch more logs when user is at the bottom of the log
+    // with a margin of about 40px (approximate height of one line)
+    const isBottom = Math.abs(clientHeight + scrollTop - scrollHeight) < 40;
 
     if (
       !isLogsLoading &&
@@ -237,20 +243,6 @@ const LogsViewerPage = () => {
   };
 
   useLayoutEffect(() => {
-    const logBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (logBody) {
-      logBody.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
-    return () => {
-      logBody && logBody.removeEventListener('scroll', handleScroll);
-    };
-  });
-
-  useLayoutEffect(() => {
     const lazyLogSearchBarInput = document.getElementsByClassName(
       'react-lazylog-searchbar-input'
     )[0] as HTMLInputElement;
@@ -263,12 +255,11 @@ const LogsViewerPage = () => {
   });
 
   const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+    if (lazyLogRef.current?.listRef.current) {
+      // Get the total number of lines
+      const totalLines = lazyLogRef.current.state.count;
+      // Scroll to the last line
+      lazyLogRef.current.listRef.current.scrollToIndex(totalLines - 1);
     }
   };
 
@@ -305,32 +296,31 @@ const LogsViewerPage = () => {
   const handleIngestionDownloadClick = async () => {
     try {
       reset();
-      const progress = round(
-        (Number(paging?.after) * 100) / Number(paging?.total)
-      );
-
-      updateProgress(paging?.after ? progress : 1);
-      let logs = '';
+      updateProgress(1);
       let fileName = `${getEntityName(ingestionDetails)}-${
         ingestionDetails?.pipelineType
       }.log`;
-      if (isApplicationType) {
-        logs = await downloadAppLogs(ingestionName);
-        fileName = `${ingestionName}.log`;
-      } else {
-        logs = await downloadIngestionLog(
-          ingestionDetails?.id,
-          ingestionDetails?.pipelineType
-        );
-      }
 
-      const element = document.createElement('a');
-      const file = new Blob([logs || ''], { type: 'text/plain' });
-      element.href = URL.createObjectURL(file);
-      element.download = fileName;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
+      if (isApplicationType) {
+        const logs = await downloadAppLogs(ingestionName);
+        fileName = `${ingestionName}.log`;
+        const element = document.createElement('a');
+        const file = new Blob([logs || ''], { type: 'text/plain' });
+        element.href = URL.createObjectURL(file);
+        element.download = fileName;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      } else {
+        const logsBlob = await downloadIngestionLog(ingestionDetails?.id);
+
+        const element = document.createElement('a');
+        element.href = URL.createObjectURL(logsBlob as Blob);
+        element.download = fileName;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -417,7 +407,9 @@ const LogsViewerPage = () => {
                   enableSearch
                   selectableLines
                   extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                  ref={lazyLogRef}
                   text={logs}
+                  onScroll={handleScroll}
                 />
               </Col>
             </Row>

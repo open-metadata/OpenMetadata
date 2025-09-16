@@ -14,9 +14,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -32,7 +31,11 @@ import {
   SearchSettings,
   TermBoost,
 } from '../../../generated/configuration/searchSettings';
-import { Settings, SettingType } from '../../../generated/settings/settings';
+import {
+  MatchType,
+  Settings,
+  SettingType,
+} from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
@@ -49,6 +52,7 @@ import {
   scoreModeOptions,
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -62,7 +66,7 @@ import './entity-search-settings.less';
 
 const EntitySearchSettings = () => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{
+  const { fqn } = useRequiredParams<{
     fqn: keyof typeof ENTITY_PATH;
   }>();
 
@@ -121,6 +125,7 @@ const EntitySearchSettings = () => {
     return searchSettings.searchFields.map((field) => ({
       fieldName: field.field,
       weight: field.boost ?? 0,
+      matchType: field.matchType || MatchType.Standard,
     }));
   }, [searchSettings.searchFields]);
 
@@ -312,6 +317,20 @@ const EntitySearchSettings = () => {
     setSearchSettings((prev) => {
       const updatedFields = prev.searchFields?.map((field) =>
         field.field === fieldName ? { ...field, boost: value } : field
+      );
+
+      return {
+        ...prev,
+        searchFields: updatedFields,
+        isUpdated: true,
+      };
+    });
+  };
+
+  const handleMatchTypeChange = (fieldName: string, matchType: MatchType) => {
+    setSearchSettings((prev) => {
+      const updatedFields = prev.searchFields?.map((field) =>
+        field.field === fieldName ? { ...field, matchType } : field
       );
 
       return {
@@ -597,6 +616,7 @@ const EntitySearchSettings = () => {
                         onDeleteSearchField={handleDeleteSearchField}
                         onFieldWeightChange={handleFieldWeightChange}
                         onHighlightFieldsChange={handleHighlightFieldsChange}
+                        onMatchTypeChange={handleMatchTypeChange}
                       />
                     </Col>
                   ))}

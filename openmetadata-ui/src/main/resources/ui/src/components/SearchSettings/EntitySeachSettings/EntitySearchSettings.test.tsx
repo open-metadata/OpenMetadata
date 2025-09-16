@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import {
   BoostMode,
@@ -47,7 +46,6 @@ const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn(),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({

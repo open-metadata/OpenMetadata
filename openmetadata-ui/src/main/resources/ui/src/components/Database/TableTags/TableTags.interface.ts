@@ -34,6 +34,7 @@ export interface TableTagsComponentProps<T> {
     selectedTags: EntityTags[],
     editColumnTag: T
   ) => Promise<void>;
+  newLook?: boolean;
 }
 
 export interface TableTagsProps {

@@ -16,11 +16,10 @@ import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  DISABLED,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -77,11 +76,11 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
-  const { isFetchingStatus, platform } = useAirflowStatus();
+  const { isFetchingStatus } = useAirflowStatus();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    history.push(getAddServicePath(serviceName));
+    navigate(getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -108,8 +107,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           .join(' OR ')})`
       : undefined;
   }, [serviceTypeFilter]);
-
-  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const searchIndex = useMemo(() => {
     setSearchTerm('');
@@ -262,6 +259,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.SEARCH_SERVICES;
       case ServiceCategory.API_SERVICES:
         return PAGE_HEADERS.API_SERVICES;
+      case ServiceCategory.SECURITY_SERVICES:
+        return PAGE_HEADERS.SECURITY_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
@@ -491,7 +490,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                     })
                   : NO_PERMISSION_FOR_ACTION
               }>
-              {addServicePermission && !isPlatFormDisabled && (
+              {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
                   <Button
                     className="m-b-xs"

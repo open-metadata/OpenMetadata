@@ -28,8 +28,6 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
     try {
       setSaving(true);
       await onSubmit(omit(value, 'colorInput'));
-    } catch (err) {
-      // Error is handled in parent component
     } finally {
       setSaving(false);
     }
@@ -43,7 +41,7 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
         htmlType: 'submit',
         loading: saving,
       }}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       open={open}
       title={t('label.edit-entity', { entity: t('label.style') })}
       onCancel={onCancel}>

@@ -37,6 +37,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
+import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -86,12 +87,16 @@ const addRule = async (
 
 test.describe('Policy page should work properly', () => {
   test.beforeEach('Visit entity details page', async ({ page }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.POLICIES);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
   test('Add new policy with invalid condition', async ({ page }) => {
+    test.slow(true);
+
     await test.step(
       'Default Policies and Roles should be displayed',
       async () => {
@@ -101,7 +106,7 @@ test.describe('Policy page should work properly', () => {
             hasText: policy,
           });
 
-          await expect(policyElement).toBeVisible();
+          await getElementWithPagination(page, policyElement, false);
         }
       }
     );
@@ -291,10 +296,17 @@ test.describe('Policy page should work properly', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      const policyElement = page.locator('[data-testid="policy-name"]', {
+        hasText: UPDATED_POLICY_NAME,
+      });
+      await getElementWithPagination(page, policyElement, false);
+
       // Click on delete action button
       await page
         .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
         .click({ force: true });
+
+      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
       // Type 'DELETE' in the confirmation text input
       await page
@@ -312,6 +324,11 @@ test.describe('Policy page should work properly', () => {
   });
 
   test('Policy should have associated rules and teams', async ({ page }) => {
+    const policyElement = page.locator('[data-testid="policy-name"]', {
+      hasText: DEFAULT_POLICIES.organizationPolicy,
+    });
+    await getElementWithPagination(page, policyElement, false);
+
     const policyResponsePromise = page.waitForResponse(
       '/api/v1/policies/name/OrganizationPolicy?fields=owners%2Clocation%2Cteams%2Croles'
     );
@@ -361,14 +378,22 @@ test.describe('Policy page should work properly', () => {
         effect: 'allow',
       },
     ];
-    const policyLocator = `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
-      policy.data.name
-    )}"]`;
+    const policyLocator = page.locator(
+      `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
+        policy.data.name
+      )}"]`
+    );
 
     await policy.create(apiContext, policyRules);
 
     await page.reload();
-    await page.locator(policyLocator).click();
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await page.waitForLoadState('networkidle');
+
+    await getElementWithPagination(page, policyLocator);
+
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
     await page
@@ -376,7 +401,7 @@ test.describe('Policy page should work properly', () => {
       .fill('DELETE');
     await page.locator('[data-testid="confirm-button"]').click();
 
-    await expect(page.locator(policyLocator)).not.toBeVisible();
+    await expect(policyLocator).not.toBeVisible();
 
     await policy.delete(apiContext);
     await afterAction();

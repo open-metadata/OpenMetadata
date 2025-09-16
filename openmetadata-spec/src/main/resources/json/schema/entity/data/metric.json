@@ -79,7 +79,8 @@
             "SIZE",
             "REQUESTS",
             "EVENTS",
-            "TRANSACTIONS"
+            "TRANSACTIONS",
+            "OTHER"
         ]
     },
     "metricGranularity": {
@@ -130,6 +131,10 @@
     "unitOfMeasurement": {
       "description": "Unit of measurement for the metric.",
       "$ref": "#/definitions/unitOfMeasurement"
+    },
+    "customUnitOfMeasurement": {
+      "description": "Custom unit of measurement when unitOfMeasurement is OTHER.",
+      "type": "string"
     },
     "granularity": {
       "description": "Metric's granularity.",
@@ -184,9 +189,9 @@
       "type": "boolean",
       "default": false
     },
-    "domain": {
-      "description": "Domain the Glossary belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Glossary belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -202,6 +207,11 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Metric.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name"],

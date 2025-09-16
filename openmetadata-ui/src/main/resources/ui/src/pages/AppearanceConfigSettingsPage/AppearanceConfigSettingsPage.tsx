@@ -24,9 +24,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -49,7 +49,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const AppearanceConfigSettingsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -439,7 +439,7 @@ const AppearanceConfigSettingsPage = () => {
               <Button
                 data-testid="cancel-btn"
                 type="link"
-                onClick={() => history.goBack()}>
+                onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button

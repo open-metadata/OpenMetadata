@@ -38,7 +38,7 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw-topic-${uuid()}`;
+  private topicName = `pw-topic-entity-class-${uuid()}`;
 
   children = [
     {
@@ -86,6 +86,7 @@ export class TopicClass extends EntityClass {
 
   entity = {
     name: this.topicName,
+    displayName: this.topicName,
     service: this.service.name,
     messageSchema: {
       schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],

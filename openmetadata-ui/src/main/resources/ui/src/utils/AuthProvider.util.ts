@@ -35,7 +35,8 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
-import { setOidcToken } from './LocalStorageUtils';
+import { oidcTokenStorage } from './OidcTokenStorage';
+import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -61,22 +62,16 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const {
-    authority,
-    clientId,
-    callbackUrl,
-    responseType = 'id_token',
-    scope,
-  } = authClient;
+  const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
-    userStore: new WebStorageStateStore({ store: localStorage }),
+    userStore: oidcTokenStorage,
+    stateStore: oidcTokenStorage,
   };
 };
 
@@ -400,7 +395,9 @@ export const prepareUserProfileFromClaims = ({
 };
 
 // Responsible for parsing the response from MSAL AuthenticationResult
-export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
+export const parseMSALResponse = async (
+  response: AuthenticationResult
+): Promise<OidcUser> => {
   // Call your API with the access token and return the data you need to save in state
   const { idToken, scopes, account } = response;
 
@@ -416,7 +413,7 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
     } as UserProfile,
   };
 
-  setOidcToken(idToken);
+  await setOidcToken(idToken);
 
   return user;
 };

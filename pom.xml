@@ -26,13 +26,15 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.8.0-SNAPSHOT</version>
+  <version>1.10.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-mcp</module>
+    <module>openmetadata-ui-core-components</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
@@ -64,11 +66,11 @@
   <distributionManagement>
     <snapshotRepository>
       <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
     </snapshotRepository>
     <repository>
       <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
 
@@ -102,9 +104,8 @@
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.4</postgres.connector.version>
+    <postgres.connector.version>42.7.7</postgres.connector.version>
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
-    <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
@@ -112,7 +113,7 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.1.14</spring.version>
+    <spring.version>6.2.10</spring.version>
     <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
@@ -153,9 +154,10 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>11.0.24</jetty.version>
+    <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <mcp-sdk.version>0.11.2</mcp-sdk.version>
+    <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
 
   <dependencyManagement>
@@ -561,7 +563,7 @@
       <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
-        <version>2.2.0</version>
+        <version>2.3.0</version>
       </dependency>
       <dependency>
         <groupId>info.picocli</groupId>
@@ -610,7 +612,7 @@
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
-        <version>1.17.2</version>
+        <version>1.22.0</version>
         <exclusions>
           <exclusion>
             <groupId>net.minidev</groupId>
@@ -621,12 +623,12 @@
       <dependency>
         <groupId>com.azure</groupId>
         <artifactId>azure-identity</artifactId>
-        <version>1.14.0</version>
+        <version>1.15.2</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.118.Final</version>
+        <version>4.1.125.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -648,6 +650,12 @@
             <artifactId>snakeyaml</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <!-- Redis/Cache dependencies -->
+      <dependency>
+        <groupId>io.lettuce</groupId>
+        <artifactId>lettuce-core</artifactId>
+        <version>${lettuce.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -915,8 +923,8 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.13.0</version>
           <configuration>
-            <source>17</source>
-            <target>17</target>
+            <source>21</source>
+            <target>21</target>
             <annotationProcessorPaths>
               <path>
                 <groupId>org.projectlombok</groupId>
@@ -939,7 +947,18 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
+              <include>org.openmetadata.service.apps.*.java</include>
+              <include>org.openmetadata.service.cache.*.java</include>
+              <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.governance.*.java</include>
+              <include>org.openmetadata.service.jdbi3.*.java</include>
+              <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.rules.*.java</include>
+              <include>org.openmetadata.service.search.*.java</include>
+              <include>org.openmetadata.service.secrets.*.java</include>
+              <include>org.openmetadata.service.security.*.java</include>
               <include>org.openmetadata.service.util.*.java</include>
               <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
@@ -1038,7 +1057,7 @@
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
-          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+          <nexusUrl>https://ossrh-staging-api.central.sonatype.com/</nexusUrl>
           <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>

@@ -66,6 +66,7 @@ def fetch_dataframe(
                     return df_wrapper.dataframes, df_wrapper.raw_data
                 return df_wrapper.dataframes
             except Exception as err:
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"

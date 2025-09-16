@@ -13,11 +13,26 @@
 
 import { SystemChartType } from '../enums/DataInsight.enum';
 
-export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
+export const PLATFORM_INSIGHTS_CHARTS: SystemChartType[] = [
   SystemChartType.DescriptionCoverage,
   SystemChartType.PIICoverage,
   SystemChartType.TierCoverage,
   SystemChartType.OwnersCoverage,
+  SystemChartType.HealthyDataAssets,
+];
+
+export const PLATFORM_INSIGHTS_LIVE_CHARTS: SystemChartType[] = [
+  SystemChartType.AssetsWithDescriptionLive,
+  SystemChartType.AssetsWithPIILive,
+  SystemChartType.AssetsWithTierLive,
+  SystemChartType.AssetsWithOwnerLive,
+  SystemChartType.HealthyDataAssets,
+];
+
+export const LIVE_CHARTS_LIST = [
+  ...PLATFORM_INSIGHTS_LIVE_CHARTS,
+  SystemChartType.TotalDataAssetsLive,
 ];
 
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
+export const NO_RUNS_STATUS = 'NO_RUNS';

@@ -21,7 +21,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
@@ -42,7 +42,10 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getTableExpandableConfig,
+  pruneEmptyChildren,
+} from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
@@ -65,6 +68,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
+
+  const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -99,13 +104,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(dataModel?.columns ?? []);
+    const tags = getAllTags(schema);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [dataModel?.columns]);
+  }, [schema]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -113,7 +118,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
@@ -126,7 +130,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         title: t('label.type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
-        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 220,
         render: (
@@ -153,7 +156,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -174,7 +176,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
@@ -198,7 +199,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -231,7 +231,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     ]
   );
 
-  if (isEmpty(dataModel?.columns)) {
+  if (isEmpty(schema)) {
     return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
@@ -241,7 +241,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
-        dataSource={dataModel?.columns}
+        dataSource={schema}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),

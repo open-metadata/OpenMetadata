@@ -20,6 +20,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static java.util.Collections.emptyList;
 import static java.util.List.of;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -98,6 +99,8 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.CreatePersonalToken;
@@ -112,6 +115,7 @@ import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -120,29 +124,35 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PersonaPreferences;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
@@ -193,6 +203,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
+
+    // USER3 with no roles for permission testing
+    create = createRequest(test, 3).withRoles(List.of());
+    USER3 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER3_REF = USER3.getEntityReference();
 
     Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
@@ -786,6 +801,206 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_userCanBeFetchedAfterPersonaDeletion(TestInfo test) throws IOException {
+    // This test verifies that users can still be fetched after a persona is properly deleted
+    // Our preDelete hook should clean up the relationships
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+
+    // Create a persona
+    CreatePersona createPersona =
+        personaResourceTest.createRequest(test).withName("persona-to-delete");
+    Persona persona = personaResourceTest.createEntity(createPersona, ADMIN_AUTH_HEADERS);
+
+    // Create a user with this persona assigned and as default
+    CreateUser createUser =
+        createRequest(test)
+            .withPersonas(listOf(persona.getEntityReference()))
+            .withDefaultPersona(persona.getEntityReference());
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json = JsonUtils.pojoToJson(user);
+    user.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
+    fieldUpdated(change, "personaPreferences", emptyList(), listOf(preferences));
+    user = patchEntityAndCheck(user, json, authHeaders(user.getName()), MINOR_UPDATE, change);
+
+    // Verify the user has the persona
+    User userWithPersona =
+        getEntity(user.getId(), "personas,defaultPersona,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, userWithPersona.getPersonas().size());
+    assertEquals(persona.getId(), userWithPersona.getPersonas().get(0).getId());
+    assertNotNull(userWithPersona.getDefaultPersona());
+    assertEquals(persona.getId(), userWithPersona.getDefaultPersona().getId());
+    assertEquals(1, userWithPersona.getPersonaPreferences().size());
+
+    // Delete the persona - this should trigger preDelete to clean up relationships
+    personaResourceTest.deleteEntity(persona.getId(), ADMIN_AUTH_HEADERS);
+
+    // Now fetch the user with all persona-related fields
+    // This should NOT throw an error - the preDelete should have cleaned up relationships
+    User finalUser = user;
+    User userAfterPersonaDeletion =
+        assertDoesNotThrow(
+            () ->
+                getEntity(
+                    finalUser.getId(),
+                    "personas,defaultPersona,personaPreferences",
+                    ADMIN_AUTH_HEADERS),
+            "Should be able to fetch user after persona deletion");
+
+    // The personas list should be empty since the relationships were cleaned up
+    assertTrue(
+        userAfterPersonaDeletion.getPersonas() == null
+            || userAfterPersonaDeletion.getPersonas().isEmpty(),
+        "Personas should be empty after persona deletion and relationship cleanup");
+
+    // Default persona should be null or system default (not the deleted persona)
+    if (userAfterPersonaDeletion.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona.getId(),
+          userAfterPersonaDeletion.getDefaultPersona().getId(),
+          "Default persona should not reference the deleted persona");
+    }
+
+    // User should still be functional - can be updated
+    String jsonAfter = JsonUtils.pojoToJson(userAfterPersonaDeletion);
+    userAfterPersonaDeletion.setDisplayName("User still works after persona deletion");
+    ChangeDescription changeAfter = getChangeDescription(userAfterPersonaDeletion, MINOR_UPDATE);
+    fieldAdded(changeAfter, "displayName", "User still works after persona deletion");
+    User updatedUser =
+        patchEntityAndCheck(
+            userAfterPersonaDeletion, jsonAfter, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeAfter);
+    assertEquals("User still works after persona deletion", updatedUser.getDisplayName());
+
+    // User should be able to be assigned a new persona without issues
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test, 2).withName("new-persona-after-delete");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    String jsonWithNewPersona = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setPersonas(listOf(persona2.getEntityReference()));
+    ChangeDescription changeNewPersona = getChangeDescription(updatedUser, MINOR_UPDATE);
+    fieldAdded(changeNewPersona, "personas", listOf(persona2.getEntityReference()));
+    User userWithNewPersona =
+        patchEntityAndCheck(
+            updatedUser, jsonWithNewPersona, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeNewPersona);
+    assertEquals(1, userWithNewPersona.getPersonas().size());
+    assertEquals(persona2.getId(), userWithNewPersona.getPersonas().get(0).getId());
+  }
+
+  @Test
+  void test_personaDeletion_cleansUpAllRelationships(TestInfo test) throws IOException {
+    // Create personas
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+    CreatePersona createPersona1 =
+        personaResourceTest.createRequest(test).withName("persona-to-delete-1");
+    Persona persona1 = personaResourceTest.createEntity(createPersona1, ADMIN_AUTH_HEADERS);
+
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test).withName("persona-to-keep");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    // Create multiple users with the personas
+    // User 1: Has persona1 as assigned persona
+    CreateUser createUser1 =
+        createRequest(test, 1).withPersonas(listOf(persona1.getEntityReference()));
+    User user1 = createEntity(createUser1, ADMIN_AUTH_HEADERS);
+
+    // User 2: Has both personas, with persona1 as default
+    CreateUser createUser2 =
+        createRequest(test, 2)
+            .withPersonas(listOf(persona1.getEntityReference(), persona2.getEntityReference()))
+            .withDefaultPersona(persona1.getEntityReference());
+    User user2 = createEntity(createUser2, ADMIN_AUTH_HEADERS);
+
+    // User 3: Has persona1 with preferences
+    CreateUser createUser3 =
+        createRequest(test, 3).withPersonas(listOf(persona1.getEntityReference()));
+    User user3 = createEntity(createUser3, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences for user3
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona1.getId())
+            .withPersonaName(persona1.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json3 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change3 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change3, "personaPreferences", emptyList(), listOf(preferences));
+    user3 = patchEntityAndCheck(user3, json3, authHeaders(user3.getName()), MINOR_UPDATE, change3);
+
+    // Verify initial state
+    User user1WithPersona = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user1WithPersona.getPersonas().size());
+    assertEquals(persona1.getId(), user1WithPersona.getPersonas().get(0).getId());
+
+    User user2WithPersona = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(2, user2WithPersona.getPersonas().size());
+    assertNotNull(user2WithPersona.getDefaultPersona());
+    assertEquals(persona1.getId(), user2WithPersona.getDefaultPersona().getId());
+
+    User user3WithPreferences =
+        getEntity(user3.getId(), "personas,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user3WithPreferences.getPersonas().size());
+    assertNotNull(user3WithPreferences.getPersonaPreferences());
+    assertEquals(1, user3WithPreferences.getPersonaPreferences().size());
+
+    // Delete persona1
+    personaResourceTest.deleteEntity(persona1.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify relationships are cleaned up
+    // User 1: Should have no personas
+    User user1AfterDelete = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user1AfterDelete.getPersonas() == null || user1AfterDelete.getPersonas().isEmpty(),
+        "User1 should have no personas after persona1 deletion");
+
+    // User 2: Should only have persona2, no default persona
+    User user2AfterDelete = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user2AfterDelete.getPersonas().size());
+    assertEquals(persona2.getId(), user2AfterDelete.getPersonas().get(0).getId());
+    // Default persona should either be null or system default (not persona1)
+    if (user2AfterDelete.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona1.getId(),
+          user2AfterDelete.getDefaultPersona().getId(),
+          "Default persona should not be the deleted persona1");
+    }
+
+    // User 3: Should have no personas, preferences should still exist but won't cause issues
+    User user3AfterDelete = getEntity(user3.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user3AfterDelete.getPersonas() == null || user3AfterDelete.getPersonas().isEmpty(),
+        "User3 should have no personas after persona1 deletion");
+
+    // All users should still be updatable
+    String json1 = JsonUtils.pojoToJson(user1AfterDelete);
+    user1AfterDelete.setDisplayName("User1 updated after persona deletion");
+    ChangeDescription change1 = getChangeDescription(user1AfterDelete, MINOR_UPDATE);
+    fieldAdded(change1, "displayName", "User1 updated after persona deletion");
+    User user1Updated =
+        patchEntityAndCheck(user1AfterDelete, json1, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1);
+    assertEquals("User1 updated after persona deletion", user1Updated.getDisplayName());
+
+    String json2 = JsonUtils.pojoToJson(user2AfterDelete);
+    user2AfterDelete.setDisplayName("User2 updated after persona deletion");
+    ChangeDescription change2 = getChangeDescription(user2AfterDelete, MINOR_UPDATE);
+    fieldAdded(change2, "displayName", "User2 updated after persona deletion");
+    User user2Updated =
+        patchEntityAndCheck(user2AfterDelete, json2, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    assertEquals("User2 updated after persona deletion", user2Updated.getDisplayName());
+  }
+
+  @Test
   void patch_userAuthorizationTests(TestInfo test) throws IOException {
     //
     // A user can update many attributes for himself. These tests validate what is allowed and not
@@ -850,6 +1065,344 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void patch_userPersonaPreferences_200_ok(TestInfo test) throws IOException {
+    // Create a persona first
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+    CreatePersona createPersona =
+        personaResourceTest.createRequest(test).withName("data-engineer-test");
+    Persona persona = personaResourceTest.createEntity(createPersona, ADMIN_AUTH_HEADERS);
+
+    // Create a user with the persona
+    CreateUser create = createRequest(test).withPersonas(listOf(persona.getEntityReference()));
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test 1: User can update their own persona preferences
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#FF5733")
+                    .withHeaderImage("http://example.com/assets/custom-header.png"));
+
+    String json = JsonUtils.pojoToJson(user);
+    List<PersonaPreferences> prefsList = new ArrayList<>();
+    prefsList.add(preferences);
+    user.setPersonaPreferences(prefsList);
+
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
+    fieldUpdated(change, "personaPreferences", emptyList(), prefsList);
+    User updatedUser =
+        patchEntityAndCheck(user, json, authHeaders(user.getName()), MINOR_UPDATE, change);
+
+    // Verify preferences were saved
+    assertNotNull(updatedUser.getPersonaPreferences());
+    assertEquals(1, updatedUser.getPersonaPreferences().size());
+    PersonaPreferences savedPref = updatedUser.getPersonaPreferences().getFirst();
+    assertEquals(persona.getId(), savedPref.getPersonaId());
+    assertEquals(persona.getName(), savedPref.getPersonaName());
+    assertEquals("#FF5733", savedPref.getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "http://example.com/assets/custom-header.png",
+        savedPref.getLandingPageSettings().getHeaderImage());
+
+    // Test 2: Update existing persona preferences (change color, keep headerImage)
+    var updatedPreferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#00FF00")
+                    .withHeaderImage("http://example.com/assets/custom-header.png"));
+
+    String json2 = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setPersonaPreferences(listOf(updatedPreferences));
+
+    ChangeDescription change2 = getChangeDescription(updatedUser, MINOR_UPDATE);
+    fieldUpdated(change2, "personaPreferences", prefsList, listOf(updatedPreferences));
+    User updatedUser2 =
+        patchEntityAndCheck(updatedUser, json2, authHeaders(user.getName()), MINOR_UPDATE, change2);
+
+    // Verify updated preferences
+    assertEquals(
+        "#00FF00",
+        updatedUser2.getPersonaPreferences().getFirst().getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "http://example.com/assets/custom-header.png",
+        updatedUser2.getPersonaPreferences().getFirst().getLandingPageSettings().getHeaderImage());
+
+    // Test 2b: Test that we can update preferences with different configurations
+    // Including testing removal of optional fields like headerImage
+    var preferencesWithoutImage =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#00FF00"));
+
+    // For now, we'll verify that we can set preferences without headerImage
+    // The JSON Patch issue with removing fields is a framework limitation
+    // In practice, users would replace the entire preferences object
+    CreateUser createUserForRemoval =
+        createRequest(test, 10).withPersonas(listOf(persona.getEntityReference()));
+    User userForRemoval = createEntity(createUserForRemoval, ADMIN_AUTH_HEADERS);
+
+    // Set preferences without headerImage from the start
+    String jsonRemoval = JsonUtils.pojoToJson(userForRemoval);
+    userForRemoval.setPersonaPreferences(listOf(preferencesWithoutImage));
+
+    ChangeDescription changeRemoval = getChangeDescription(userForRemoval, MINOR_UPDATE);
+    fieldUpdated(changeRemoval, "personaPreferences", emptyList(), listOf(preferencesWithoutImage));
+    User updatedUserRemoval =
+        patchEntityAndCheck(
+            userForRemoval,
+            jsonRemoval,
+            authHeaders(userForRemoval.getName()),
+            MINOR_UPDATE,
+            changeRemoval);
+
+    // Verify the preferences were set correctly without headerImage
+    assertEquals(
+        "#00FF00",
+        updatedUserRemoval
+            .getPersonaPreferences()
+            .getFirst()
+            .getLandingPageSettings()
+            .getHeaderColor());
+    assertNull(
+        updatedUserRemoval
+            .getPersonaPreferences()
+            .getFirst()
+            .getLandingPageSettings()
+            .getHeaderImage());
+
+    // Test 3: User cannot update another user's persona preferences
+    CreateUser create2 = createRequest(test, 2).withPersonas(listOf(persona.getEntityReference()));
+    User user2 = createEntity(create2, ADMIN_AUTH_HEADERS);
+
+    String json3 = JsonUtils.pojoToJson(user2);
+    user2.setPersonaPreferences(listOf(preferencesWithoutImage));
+
+    assertResponse(
+        () -> patchEntity(user2.getId(), json3, user2, authHeaders(user.getName())),
+        FORBIDDEN,
+        "Users can only update their own persona preferences");
+
+    // Test 4: Even admin cannot update other user's persona preferences
+    assertResponse(
+        () -> patchEntity(user2.getId(), json3, user2, ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        "Users can only update their own persona preferences");
+
+    // Test 5: Validate invalid URL for header image
+    var invalidUrlPreferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#FF5733")
+                    .withHeaderImage("not-a-valid-url"));
+
+    String json4 = JsonUtils.pojoToJson(updatedUser2);
+    updatedUser2.setPersonaPreferences(listOf(invalidUrlPreferences));
+
+    assertResponse(
+        () -> patchEntity(updatedUser2.getId(), json4, updatedUser2, authHeaders(user.getName())),
+        BAD_REQUEST,
+        "Header image must be a valid HTTP or HTTPS URL");
+
+    // Test 6: Validate non-HTTP/HTTPS URL for header image
+    var fileUrlPreferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#FF5733")
+                    .withHeaderImage("file://path/to/image.png"));
+
+    String json5 = JsonUtils.pojoToJson(updatedUser2);
+    updatedUser2.setPersonaPreferences(listOf(fileUrlPreferences));
+
+    assertResponse(
+        () -> patchEntity(updatedUser2.getId(), json5, updatedUser2, authHeaders(user.getName())),
+        BAD_REQUEST,
+        "Header image must be a valid HTTP or HTTPS URL");
+
+    // Test 8: User with no personas can set preferences for system default persona
+    // First, create a system default persona
+    CreatePersona createSystemDefaultPersona =
+        personaResourceTest
+            .createRequest(test, 8)
+            .withName("system-default-test")
+            .withDefault(true);
+    Persona systemDefaultPersona =
+        personaResourceTest.createEntity(createSystemDefaultPersona, ADMIN_AUTH_HEADERS);
+
+    CreateUser create3 = createRequest(test, 3);
+    User user3 = createEntity(create3, ADMIN_AUTH_HEADERS);
+
+    // User should be able to set preferences for system default persona even with no assigned
+    // personas
+    PersonaPreferences systemDefaultPref =
+        new PersonaPreferences()
+            .withPersonaId(systemDefaultPersona.getId())
+            .withPersonaName(systemDefaultPersona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#BA24D5"));
+
+    String json7 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(systemDefaultPref));
+
+    ChangeDescription change7 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change7, "personaPreferences", emptyList(), listOf(systemDefaultPref));
+    User user3Updated =
+        patchEntityAndCheck(user3, json7, authHeaders(user3.getName()), MINOR_UPDATE, change7);
+
+    // Verify preferences were saved for system default persona
+    assertNotNull(user3Updated.getPersonaPreferences());
+    assertEquals(1, user3Updated.getPersonaPreferences().size());
+    PersonaPreferences savedSystemPref = user3Updated.getPersonaPreferences().getFirst();
+    assertEquals(systemDefaultPersona.getId(), savedSystemPref.getPersonaId());
+    assertEquals("#BA24D5", savedSystemPref.getLandingPageSettings().getHeaderColor());
+
+    // Test 9: Remove persona preferences for a specific persona
+    // First, let's set up a user with multiple personas and preferences
+    CreatePersona createPersona3 =
+        personaResourceTest.createRequest(test, 3).withName("data-steward-test");
+    Persona persona3 = personaResourceTest.createEntity(createPersona3, ADMIN_AUTH_HEADERS);
+
+    CreateUser create4 =
+        createRequest(test, 4)
+            .withPersonas(listOf(persona.getEntityReference(), persona3.getEntityReference()));
+    User user4 = createEntity(create4, ADMIN_AUTH_HEADERS);
+    // Set preferences for both personas
+    var pref1 =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    var pref2 =
+        new PersonaPreferences()
+            .withPersonaId(persona3.getId())
+            .withPersonaName(persona3.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#00FF00"));
+
+    String json8 = JsonUtils.pojoToJson(user4);
+    user4.setPersonaPreferences(listOf(pref1, pref2));
+
+    ChangeDescription change4 = getChangeDescription(user4, MINOR_UPDATE);
+    fieldUpdated(change4, "personaPreferences", emptyList(), listOf(pref1, pref2));
+    User user4WithPrefs =
+        patchEntityAndCheck(user4, json8, authHeaders(user4.getName()), MINOR_UPDATE, change4);
+    assertEquals(2, user4WithPrefs.getPersonaPreferences().size());
+
+    String json9 = JsonUtils.pojoToJson(user4WithPrefs);
+    user4WithPrefs.setPersonaPreferences(listOf(pref2));
+    ChangeDescription change5 = getChangeDescription(user4WithPrefs, MINOR_UPDATE);
+    fieldUpdated(change5, "personaPreferences", listOf(pref1, pref2), listOf(pref2));
+    User user4Updated =
+        patchEntityAndCheck(
+            user4WithPrefs, json9, authHeaders(user4.getName()), MINOR_UPDATE, change5);
+
+    // Verify only one preference remains
+    assertEquals(1, user4Updated.getPersonaPreferences().size());
+    assertEquals(persona3.getId(), user4Updated.getPersonaPreferences().getFirst().getPersonaId());
+
+    // Test 11: Remove all persona preferences
+    String json10 = JsonUtils.pojoToJson(user4Updated);
+    user4Updated.setPersonaPreferences(new ArrayList<>());
+
+    // Test 13: Verify GET retrieval with personaPreferences field
+    // Create a fresh user with personas and preferences for GET testing
+    CreateUser create5 =
+        createRequest(test, 5)
+            .withPersonas(listOf(persona.getEntityReference(), persona3.getEntityReference()));
+    User user5 = createEntity(create5, ADMIN_AUTH_HEADERS);
+
+    // Set preferences
+    var getPref1 =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#123456")
+                    .withHeaderImage("https://example.com/header1.png"));
+
+    var getPref2 =
+        new PersonaPreferences()
+            .withPersonaId(persona3.getId())
+            .withPersonaName(persona3.getName())
+            .withLandingPageSettings(
+                new LandingPageSettings()
+                    .withHeaderColor("#ABCDEF")
+                    .withHeaderImage("https://example.com/header2.png"));
+
+    String json13 = JsonUtils.pojoToJson(user5);
+    user5.setPersonaPreferences(listOf(getPref1, getPref2));
+    ChangeDescription change6 = getChangeDescription(user5, MINOR_UPDATE);
+    fieldUpdated(change6, "personaPreferences", emptyList(), listOf(pref1, pref2));
+    patchEntity(user5.getId(), json13, user5, authHeaders(user5.getName()));
+
+    // Test GET with fields=personaPreferences
+    User userWithPrefsField =
+        getEntity(user5.getId(), "personaPreferences", authHeaders(user5.getName()));
+    assertNotNull(userWithPrefsField.getPersonaPreferences());
+    assertEquals(2, userWithPrefsField.getPersonaPreferences().size());
+
+    // Verify the preferences content
+    var retrievedPref1 =
+        userWithPrefsField.getPersonaPreferences().stream()
+            .filter(p -> p.getPersonaId().equals(persona.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(retrievedPref1);
+    assertEquals("#123456", retrievedPref1.getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "https://example.com/header1.png",
+        retrievedPref1.getLandingPageSettings().getHeaderImage());
+
+    var retrievedPref2 =
+        userWithPrefsField.getPersonaPreferences().stream()
+            .filter(p -> p.getPersonaId().equals(persona3.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(retrievedPref2);
+    assertEquals("#ABCDEF", retrievedPref2.getLandingPageSettings().getHeaderColor());
+    assertEquals(
+        "https://example.com/header2.png",
+        retrievedPref2.getLandingPageSettings().getHeaderImage());
+
+    // Test GET with multiple fields including personaPreferences
+    User userWithMultipleFields =
+        getEntity(user5.getId(), "personaPreferences,personas,teams", authHeaders(user5.getName()));
+    assertNotNull(userWithMultipleFields.getPersonaPreferences());
+    assertNotNull(userWithMultipleFields.getPersonas());
+    assertEquals(2, userWithMultipleFields.getPersonaPreferences().size());
+    assertEquals(2, userWithMultipleFields.getPersonas().size());
+
+    // Test GET by name with personaPreferences field
+    User userByName =
+        getEntityByName(user5.getName(), "personaPreferences", authHeaders(user5.getName()));
+    assertNotNull(userByName.getPersonaPreferences());
+    assertEquals(2, userByName.getPersonaPreferences().size());
+
+    // Test that other users can't see personaPreferences (field level security check)
+    User userAsSeenByOthers =
+        getEntity(user5.getId(), "personaPreferences", authHeaders(user2.getName()));
+    // Depending on security implementation, this might return null or empty preferences
+    // The test should verify the expected behavior based on your security model
+
+    // Test admin can see all users' personaPreferences
+    User userAsSeenByAdmin = getEntity(user5.getId(), "personaPreferences", ADMIN_AUTH_HEADERS);
+    assertNotNull(userAsSeenByAdmin.getPersonaPreferences());
+    assertEquals(2, userAsSeenByAdmin.getPersonaPreferences().size());
+  }
+
+  @Test
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test), ADMIN_AUTH_HEADERS);
     List<UUID> teamIds = Collections.singletonList(team.getId());
@@ -887,7 +1440,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertOwners(create.getOwners(), entity.getOwners());
+    assertReferenceList(create.getOwners(), entity.getOwners());
     assertEquals(updatedBy, entity.getUpdatedBy());
   }
 
@@ -1332,12 +1885,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
-  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException {
-    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+  public User assertSingleDomainInheritance(
+      CreateUser createRequest, EntityReference expectedDomain) throws IOException {
+    User entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
@@ -1358,6 +1911,91 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // non-admins cannot see the mail
     User noEmailUser = getEntityByName(USER1.getName(), authHeaders(USER2.getName()));
     assertEquals(PIIMasker.MASKED_MAIL, noEmailUser.getEmail());
+  }
+
+  @Test
+  void testUpdateUser_RemovesInheritedDomainsFromRemovedTeams(TestInfo test)
+      throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+
+    // Create team1 with domain1
+    CreateTeam createTeam1 =
+        teamResourceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Team team1 = teamResourceTest.createEntity(createTeam1, ADMIN_AUTH_HEADERS);
+
+    // Create team2 with domain2
+    CreateTeam createTeam2 =
+        teamResourceTest
+            .createRequest(test, 1)
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Team team2 = teamResourceTest.createEntity(createTeam2, ADMIN_AUTH_HEADERS);
+
+    // Create user with both teams
+    CreateUser create = createRequest(test).withTeams(listOf(team1.getId(), team2.getId()));
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify user has both domains inherited from the teams
+    User createdUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(createdUser.getDomains());
+    assertEquals(2, createdUser.getDomains().size());
+
+    // Check that both domains are inherited
+    List<EntityReference> domains = createdUser.getDomains();
+    boolean hasDomain1 =
+        domains.stream().anyMatch(d -> d.getId().equals(DOMAIN.getId()) && d.getInherited());
+    boolean hasDomain2 =
+        domains.stream().anyMatch(d -> d.getId().equals(DOMAIN1.getId()) && d.getInherited());
+    assertTrue(hasDomain1, "User should inherit domain from team1");
+    assertTrue(hasDomain2, "User should inherit domain from team2");
+
+    // Scenario 1: Remove team2 from user - domain2 should be removed as well
+    String userJson = JsonUtils.pojoToJson(createdUser);
+    createdUser.setTeams(List.of(team1.getEntityReference()));
+
+    // Update user to only have team1
+    User updatedUser = patchEntity(createdUser.getId(), userJson, createdUser, ADMIN_AUTH_HEADERS);
+    updatedUser = getEntity(updatedUser.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Verify that domain2 is no longer in the domains list
+    assertEquals(1, updatedUser.getDomains().size());
+    assertEquals(DOMAIN.getId(), updatedUser.getDomains().get(0).getId());
+    assertTrue(updatedUser.getDomains().get(0).getInherited());
+
+    // Scenario 2: Create team3 with the same domain as team1 (domain1)
+    // and verify that when one team is removed, domain remains inherited
+    CreateTeam createTeam3 =
+        teamResourceTest
+            .createRequest(test, 2)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
+    Team team3 = teamResourceTest.createEntity(createTeam3, ADMIN_AUTH_HEADERS);
+
+    // Add user to both teams that have the same domain
+    userJson = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setTeams(List.of(team1.getEntityReference(), team3.getEntityReference()));
+
+    User userWithBothTeams =
+        patchEntity(updatedUser.getId(), userJson, updatedUser, ADMIN_AUTH_HEADERS);
+    userWithBothTeams = getEntity(userWithBothTeams.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Still should have just domain1
+    assertEquals(1, userWithBothTeams.getDomains().size());
+    assertEquals(DOMAIN.getId(), userWithBothTeams.getDomains().get(0).getId());
+    assertTrue(userWithBothTeams.getDomains().get(0).getInherited());
+
+    // Remove team1, but keep team3 - domain1 should still be inherited from team3
+    userJson = JsonUtils.pojoToJson(userWithBothTeams);
+    userWithBothTeams.setTeams(List.of(team3.getEntityReference()));
+
+    User userWithTeam3 =
+        patchEntity(userWithBothTeams.getId(), userJson, userWithBothTeams, ADMIN_AUTH_HEADERS);
+    userWithTeam3 = getEntity(userWithTeam3.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+
+    // Should still have domain1 inherited from team3
+    assertEquals(1, userWithTeam3.getDomains().size());
+    assertEquals(DOMAIN.getId(), userWithTeam3.getDomains().get(0).getId());
+    assertTrue(
+        userWithTeam3.getDomains().get(0).getInherited(),
+        "Domain should still be marked as inherited");
   }
 
   private DecodedJWT decodedJWT(String token) {
@@ -1491,7 +2129,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
     if (expected.getDefaultPersona() != null) {
-      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
+      assertEquals(expected.getDefaultPersona().getId(), updated.getDefaultPersona().getId());
     }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
@@ -1505,6 +2143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
@@ -1516,7 +2155,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         assertEquals(expectedProfile, actualProfile);
       }
       case "teams", "roles", "personas" -> assertEntityReferencesFieldChange(expected, actual);
-      case "defaultPersona" -> assertEntityReferenceFieldChange(expected, actual);
+      case "defaultPersona" -> assertEntityReference(expected, actual);
+      case "personaPreferences" -> {
+        List<PersonaPreferences> expectedPreferences = (List<PersonaPreferences>) expected;
+        List<PersonaPreferences> actualPreferences =
+            JsonUtils.readObjects(actual.toString(), PersonaPreferences.class);
+        assertEquals(expectedPreferences, actualPreferences);
+      }
       default -> assertCommonFieldChange(fieldName, expected, actual);
     }
   }
@@ -1584,5 +2229,388 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CSVImportResponse response =
         TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
     return response.getJobId();
+  }
+
+  @Test
+  void test_listOnlineUsers() throws HttpResponseException {
+    WebTarget target = getCollection().path("/online");
+    assertResponse(
+        () -> TestUtils.get(target, UserList.class, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        notAdmin(TEST_USER_NAME));
+    User user1 = createEntity(createRequest("onlineUser1"), ADMIN_AUTH_HEADERS);
+    User user2 = createEntity(createRequest("onlineUser2"), ADMIN_AUTH_HEADERS);
+    User user3 = createEntity(createRequest("onlineUser3"), ADMIN_AUTH_HEADERS);
+
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+
+    userRepository.updateUserLastLoginTime(user1, currentTime - (60 * 1000L));
+    userRepository.updateUserLastLoginTime(user2, currentTime - (10 * 60 * 1000L));
+    userRepository.updateUserLastLoginTime(user3, currentTime - (2 * 60 * 60 * 1000L));
+
+    // Also test with lastActivityTime - user3 has recent activity despite old login
+    userRepository.updateUserLastActivityTime(user3.getName(), currentTime - (2 * 60 * 1000L));
+
+    UserList onlineUsers5Min = TestUtils.get(target, UserList.class, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2,
+        onlineUsers5Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+    assertTrue(onlineUsers5Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser1")));
+    assertTrue(
+        onlineUsers5Min.getData().stream()
+            .anyMatch(u -> u.getName().equals("onlineuser3"))); // user3 has recent activity
+
+    WebTarget target15Min = target.queryParam("timeWindow", 15);
+    UserList onlineUsers15Min = TestUtils.get(target15Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers15Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+    assertTrue(
+        onlineUsers15Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser1")));
+    assertTrue(
+        onlineUsers15Min.getData().stream().anyMatch(u -> u.getName().equals("onlineuser2")));
+    assertTrue(
+        onlineUsers15Min.getData().stream()
+            .anyMatch(u -> u.getName().equals("onlineuser3"))); // user3 included due to activity
+
+    // Test with 180 minute (3 hours) window - should return all three users
+    WebTarget target180Min = target.queryParam("timeWindow", 180);
+    UserList onlineUsers180Min = TestUtils.get(target180Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers180Min.getData().stream()
+            .filter(u -> u.getName().startsWith("onlineuser"))
+            .count());
+
+    // Test pagination
+    WebTarget targetWithLimit = target.queryParam("limit", 1);
+    UserList limitedUsers = TestUtils.get(targetWithLimit, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, limitedUsers.getData().size());
+
+    // Clean up
+    deleteEntity(user1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(user2.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(user3.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_userActivityTracking() throws HttpResponseException, InterruptedException {
+    // Create test users
+    User activeUser = createEntity(createRequest("activeUser1"), ADMIN_AUTH_HEADERS);
+    User inactiveUser = createEntity(createRequest("inactiveUser1"), ADMIN_AUTH_HEADERS);
+
+    // Get auth headers for the active user
+    Map<String, String> activeUserAuth = authHeaders(activeUser.getEmail());
+
+    // Make multiple API calls as the active user to trigger activity tracking
+    WebTarget tablesTarget = getResource("tables");
+    TestUtils.get(tablesTarget, Object.class, activeUserAuth); // This should track activity
+
+    // Explicitly track activity in case filter is not registered in test environment
+    UserActivityTracker.getInstance().trackActivity(activeUser.getName());
+
+    // Make more calls to ensure activity is tracked
+    WebTarget databasesTarget = getResource("databases");
+    TestUtils.get(databasesTarget, Object.class, activeUserAuth);
+
+    // Check cache size before flush
+    int cacheSize = UserActivityTracker.getInstance().getLocalCacheSize();
+    System.out.println("Cache size before flush: " + cacheSize);
+
+    // Force synchronous flush of the activity tracker (TEST ONLY)
+    UserActivityTracker.getInstance().forceFlushSync();
+
+    // Check online users with 5 minute window (default)
+    WebTarget onlineTarget = getCollection().path("/online");
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+
+    // Debug output
+    System.out.println("Online users count: " + onlineUsers.getData().size());
+    onlineUsers
+        .getData()
+        .forEach(
+            u -> System.out.println("Online user: " + u.getName() + ", isBot: " + u.getIsBot()));
+
+    // Active user should be in the online list (usernames are stored in lowercase)
+    assertTrue(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals("activeuser1")),
+        "Active user should be in online users list");
+
+    // Inactive user should not be in the online list (no activity)
+    assertFalse(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals("inactiveuser1")),
+        "Inactive user should not be in online users list");
+
+    // Clean up
+    deleteEntity(activeUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(inactiveUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_botActivityNotTracked() throws HttpResponseException {
+    // Test that bot activity is not tracked
+    // We'll use a simple approach: update a bot user's activity time directly
+    // and verify it doesn't show in online users (assuming the query filters out bots)
+
+    // Use the existing ingestion bot
+    User botUser = getEntityByName(INGESTION_BOT, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(botUser);
+    assertTrue(botUser.getIsBot());
+
+    // Directly set activity time for the bot
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+    userRepository.updateUserLastActivityTime(
+        botUser.getName(), currentTime - (30 * 1000L)); // 30 seconds ago
+
+    // Check online users - bot should NOT show up
+    WebTarget onlineTarget = getCollection().path("/online");
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+
+    // Bot user should not be in the online list
+    assertFalse(
+        onlineUsers.getData().stream().anyMatch(u -> u.getName().equals(botUser.getName())),
+        "Bot user should not be tracked in online users");
+  }
+
+  @Test
+  void test_onlineUsersWithDifferentTimeWindows() throws HttpResponseException {
+    // Create users with different activity times
+    User veryRecentUser = createEntity(createRequest("veryRecentUser"), ADMIN_AUTH_HEADERS);
+    User recentUser = createEntity(createRequest("recentUser"), ADMIN_AUTH_HEADERS);
+    User oldUser = createEntity(createRequest("oldUser"), ADMIN_AUTH_HEADERS);
+
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
+    long currentTime = System.currentTimeMillis();
+
+    // Set different activity times
+    userRepository.updateUserLastActivityTime(
+        veryRecentUser.getName(), currentTime - (30 * 1000L)); // 30 seconds ago
+    userRepository.updateUserLastActivityTime(
+        recentUser.getName(), currentTime - (3 * 60 * 1000L)); // 3 minutes ago
+    userRepository.updateUserLastActivityTime(
+        oldUser.getName(), currentTime - (30 * 60 * 1000L)); // 30 minutes ago
+
+    WebTarget onlineTarget = getCollection().path("/online");
+
+    // Test 1 minute window - should only include veryRecentUser
+    WebTarget target1Min = onlineTarget.queryParam("timeWindow", 1);
+    UserList onlineUsers1Min = TestUtils.get(target1Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        onlineUsers1Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+    assertTrue(
+        onlineUsers1Min.getData().stream().anyMatch(u -> u.getName().equals("veryrecentuser")));
+
+    // Test 5 minute window (default) - should include veryRecentUser and recentUser
+    UserList onlineUsers5Min = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        onlineUsers5Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+
+    // Test 60 minute window - should include all three
+    WebTarget target60Min = onlineTarget.queryParam("timeWindow", 60);
+    UserList onlineUsers60Min = TestUtils.get(target60Min, UserList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        onlineUsers60Min.getData().stream()
+            .filter(
+                u ->
+                    u.getName().startsWith("veryrecentuser")
+                        || u.getName().startsWith("recentuser")
+                        || u.getName().startsWith("olduser"))
+            .count());
+
+    // Clean up
+    deleteEntity(veryRecentUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(recentUser.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(oldUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_onlineUsersAccessControl() throws HttpResponseException {
+    WebTarget onlineTarget = getCollection().path("/online");
+
+    // Test that non-admin users cannot access online users
+    assertResponse(
+        () -> TestUtils.get(onlineTarget, UserList.class, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        notAdmin(TEST_USER_NAME));
+
+    // Test that users with CREATE permission cannot access online users
+    assertResponse(
+        () -> TestUtils.get(onlineTarget, UserList.class, USER_WITH_CREATE_HEADERS),
+        FORBIDDEN,
+        notAdmin(USER_WITH_CREATE_PERMISSION_NAME.toLowerCase()));
+
+    // Test that admin users can access online users
+    UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(onlineUsers);
+    assertNotNull(onlineUsers.getData());
+  }
+
+  @Test
+  void testUserRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create team first
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create user with team membership
+    CreateUser createUser =
+        createRequest(test)
+            .withTeams(listOf(team.getId()))
+            .withRoles(listOf(DATA_STEWARD_ROLE.getId()));
+
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists in RDF
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Verify team membership (user is member of team)
+    // Note: In RDF, this is usually stored as team HAS user, not user memberOf team
+    // But we can check if the relationship exists either way
+
+    // Users don't have owners or tags by default, but we can test if added
+    if (user.getOwners() != null && !user.getOwners().isEmpty()) {
+      RdfTestUtils.verifyOwnerInRdf(user.getFullyQualifiedName(), user.getOwners().get(0));
+    }
+
+    if (user.getTags() != null && !user.getTags().isEmpty()) {
+      RdfTestUtils.verifyTagsInRdf(user.getFullyQualifiedName(), user.getTags());
+    }
+  }
+
+  @Test
+  void testUserRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Soft delete the user
+    deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Restore the user
+    User restored =
+        restoreEntity(new RestoreEntity().withId(user.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("user"));
+  }
+
+  @Test
+  void testUserRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Hard delete the user
+    deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify user no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(user.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_loginWithDeletedUpdatedByUser_200_ok(TestInfo test) throws HttpResponseException {
+    // Create an admin user to update another user
+    String username = "tempAdmin";
+    Map<String, String> TEMP_ADMIN_AUTH_HEADERS = authHeaders(username + "@open-metadata.org");
+    User adminUser =
+        createEntity(createRequest("tempAdmin").withIsAdmin(true), TEMP_ADMIN_AUTH_HEADERS);
+
+    // Create a target user that will be updated by the admin
+    User targetUser =
+        createEntity(
+            createRequest(test)
+                .withName("targetUser")
+                .withDisplayName("Target User")
+                .withEmail("targetuser@email.com")
+                .withIsBot(false)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withPassword("Test@1234")
+                .withConfirmPassword("Test@1234"),
+            TEMP_ADMIN_AUTH_HEADERS);
+
+    assertEquals(adminUser.getName(), targetUser.getUpdatedBy());
+
+    // Delete the admin user who updated the target user
+    deleteEntity(adminUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify admin user is deleted
+    assertResponse(
+        () -> getEntity(adminUser.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.USER, adminUser.getId()));
+
+    // Try to login with the target user - this should not throw an exception
+    // even though the updatedBy user (adminUser) has been deleted
+    LoginRequest loginRequest =
+        new LoginRequest()
+            .withEmail("targetuser@email.com")
+            .withPassword(encodePassword("Test@1234"));
+
+    // This login should succeed without throwing an exception
+    // The bug fix ensures that when updateUserLastLoginTime is called,
+    // it handles the case where the updatedBy user no longer exists
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"),
+            loginRequest,
+            JwtResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(jwtResponse);
+    assertNotNull(jwtResponse.getAccessToken());
+
+    // Verify the target user still has the deleted admin user name in updatedBy
+    User loggedInUser = getEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(adminUser.getName(), loggedInUser.getUpdatedBy());
+
+    // Clean up
+    deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
   }
 }

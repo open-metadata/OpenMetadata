@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .entity-header-title {
   flex: 1;
@@ -41,6 +41,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  svg {
+    // to make follow button icon color same as primary color
+    color: @primary-color;
   }
   span.ant-typography {
     margin-left: 0px;

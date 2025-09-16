@@ -21,10 +21,14 @@ public class MigrationWorkflowContext {
     computeMigrationSafely(new MigrationContext(currentMaxMigrationVersion, List.of(), handle));
   }
 
-  public void computeMigrationContext(MigrationProcess process) {
+  public void computeMigrationContext(MigrationProcess process, boolean compute) {
     MigrationContext context =
         new MigrationContext(process.getVersion(), process.getMigrationOps(), handle);
-    computeMigrationSafely(context);
+    if (compute) {
+      computeMigrationSafely(context);
+    } else {
+      this.migrationContext.put(context.getVersion(), context);
+    }
   }
 
   private void computeMigrationSafely(MigrationContext context) {

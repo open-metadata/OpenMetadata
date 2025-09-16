@@ -12,10 +12,9 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   get,
   isEmpty,
@@ -28,8 +27,8 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties, Fragment } from 'react';
-import { useHistory } from 'react-router-dom';
+import { CSSProperties, Fragment } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
@@ -40,6 +39,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
@@ -132,12 +132,14 @@ import TableProfiler from '../components/Database/Profiler/TableProfiler/TablePr
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -159,6 +161,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -174,7 +177,7 @@ import {
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
@@ -422,6 +425,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
@@ -452,6 +456,8 @@ export const getEntityIcon = (
     [EntityType.API_COLLECTION]: APICollectionIcon,
     [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
     ['location']: LocationIcon,
+    [EntityType.QUERY]: QueryIcon,
+    [SearchIndex.QUERY]: QueryIcon,
   };
 
   switch (indexType) {
@@ -744,66 +750,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const getTableColumnConfigSelections = (
-  userFqn: string,
-  entityType: string | undefined,
-  isFullViewTable: boolean,
-  defaultColumns: string[] | undefined
-) => {
-  if (!userFqn) {
-    return [];
-  }
-
-  const storageKey = `selectedColumns-${userFqn}`;
-  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
-
-  if (entityType) {
-    if (selectedColumns[entityType]) {
-      return selectedColumns[entityType];
-    } else if (!isFullViewTable) {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          ...selectedColumns,
-          [entityType]: defaultColumns,
-        })
-      );
-
-      return defaultColumns;
-    }
-  }
-
-  return [];
-};
-
-export const handleUpdateTableColumnSelections = (
-  selected: boolean,
-  key: string,
-  columnDropdownSelections: string[],
-  userFqn: string,
-  entityType: string | undefined
-) => {
-  const updatedSelections = selected
-    ? [...columnDropdownSelections, key]
-    : columnDropdownSelections.filter((item) => item !== key);
-
-  // Updating localStorage
-  const selectedColumns = JSON.parse(
-    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
-  );
-  if (entityType) {
-    localStorage.setItem(
-      `selectedColumns-${userFqn}`,
-      JSON.stringify({
-        ...selectedColumns,
-        [entityType]: updatedSelections,
-      })
-    );
-  }
-
-  return updatedSelections;
-};
-
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,
@@ -818,7 +764,6 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
   testCaseSummary,
@@ -832,7 +777,7 @@ export const getTableDetailPageBaseTabs = ({
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.column-plural'))}
         />
       ),
       key: EntityTabs.SCHEMA,
@@ -935,22 +880,13 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children:
-        !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-observability'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <TableProfiler
-            permissions={tablePermissions}
-            table={tableDetails}
-            testCaseSummary={testCaseSummary}
-          />
-        ),
+      children: (
+        <TableProfiler
+          permissions={tablePermissions}
+          table={tableDetails}
+          testCaseSummary={testCaseSummary}
+        />
+      ),
     },
     {
       label: (
@@ -974,6 +910,36 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.KNOWLEDGE_GRAPH}
+          name={get(
+            labelMap,
+            EntityTabs.KNOWLEDGE_GRAPH,
+            t('label.knowledge-graph')
+          )}
+        />
+      ),
+      key: EntityTabs.KNOWLEDGE_GRAPH,
+      children: (
+        <KnowledgeGraph
+          depth={2}
+          entity={
+            tableDetails
+              ? {
+                  id: tableDetails.id,
+                  name: tableDetails.name,
+                  fullyQualifiedName: tableDetails.fullyQualifiedName,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
+      ),
+      isHidden: !useApplicationStore.getState().rdfEnabled,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.DBT}
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
@@ -984,16 +950,36 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.DBT}
           sqlQuery={
             get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss">
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.path')}:`}
-              </Typography.Text>
-              <Typography.Text>{tableDetails?.dataModel?.path}</Typography.Text>
+            <Space className="p-y-xss" size="small">
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.dbt-source-project')}: `}
+                </Typography.Text>
+                <Typography.Text data-testid="dbt-source-project-id">
+                  {tableDetails?.dataModel?.dbtSourceProject ??
+                    NO_DATA_PLACEHOLDER}
+                </Typography.Text>
+              </div>
+
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}: `}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </div>
             </Space>
           }
         />
@@ -1018,7 +1004,27 @@ export const getTableDetailPageBaseTabs = ({
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
       key: EntityTabs.VIEW_DEFINITION,
-      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+      children: (
+        <QueryViewer
+          isActive={[
+            EntityTabs.VIEW_DEFINITION,
+            EntityTabs.SCHEMA_DEFINITION,
+          ].includes(activeTab)}
+          sqlQuery={tableDetails?.schemaDefinition ?? ''}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -1152,11 +1158,10 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
 export const ExtraTableDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
-
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -1166,14 +1171,14 @@ export const ExtraTableDropdownOptions = (
             label: (
               <LimitWrapper resource="table">
                 <ManageButtonItemLabel
-                  description={i18n.t('message.import-entity-help', {
-                    entity: i18n.t('label.table'),
+                  description={t('message.import-entity-help', {
+                    entity: t('label.table'),
                   })}
                   icon={ImportIcon}
                   id="import-button"
-                  name={i18n.t('label.import')}
+                  name={t('label.import')}
                   onClick={() =>
-                    history.push(getEntityImportPath(EntityType.TABLE, fqn))
+                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
                   }
                 />
               </LimitWrapper>
@@ -1187,12 +1192,12 @@ export const ExtraTableDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.table'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.table'),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,
@@ -1313,4 +1318,126 @@ export const updateColumnInNestedStructure = (
       return column;
     }
   });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
+  });
+};
+
+export const getSchemaFieldCount = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  let count = 0;
+
+  const countFields = (items: T[]): void => {
+    items.forEach((item) => {
+      count++;
+      if (item.children && item.children.length > 0) {
+        countFields(item.children);
+      }
+    });
+  };
+
+  countFields(fields);
+
+  return count;
+};
+
+export const getSchemaDepth = <T extends { children?: T[] }>(
+  fields: T[]
+): number => {
+  if (!fields || fields.length === 0) {
+    return 0;
+  }
+
+  let maxDepth = 1;
+
+  const calculateDepth = (items: T[], currentDepth: number): void => {
+    items.forEach((item) => {
+      maxDepth = Math.max(maxDepth, currentDepth);
+      if (item.children && item.children.length > 0) {
+        calculateDepth(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  calculateDepth(fields, 1);
+
+  return maxDepth;
+};
+
+export const isLargeSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 500
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const shouldCollapseSchema = <T extends { children?: T[] }>(
+  fields: T[],
+  threshold = 50
+): boolean => {
+  return getSchemaFieldCount(fields) > threshold;
+};
+
+export const getExpandAllKeysToDepth = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  maxDepth = 3
+): string[] => {
+  const keys: string[] = [];
+
+  const collectKeys = (items: T[], currentDepth = 0): void => {
+    if (currentDepth >= maxDepth) {
+      return;
+    }
+
+    items.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        if (item.name) {
+          keys.push(item.name);
+        }
+        // Continue collecting keys from children up to maxDepth
+        collectKeys(item.children, currentDepth + 1);
+      }
+    });
+  };
+
+  collectKeys(fields);
+
+  return keys;
+};
+
+export const getSafeExpandAllKeys = <
+  T extends { children?: T[]; name?: string }
+>(
+  fields: T[],
+  isLargeSchema: boolean,
+  allKeys: string[]
+): string[] => {
+  if (!isLargeSchema) {
+    return allKeys;
+  }
+
+  // For large schemas, expand to exactly 2 levels deep
+  return getExpandAllKeysToDepth(fields, 2);
 };

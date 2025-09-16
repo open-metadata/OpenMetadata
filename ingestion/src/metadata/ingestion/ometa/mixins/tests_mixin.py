@@ -74,8 +74,8 @@ class OMetaTestsMixin:
         Returns:
             _type_: _description_
         """
-        resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn)}/testCaseResult",
+        resp = self.client.post(
+            f"{self.get_suffix(TestCaseResult)}/{quote(test_case_fqn)}",
             test_results.model_dump_json(),
         )
 
@@ -167,9 +167,9 @@ class OMetaTestsMixin:
         self,
         test_case_fqn: str,
         entity_link: Optional[str] = None,
-        test_suite_fqn: Optional[str] = None,
         test_definition_fqn: Optional[str] = None,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+        description: Optional[str] = None,
     ):
         """Get or create a test case
 
@@ -196,9 +196,9 @@ class OMetaTestsMixin:
             CreateTestCaseRequest(
                 name=test_case_fqn.split(".")[-1],
                 entityLink=entity_link,
-                testSuite=test_suite_fqn,
                 testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
+                description=description,
             )  # type: ignore
         )
         return test_case
@@ -253,7 +253,7 @@ class OMetaTestsMixin:
         }
 
         resp = self.client.get(
-            f"/dataQuality/testCases/{test_case_fqn}/testCaseResult",
+            f"{self.get_suffix(TestCaseResult)}/{test_case_fqn}",
             params,
         )
 

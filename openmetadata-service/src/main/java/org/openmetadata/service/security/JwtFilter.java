@@ -33,15 +33,17 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Priority;
+import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
+import java.net.URI;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +55,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -66,6 +68,7 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
 @Provider
+@Priority(Priorities.AUTHENTICATION)
 public class JwtFilter implements ContainerRequestFilter {
   public static final String EMAIL_CLAIM_KEY = "email";
   public static final String USERNAME_CLAIM_KEY = "username";
@@ -82,16 +85,14 @@ public class JwtFilter implements ContainerRequestFilter {
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
-  private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
-      Arrays.asList(
-          "http://localhost:8585/api/v1/system/config/jwks",
-          "http://host.docker.internal:8585/api/v1/system/config/jwks");
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/system/config/jwks",
           "v1/system/config/authorizer",
           "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
+          "v1/system/config/rdf",
+          "v1/system/health",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
@@ -120,16 +121,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
-      publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
+      publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    // avoid users misconfiguration and add default publicKeyUrls
-    for (String publicKeyUrl : DEFAULT_PUBLIC_KEY_URLS) {
-      if (!authenticationConfiguration.getPublicKeyUrls().contains(publicKeyUrl)) {
-        publicKeyUrlsBuilder.add(new URL(publicKeyUrl));
-      }
-    }
-
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.allowedDomains = authorizerConfiguration.getAllowedDomains();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
@@ -147,6 +142,7 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
   @SneakyThrows
@@ -174,12 +170,14 @@ public class JwtFilter implements ContainerRequestFilter {
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    boolean isBotUser = isBot(claims);
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
             catalogPrincipal,
             scheme,
             SecurityContext.DIGEST_AUTH,
-            getUserRolesFromClaims(claims, isBot(claims)));
+            getUserRolesFromClaims(claims, isBotUser),
+            isBotUser);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }
@@ -320,10 +318,12 @@ public class JwtFilter implements ContainerRequestFilter {
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    boolean isBotUser = isBot(claims);
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBot(claims)));
+        getUserRolesFromClaims(claims, isBotUser),
+        isBotUser);
   }
 }

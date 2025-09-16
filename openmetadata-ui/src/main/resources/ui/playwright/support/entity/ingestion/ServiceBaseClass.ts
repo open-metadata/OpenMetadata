@@ -22,6 +22,7 @@ import {
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
+  executeWithRetry,
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -45,7 +46,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
-  protected shouldAddDefaultFilters: boolean;
+  public shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -103,6 +104,8 @@ class ServiceBaseClass {
     await this.fillConnectionDetails(page);
 
     if (this.shouldTestConnection) {
+      expect(page.getByTestId('next-button')).not.toBeVisible();
+
       await testConnection(page);
     }
 
@@ -125,20 +128,15 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
 
     await page.waitForSelector('#name_help');
-    const nameHelp = await page.$eval('#name_help', (el) => el.textContent);
 
-    expect(nameHelp).toContain('Name is required');
+    await expect(page.locator('#name_help')).toHaveText('Name is required');
 
     // invalid name validation should work
     await page
       .locator('[data-testid="service-name"]')
       .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-    const nameHelpError = await page.$eval(
-      '#name_help',
-      (el) => el.textContent
-    );
 
-    expect(nameHelpError).toContain(NAME_VALIDATION_ERROR);
+    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 
     await page.fill('[data-testid="service-name"]', serviceName);
 
@@ -276,7 +274,7 @@ class ServiceBaseClass {
 
     await expect(
       page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
+        'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)'
       )
     ).toBeAttached();
 
@@ -562,9 +560,21 @@ class ServiceBaseClass {
 
     // update description
     await page.click('[data-testid="edit-description"]');
-    await page.click(descriptionBox);
-    await page.fill(descriptionBox, '');
-    await page.fill(descriptionBox, description);
+    await page.waitForSelector(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      {
+        state: 'visible',
+      }
+    );
+    await page.click(`.description-markdown-editor:visible ${descriptionBox}`);
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      ''
+    );
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      description
+    );
 
     await page.click('[data-testid="save"]');
 
@@ -642,11 +652,15 @@ class ServiceBaseClass {
 
   async deleteServiceByAPI(apiContext: APIRequestContext) {
     if (this.serviceResponseData.fullyQualifiedName) {
-      await apiContext.delete(
-        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-          this.serviceResponseData.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      );
+      await executeWithRetry(async () => {
+        await apiContext.delete(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
+            this.serviceResponseData.fullyQualifiedName
+          )}?recursive=true&hardDelete=true`
+        );
+      }, 'delete service');
     }
   }
 }

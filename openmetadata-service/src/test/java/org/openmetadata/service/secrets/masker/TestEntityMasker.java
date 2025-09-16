@@ -1,8 +1,8 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -29,11 +29,11 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
 
-  private static final String PASSWORD = "PASSWORD";
+  private static final String PASSWORD = "*********";
 
   protected static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 
@@ -138,11 +138,11 @@ abstract class TestEntityMasker {
     AuthenticationMechanism originalSsoAuthenticationMechanism = buildAuthenticationMechanism();
     EntityMaskerFactory.createEntityMasker()
         .maskAuthenticationMechanism("test", authenticationMechanism);
-    assertTrue(authenticationMechanism.getConfig() instanceof JWTAuthMechanism);
+    assertInstanceOf(JWTAuthMechanism.class, authenticationMechanism.getConfig());
     EntityMaskerFactory.createEntityMasker()
         .unmaskAuthenticationMechanism(
             "test", authenticationMechanism, originalSsoAuthenticationMechanism);
-    assertTrue(authenticationMechanism.getConfig() instanceof JWTAuthMechanism);
+    assertInstanceOf(JWTAuthMechanism.class, authenticationMechanism.getConfig());
   }
 
   @Test

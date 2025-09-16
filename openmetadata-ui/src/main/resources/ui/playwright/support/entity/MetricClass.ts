@@ -17,7 +17,7 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName = `pw-metric-${uuid()}`;
+  private metricName = `playwright-metric-${uuid()}`;
 
   entity = {
     name: this.metricName,

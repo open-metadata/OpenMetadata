@@ -13,7 +13,7 @@
 
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import Showdown from 'showdown';
 import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
 import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
@@ -90,10 +90,13 @@ export const formatContent = (
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(
-    _convertMarkdownFormatToHtmlString(htmlString),
-    'text/html'
-  );
+
+  // Only convert markdown to HTML if the content is not already HTML
+  const processedContent = isHTMLString(htmlString)
+    ? htmlString
+    : _convertMarkdownFormatToHtmlString(htmlString);
+
+  const doc = parser.parseFromString(processedContent, 'text/html');
 
   // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
   const anchorTags = doc.querySelectorAll(
@@ -194,9 +197,54 @@ export const getHtmlStringFromMarkdownString = (content: string) => {
  * @param editor The editor instance
  * @param newContent The new content to set
  */
+export const transformImgTagsToFileAttachment = (
+  htmlString: string
+): string => {
+  // Input validation - ensure we have a valid string
+  if (!htmlString || !isString(htmlString)) {
+    return String(htmlString || '');
+  }
+
+  if (!htmlString.includes('<img')) {
+    return htmlString;
+  }
+
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlString;
+
+  const imgTags = tempDiv.querySelectorAll('img[src]');
+
+  imgTags.forEach((img) => {
+    const src = img.getAttribute('src');
+    const alt = img.getAttribute('alt') || '';
+    const title = img.getAttribute('title') || '';
+
+    if (src) {
+      const fileDiv = document.createElement('div');
+      fileDiv.setAttribute('data-type', 'file-attachment');
+      fileDiv.setAttribute('data-url', src);
+      fileDiv.setAttribute('data-filename', title || alt || 'image');
+      fileDiv.setAttribute('data-mimetype', 'image');
+      fileDiv.setAttribute('data-uploading', 'false');
+      fileDiv.setAttribute('data-upload-progress', '0');
+      fileDiv.setAttribute('data-is-image', 'true');
+      if (alt) {
+        fileDiv.setAttribute('data-alt', alt);
+      }
+
+      img.parentNode?.replaceChild(fileDiv, img);
+    }
+  });
+
+  return tempDiv.innerHTML;
+};
+
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  const htmlString = getHtmlStringFromMarkdownString(newContent);
+  let htmlString = getHtmlStringFromMarkdownString(newContent);
+
+  // Transform img tags to file-attachment divs before Tiptap processes them
+  htmlString = transformImgTagsToFileAttachment(htmlString);
 
   editor.commands.setContent(htmlString);
 

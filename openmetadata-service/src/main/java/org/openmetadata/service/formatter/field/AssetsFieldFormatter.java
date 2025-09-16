@@ -7,8 +7,8 @@ import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.util.JsonUtils;
 
 public class AssetsFieldFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the assets in %s %s";

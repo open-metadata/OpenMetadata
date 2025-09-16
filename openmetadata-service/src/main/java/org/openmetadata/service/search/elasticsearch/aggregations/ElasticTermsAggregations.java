@@ -35,6 +35,9 @@ public class ElasticTermsAggregations implements ElasticAggregations {
       IncludeExclude includeExclude = new IncludeExclude(includes, null);
       termsAggregationBuilder.includeExclude(includeExclude);
     }
+    if (params.get("missing") != null) {
+      termsAggregationBuilder.missing(params.get("missing"));
+    }
     setElasticAggregationBuilder(termsAggregationBuilder);
   }
 

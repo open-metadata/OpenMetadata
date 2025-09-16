@@ -25,6 +25,7 @@ class DocumentationLinksClassBase {
   public getDocsURLS() {
     return {
       WORKFLOWS_PROFILER_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/profiler/workflow`,
+      TEST_SUITE_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/quality/adding-test-suites`,
       GLOSSARIES_DOCS: `${this.docsBaseURL}main-concepts/metadata-standard/schemas/entity/data/glossary`,
       CONNECTORS_DOCS: `${this.docsBaseURL}connectors`,
       WORKFLOWS_METADATA_DOCS: `${this.docsBaseURL}connectors/ingestion/workflows/metadata`,

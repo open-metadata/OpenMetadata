@@ -51,11 +51,9 @@ public class ExpressionValidator {
     Set<String> allowedFunctions = new HashSet<>();
     try {
       // Classes that provide functions for policy expressions
-      List<Class<?>> evaluatorClasses =
-          Arrays.asList(
-              RuleEvaluator.class,
-              Class.forName("org.openmetadata.service.events.subscription.AlertsRuleEvaluator"),
-              Class.forName("io.collate.service.apps.bundles.onboarding.CompletionEvaluator"));
+      List<Class<?>> evaluatorClasses = new ArrayList<>();
+      evaluatorClasses.add(RuleEvaluator.class);
+      evaluatorClasses.addAll(getClassesAlertAndCompletion());
 
       for (Class<?> evaluatorClass : evaluatorClasses) {
         scanClassForFunctions(evaluatorClass, allowedFunctions);
@@ -89,10 +87,29 @@ public class ExpressionValidator {
               "matchIngestionPipelineState",
               "matchPipelineState",
               "matchAnyDomain",
-              "matchConversationUser"));
+              "matchConversationUser",
+              "isBot"));
       LOG.info("Using fallback list of {} allowed functions", allowedFunctions.size());
     }
     return allowedFunctions;
+  }
+
+  private static List<Class<?>> getClassesAlertAndCompletion() {
+    List<Class<?>> evaluatorClasses = new ArrayList<>();
+    List<String> classNames =
+        Arrays.asList(
+            "org.openmetadata.service.events.subscription.AlertsRuleEvaluator",
+            "io.collate.service.apps.bundles.onboarding.CompletionEvaluator");
+
+    for (String className : classNames) {
+      try {
+        Class<?> clazz = Class.forName(className);
+        evaluatorClasses.add(clazz);
+      } catch (ClassNotFoundException e) {
+        System.err.println("Warning: Class not found - " + className);
+      }
+    }
+    return evaluatorClasses;
   }
 
   private static void scanClassForFunctions(Class<?> clazz, Set<String> allowedFunctions) {

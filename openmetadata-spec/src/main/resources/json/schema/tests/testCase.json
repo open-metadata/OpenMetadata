@@ -135,9 +135,9 @@
       "description": "SQL query to retrieve the failed rows for this test case.",
       "$ref": "../type/basic.json#/definitions/sqlQuery"
     },
-    "domain" : {
-      "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
     },
     "useDynamicAssertion": {
       "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",

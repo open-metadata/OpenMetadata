@@ -70,6 +70,12 @@ test.describe('Markdown', () => {
     // Verify various markdown elements are rendered correctly
     const container = page.getByTestId('asset-description-container');
 
+    // check if read-more-button exists the perform click
+    const readMoreButton = page.getByTestId('read-more-button');
+    if (await readMoreButton.isVisible()) {
+      await readMoreButton.click();
+    }
+
     await expect(container.locator('h1')).toHaveText('Heading 1');
     await expect(container.locator('h2')).toHaveText('Heading 2');
     await expect(container.locator('strong')).toHaveText('bold');

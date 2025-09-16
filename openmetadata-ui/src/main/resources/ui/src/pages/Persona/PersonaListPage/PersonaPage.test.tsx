@@ -11,24 +11,18 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { CursorType } from '../../../enums/pagination.enum';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { PersonaPage } from './PersonaPage';
+
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
+
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
+
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
@@ -37,9 +31,11 @@ jest.mock(
       .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
   }
 );
+
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
+
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
@@ -48,11 +44,13 @@ jest.mock(
       .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
   }
 );
+
 jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DeleteWidgetModal.component</div>);
 });
+
 jest.mock(
   '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard',
   () => {
@@ -63,6 +61,7 @@ jest.mock(
     };
   }
 );
+
 jest.mock(
   '../../../components/MyData//Persona/AddEditPersona/AddEditPersona.component',
   () => {
@@ -78,16 +77,25 @@ jest.mock(
     };
   }
 );
+
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
     showPagination: true,
     pageSize: 10,
+    paging: {
+      [CursorType.AFTER]: '1',
+    },
+    pagingCursor: {
+      cursorType: CursorType.AFTER,
+      cursorValue: '',
+    },
     handlePageChange: jest.fn(),
     handlePagingChange: jest.fn(),
     handlePageSizeChange: jest.fn(),
   }),
 }));
+
 jest.mock('../../../rest/PersonaAPI', () => {
   return {
     getAllPersonas: jest
@@ -96,11 +104,17 @@ jest.mock('../../../rest/PersonaAPI', () => {
   };
 });
 
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
+const mockProps = {
+  pageTitle: 'personas',
+};
+
 describe('PersonaPage', () => {
   it('Component should render', async () => {
-    await act(async () => {
-      render(<PersonaPage />);
-    });
+    render(<PersonaPage {...mockProps} />);
 
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
@@ -127,7 +141,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
 
@@ -161,7 +175,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
     fireEvent.click(addPersonaButton);
@@ -203,7 +217,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
 
     expect(

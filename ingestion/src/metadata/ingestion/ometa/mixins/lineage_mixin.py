@@ -113,6 +113,7 @@ class OMetaLineageMixin(Generic[T]):
         Add lineage relationship between two entities and returns
         the entity information of the origin node
         """
+        data = deepcopy(data)
         try:
             patch_op_success = False
             if check_patch and data.edge.lineageDetails:
@@ -382,7 +383,7 @@ class OMetaLineageMixin(Generic[T]):
             connection_type = database_service.serviceType.value
             add_lineage_request = get_lineage_by_query(
                 metadata=self,
-                service_name=database_service.name.root,
+                service_names=database_service.name.root,
                 dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
                 query=sql,
                 database_name=database_name,

@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';

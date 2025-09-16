@@ -55,6 +55,10 @@ export interface DbtPipeline {
      */
     tableFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
      * Pipeline type
      */
     type?: TypeEnum;
@@ -68,6 +72,8 @@ export interface DbtPipeline {
  * Regex to only fetch tables or databases that matches the pattern.
  *
  * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
     /**

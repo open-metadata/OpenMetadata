@@ -289,6 +289,7 @@ export type SearchRequest<
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
   filters?: string;
+  excludeSourceFields?: string[];
 } & (
   | {
       fetchSource: true;

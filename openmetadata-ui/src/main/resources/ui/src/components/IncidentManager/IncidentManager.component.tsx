@@ -17,11 +17,14 @@ import { compare } from 'fast-json-patch';
 import { isEqual, isUndefined, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_BASE,
+} from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -38,6 +41,7 @@ import {
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -46,7 +50,7 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import {
-  getListTestCaseIncidentStatus,
+  getListTestCaseIncidentStatusFromSearch,
   TestCaseIncidentStatusParams,
   updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
@@ -89,7 +93,8 @@ const IncidentManager = ({
   tableDetails,
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { activeDomain } = useDomainStore();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -152,11 +157,13 @@ const IncidentManager = ({
     async (params: TestCaseIncidentStatusParams) => {
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
-        const { data, paging } = await getListTestCaseIncidentStatus({
+        const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
           limit: pageSize,
           latest: true,
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
+          domain:
+            activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
@@ -187,7 +194,7 @@ const IncidentManager = ({
         setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [pageSize, setTestCaseListData]
+    [pageSize, setTestCaseListData, activeDomain]
   );
 
   const fetchTestCasePermissions = async () => {
@@ -232,7 +239,9 @@ const IncidentManager = ({
       fetchTestCaseIncidents({
         ...filters,
         [cursorType]: paging?.[cursorType],
-        offset: paging?.[cursorType],
+        offset: paging?.[cursorType]
+          ? parseInt(paging?.[cursorType] ?? '', 10)
+          : undefined,
       });
     }
     handlePageChange(currentPage);
@@ -363,14 +372,19 @@ const IncidentManager = ({
     ) {
       fetchTestCaseIncidents(filters);
       if (searchParams) {
-        history.replace({
-          search: QueryString.stringify(filters),
-        });
+        navigate(
+          {
+            search: QueryString.stringify(filters),
+          },
+          {
+            replace: true,
+          }
+        );
       }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [commonTestCasePermission, pageSize, filters]);
+  }, [commonTestCasePermission, pageSize, filters, activeDomain]);
 
   useEffect(() => {
     if (testCaseListData.data.length > 0) {
@@ -391,7 +405,6 @@ const IncidentManager = ({
             <Link
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
-              style={{ maxWidth: 280 }}
               to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
@@ -451,7 +464,7 @@ const IncidentManager = ({
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 100,
+        width: 120,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -475,7 +488,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 100,
+        width: 120,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -613,7 +626,7 @@ const IncidentManager = ({
           pagination={false}
           rowKey="id"
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />

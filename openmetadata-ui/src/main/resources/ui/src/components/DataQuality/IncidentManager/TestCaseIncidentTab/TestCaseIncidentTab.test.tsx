@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_THREAD_DATA } from '../../../../mocks/TestCase.mock';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestCaseIncidentTab from './TestCaseIncidentTab.component';
@@ -41,9 +40,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../../Entity/Task/TaskTab/TaskTab.component', () => {
+jest.mock('../../../Entity/Task/TaskTab/TaskTabNew.component', () => {
   return {
-    TaskTab: jest.fn().mockImplementation(({ onAfterClose }) => (
+    TaskTabNew: jest.fn().mockImplementation(({ onAfterClose }) => (
       <div>
         TaskTab
         <button data-testid="close-btn" onClick={onAfterClose}>
@@ -57,7 +56,7 @@ jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
+  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component',
   () => {
     return jest.fn().mockImplementation(({ onFeedClick }) => (
       <div>

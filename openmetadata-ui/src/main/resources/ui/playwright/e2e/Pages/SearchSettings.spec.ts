@@ -85,6 +85,11 @@ test.describe('Search Settings Tests', () => {
     // Field Weight
     await setSliderValue(page, 'field-weight-slider', 8);
 
+    // Match Type
+    const matchTypeSelect = page.getByTestId('match-type-select');
+    await matchTypeSelect.click();
+    await page.getByTitle('Fuzzy Match').click();
+
     // Score Mode
     const scoreModeSelect = page.getByTestId('score-mode-select');
     await scoreModeSelect.click();
@@ -158,8 +163,15 @@ test.describe('Search Preview test', () => {
       new RegExp(mockEntitySearchSettings.url + '$')
     );
 
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     const searchInput = page.getByTestId('searchbar');
+    const previewRes = page.waitForResponse('/api/v1/search/preview');
     await searchInput.fill(table1.entity.name);
+    await previewRes;
 
     const descriptionField = page.getByTestId(
       `field-configuration-panel-description`
@@ -169,6 +181,9 @@ test.describe('Search Preview test', () => {
     await descriptionField.click();
 
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const searchResultsContainer = page.locator('.search-results-container');
 

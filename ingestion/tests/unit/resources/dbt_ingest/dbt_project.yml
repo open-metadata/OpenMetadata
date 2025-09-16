@@ -1,0 +1,62 @@
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'jaffle_shop'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'jaffle_shop'
+
+# These configurations specify where dbt should look for different types of files.
+# The `model-paths` config, for example, states that models in this project can be
+# found in the "models/" directory. You probably won't need to change these!
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+# In this example config, we tell dbt to build all models in the example/
+# directory as views. These settings can be overridden in the individual model
+# files using the `{{ config(...) }}` macro.
+models:
+  jaffle_shop:
+    example:
+      +materialized: table
+
+
+vars:
+  # Required OpenMetadata configuration for metadata ingest-dbt command
+  openmetadata_host_port: "http://test-server:port/endpoint"
+  openmetadata_jwt_token: ${OPENMETADATA_JWT_TOKEN}
+  openmetadata_service_name: "test_service"
+  
+  # Optional OpenMetadata DBT source configuration
+  # DBT behavior settings
+  openmetadata_dbt_update_descriptions: true
+  openmetadata_dbt_update_owners: false
+  openmetadata_dbt_classification_name: "dbtTags"
+  
+  # Filter patterns - standardized dict format with includes/excludes
+  openmetadata_database_filter_pattern:
+    includes: ["dbt_test_*"]
+    excludes: ["temp_*", "test_*"]
+  
+  openmetadata_table_filter_pattern:
+    includes: [".*"]
+    excludes: ["temp_.*", "tmp_.*"]
+
+quoting:
+  database: false
+  schema: false
+  identifier: false

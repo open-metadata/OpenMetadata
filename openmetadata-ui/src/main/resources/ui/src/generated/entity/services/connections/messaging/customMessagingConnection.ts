@@ -19,7 +19,8 @@ export interface CustomMessagingConnection {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?: string;
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
      */
@@ -28,6 +29,7 @@ export interface CustomMessagingConnection {
      * Custom messaging service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

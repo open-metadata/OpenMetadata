@@ -13,24 +13,60 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List
+from typing import List, Type, cast
 
 from pyhive.sqlalchemy_hive import HiveCompiler
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import Column as OMColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    SystemProfile,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.system.databricks.system import (
+    DatabricksSystemMetricsComputer,
+)
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.orm.converter.base import build_orm_col
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 
 class DatabricksProfilerInterface(SQAProfilerInterface):
     """Databricks profiler interface"""
+
+    def _compute_system_metrics(
+        self,
+        metrics: Type[System],
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ) -> List[SystemProfile]:
+        if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
+            logger.debug(
+                f"Skipping {metrics.name()} metric for view {runner.table_name}"
+            )
+            return []
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
+        self.system_metrics_class = cast(
+            Type[DatabricksSystemMetricsComputer], self.system_metrics_class
+        )
+        instance = self.system_metrics_class(
+            session=self.session,
+            runner=runner,
+            catalog=self.service_connection_config.catalog,
+        )
+        return instance.get_system_metrics()
 
     def visit_column(self, *args, **kwargs):
         result = super(  # pylint: disable=bad-super-call
@@ -49,10 +85,28 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             result += "`.`".join(splitted_result)
         return result
 
+    def visit_table(self, *args, **kwargs):
+        result = super(  # pylint: disable=bad-super-call
+            HiveCompiler, self
+        ).visit_table(*args, **kwargs)
+        # Handle table references with hyphens in database/schema names
+        # Format: `database`.`schema`.`table` for Unity Catalog/Databricks
+        if "." in result and not result.startswith("`"):
+            parts = result.split(".")
+            quoted_parts = []
+            for part in parts:
+                if "-" in part and not (part.startswith("`") and part.endswith("`")):
+                    quoted_parts.append(f"`{part}`")
+                else:
+                    quoted_parts.append(part)
+            result = ".".join(quoted_parts)
+        return result
+
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
         HiveCompiler.visit_column = DatabricksProfilerInterface.visit_column
+        HiveCompiler.visit_table = DatabricksProfilerInterface.visit_table
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""

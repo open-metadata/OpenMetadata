@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchIndexRepository;
@@ -64,7 +65,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/searchIndexes")
 @Tag(
@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   private final SearchIndexMapper mapper = new SearchIndexMapper();
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {

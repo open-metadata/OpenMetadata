@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
@@ -22,10 +23,10 @@ import {
   FIELDS,
   OPERATOR,
   runRuleGroupTests,
+  runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const creationConfig: EntityDataClassCreationConfig = {
@@ -72,7 +73,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPage(page);
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -93,7 +93,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain1.responseData.id,
             type: 'domain',
@@ -104,7 +104,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
-    await EntityDataClass.table2.visitEntityPage(page);
     await EntityDataClass.table2.patch({
       apiContext,
       patchData: [
@@ -125,7 +124,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain2.responseData.id,
             type: 'domain',
@@ -137,20 +136,38 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     });
 
     // Add Tier To the topic 1
-    await EntityDataClass.topic1.visitEntityPage(page);
-    await assignTier(
-      page,
-      EntityDataClass.tierTag1.data.displayName,
-      EntityDataClass.topic1.endpoint
-    );
+    await EntityDataClass.topic1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[0].name,
+            tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Add Tier To the topic 2
-    await EntityDataClass.topic2.visitEntityPage(page);
-    await assignTier(
-      page,
-      EntityDataClass.tierTag2.data.displayName,
-      EntityDataClass.topic2.endpoint
-    );
+    await EntityDataClass.topic2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[1].name,
+            tagFQN: COMMON_TIER_TAG[1].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Update Search Criteria here
     searchCriteria = {
@@ -160,8 +177,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
       'tier.tagFQN': [
-        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
-        EntityDataClass.tierTag2.responseData.fullyQualifiedName,
+        COMMON_TIER_TAG[0].fullyQualifiedName,
+        COMMON_TIER_TAG[1].fullyQualifiedName,
       ],
       'service.displayName.keyword': [
         EntityDataClass.table1.service.name,
@@ -207,7 +224,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
         EntityDataClass.pipeline2.entity.tasks[1].displayName,
       ],
-      'domain.displayName.keyword': [
+      'domains.displayName.keyword': [
         EntityDataClass.domain1.data.displayName,
         EntityDataClass.domain2.data.displayName,
       ],
@@ -231,7 +248,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel1.entity.project,
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
-      status: ['Approved', 'In Review'],
+      entityStatus: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
@@ -286,5 +303,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         await runRuleGroupTests(page, field, operator, true, searchCriteria);
       });
     });
+  });
+
+  test('Verify search with non existing value do not result in infinite search', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await runRuleGroupTestsWithNonExistingValue(page);
   });
 });

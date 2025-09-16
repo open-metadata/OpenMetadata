@@ -29,6 +29,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
@@ -390,6 +391,10 @@ test.describe('Teams Page', () => {
       .getByTestId('manage-button')
       .click();
 
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
+
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'true'
@@ -397,10 +402,16 @@ test.describe('Teams Page', () => {
 
     await clickOutside(page);
 
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).not.toBeVisible();
+
     await hardDeleteTeam(page);
   });
 
-  test('Create a new private team', async ({ page }) => {
+  test('Create a new private team and check if its visible to admin in teams selection dropdown on user profile', async ({
+    page,
+  }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
     await page.waitForSelector('[data-testid="add-team"]');
@@ -422,6 +433,34 @@ test.describe('Teams Page', () => {
     );
 
     await clickOutside(page);
+
+    await visitOwnProfilePage(page);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('edit-teams-button').click();
+    await page.getByTestId('team-select').click();
+
+    await expect(page.getByTestId('profile-teams-edit-popover')).toBeVisible();
+
+    await page
+      .getByTestId('profile-teams-edit-popover')
+      .getByText(publicTeam.displayName)
+      .click();
+
+    const updateUserResponse = page.waitForResponse('/api/v1/users/*');
+    await page.getByTestId('teams-edit-save-btn').click();
+    await updateUserResponse;
+
+    await expect(
+      page.getByTestId('profile-teams-edit-popover')
+    ).not.toBeVisible();
+
+    await page
+      .getByTestId('user-profile-teams')
+      .getByText(publicTeam.displayName)
+      .click();
+
+    await page.waitForLoadState('networkidle');
 
     await hardDeleteTeam(page);
   });

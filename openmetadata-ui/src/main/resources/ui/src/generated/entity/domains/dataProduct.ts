@@ -25,6 +25,10 @@ export interface DataProduct {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Other data products that this product consumes data from
+     */
+    consumesFrom?: EntityReference[];
+    /**
      * Description of the Data Product.
      */
     description: string;
@@ -33,9 +37,13 @@ export interface DataProduct {
      */
     displayName?: string;
     /**
-     * Domain or sub-domain to which this Data Product belongs to.
+     * Domains or sub-domains to which this Data Product belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the Data Product.
+     */
+    entityStatus?: EntityStatus;
     /**
      * List of users who are experts for this Data Product.
      */
@@ -44,6 +52,10 @@ export interface DataProduct {
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.
      */
@@ -61,14 +73,38 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Input ports for consuming data into this data product
+     */
+    inputPorts?: DataProductPort[];
+    /**
+     * Current lifecycle stage of the data product
+     */
+    lifecycleStage?: LifecycleStage;
+    /**
      * A unique name of the Data Product
      */
     name: string;
     /**
+     * Output ports for exposing data from this data product
+     */
+    outputPorts?: DataProductPort[];
+    /**
      * Owners of this Data Product.
      */
     owners?: EntityReference[];
-    style?:  Style;
+    /**
+     * Other data products that consume data from this product
+     */
+    providesTo?: EntityReference[];
+    /**
+     * User references of the reviewers for this Data Product.
+     */
+    reviewers?: EntityReference[];
+    /**
+     * Service Level Agreement for this data product
+     */
+    sla?:   SlaDefinition;
+    style?: Style;
     /**
      * Tags associated with the Data Product.
      */
@@ -101,7 +137,7 @@ export interface DataProduct {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain or sub-domain to which this Data Product belongs to.
+ * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -209,6 +245,143 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Status of the Data Product.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
+ * Port definition for data product input/output
+ */
+export interface DataProductPort {
+    /**
+     * Reference to the data asset exposed through this port
+     */
+    dataAsset?: EntityReference;
+    /**
+     * Description of the port
+     */
+    description?: string;
+    /**
+     * Display name of the port
+     */
+    displayName?: string;
+    /**
+     * Endpoint URL or connection string
+     */
+    endpoint?: string;
+    format?:   PortFormat;
+    /**
+     * Name of the port
+     */
+    name:      string;
+    portType:  PortType;
+    protocol?: PortProtocol;
+}
+
+/**
+ * Data format supported by the port
+ */
+export enum PortFormat {
+    Avro = "AVRO",
+    CSV = "CSV",
+    Custom = "CUSTOM",
+    Delta = "DELTA",
+    Iceberg = "ICEBERG",
+    JSON = "JSON",
+    Orc = "ORC",
+    Parquet = "PARQUET",
+    Protobuf = "PROTOBUF",
+    XML = "XML",
+}
+
+/**
+ * Type of the data product port
+ */
+export enum PortType {
+    Input = "INPUT",
+    Output = "OUTPUT",
+}
+
+/**
+ * Protocol used by the port for data access
+ */
+export enum PortProtocol {
+    AzureBlob = "AZURE_BLOB",
+    Custom = "CUSTOM",
+    File = "FILE",
+    Gcs = "GCS",
+    Graphql = "GRAPHQL",
+    Grpc = "GRPC",
+    JDBC = "JDBC",
+    Kafka = "KAFKA",
+    REST = "REST",
+    S3 = "S3",
+    Webhook = "WEBHOOK",
+}
+
+/**
+ * Current lifecycle stage of the data product
+ *
+ * Lifecycle stage of the data product
+ */
+export enum LifecycleStage {
+    Deprecated = "DEPRECATED",
+    Design = "DESIGN",
+    Development = "DEVELOPMENT",
+    Ideation = "IDEATION",
+    Production = "PRODUCTION",
+    Retired = "RETIRED",
+    Testing = "TESTING",
+}
+
+/**
+ * Service Level Agreement for this data product
+ *
+ * Service Level Agreement definition
+ */
+export interface SlaDefinition {
+    /**
+     * Expected availability percentage (e.g., 99.9)
+     */
+    availability?: number;
+    /**
+     * Maximum data staleness in minutes
+     */
+    dataFreshness?: number;
+    /**
+     * Minimum data quality score
+     */
+    dataQuality?: number;
+    /**
+     * Expected response time in milliseconds
+     */
+    responseTime?: number;
+    /**
+     * SLA tier (e.g., GOLD, SILVER, BRONZE)
+     */
+    tier?: Tier;
+}
+
+/**
+ * SLA tier (e.g., GOLD, SILVER, BRONZE)
+ */
+export enum Tier {
+    Bronze = "BRONZE",
+    Custom = "CUSTOM",
+    Gold = "GOLD",
+    Silver = "SILVER",
 }
 
 /**

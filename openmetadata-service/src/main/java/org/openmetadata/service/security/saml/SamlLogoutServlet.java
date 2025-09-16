@@ -24,7 +24,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -61,8 +60,7 @@ public class SamlLogoutServlet extends HttpServlet {
 
   @Override
   protected void doGet(
-      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse)
-      throws IOException {
+      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse) {
     try {
       LOG.debug("Performing application logout");
       HttpSession session = httpServletRequest.getSession(false);

@@ -12,12 +12,13 @@
  */
 import { Card, CardProps } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
   children: React.ReactNode;
+  defaultExpanded?: boolean;
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
   cardProps: CardProps;
@@ -30,9 +31,10 @@ const ExpandableCard = ({
   onExpandStateChange,
   isExpandDisabled,
   dataTestId,
+  defaultExpanded = true,
 }: ExpandableCardProps) => {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const handleExpandClick = useCallback(() => {
     setIsExpanded((prev) => {
@@ -41,6 +43,10 @@ const ExpandableCard = ({
       return !prev;
     });
   }, [onExpandStateChange]);
+
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   return (
     <Card

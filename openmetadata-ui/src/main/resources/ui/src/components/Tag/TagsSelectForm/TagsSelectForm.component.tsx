@@ -13,7 +13,7 @@
 import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import AsyncSelectList from '../../common/AsyncSelectList/AsyncSelectList';
 import TreeAsyncSelectList from '../../common/AsyncSelectList/TreeAsyncSelectList';

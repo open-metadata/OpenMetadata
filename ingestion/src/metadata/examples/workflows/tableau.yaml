@@ -16,6 +16,7 @@ source:
       hostPort: http://localhost
       siteName: site_name
       paginationLimit: 10
+      proxyURL: http://proxyTableuHost
   sourceConfig:
     config:
       type: DashboardMetadata

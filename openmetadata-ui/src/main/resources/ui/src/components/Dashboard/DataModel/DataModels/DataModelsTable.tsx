@@ -15,7 +15,7 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -50,12 +50,15 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
+import { DataModelTableProps } from './DataModelDetails.interface';
 
-const DataModelTable = () => {
+const DataModelTable = ({
+  showDeleted,
+  handleShowDeleted,
+}: DataModelTableProps) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
-  const [showDeleted, setShowDeleted] = useState(false);
   const {
     currentPage,
     pageSize,
@@ -157,7 +160,7 @@ const DataModelTable = () => {
   };
 
   const handleShowDeletedChange = (checked: boolean) => {
-    setShowDeleted(checked);
+    handleShowDeleted(checked);
     handlePageChange(INITIAL_PAGING_VALUE);
     handlePageSizeChange(PAGE_SIZE_BASE);
   };

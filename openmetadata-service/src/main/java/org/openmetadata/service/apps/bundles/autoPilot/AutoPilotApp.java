@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -24,7 +25,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AutoPilotApp extends AbstractNativeApplication {
@@ -43,6 +43,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
 
   @Override
   public void uninstall() {
+    super.uninstall();
     deleteWorkflow();
   }
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
-import { t } from 'i18next';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -24,6 +23,7 @@ import {
   getApiEndPointByFQN,
   patchApiEndPoint,
 } from '../../rest/apiEndpointsAPI';
+import { getChartByFqn, patchChartDetails } from '../../rest/chartsAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -65,11 +65,17 @@ import {
   patchStoredProceduresDetails,
 } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
-import { getTagByFqn, patchTag } from '../../rest/tagAPI';
+import {
+  getClassificationByName,
+  getTagByFqn,
+  patchClassification,
+  patchTag,
+} from '../../rest/tagAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
+import { t } from '../i18next/LocalUtil';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
@@ -82,6 +88,8 @@ export const getAPIfromSource = (
       return patchTableDetails;
     case EntityType.DASHBOARD:
       return patchDashboardDetails;
+    case EntityType.CHART:
+      return patchChartDetails;
     case EntityType.MLMODEL:
       return patchMlModelDetails;
     case EntityType.PIPELINE:
@@ -102,6 +110,8 @@ export const getAPIfromSource = (
       return patchGlossaries;
     case EntityType.TAG:
       return patchTag;
+    case EntityType.CLASSIFICATION:
+      return patchClassification;
     case EntityType.DATABASE_SCHEMA:
       return patchDatabaseSchemaDetails;
     case EntityType.DATABASE:
@@ -126,6 +136,7 @@ export const getAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -145,6 +156,8 @@ export const getEntityAPIfromSource = (
       return getTableDetailsByFQN;
     case EntityType.DASHBOARD:
       return getDashboardByFqn;
+    case EntityType.CHART:
+      return getChartByFqn;
     case EntityType.MLMODEL:
       return getMlModelByFQN;
     case EntityType.PIPELINE:
@@ -161,6 +174,8 @@ export const getEntityAPIfromSource = (
       return getGlossaryTermByFQN;
     case EntityType.GLOSSARY:
       return getGlossariesByName;
+    case EntityType.CLASSIFICATION:
+      return getClassificationByName;
     case EntityType.TAG:
       return getTagByFqn;
     case EntityType.DATABASE_SCHEMA:
@@ -189,6 +204,7 @@ export const getEntityAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

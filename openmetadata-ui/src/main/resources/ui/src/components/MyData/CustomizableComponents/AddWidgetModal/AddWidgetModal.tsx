@@ -15,17 +15,14 @@ import { CheckOutlined } from '@ant-design/icons';
 import { Modal, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LIGHT_GREEN_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import {
-  LandingPageWidgetKeys,
-  WidgetWidths,
-} from '../../../../enums/CustomizablePage.enum';
+import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPageUtils';
@@ -59,13 +56,7 @@ function AddWidgetModal({
         limit: PAGE_SIZE_MEDIUM,
       });
 
-      // User can't add / update / delete Announcements widget
-      setWidgetsList(
-        data.filter(
-          (widget) =>
-            widget.fullyQualifiedName !== LandingPageWidgetKeys.ANNOUNCEMENTS
-        )
-      );
+      setWidgetsList(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

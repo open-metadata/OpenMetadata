@@ -3,9 +3,11 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -22,6 +24,7 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -37,10 +40,10 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -341,6 +344,21 @@ public class AlertsRuleEvaluator {
   }
 
   @Function(
+      name = "isBot",
+      input = "Check if the updating user is a bot",
+      description = "Returns true if the change event entity is updated by a bot",
+      examples = {"isBot()"},
+      paramInputType = NOT_REQUIRED)
+  public boolean isBot() {
+    if (changeEvent == null || changeEvent.getUserName() == null) {
+      return false;
+    }
+    String entityUpdatedBy = changeEvent.getUserName();
+    User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
+    return user.getIsBot();
+  }
+
+  @Function(
       name = "matchIngestionPipelineState",
       input = "List of comma separated ingestion pipeline states",
       description =
@@ -454,11 +472,13 @@ public class AlertsRuleEvaluator {
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(
-            changeEvent.getEntityType(), entity.getId(), "domain", Include.NON_DELETED);
-    if (entityWithDomainData.getDomain() != null) {
+            changeEvent.getEntityType(), entity.getId(), "domains", Include.NON_DELETED);
+    if (!nullOrEmpty(entityWithDomainData.getDomains())) {
       for (String name : fieldChangeUpdate) {
-        if (entityWithDomainData.getDomain().getFullyQualifiedName().equals(name)) {
-          return true;
+        for (EntityReference domain : entityWithDomainData.getDomains()) {
+          if (domain.getFullyQualifiedName().equals(name)) {
+            return true;
+          }
         }
       }
     }
@@ -570,9 +590,11 @@ public class AlertsRuleEvaluator {
         Pattern pattern = Pattern.compile(name);
         Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
         if (matcherTestSuiteFQN.find()) return true;
-        if (testSuite.getDomain() != null) {
-          Matcher matcherDomainFQN = pattern.matcher(testSuite.getDomain().getFullyQualifiedName());
-          if (matcherDomainFQN.find()) return true;
+        if (!nullOrEmpty(testSuite.getDomains())) {
+          for (EntityReference domain : testSuite.getDomains()) {
+            Matcher matcherDomainFQN = pattern.matcher(domain.getFullyQualifiedName());
+            if (matcherDomainFQN.find()) return true;
+          }
         }
       }
     }
@@ -605,6 +627,52 @@ public class AlertsRuleEvaluator {
             return true;
           }
         }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchDataContractStatus",
+      input = "List of data contract statuses",
+      description =
+          "Returns true if the change event is for a data contract with status in the given list.",
+      examples = {"matchDataContractStatus({'Failed', 'Aborted'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public Boolean matchDataContractStatus(List<String> statuses) {
+    if (changeEvent.getEntityType().equals(DATA_CONTRACT)) {
+      try {
+        DataContract dataContract =
+            JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
+        if (dataContract.getLatestResult() != null) {
+          String currentStatus = dataContract.getLatestResult().getStatus().value();
+          return statuses.contains(currentStatus);
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to parse DataContract from change event", e);
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "filterByEntityNameDataContractBelongsTo",
+      input = "List of entity names",
+      description =
+          "Returns true if the data contract belongs to an entity with name in the given list.",
+      examples = {"filterByEntityNameDataContractBelongsTo({'table1', 'table2'})"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityNames) {
+    if (changeEvent.getEntityType().equals(DATA_CONTRACT)) {
+      try {
+        DataContract dataContract =
+            JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
+        if (dataContract.getEntity() != null) {
+          String entityFqn = dataContract.getEntity().getFullyQualifiedName();
+          return entityNames.stream().anyMatch(entityFqn::contains);
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to parse DataContract from change event", e);
       }
     }
     return false;

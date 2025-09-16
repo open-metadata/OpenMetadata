@@ -35,6 +35,7 @@ export enum SettingType {
     CustomUIThemePreference = "customUiThemePreference",
     Elasticsearch = "elasticsearch",
     EmailConfiguration = "emailConfiguration",
+    EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
     JwtTokenConfiguration = "jwtTokenConfiguration",
@@ -43,6 +44,7 @@ export enum SettingType {
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
+    ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",
@@ -126,6 +128,11 @@ export interface PipelineServiceClientConfiguration {
      * Enable or disable the API that fetches the public IP running the ingestion process.
      */
     ingestionIpInfoEnabled?: boolean;
+    /**
+     * Configuration for pipeline log storage. If not specified, uses default log storage
+     * through the pipeline service client.
+     */
+    logStorageConfiguration?: LogStorageConfiguration;
     /**
      * Metadata api endpoint, e.g., `http://localhost:8585/api`
      */
@@ -429,6 +436,10 @@ export interface PipelineServiceClientConfiguration {
      * Used to set up the History CleanUp Settings.
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
+    /**
+     * Semantics rules defined in the data contract.
+     */
+    entitySemantics?: SemanticsRule[];
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -499,6 +510,10 @@ export interface AssetTypeConfiguration {
      */
     highlightFields?: string[];
     /**
+     * Multipliers applied to different match types to control their relative importance.
+     */
+    matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -524,13 +539,13 @@ export interface Aggregation {
     /**
      * The type of aggregation to perform.
      */
-    type: Type;
+    type: AggregationType;
 }
 
 /**
  * The type of aggregation to perform.
  */
-export enum Type {
+export enum AggregationType {
     Avg = "avg",
     DateHistogram = "date_histogram",
     Filters = "filters",
@@ -613,6 +628,24 @@ export enum Modifier {
 }
 
 /**
+ * Multipliers applied to different match types to control their relative importance.
+ */
+export interface MatchTypeBoostMultipliers {
+    /**
+     * Multiplier for exact match queries (term queries on .keyword fields)
+     */
+    exactMatchMultiplier?: number;
+    /**
+     * Multiplier for fuzzy match queries
+     */
+    fuzzyMatchMultiplier?: number;
+    /**
+     * Multiplier for phrase match queries
+     */
+    phraseMatchMultiplier?: number;
+}
+
+/**
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -633,6 +666,24 @@ export interface FieldBoost {
      * Field name to search/boost.
      */
     field: string;
+    /**
+     * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+     * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+     * behavior.
+     */
+    matchType?: MatchType;
+}
+
+/**
+ * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+ * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+ * behavior.
+ */
+export enum MatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
 }
 
 export interface TermBoost {
@@ -828,6 +879,53 @@ export enum AuthProvider {
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name:      string;
+    provider?: ProviderType;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**
@@ -1090,6 +1188,127 @@ export enum LineageLayer {
 }
 
 /**
+ * Configuration for pipeline log storage. If not specified, uses default log storage
+ * through the pipeline service client.
+ *
+ * Configuration for pipeline log storage
+ */
+export interface LogStorageConfiguration {
+    /**
+     * Size of async buffer in MB for batching log writes
+     */
+    asyncBufferSizeMB?: number;
+    /**
+     * AWS credentials configuration
+     */
+    awsConfig?: AWSCredentials;
+    /**
+     * S3 bucket name for storing logs (required for S3 type)
+     */
+    bucketName?: string;
+    /**
+     * Enable server-side encryption for S3 objects
+     */
+    enableServerSideEncryption?: boolean;
+    /**
+     * Number of days after which logs are automatically deleted (0 means no expiration)
+     */
+    expirationDays?: number;
+    /**
+     * Maximum number of concurrent log streams allowed
+     */
+    maxConcurrentStreams?: number;
+    /**
+     * S3 key prefix for organizing logs
+     */
+    prefix?: string;
+    /**
+     * AWS region for the S3 bucket (required for S3 type)
+     */
+    region?: string;
+    /**
+     * S3 storage class for log objects
+     */
+    storageClass?: StorageClass;
+    /**
+     * Timeout in minutes for idle log streams before automatic cleanup
+     */
+    streamTimeoutMinutes?: number;
+    /**
+     * Type of log storage implementation
+     */
+    type: LogStorageConfigurationType;
+}
+
+/**
+ * AWS credentials configuration
+ *
+ * AWS credentials configs.
+ */
+export interface AWSCredentials {
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
+}
+
+/**
+ * S3 storage class for log objects
+ */
+export enum StorageClass {
+    DeepArchive = "DEEP_ARCHIVE",
+    Glacier = "GLACIER",
+    IntelligentTiering = "INTELLIGENT_TIERING",
+    OnezoneIa = "ONEZONE_IA",
+    Standard = "STANDARD",
+    StandardIa = "STANDARD_IA",
+}
+
+/**
+ * Type of log storage implementation
+ */
+export enum LogStorageConfigurationType {
+    Default = "default",
+    S3 = "s3",
+}
+
+/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -1131,6 +1350,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -1140,12 +1360,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -1193,6 +1415,7 @@ export enum DataType {
  * This schema defines all possible metric types in OpenMetadata.
  */
 export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
     ColumnCount = "columnCount",
     ColumnNames = "columnNames",
     CountInSet = "countInSet",
@@ -1237,6 +1460,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     */
+    embeddingProvider?: string;
+    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -1254,6 +1481,14 @@ export interface Bedrock {
      * AWS access key for Bedrock service authentication
      */
     accessKey?: string;
+    /**
+     * Dimension of the embedding vector
+     */
+    embeddingDimension?: number;
+    /**
+     * Bedrock embedding model identifier to use for vector search
+     */
+    embeddingModelId?: string;
     /**
      * Bedrock model identifier to use for query transformation
      */
@@ -1469,6 +1704,10 @@ export interface OidcClientConfig {
      */
     serverUrl?: string;
     /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
      * Tenant in case of Azure.
      */
     tenant?: string;
@@ -1633,6 +1872,7 @@ export interface SP {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 

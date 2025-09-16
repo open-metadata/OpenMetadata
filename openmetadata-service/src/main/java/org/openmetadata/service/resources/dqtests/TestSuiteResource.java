@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
@@ -64,7 +65,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/dataQuality/testSuites")
@@ -288,7 +288,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {
@@ -551,41 +551,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @POST
-  @Path("/executable")
-  @Operation(
-      operationId = "createExecutableTestSuite",
-      summary = "Create an executable test suite",
-      description = "Create an executable test suite.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Executable test suite",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createExecutable(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpServletResponse response,
-      @Valid CreateTestSuite create) {
-    TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    if (testSuite.getBasicEntityReference() == null) {
-      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
-    }
-    testSuite.setBasic(true);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
-    response.setHeader("Deprecation", "Monday, March 24, 2025");
-    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
-    List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
-    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
-  }
-
-  @POST
   @Path("/basic")
   @Operation(
       operationId = "createBasicTestSuite",
@@ -777,7 +742,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+        repository.deleteLogicalTestSuite(
+            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
     repository.deleteFromSearch(response.entity(), hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
@@ -845,7 +811,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+        repository.deleteLogicalTestSuite(
+            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

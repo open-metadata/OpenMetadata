@@ -12,7 +12,7 @@
  */
 
 import { Col, Row } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { EntityField } from '../../../../../constants/Feeds.constants';
 import {
   getFeedChangeFieldLabel,

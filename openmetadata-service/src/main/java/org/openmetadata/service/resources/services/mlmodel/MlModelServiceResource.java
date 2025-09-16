@@ -57,6 +57,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
 import org.openmetadata.service.limits.Limits;
@@ -64,8 +66,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/mlmodelServices")
 @Tag(name = "ML Model Services")
@@ -76,7 +76,7 @@ public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   private final MlModelServiceMapper mapper = new MlModelServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public MlModelService addHref(UriInfo uriInfo, MlModelService service) {

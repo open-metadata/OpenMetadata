@@ -23,14 +23,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -171,7 +171,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void postDelete(App entity) {
+  protected void postDelete(App entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Delete the status stored in the app extension
     // Note that we don't want to delete the LIMITS, since we want to keep them
     // between different app installations
@@ -201,7 +202,12 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
-    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public AppRunRecord getLatestAppRuns(App app, UUID service) {
+    return getLatestExtensionById(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
@@ -350,11 +356,11 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public <T> T getLatestExtensionById(
-      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
+            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }

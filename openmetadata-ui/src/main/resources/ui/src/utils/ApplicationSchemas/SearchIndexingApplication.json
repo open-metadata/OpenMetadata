@@ -96,7 +96,7 @@
           "databaseService",
           "dashboardService",
           "query",
-          "queryCostResult",
+          "queryCostRecord",
           "apiService",
           "searchIndex",
           "testCaseResult",
@@ -134,8 +134,14 @@
       "title": "Search Index Language",
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "type": "string",
-      "enum": ["EN", "JP", "ZH"],
+      "enum": ["EN", "JP", "RU", "ZH"],
       "default": "EN"
+    },
+    "autoTune": {
+      "title": "Auto Tune",
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

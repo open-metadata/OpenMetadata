@@ -14,15 +14,9 @@
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -42,7 +36,7 @@ function TableSummary({
 }: Readonly<TableSummaryProps>) {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
@@ -75,7 +69,7 @@ function TableSummary({
   };
 
   const handleDqRedirection = () => {
-    history.push({
+    navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         tableDetails.fullyQualifiedName ?? '',

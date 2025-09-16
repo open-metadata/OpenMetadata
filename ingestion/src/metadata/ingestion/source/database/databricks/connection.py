@@ -48,6 +48,79 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+class DatabricksEngineWrapper:
+    """Wrapper to store engine and schemas to avoid multiple calls"""
+
+    def __init__(self, engine: Engine):
+        self.engine = engine
+        self.inspector = inspect(engine)
+        self.schemas = None
+        self.first_schema = None
+        self.first_catalog = None
+
+    def get_schemas(self, schema_name: Optional[str] = None):
+        """Get schemas and cache them"""
+        if schema_name is not None:
+            with self.engine.connect() as connection:
+                connection.execute(f"USE CATALOG `{self.first_catalog}`")
+            self.first_schema = schema_name
+            return [schema_name]
+        if self.schemas is None:
+            self.schemas = self.inspector.get_schema_names(database=self.first_catalog)
+            if self.schemas:
+                # Find the first schema that's not a system schema
+                for schema in self.schemas:
+                    if schema.lower() not in (
+                        "information_schema",
+                        "performance_schema",
+                        "sys",
+                    ):
+                        self.first_schema = schema
+                        break
+                # If no non-system schema found, use the first one
+                if self.first_schema is None and self.schemas:
+                    self.first_schema = self.schemas[0]
+        return self.schemas
+
+    def get_tables(self):
+        """Get tables using the cached first schema"""
+        if self.first_schema is None:
+            self.get_schemas()  # This will set first_schema
+        if self.first_schema:
+            with self.engine.connect() as connection:
+                tables = connection.execute(
+                    f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"
+                )
+            return tables
+        return []
+
+    def get_views(self):
+        """Get views using the cached first schema"""
+        if self.first_schema is None:
+            self.get_schemas()  # This will set first_schema
+        if self.first_schema:
+            with self.engine.connect() as connection:
+                views = connection.execute(
+                    f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"
+                )
+            return views
+        return []
+
+    def get_catalogs(self, catalog_name: Optional[str] = None):
+        """Get catalogs"""
+        catalogs = []
+        if catalog_name is not None:
+            self.first_catalog = catalog_name
+            return [catalog_name]
+        with self.engine.connect() as connection:
+            catalogs = connection.execute(DATABRICKS_GET_CATALOGS).fetchall()
+            for catalog in catalogs:
+                if catalog[0] != "__databricks_internal":
+                    self.first_catalog = catalog[0]
+                    break
+        return catalogs
+
+
 def get_connection_url(connection: DatabricksConnection) -> str:
     url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
     return url
@@ -94,16 +167,18 @@ def test_connection(
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
-    inspector = inspect(connection)
+    # Create wrapper to avoid multiple schema calls
+    engine_wrapper = DatabricksEngineWrapper(connection)
+
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
-        "GetSchemas": inspector.get_schema_names,
-        "GetTables": inspector.get_table_names,
-        "GetViews": inspector.get_view_names,
+        "GetSchemas": partial(
+            engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema
+        ),
+        "GetTables": engine_wrapper.get_tables,
+        "GetViews": engine_wrapper.get_views,
         "GetDatabases": partial(
-            test_database_query,
-            engine=connection,
-            statement=DATABRICKS_GET_CATALOGS,
+            engine_wrapper.get_catalogs, catalog_name=service_connection.catalog
         ),
         "GetQueries": partial(
             test_database_query,

@@ -13,7 +13,6 @@
 import { FieldProps } from '@rjsf/utils';
 import { Form, Switch } from 'antd';
 import { startCase } from 'lodash';
-import React from 'react';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
   return (

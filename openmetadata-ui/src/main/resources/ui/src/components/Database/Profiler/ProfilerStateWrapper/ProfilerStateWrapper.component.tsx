@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Typography } from 'antd';
-import React from 'react';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 import { ProfilerStateWrapperProps } from './ProfilerStateWrapper.interface';
 

@@ -13,10 +13,7 @@ Workflow definition for the profiler
 """
 
 from metadata.ingestion.api.steps import Processor, Sink
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
@@ -75,9 +72,7 @@ class ProfilerWorkflow(IngestionWorkflow):
             service_config = self.config.source.serviceConnection.root.config
             conn = get_ssl_connection(service_config)
 
-            test_connection_fn = get_test_connection_fn(service_config)
-            result = test_connection_fn(self.metadata, conn, service_config)
-            raise_test_connection_exception(result)
+            test_connection_common(self.metadata, conn, service_config)
 
         return main(self)
 

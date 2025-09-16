@@ -75,16 +75,22 @@
     color: @primary-heading-color;
     max-width: 200px;
   }
-  .owner-label-container {
+  .owner-label-container,
+  .domain-label-container {
     max-width: 148px;
   }
-  .domain-link-text.render-domain-lebel-style {
-    color: @grey-700;
-    display: inline-block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .domain-link-container {
+    //consistent width for data-asset-header
     max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      color: @grey-700;
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
   }
   a.source-url-link {
     text-decoration: none;
@@ -120,6 +126,40 @@
   .tier-heading-container {
     svg {
       fill: @de-active-color;
+    }
+  }
+
+  .ant-btn-group.spaced {
+    .ant-btn.ant-btn-default.data-contract-latest-result-button {
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0px 2px 2px -1px @grey-35, 0px 4px 6px -2px @grey-35,
+        0px 12px 16px -4px @grey-35;
+
+      svg {
+        font-size: 26px;
+        fill: transparent;
+      }
+
+      &.failed {
+        color: @red-14;
+        border: 1px solid @red-19;
+        background-color: @red-9;
+      }
+
+      &.aborted {
+        color: @orange-7;
+        border: 1px solid @orange-200;
+        background-color: @orange-50;
+      }
+
+      &.running {
+        color: @primary-7;
+        border: 1px solid @blue-39;
+        background-color: @blue-33;
+      }
     }
   }
 }

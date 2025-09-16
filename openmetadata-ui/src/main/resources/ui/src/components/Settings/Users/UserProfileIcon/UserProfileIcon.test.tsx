@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getImageWithResolutionAndFallback } from '../../../../utils/ProfilerUtils';
@@ -19,11 +18,12 @@ import { mockPersonaData, mockUserData } from '../mocks/User.mocks';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
 const mockLogout = jest.fn();
+const mockSetCurrentUser = jest.fn();
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     selectedPersona: {},
-    setSelectedPersona: jest.fn(),
+    setCurrentUser: mockSetCurrentUser,
     onLogoutHandler: mockLogout,
     currentUser: mockUserData,
   })),
@@ -44,6 +44,14 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<div>ProfilePicture</div>)
 );
 
+jest.mock('../../../../rest/userAPI', () => ({
+  updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('fast-json-patch', () => ({
+  compare: jest.fn().mockImplementation(() => []),
+}));
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -53,6 +61,10 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('UserProfileIcon', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render User Profile Icon', () => {
     const { getByTestId } = render(<UserProfileIcon />);
 
@@ -93,7 +105,8 @@ describe('UserProfileIcon', () => {
         id: '3362fe18-05ad-4457-9632-84f22887dda6',
         type: 'team',
       },
-      setSelectedPersona: jest.fn(),
+      setCurrentUser: mockSetCurrentUser,
+      currentUser: mockUserData,
     }));
     const { getByTestId } = render(<UserProfileIcon />);
 
@@ -104,7 +117,14 @@ describe('UserProfileIcon', () => {
     (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: { ...mockUserData, teams: [] },
       onLogoutHandler: mockLogout,
+      setCurrentUser: mockSetCurrentUser,
+      selectedPersona: {},
     }));
+
+    await act(async () => {
+      render(<UserProfileIcon />);
+    });
+
     const teamLabels = screen.queryAllByText('label.team-plural');
 
     teamLabels.forEach((label) => {
@@ -123,13 +143,15 @@ describe('UserProfileIcon', () => {
         id: '0430976d-092a-46c9-90a8-61c6091a6f38',
         type: 'persona',
       },
-      setSelectedPersona: jest.fn(),
+      setCurrentUser: mockSetCurrentUser,
     }));
 
     const { getByTestId } = render(<UserProfileIcon />);
+
     await act(async () => {
-      userEvent.click(getByTestId('dropdown-profile'));
+      fireEvent.click(getByTestId('dropdown-profile'));
     });
+
     await act(async () => {
       fireEvent.click(getByTestId('persona-label'));
     });
@@ -137,7 +159,7 @@ describe('UserProfileIcon', () => {
     expect(getByTestId('check-outlined')).toBeInTheDocument();
   });
 
-  it('should not show checked if selected persona is true', async () => {
+  it('should not show checked if selected persona is false', async () => {
     (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: {
         ...mockUserData,
@@ -148,13 +170,15 @@ describe('UserProfileIcon', () => {
         id: 'test',
         type: 'persona',
       },
-      setSelectedPersona: jest.fn(),
+      setCurrentUser: mockSetCurrentUser,
     }));
 
     const { getByTestId, queryByTestId } = render(<UserProfileIcon />);
+
     await act(async () => {
-      userEvent.click(getByTestId('dropdown-profile'));
+      fireEvent.click(getByTestId('dropdown-profile'));
     });
+
     await act(async () => {
       fireEvent.click(getByTestId('persona-label'));
     });

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
@@ -51,6 +50,11 @@ jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../../utils/EntityLink', () => ({

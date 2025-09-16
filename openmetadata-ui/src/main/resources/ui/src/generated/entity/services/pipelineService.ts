@@ -37,9 +37,9 @@ export interface PipelineService {
      */
     displayName?: string;
     /**
-     * Domain the Pipeline service belongs to.
+     * Domains the Pipeline service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -172,7 +172,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -216,8 +216,10 @@ export interface PipelineConnection {
  * Azure Data Factory Connection Config
  *
  * Stitch Connection
+ *
+ * Snowplow Pipeline Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
@@ -278,6 +280,8 @@ export interface ConfigClass {
     username?: string;
     /**
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -347,6 +351,10 @@ export interface ConfigClass {
      */
     sourcePythonClass?:   string;
     connectionArguments?: { [key: string]: any };
+    /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
     /**
      * Databricks compute resources URL.
      */
@@ -436,6 +444,27 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
+    /**
+     * Snowplow BDP Organization ID
+     */
+    organizationId?: string;
+    [property: string]: any;
 }
 
 /**
@@ -498,6 +527,15 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
 }
 
 /**
@@ -930,6 +968,16 @@ export enum MssqlType {
 }
 
 /**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
+}
+
+/**
  * We support username/password or client certificate authentication
  *
  * Configuration for connecting to Nifi Basic Auth.
@@ -1063,6 +1111,7 @@ export enum PipelineServiceType {
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",
@@ -1091,8 +1140,6 @@ export enum VerifySSL {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Pipeline service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */

@@ -24,13 +24,13 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResults";
@@ -74,8 +74,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             TestCaseResult.class);
-    return new ResultList<>(
-        testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+    return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
   }
 
   public Response addTestCaseResult(
@@ -127,8 +126,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   @Override
-  protected void postDelete(TestCaseResult entity) {
-    super.postDelete(entity);
+  protected void postDelete(TestCaseResult entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
@@ -155,7 +154,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
-      postDelete(storedTestCaseResult);
+      postDelete(storedTestCaseResult, true); // Hard delete for specific timestamp
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(
@@ -232,6 +231,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             ? testCase.getTestSuites().stream().map(TestSuite::getFullyQualifiedName).toList()
             : null;
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository();
+    DataContractRepository dataContractRepository =
+        (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
     if (fqns != null) {
       for (String fqn : fqns) {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
@@ -248,13 +249,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                       s.setStatus(testCase.getTestCaseStatus());
                       s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
                     },
-                    () -> {
-                      resultSummaries.add(
-                          new ResultSummary()
-                              .withTestCaseName(testCase.getFullyQualifiedName())
-                              .withStatus(testCase.getTestCaseStatus())
-                              .withTimestamp(testCase.getTestCaseResult().getTimestamp()));
-                    });
+                    () ->
+                        resultSummaries.add(
+                            new ResultSummary()
+                                .withTestCaseName(testCase.getFullyQualifiedName())
+                                .withStatus(testCase.getTestCaseStatus())
+                                .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           } else {
             testSuite.setTestCaseResultSummary(
                 List.of(
@@ -267,6 +267,10 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
               testSuiteRepository.getUpdater(
                   original, testSuite, EntityRepository.Operation.PATCH, null);
           entityUpdater.update();
+          // Propagate test results to the data contract if it exists
+          if (testSuite.getDataContract() != null) {
+            dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+          }
         }
       }
     }

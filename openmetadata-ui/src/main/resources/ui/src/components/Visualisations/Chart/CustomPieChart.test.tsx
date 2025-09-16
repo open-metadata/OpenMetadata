@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import React from 'react';
-import { CHART_BASE_SIZE } from '../../../constants/Chart.constants';
+import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';
 
@@ -66,12 +65,11 @@ describe('CustomPieChart', () => {
     const { container } = render(
       <CustomPieChart data={mockData} name="test-chart" />
     );
-    const responsiveContainer = container.querySelector(
-      'div.recharts-responsive-container'
-    );
+    const pieChart = container.querySelector('.recharts-wrapper');
 
-    expect(responsiveContainer).toHaveStyle(`height: ${CHART_BASE_SIZE}px`);
-    expect(responsiveContainer).toHaveStyle(`width: ${CHART_BASE_SIZE}px`);
+    expect(pieChart).toBeInTheDocument();
+    expect(pieChart).toHaveStyle(`height: ${CHART_SMALL_SIZE}px`);
+    expect(pieChart).toHaveStyle(`width: ${CHART_SMALL_SIZE}px`);
   });
 
   it('applies the correct fill color to the cells', () => {
@@ -82,5 +80,86 @@ describe('CustomPieChart', () => {
     cells.forEach((cell, index) => {
       expect(cell).toHaveAttribute('fill', mockData[index].color);
     });
+  });
+
+  it('renders legends when showLegends is true', () => {
+    const { getByText, getAllByText, container } = render(
+      <CustomPieChart showLegends data={mockData} name="test-chart" />
+    );
+
+    // Check that all legend items are rendered
+    mockData.forEach((item) => {
+      expect(getByText(item.name)).toBeInTheDocument();
+
+      // Use getAllByText for values since some values might appear multiple times
+      const valueElements = getAllByText(item.value.toString());
+
+      expect(valueElements.length).toBeGreaterThan(0);
+    });
+
+    // Check that legend dots are rendered with correct colors
+    const legendDots = container.querySelectorAll('.legend-dot');
+
+    expect(legendDots).toHaveLength(mockData.length);
+
+    legendDots.forEach((dot, index) => {
+      expect(dot).toHaveStyle(`background-color: ${mockData[index].color}`);
+    });
+  });
+
+  it('does not render legends when showLegends is false or undefined', () => {
+    const { container: containerFalse } = render(
+      <CustomPieChart data={mockData} name="test-chart" showLegends={false} />
+    );
+
+    const { container: containerUndefined } = render(
+      <CustomPieChart data={mockData} name="test-chart" />
+    );
+
+    // Check that no legend dots are rendered
+    expect(containerFalse.querySelectorAll('.legend-dot')).toHaveLength(0);
+    expect(containerUndefined.querySelectorAll('.legend-dot')).toHaveLength(0);
+  });
+
+  it('renders tooltip component', () => {
+    const { container } = render(
+      <CustomPieChart data={mockData} name="test-chart" />
+    );
+
+    // Check that tooltip is rendered
+    const tooltip = container.querySelector('.recharts-tooltip-wrapper');
+
+    expect(tooltip).toBeInTheDocument();
+  });
+
+  it('applies correct chart ID', () => {
+    const chartName = 'test-chart';
+    const { container } = render(
+      <CustomPieChart data={mockData} name={chartName} />
+    );
+
+    const pieChart = container.querySelector(`#${chartName}-pie-chart`);
+
+    expect(pieChart).toBeInTheDocument();
+  });
+
+  it('renders multiple pie components for layered effect', () => {
+    const { container } = render(
+      <CustomPieChart data={mockData} name="test-chart" />
+    );
+
+    // Should have two pie components (background and data)
+    const pieComponents = container.querySelectorAll('.recharts-pie');
+
+    expect(pieComponents).toHaveLength(2);
+  });
+
+  it('handles empty data gracefully', () => {
+    const { container } = render(
+      <CustomPieChart data={[]} name="test-chart" />
+    );
+
+    expect(container.querySelector('.custom-pie-chart')).toBeInTheDocument();
+    expect(container.querySelector('.recharts-wrapper')).toBeInTheDocument();
   });
 });

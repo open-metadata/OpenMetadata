@@ -15,9 +15,10 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -25,6 +26,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -45,22 +47,22 @@ import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
+import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
-import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
-
-import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
-import './incident-manager.less';
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
@@ -73,7 +75,7 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useRequiredParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
   const {
     setActiveThread,
@@ -231,11 +233,19 @@ const IncidentManagerPageHeader = ({
         }
       : {
           hasEditStatusPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditStatus,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditStatus
+            ),
           hasEditOwnerPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditOwners,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditOwners
+            ),
         };
-  }, [testCasePermission, isVersionPage]);
+  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {

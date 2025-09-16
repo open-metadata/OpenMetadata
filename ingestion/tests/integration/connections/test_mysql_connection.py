@@ -45,4 +45,4 @@ def test_test_connection(metadata, mysql_container):
     assert isinstance(engine, Engine)
 
     _test_connection_fn = get_test_connection_fn(service_connection)
-    _test_connection_fn(metadata, engine, service_connection)
+    _test_connection_fn(metadata)

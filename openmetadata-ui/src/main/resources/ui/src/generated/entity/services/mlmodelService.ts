@@ -37,9 +37,9 @@ export interface MlmodelService {
      */
     displayName?: string;
     /**
-     * Domain the MLModel service belongs to.
+     * Domains the MLModel service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -222,6 +222,7 @@ export interface Connection {
      * location/region of google cloud project
      */
     location?: string;
+    [property: string]: any;
 }
 
 /**
@@ -436,8 +437,6 @@ export enum MlModelServiceType {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the MLModel service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */

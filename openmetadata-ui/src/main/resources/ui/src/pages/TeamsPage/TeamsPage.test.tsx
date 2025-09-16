@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 
 import { act, render, screen } from '@testing-library/react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -23,6 +22,10 @@ import { searchData } from '../../rest/miscAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TeamsPage from './TeamsPage';
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
 
 jest.mock('./AddTeamForm', () => {
   return jest.fn().mockImplementation(() => <p>AddTeamForm</p>);

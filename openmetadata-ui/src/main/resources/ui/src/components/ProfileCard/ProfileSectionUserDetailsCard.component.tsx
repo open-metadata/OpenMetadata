@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Popover, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
-import { isMaskedEmail } from '../../utils/Users.util';
+import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
 
 import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
@@ -88,6 +88,10 @@ const ProfileSectionUserDetailsCard = ({
     [isAuthProviderBasic, hasEditPermission]
   );
 
+  const onlineStatus = useMemo(() => {
+    return getUserOnlineStatus(userData, false);
+  }, [userData]);
+
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
       setIsLoading(true);
@@ -153,7 +157,9 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-name')}
+            {t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}
           </Typography.Text>
         </Button>
       )}
@@ -239,7 +245,7 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <UserPopOverCard userName={getEntityName(userData)}>
+        <UserPopOverCard userName={userData?.name}>
           <div className="d-flex items-center">
             <ProfilePicture
               data-testid="replied-user"
@@ -249,11 +255,20 @@ const ProfileSectionUserDetailsCard = ({
           </div>
         </UserPopOverCard>
       </div>
-      <div>
+      <div className="d-flex flex-col items-center">
         <p className="profile-details-title" data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
+        {onlineStatus && (
+          <div className="m-t-sm">
+            <Badge
+              data-testid="user-online-status"
+              status={onlineStatus.status}
+              text={onlineStatus.text}
+            />
+          </div>
+        )}
       </div>
       {showChangePasswordComponent && (
         <ChangePasswordForm
@@ -279,16 +294,9 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-name')}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
           updateUserDetails={updateUserDetails}
           userData={userData}
-          value={userData.description as string}
-          visible={Boolean(editProfile)}
-          onCancel={() => setEditProfile(false)}
-          onSave={handleModalClose}
+          onCancel={handleModalClose}
         />
       )}
       {userData.deleted && (

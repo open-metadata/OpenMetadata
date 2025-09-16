@@ -17,7 +17,7 @@ import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
@@ -44,7 +44,13 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
+  getExpandAllKeysToDepth,
+  getSafeExpandAllKeys,
+  getSchemaDepth,
+  getSchemaFieldCount,
   getTableExpandableConfig,
+  isLargeSchema,
+  shouldCollapseSchema,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
@@ -129,6 +135,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   }, [messageSchema?.schemaFields]);
 
+  const schemaStats = useMemo(() => {
+    const fields = messageSchema?.schemaFields ?? [];
+
+    return {
+      totalFields: getSchemaFieldCount(fields),
+      maxDepth: getSchemaDepth(fields),
+      isLargeSchema: isLargeSchema(fields),
+      shouldCollapse: shouldCollapseSchema(fields),
+    };
+  }, [messageSchema?.schemaFields]);
+
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
@@ -161,7 +178,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
-      setExpandedRowKeys(schemaAllRowKeys);
+      const safeKeys = getSafeExpandAllKeys(
+        messageSchema?.schemaFields ?? [],
+        schemaStats.isLargeSchema,
+        schemaAllRowKeys
+      );
+      setExpandedRowKeys(safeKeys);
     } else {
       setExpandedRowKeys([]);
     }
@@ -172,7 +194,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: unknown, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
@@ -212,13 +234,64 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     >;
   }, [messageSchema?.schemaFields]);
 
+  const renderDescription = useCallback(
+    (_: string, record: Field, index: number) => (
+      <TableDescription
+        columnData={{
+          fqn: record.fullyQualifiedName ?? '',
+          field: record.description,
+        }}
+        entityFqn={entityFqn}
+        entityType={EntityType.TOPIC}
+        hasEditPermission={hasDescriptionEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        onClick={() => setEditFieldDescription(record)}
+      />
+    ),
+    [entityFqn, hasDescriptionEditAccess, isReadOnly]
+  );
+
+  const renderClassificationTags = useCallback(
+    (tags: TagLabel[], record: Field, index: number) => (
+      <TableTags<Field>
+        entityFqn={entityFqn}
+        entityType={EntityType.TOPIC}
+        handleTagSelection={handleFieldTagsChange}
+        hasTagEditAccess={hasTagEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        record={record}
+        tags={tags}
+        type={TagSource.Classification}
+      />
+    ),
+    [entityFqn, handleFieldTagsChange, hasTagEditAccess, isReadOnly]
+  );
+
+  const renderGlossaryTags = useCallback(
+    (tags: TagLabel[], record: Field, index: number) => (
+      <TableTags<Field>
+        entityFqn={entityFqn}
+        entityType={EntityType.TOPIC}
+        handleTagSelection={handleFieldTagsChange}
+        hasTagEditAccess={hasGlossaryTermEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        record={record}
+        tags={tags}
+        type={TagSource.Glossary}
+      />
+    ),
+    [entityFqn, handleFieldTagsChange, hasGlossaryTermEditAccess, isReadOnly]
+  );
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
         render: renderSchemaName,
@@ -236,41 +309,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
-        render: (_, record, index) => (
-          <TableDescription
-            columnData={{
-              fqn: record.fullyQualifiedName ?? '',
-              field: record.description,
-            }}
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            hasEditPermission={hasDescriptionEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            onClick={() => setEditFieldDescription(record)}
-          />
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
-        render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags<Field>
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Classification}
-          />
-        ),
+        render: renderClassificationTags,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -279,42 +326,41 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
-        render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags<Field>
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasGlossaryTermEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Glossary}
-          />
-        ),
+        render: renderGlossaryTags,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
       },
     ],
     [
-      isReadOnly,
-      messageSchema,
-      hasTagEditAccess,
-      editFieldDescription,
-      hasDescriptionEditAccess,
-      handleFieldTagsChange,
+      t,
       renderSchemaName,
       renderDataType,
+      renderDescription,
+      renderClassificationTags,
+      renderGlossaryTags,
+      tagFilter,
     ]
   );
 
   useEffect(() => {
-    setExpandedRowKeys(schemaAllRowKeys);
-  }, []);
+    const fields = messageSchema?.schemaFields ?? [];
+
+    if (schemaStats.shouldCollapse) {
+      // For large schemas, expand only 2 levels deep for better performance
+      const optimalKeys = getExpandAllKeysToDepth(fields, 2);
+      setExpandedRowKeys(optimalKeys);
+    } else {
+      // For small schemas, expand all for better UX
+      setExpandedRowKeys(schemaAllRowKeys);
+    }
+  }, [
+    schemaStats.shouldCollapse,
+    schemaAllRowKeys,
+    messageSchema?.schemaFields,
+  ]);
 
   return (
     <Row gutter={[16, 16]}>

@@ -12,10 +12,9 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
-import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -50,9 +49,7 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
-  useHistory: jest.fn().mockImplementation(() => ({
-    replace: jest.fn(),
-  })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -74,7 +71,7 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 jest.mock('../../rest/incidentManagerAPI', () => ({
-  getListTestCaseIncidentStatus: jest
+  getListTestCaseIncidentStatusFromSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
   updateTestCaseIncidentById: jest.fn(),
@@ -138,7 +135,7 @@ describe('IncidentManagerPage', () => {
 
   it('Incident should be fetch with updated time', async () => {
     const mockGetListTestCaseIncidentStatus =
-      getListTestCaseIncidentStatus as jest.Mock;
+      getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager />);
     });
@@ -160,7 +157,7 @@ describe('IncidentManagerPage', () => {
 
   it('Incident should be fetch with deleted', async () => {
     const mockGetListTestCaseIncidentStatus =
-      getListTestCaseIncidentStatus as jest.Mock;
+      getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager tableDetails={{ deleted: true } as Table} />);
     });

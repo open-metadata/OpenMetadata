@@ -12,7 +12,6 @@
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestIndicatorProps } from '../../Database/Profiler/TableProfiler/TableProfiler.interface';
 import TestIndicator from './TestIndicator';

@@ -14,7 +14,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
@@ -24,6 +24,7 @@ import { MetadataServiceType } from '../../../../generated/entity/services/metad
 import { MlModelServiceType } from '../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../../../../generated/entity/services/securityService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
 import {
   ConfigData,
@@ -120,6 +121,14 @@ const ServiceConnectionDetails = ({
         setSchema(
           serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType)
             .schema
+        );
+
+        break;
+      case EntityType.SECURITY_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getSecurityServiceConfig(
+            serviceFQN as SecurityServiceType
+          ).schema
         );
 
         break;

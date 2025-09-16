@@ -135,8 +135,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       );
       await page.click('[data-testid="incident"]');
       await incidentDetails;
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await page.waitForSelector('.ant-skeleton-content', {
+        state: 'detached',
+      });
+
+      await page.locator('role=button[name="down"]').scrollIntoViewIfNeeded();
+      await page.waitForSelector('role=button[name="down"]', {
+        state: 'visible',
+      });
 
       await page.getByRole('button', { name: 'down' }).click();
+      // there is no API call to wait for here, so adding a small timeout
+      await page.waitForTimeout(1000);
       await page.waitForSelector('role=menuitem[name="Reassign"]', {
         state: 'visible',
       });
@@ -154,7 +168,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateAssignee = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await updateAssignee;
     });
@@ -216,7 +230,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateIncident = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       await updateIncident;
     });
   });
@@ -247,14 +261,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
       await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
         'Ack'
       );
 
       const incidentDetailsRes = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
       );
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
       await incidentDetailsRes;
@@ -277,7 +291,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateTestCaseIncidentStatus = page.waitForResponse(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
       );
-      await page.click('.ant-modal-footer >> text=Submit');
+      await page.click('.ant-modal-footer >> text=Save');
       await updateTestCaseIncidentStatus;
     });
 
@@ -293,8 +307,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
 
       await page.click(
         `[data-testid="${testCaseName}"] >> text=${testCaseName}`
@@ -389,8 +403,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await testCaseResponse;
 
       await expect(
-        page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
-      ).toBeVisible();
+        page.locator(`[data-testid="status-badge-${testCaseName}"]`)
+      ).toContainText('Failed');
       await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
         'Assigned'
       );
@@ -402,7 +416,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await visitProfilerTab(page, table1);
 
     const incidentListResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
     await page
@@ -436,7 +450,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(page.getByTestId('Incidents-value')).toContainText('3');
 
     const incidentResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
     await page.getByTestId('Incidents-value').click();
     await incidentResponse;
@@ -456,7 +470,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
@@ -472,7 +486,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await searchUserResponse;
 
     const assigneeFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*assignee=${assigneeTestCase.username}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
     );
     await page.click(`[data-testid="${assigneeTestCase.username}"]`);
     await assigneeFilterRes;
@@ -485,7 +499,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeVisible();
 
     const nonAssigneeFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
     await page
       .getByTestId('select-assignee')
@@ -495,7 +509,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click(`[data-testid="status-select"]`);
     const statusFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*testCaseResolutionStatusType=Assigned*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseResolutionStatusType=Assigned*'
     );
     await page.click(`[title="Assigned"]`);
     await statusFilterRes;
@@ -508,7 +522,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeVisible();
 
     const nonStatusFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
     await page.getByTestId('status-select').getByLabel('close-circle').click();
     await nonStatusFilterRes;
@@ -521,7 +535,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*testCaseFQN=*${testCase1}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;
@@ -534,7 +548,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).toBeVisible();
 
     const nonTestCaseFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
     await page
       .getByTestId('test-case-select')
@@ -544,7 +558,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="date-picker-menu"]');
     const timeSeriesFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?*'
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
     await page.getByRole('menuitem', { name: 'Yesterday' }).click();
     await timeSeriesFilterRes;

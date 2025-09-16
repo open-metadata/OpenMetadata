@@ -36,9 +36,9 @@ export interface SearchService {
      */
     displayName?: string;
     /**
-     * Domain the search service belongs to.
+     * Domains the search service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -171,7 +171,7 @@ export interface FieldChange {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -182,7 +182,7 @@ export interface SearchConnection {
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Choose Auth Config Type.
      */
@@ -218,6 +218,7 @@ export interface ConfigClass {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**
@@ -395,8 +396,6 @@ export enum VerifySSL {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the search service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */

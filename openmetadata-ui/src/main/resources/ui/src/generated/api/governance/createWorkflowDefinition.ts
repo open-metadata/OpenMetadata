@@ -106,7 +106,7 @@ export interface NodeConfiguration {
     /**
      * Choose which Status to apply to the Glossary Term
      */
-    glossaryTermStatus?: Status;
+    glossaryTermStatus?: EntityStatus;
     /**
      * Choose which Certification to apply to the Data Asset
      */
@@ -140,8 +140,11 @@ export enum CertificationEnum {
 
 /**
  * Choose which Status to apply to the Glossary Term
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export enum Status {
+export enum EntityStatus {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
@@ -235,6 +238,12 @@ export interface TriggerConfiguration {
      */
     exclude?: string[];
     /**
+     * JSON Logic expression to determine if the workflow should be triggered. The expression
+     * has access to: entity (current entity), changeDescription (what changed), updatedBy (user
+     * who made the change), changedFields (array of field names that changed).
+     */
+    filter?: string;
+    /**
      * Number of Entities to process at once.
      */
     batchSize?: number;
@@ -269,7 +278,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",

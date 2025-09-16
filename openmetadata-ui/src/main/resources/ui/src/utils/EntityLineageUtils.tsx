@@ -11,14 +11,26 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import Icon, { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
+import { Typography } from 'antd';
+import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { t } from 'i18next';
-import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+
+import {
+  get,
+  isEmpty,
+  isEqual,
+  isNil,
+  isUndefined,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
-import React, { MouseEvent as ReactMouseEvent } from 'react';
+import { MouseEvent as ReactMouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -56,8 +68,10 @@ import {
   NodeData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
   LINEAGE_EXPORT_HEADERS,
+  LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_TRANSITION_DURATION,
@@ -84,9 +98,12 @@ import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
+import entityUtilClassBase from '../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -270,12 +287,15 @@ export const getELKLayoutedElements = async (
       return {
         ...node,
         position: { x: layoutedNode?.x ?? 0, y: layoutedNode?.y ?? 0 },
+        // layoutedNode contains the total height of the node including the children height
+        // Needed to calculate the bounds height of the nodes in the export
+        height: layoutedNode?.height ?? node.height,
         hidden: false,
       };
     });
 
     return { nodes: updatedNodes, edges: edges ?? [] };
-  } catch (error) {
+  } catch {
     return { nodes: [], edges: [] };
   }
 };
@@ -839,6 +859,7 @@ export const createEdgesAndEdgeMaps = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
   entityFqn: string,
+  isColumnLayerActive: boolean,
   hidden?: boolean
 ) => {
   const lineageEdgesV1: Edge[] = [];
@@ -851,10 +872,6 @@ export const createEdgesAndEdgeMaps = (
     const sourceId = edge.fromEntity.id;
     const targetId = edge.toEntity.id;
 
-    // Update edge maps for fast lookup
-    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
-    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
-
     const sourceType = nodes.find((n) => sourceId === n.id);
     const targetType = nodes.find((n) => targetId === n.id);
 
@@ -862,7 +879,11 @@ export const createEdgesAndEdgeMaps = (
       return;
     }
 
-    if (!isUndefined(edge.columns)) {
+    // Update edge maps for fast lookup
+    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
+    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
+
+    if (!isUndefined(edge.columns) && isColumnLayerActive) {
       edge.columns?.forEach((e) => {
         const toColumn = e.toColumn ?? '';
         if (toColumn && e.fromColumns?.length) {
@@ -1121,8 +1142,14 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      stack.push(...childNodes);
-      outgoers.push(...childNodes);
+      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
+      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
+      const finalChildNodeRemovingRootNode = childNodes.filter(
+        (item) => !item.data.isRootNode
+      );
+
+      stack.push(...finalChildNodeRemovingRootNode);
+      outgoers.push(...finalChildNodeRemovingRootNode);
       connectedEdges.push(...childEdges);
     }
   }
@@ -1133,7 +1160,7 @@ export const getConnectedNodesEdges = (
 
   return {
     nodes: outgoers,
-    edges: connectedEdges,
+    edges: uniqWith(connectedEdges, isEqual),
     nodeFqn: childNodeFqn,
   };
 };
@@ -1263,7 +1290,7 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType = '',
     direction = '',
     owners,
-    domain,
+    domains,
     tier,
     tags = [],
     depth = '',
@@ -1287,7 +1314,8 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType,
     direction,
     owners: owners?.map((owner) => getEntityName(owner) ?? '').join(',') ?? '',
-    domain: domain?.fullyQualifiedName ?? '',
+    domains:
+      domains?.map((domain) => domain.fullyQualifiedName ?? '').join(',') ?? '',
     tags: classificationTags.join(', '),
     tier: (tier as EntityTags)?.tagFQN ?? '',
     glossaryTerms: glossaryTerms.join(', '),
@@ -1405,10 +1433,20 @@ const processNodeArray = (
   return Object.values(nodes)
     .map((node: NodeData) => ({
       ...node.entity,
-      paging: node.paging,
-      expandPerformed:
-        (node.entity as LineageEntityReference).expandPerformed ||
-        node.entity.fullyQualifiedName === entityFqn,
+      paging: {
+        entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
+        entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
+      },
+      upstreamExpandPerformed:
+        (node.entity as LineageEntityReference).upstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).upstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
+      downstreamExpandPerformed:
+        (node.entity as LineageEntityReference).downstreamExpandPerformed !==
+        undefined
+          ? (node.entity as LineageEntityReference).downstreamExpandPerformed
+          : node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
 };
@@ -1509,7 +1547,8 @@ const processPagination = (
 
 export const parseLineageData = (
   data: LineageData,
-  entityFqn: string
+  entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
+  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1518,7 +1557,8 @@ export const parseLineageData = (
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
   // Process nodes
-  const nodesArray = processNodeArray(nodes, entityFqn);
+  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+
   const processedNodes: LineageEntityReference[] = [...nodesArray];
 
   // Process edges
@@ -1708,10 +1748,16 @@ export const getNodesBoundsReactFlow = (nodes: Node[]) => {
 
   nodes.forEach((node) => {
     const { x, y } = node.position;
-    bounds.xMin = Math.min(bounds.xMin, x);
-    bounds.yMin = Math.min(bounds.yMin, y);
-    bounds.xMax = Math.max(bounds.xMax, x + (node.width ?? 0));
-    bounds.yMax = Math.max(bounds.yMax, y + (node.height ?? 0));
+    const width = node.width ?? 0;
+    const height = node.height ?? 0;
+
+    // Add padding to ensure nodes are fully visible
+    const padding = 20;
+
+    bounds.xMin = Math.min(bounds.xMin, x - padding);
+    bounds.yMin = Math.min(bounds.yMin, y - padding);
+    bounds.xMax = Math.max(bounds.xMax, x + width + padding);
+    bounds.yMax = Math.max(bounds.yMax, y + height + padding);
   });
 
   return bounds;
@@ -1727,13 +1773,23 @@ export const getViewportForBoundsReactFlow = (
   const width = bounds.xMax - bounds.xMin;
   const height = bounds.yMax - bounds.yMin;
 
-  // Scale the image to fit the container
+  // Add extra padding to ensure content is fully visible
+  const padding = 20;
+  const paddedWidth = width + padding * 2;
+  const paddedHeight = height + padding * 2;
+
+  // Scale the image to fit the container while maintaining aspect ratio
   const scale =
-    Math.min(imageWidth / width, imageHeight / height) * scaleFactor;
+    Math.min(
+      (imageWidth - padding * 2) / paddedWidth,
+      (imageHeight - padding * 2) / paddedHeight
+    ) * scaleFactor;
 
   // Calculate translation to center the flow
-  const translateX = (imageWidth - width * scale) / 2 - bounds.xMin * scale;
-  const translateY = (imageHeight - height * scale) / 2 - bounds.yMin * scale;
+  const translateX =
+    (imageWidth - paddedWidth * scale) / 2 - bounds.xMin * scale;
+  const translateY =
+    (imageHeight - paddedHeight * scale) / 2 - bounds.yMin * scale;
 
   return { x: translateX, y: translateY, zoom: scale };
 };
@@ -1749,8 +1805,13 @@ export const getViewportForLineageExport = (
 
   const nodesBounds = getNodesBoundsReactFlow(nodes);
 
-  // Calculate the viewport to fit all nodes
-  return getViewportForBoundsReactFlow(nodesBounds, imageWidth, imageHeight);
+  // Calculate the viewport to fit all nodes with padding
+  return getViewportForBoundsReactFlow(
+    nodesBounds,
+    imageWidth,
+    imageHeight,
+    0.9
+  ); // Scale down slightly to ensure padding
 };
 
 export const getLineageEntityExclusionFilter = () => {
@@ -1771,6 +1832,11 @@ export const getLineageEntityExclusionFilter = () => {
           {
             term: {
               entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
             },
           },
         ],
@@ -1827,4 +1893,158 @@ export const getAllDownstreamEdges = (
 
   // Combine direct and nested downstream edges
   return [...directDownstreamEdges, ...nestedDownstreamEdges];
+};
+
+const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
+  // Field groups we want to combine
+  const FROM_FIELDS = ['fromEntityFQN', 'fromServiceName', 'fromServiceType'];
+  const TO_FIELDS = ['toEntityFQN', 'toServiceName', 'toServiceType'];
+
+  const renderCombined = (fqn: string, serviceType: string) => {
+    const isMetricEntity = serviceType === EntityType.METRIC;
+
+    return (
+      <div className="d-flex items-center gap-2">
+        {isMetricEntity ? (
+          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+        ) : (
+          <img
+            alt={fqn}
+            className="header-icon"
+            src={serviceUtilClassBase.getServiceLogo(serviceType)}
+          />
+        )}
+
+        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+          {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
+        </Typography.Text>
+      </div>
+    );
+  };
+
+  const getEntityType = (serviceType: string, fqn: string) => {
+    if (!serviceType || !fqn) {
+      return EntityType.TABLE; // Default fallback
+    }
+
+    if (serviceType === EntityType.METRIC) {
+      return serviceType;
+    }
+
+    let entityType =
+      serviceUtilClassBase.getEntityTypeFromServiceType(serviceType);
+
+    if (entityType === EntityType.DASHBOARD) {
+      const fqnSplit = Fqn.split(fqn);
+
+      entityType =
+        fqnSplit.length === 3 ? EntityType.DASHBOARD_DATA_MODEL : entityType;
+    }
+
+    return entityType;
+  };
+
+  const columns: ColumnsType<string> = [];
+  columns.push(
+    ...([
+      {
+        title: t('label.from-entity'),
+        dataIndex: 'fromCombined',
+        key: 'fromCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.fromServiceType)
+            ? EntityType.METRIC
+            : record.fromServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.fromEntityFQN),
+                record.fromEntityFQN
+              )}>
+              {renderCombined(record.fromEntityFQN, serviceType)}
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.to-entity'),
+        dataIndex: 'toCombined',
+        key: 'toCombined',
+        width: 300,
+        ellipsis: { showTitle: false },
+        render: (_: string, record: Record<string, string>) => {
+          const serviceType = isEmpty(record.toServiceType)
+            ? EntityType.METRIC
+            : record.toServiceType;
+
+          return (
+            <Link
+              to={entityUtilClassBase.getEntityLink(
+                getEntityType(serviceType, record.toEntityFQN),
+                record.toEntityFQN
+              )}>
+              {renderCombined(record.toEntityFQN, serviceType)}
+            </Link>
+          );
+        },
+      },
+    ] as unknown as ColumnsType<string>[number][])
+  );
+
+  // Append remaining header-driven columns
+  headers.forEach((header) => {
+    if ([...FROM_FIELDS, ...TO_FIELDS].includes(header)) {
+      return;
+    }
+
+    columns.push({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[header],
+      dataIndex: header,
+      key: header,
+      width: 200,
+      ellipsis: { showTitle: false },
+      render: (text: string) => (
+        <Typography.Text
+          data-testid={`lineage-column-${header}-${text}`}
+          ellipsis={{ tooltip: true }}>
+          {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
+        </Typography.Text>
+      ),
+    });
+  });
+
+  return columns;
+};
+
+export const getLineageTableConfig = (
+  csvData: string[][]
+): {
+  columns: ColumnsType<string>;
+  dataSource: Record<string, string>[];
+} => {
+  if (!csvData || csvData.length < 2) {
+    return {
+      columns: [],
+      dataSource: [],
+    };
+  }
+
+  const [headers, ...rows] = csvData;
+
+  const dataSource = rows.map((row, index) => {
+    const rowData: Record<string, string> = {};
+    headers.forEach((header, headerIndex) => {
+      rowData[header] = row[headerIndex] || '';
+    });
+    rowData.key = index.toString();
+
+    return rowData;
+  });
+
+  const columns = buildLineageTableColumns(headers);
+
+  return { columns, dataSource };
 };

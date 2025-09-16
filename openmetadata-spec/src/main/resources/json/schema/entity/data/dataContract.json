@@ -31,39 +31,6 @@
         }
       ]
     },
-    "schemaField": {
-      "description": "Field defined in the data contract's schema.",
-      "$ref": "../../type/schema.json#/definitions/field"
-    },
-    "qualityExpectation": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.QualityExpectation",
-      "description": "Quality expectation defined in the data contract.",
-      "properties": {
-        "name": {
-          "description": "Name of the quality expectation.",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the quality expectation.",
-          "$ref": "../../type/basic.json#/definitions/markdown"
-        },
-        "definition": {
-          "description": "Definition of the quality expectation.",
-          "type": "string"
-        },
-        "testCase": {
-          "description": "Reference to a test case that enforces this quality expectation.",
-          "$ref": "../../type/entityReference.json",
-          "default": null
-        }
-      },
-      "required": [
-        "name",
-        "definition"
-      ],
-      "additionalProperties": false
-    },
     "contractUpdate": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.ContractUpdate",
@@ -93,35 +60,113 @@
       ],
       "additionalProperties": false
     },
-    "semanticsRule": {
-        "type": "object",
-        "javaType": "org.openmetadata.schema.type.SemanticsRule",
-        "description": "Semantics rule defined in the data contract.",
-        "properties": {
-          "name": {
-            "title": "Rule Name",
-            "description": "Name of the semantics rule.",
-            "type": "string"
-          },
-          "description": {
-            "title": "Rule Description",
-            "description": "Description of the semantics rule.",
-            "$ref": "../../type/basic.json#/definitions/markdown"
-          },
-          "rule": {
-            "title": "Rule Definition",
-            "description": "Definition of the semantics rule.",
-            "type": "string",
-            "outputType": "jsonlogic",
-            "format": "queryBuilder"
-          }
+    "rowFilter": {
+      "type": "object",
+      "description": "Filter that defines what subset of the data is accessible to certain consumers",
+      "properties": {
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column to apply the filter"
         },
-        "required": [
-          "name",
-          "description",
-          "rule"
-        ],
-        "additionalProperties": false
+        "values": {
+          "type": "array",
+          "title": "Filter Values",
+          "description": "Values applied to the filter",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dataConsumers": {
+      "type": "object",
+      "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
+      "properties": {
+        "accessPolicy": {
+          "type": "string",
+          "title": "Access Policy",
+          "description": "Reference to an access policy ID or name that should govern this data"
+        },
+        "identities": {
+          "type": "array",
+          "title": "Consumer AD Groups",
+          "description": "List of groups that are intended consumers of the data",
+          "items": {
+              "type": "string"
+          },
+          "default": null
+        },
+        "rowFilters": {
+          "type": "array",
+          "title": "Row Data Filters",
+          "description": "List of filters that define what subset of the data is accessible to the consumers",
+          "items": {
+              "$ref": "#/definitions/rowFilter"
+          },
+          "default": null
+        }
+      }
+    },
+    "contractSecurity": {
+      "type": "object",
+      "description": "Security and access policy expectations",
+      "properties": {
+        "dataClassification": {
+          "type": "string",
+          "title": "Data Classification",
+          "description": "Expected data classification (e.g. Confidential, PII, etc.)"
+        },
+        "consumers": {
+          "type": "array",
+          "title": "Data Consumers",
+          "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
+          "items": {
+              "$ref": "#/definitions/dataConsumers"
+          }
+        }
+      }
+    },
+    "contractSLA": {
+      "type": "object",
+      "description": "Service Level Agreement expectations (timeliness, availability, etc.)",
+      "properties": {
+        "refreshFrequency": {
+          "type": "object",
+          "title": "Refresh Frequency",
+          "properties": {
+            "interval": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["hour", "day", "week", "month", "year"] }
+          },
+          "description": "Expected frequency of data updates (e.g. every 1 day)",
+          "required": ["interval", "unit"]
+        },
+        "maxLatency": {
+          "type": "object",
+          "title": "Maximum Latency",
+          "properties": {
+            "value": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["minute", "hour", "day"] }
+          },
+          "description": "Maximum acceptable latency between data generation and availability (e.g. 4 hours)",
+          "required": ["value", "unit"]
+        },
+        "availabilityTime": {
+          "title": "Availability Time",
+          "type": "string",
+          "description": "Time of day by which data is expected to be available (e.g. \"09:00 UTC\")"
+        },
+        "retention": {
+          "type": "object",
+          "title": "Data Retention Period",
+          "properties": {
+            "period": { "type": "integer" },
+            "unit": { "type": "string", "enum": ["day", "week", "month", "year"] }
+          },
+          "description": "How long the data is retained (if relevant)",
+          "required": ["period", "unit"]
+        }
+      }
     }
   },
   "properties": {
@@ -161,19 +206,24 @@
       "description": "Link to this data contract resource.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "status": {
-      "$ref": "#/definitions/contractStatus",
+    "entityStatus": {
+      "description": "Approval status of the data contract.",
+      "$ref": "../../type/status.json",
       "default": "Draft"
     },
     "entity": {
       "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
       "$ref": "../../type/entityReference.json"
     },
+    "testSuite": {
+      "description": "Reference to the test suite that contains tests related to this data contract.",
+      "$ref": "../../type/entityReference.json"
+    },
     "schema": {
       "description": "Schema definition for the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/schemaField"
+        "$ref": "./table.json#/definitions/column"
       },
       "default": null
     },
@@ -181,15 +231,32 @@
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/semanticsRule"
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
       },
+      "default": null
+    },
+    "termsOfUse": {
+      "description": "Terms of use for the data contract for both human and AI agents consumption.",
+      "$ref": "../../type/basic.json#/definitions/markdown",
+      "default": null
+    },
+    "security": {
+      "title": "Contract Security",
+      "description": "Security and access policy expectations defined in the data contract.",
+      "$ref": "#/definitions/contractSecurity",
+      "default": null
+    },
+    "sla": {
+      "title": "Contract SLA",
+      "description": "Service Level Agreement expectations defined in the data contract.",
+      "$ref": "#/definitions/contractSLA",
       "default": null
     },
     "qualityExpectations": {
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/qualityExpectation"
+        "$ref": "../../type/entityReference.json"
       },
       "default": null
     },
@@ -203,6 +270,11 @@
     },
     "owners": {
       "description": "Owners of this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this data contract.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
@@ -232,6 +304,29 @@
     "sourceUrl": {
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "latestResult": {
+      "description": "Latest validation result for this data contract.",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "../../type/contractExecutionStatus.json"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resultId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": [

@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React from 'react';
@@ -28,7 +27,6 @@ import {
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../constants/constants';
 import {
   ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
@@ -56,6 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -244,15 +243,28 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
   data.forEach((filter) => {
     if (!isEmpty(filter.value)) {
       const should = [] as Array<QueryFieldInterface>;
+
+      // Convert entityType to entityType.keyword for exact term matching in queries
+      const queryFieldKey =
+        filter.key === EntityFields.ENTITY_TYPE
+          ? EntityFields.ENTITY_TYPE_KEYWORD
+          : filter.key;
+
+      const shouldLowerCase = filter.key === EntityFields.ENTITY_TYPE;
+
       filter.value?.forEach((filterValue) => {
+        const termValue = shouldLowerCase
+          ? filterValue.key.toLowerCase()
+          : filterValue.key;
+
         const term = {
-          [filter.key]: filterValue.key,
+          [queryFieldKey]: termValue,
         };
 
         if (filterValue.key === NULL_OPTION_KEY) {
           should.push({
             bool: {
-              must_not: { exists: { field: filter.key } },
+              must_not: { exists: { field: queryFieldKey } },
             },
           });
         } else {
@@ -413,7 +425,11 @@ export const isElasticsearchError = (error: unknown): boolean => {
 /**
  * Parse search parameters from URL query
  */
-export const parseSearchParams = (search: string) => {
+export const parseSearchParams = (
+  search: string,
+  globalPageSize: number,
+  queryFilter?: Record<string, unknown>
+) => {
   const parsedSearch = Qs.parse(
     search.startsWith('?') ? search.substring(1) : search
   );
@@ -438,9 +454,20 @@ export const parseSearchParams = (search: string) => {
   const size =
     isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
       ? Number.parseInt(parsedSearch.size)
-      : PAGE_SIZE;
+      : globalPageSize;
 
-  const showDeleted = parsedSearch.showDeleted === 'true';
+  const stringifiedQueryFilter = isEmpty(queryFilter)
+    ? ''
+    : JSON.stringify(queryFilter);
+  const queryFilterContainsDeleted =
+    stringifiedQueryFilter.includes('"deleted":');
+
+  // Since the 'Deleted' field in the queryFilter conflicts with the 'showDeleted' parameter,
+  // We are giving priority to the 'Deleted' field in the queryFilter if it exists.
+  // If not there in the queryFilter, use the 'showDeleted' parameter from the URL.
+  const showDeleted = queryFilterContainsDeleted
+    ? undefined
+    : parsedSearch.showDeleted === 'true';
 
   return {
     parsedSearch,
@@ -470,12 +497,13 @@ export const generateTabItems = (
         <div
           className="d-flex items-center justify-between"
           data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-          <div className="d-flex items-center">
+          <div className="explore-tab-label">
             <span className="explore-icon d-flex m-r-xs">
               <Icon />
             </span>
             <Typography.Text
-              className={tabSearchIndex === searchIndex ? 'text-primary' : ''}>
+              className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
+              ellipsis={{ tooltip: true }}>
               {tabDetail.label}
             </Typography.Text>
           </div>
@@ -525,7 +553,7 @@ export const fetchEntityData = async ({
   updatedQuickFilters: QueryFilterInterface | undefined;
   queryFilter: unknown;
   searchIndex: ExploreSearchIndex;
-  showDeleted: boolean;
+  showDeleted?: boolean;
   sortValue: string;
   sortOrder: string;
   page: number;
@@ -605,6 +633,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
+          excludeSourceFields: ['columns'],
         };
 
         try {
@@ -636,6 +665,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
+        excludeSourceFields: ['columns'],
       };
 
       try {

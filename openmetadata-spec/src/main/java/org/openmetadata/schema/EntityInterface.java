@@ -68,6 +68,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default EntityStatus getEntityStatus() {
+    return null;
+  }
+
   default ProviderType getProvider() {
     return null;
   }
@@ -102,7 +106,7 @@ public interface EntityInterface {
     return null;
   }
 
-  default EntityReference getDomain() {
+  default List<EntityReference> getDomains() {
     return null;
   }
 
@@ -152,6 +156,10 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
+  default void setEntityStatus(EntityStatus approvalStatus) {
+    /* no-op implementation to be overridden */
+  }
+
   default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */
   }
@@ -172,7 +180,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setDomain(EntityReference entityReference) {
+  default void setDomains(List<EntityReference> entityReference) {
     /* no-op implementation to be overridden */
   }
 

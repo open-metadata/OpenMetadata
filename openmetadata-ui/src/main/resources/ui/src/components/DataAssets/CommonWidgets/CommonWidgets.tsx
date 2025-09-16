@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -68,7 +68,7 @@ interface GenericEntity
       | 'deleted'
       | 'description'
       | 'owners'
-      | 'domain'
+      | 'domains'
       | 'dataProducts'
       | 'extension'
       | 'tags'
@@ -133,7 +133,7 @@ export const CommonWidgets = ({
     tags,
     deleted,
     owners,
-    domain,
+    domains,
     dataProducts,
     description,
     entityName,
@@ -267,18 +267,24 @@ export const CommonWidgets = ({
     return (
       <DataProductsContainer
         newLook
-        activeDomain={domain as EntityReference}
+        activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
         onSave={handleDataProductsSave}
       />
     );
-  }, [dataProducts, domain, editDataProductPermission, handleDataProductsSave]);
+  }, [
+    dataProducts,
+    domains,
+    editDataProductPermission,
+    handleDataProductsSave,
+  ]);
 
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -302,6 +308,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -381,7 +388,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 showDomainHeading />;
+      return <DomainLabelV2 multiple showDomainHeading />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

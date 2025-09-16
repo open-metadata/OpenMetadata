@@ -192,6 +192,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             return result
         except UnsupportedDialectError as e:
+            logger.warning(f"[Data Diff]: Unsupported dialect: {e}")
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
@@ -508,7 +509,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ("table1.serviceUrl", self.runtime_params.table1.serviceUrl),
             ("table2.serviceUrl", self.runtime_params.table2.serviceUrl),
         ]:
-            dialect = urlparse(param).scheme
+            if isinstance(param, dict):
+                dialect = param.get("driver")
+            else:
+                dialect = urlparse(param).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 

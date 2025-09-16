@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ExpandableCard from './ExpandableCard';
 

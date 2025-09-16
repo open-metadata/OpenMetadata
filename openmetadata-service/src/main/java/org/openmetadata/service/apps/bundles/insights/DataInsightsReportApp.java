@@ -31,6 +31,8 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
@@ -45,8 +47,6 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.Utilities;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
@@ -423,7 +423,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false, null);
     return systemChartMap.get(chartName).getResults().stream()
         .filter(
             result ->
@@ -449,7 +449,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String chartName, Long startTime, Long endTime, String team) throws IOException {
     String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter, false, null);
     return systemChartMap.get(chartName).getResults().stream()
         .map(
             result -> {

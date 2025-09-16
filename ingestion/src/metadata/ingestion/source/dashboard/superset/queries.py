@@ -93,7 +93,7 @@ LIMIT 1
 FETCH_COLUMN = """
 select 
 	tc.id, 
-    	tc.table_name ,
+    	t.table_name ,
     	tc.column_name, 
 		tc.table_id, 
     	tc.type,

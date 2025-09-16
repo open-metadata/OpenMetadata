@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
@@ -71,7 +72,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/tags")
@@ -93,7 +93,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private final ClassificationMapper classificationMapper = new ClassificationMapper();
   private final TagMapper mapper = new TagMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS = "children,usageCount";
+  static final String FIELDS = "owners,reviewers,domains,children,usageCount";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
@@ -105,7 +105,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,usageCount", MetadataOperation.VIEW_BASIC);
+    addViewOperation("owners,domains,children,usageCount", MetadataOperation.VIEW_BASIC);
     return null;
   }
 

@@ -58,7 +58,7 @@ export const MOCK_FILE_SELECT_WIDGET = {
     description: 'The CA certificate used for SSL validation.',
     format: 'password',
     accept: ['.pem'],
-    uiFieldType: 'file',
+    uiFieldType: 'fileOrInput',
   },
   uiSchema: {},
   value: MOCK_SSL_FILE_CONTENT,

@@ -14,10 +14,18 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
+from typing import List, Type, cast
+
+from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     OVERFLOW_ERROR_CODES,
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.system.snowflake.system import (
+    SnowflakeSystemMetricsComputer,
+)
+from metadata.profiler.metrics.system.system import System
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -35,6 +43,18 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
     def create_session(self):
         super().create_session()
         self.set_session_tag(self.session)
+
+    def _compute_system_metrics(
+        self, metrics: Type[System], runner: QueryRunner, *args, **kwargs
+    ) -> List[SystemProfile]:
+        self.system_metrics_class = cast(
+            Type[SnowflakeSystemMetricsComputer], self.system_metrics_class
+        )
+        instance = self.system_metrics_class(
+            session=self.session,
+            runner=runner,
+        )
+        return instance.get_system_metrics()
 
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
         if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(

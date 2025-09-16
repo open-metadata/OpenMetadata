@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .tier-card-popover {
   .ant-popover-inner {
@@ -77,4 +77,10 @@
 .tier-card-content {
   max-height: 460px;
   overflow-y: auto;
+}
+
+/* Outline on focus */
+.ant-radio-wrapper:focus-within .ant-radio-inner {
+  outline: 2px solid @focus-outline-color;
+  outline-offset: 2px;
 }

@@ -40,7 +40,7 @@ maven["required_version"]="3.6 3.7 3.8 3.9"
 declare -A java
 java["name"]="Java"
 java["version_command"]="java -version 2>&1 | awk -F'\"' '/version/ {print \$2}'"
-java["required_version"]="11 16 17"
+java["required_version"]="21"
 
 declare -A jq
 jq["name"]="jq"

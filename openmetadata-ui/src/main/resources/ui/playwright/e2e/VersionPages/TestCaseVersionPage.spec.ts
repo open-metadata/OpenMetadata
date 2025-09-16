@@ -128,7 +128,7 @@ test.describe('TestCase Version Page', () => {
       const updateParameterRes = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*'
       );
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await updateParameterRes;
 
       await expect(page.getByTestId('version-button')).toHaveText('0.4');

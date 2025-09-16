@@ -14,7 +14,7 @@
 
 import { DEFAULT_THEME } from './Appearance.constants';
 
-export const GREEN_1 = '#12B76A';
+export const GREEN_1 = '#067647';
 export const GREEN_3 = '#48ca9e';
 export const GREEN_3_OPACITY = '#48ca9e30';
 export const YELLOW_2 = '#ffbe0e';
@@ -29,6 +29,7 @@ export const LIGHT_GRAY = '#F1F4F9';
 export const INDIGO_1 = '#3538CD';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
 export const BLUE_2 = '#3ca2f4';
+export const CHART_BLUE_1 = '#1890FF';
 export const RIPTIDE = '#76E9C6';
 export const MY_SIN = '#FEB019';
 export const SAN_MARINO = '#416BB3';
@@ -37,3 +38,5 @@ export const DESERT = '#B56727';
 export const PINK_SALMON = '#FF92AE';
 export const ELECTRIC_VIOLET = '#9747FF';
 export const LEMON_ZEST = '#FFD700';
+export const GREY_200 = '#E9EAEB';
+export const GRAY_600 = '#535862';

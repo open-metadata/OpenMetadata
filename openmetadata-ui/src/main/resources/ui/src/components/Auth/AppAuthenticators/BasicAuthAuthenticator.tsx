@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -30,7 +30,7 @@ import {
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
-} from '../../../utils/LocalStorageUtils';
+} from '../../../utils/SwTokenStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
@@ -46,7 +46,7 @@ const BasicAuthenticator = forwardRef(
 
     const handleSilentSignIn =
       useCallback(async (): Promise<AccessTokenResponse> => {
-        const refreshToken = getRefreshToken();
+        const refreshToken = await getRefreshToken();
 
         if (
           authConfig?.provider !== AuthProvider.Basic &&
@@ -65,8 +65,8 @@ const BasicAuthenticator = forwardRef(
           refreshToken: refreshToken as string,
         });
 
-        setRefreshToken(response.refreshToken);
-        setOidcToken(response.accessToken);
+        await setRefreshToken(response.refreshToken);
+        await setOidcToken(response.accessToken);
 
         return Promise.resolve(response);
       }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);

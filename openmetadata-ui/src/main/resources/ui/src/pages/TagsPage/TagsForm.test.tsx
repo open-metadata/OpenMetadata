@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import TagsForm from './TagsForm';
 
@@ -24,6 +23,7 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
 
 jest.mock('../../utils/CommonUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
+  getCountBadge: jest.fn().mockReturnValue(''),
 }));
 
 const mockCancel = jest.fn();

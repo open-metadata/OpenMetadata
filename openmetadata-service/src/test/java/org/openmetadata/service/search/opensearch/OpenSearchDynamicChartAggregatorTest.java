@@ -78,7 +78,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
       Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
           new HashMap<>();
       SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder);
+          aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder, false);
       return expectedSearchRequest.equals(searchRequest);
     }
   }

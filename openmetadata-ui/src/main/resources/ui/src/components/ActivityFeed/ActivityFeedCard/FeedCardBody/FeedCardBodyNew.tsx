@@ -12,7 +12,8 @@
  */
 
 import { Button, Card, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
@@ -39,6 +40,7 @@ const FeedCardBodyNew = ({
   onEditCancel,
   showThread,
   isForFeedTab,
+  isFeedWidget,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -135,15 +137,16 @@ const FeedCardBodyNew = ({
 
   return (
     <div
-      className={`${showThread ? 'show-thread' : 'hide-thread'} ${
-        feed.cardStyle === 'description' ? 'description' : ''
-      } ${
+      className={classNames(
+        showThread ? 'show-thread' : 'hide-thread',
+        feed.cardStyle === 'description' ? 'description' : '',
         !showThread &&
-        feed.cardStyle === 'description' &&
-        feed.fieldOperation === 'updated'
+          feed.cardStyle === 'description' &&
+          feed.fieldOperation === 'updated'
           ? 'updated'
-          : ''
-      }`}>
+          : '',
+        isFeedWidget && 'feed-widget-body'
+      )}>
       {feedBodyRender}
     </div>
   );

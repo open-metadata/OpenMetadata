@@ -15,9 +15,6 @@ SQL Queries used during ingestion
 import textwrap
 from typing import List
 
-from sqlalchemy import text
-from sqlalchemy.orm.session import Session
-
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -416,38 +413,6 @@ STL_QUERY = """
     GROUP BY 2,3,4,5
     ORDER BY 5 DESC
 """
-
-
-def get_query_results(
-    session: Session,
-    query,
-    operation,
-) -> List[QueryResult]:
-    """get query results either from cache or from the database
-
-    Args:
-        session (Session): session
-        query (_type_): query
-        operation (_type_): operation
-
-    Returns:
-        List[QueryResult]:
-    """
-    cursor = session.execute(text(query))
-    results = [
-        QueryResult(
-            database_name=row.database,
-            schema_name=row.schema,
-            table_name=row.table,
-            query_text=None,
-            query_type=operation,
-            start_time=row.starttime,
-            rows=row.rows,
-        )
-        for row in cursor
-    ]
-
-    return results
 
 
 def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:

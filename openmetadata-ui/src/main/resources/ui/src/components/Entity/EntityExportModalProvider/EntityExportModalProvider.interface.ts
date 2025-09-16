@@ -30,7 +30,6 @@ export type CSVExportJob = {
   CSVExportResponse;
 
 export interface PDFLayoutConfig {
-  imagesPerPage: number;
   layoutType: 'grid' | 'vertical' | 'horizontal';
   imageSpacing: number;
   pageOrientation: 'portrait' | 'landscape';
@@ -55,6 +54,7 @@ export type ExportData = {
   exportTypes: ExportTypes[];
   viewport?: ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
+  hideExportModal?: boolean;
   onExport: (
     name: string,
     params?: {

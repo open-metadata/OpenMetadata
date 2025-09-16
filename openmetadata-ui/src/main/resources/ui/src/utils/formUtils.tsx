@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -21,14 +22,14 @@ import {
   Select,
   Switch,
   TooltipProps,
+  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { compact, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -48,6 +49,7 @@ import { UserSelectableList } from '../components/common/UserSelectableList/User
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
+import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -58,7 +60,7 @@ import {
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {
@@ -78,6 +80,7 @@ export const getField = (field: FieldProp) => {
     hasSeparator = false,
     formItemLayout = FormItemLayout.VERTICAL,
     isBeta = false,
+    newLook = false,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
@@ -93,7 +96,7 @@ export const getField = (field: FieldProp) => {
       ...fieldRules,
       {
         required,
-        message: i18n.t('label.field-required', {
+        message: t('label.field-required', {
           field: startCase(toString(name)),
         }),
       },
@@ -107,6 +110,7 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
     case FieldTypes.PASSWORD:
       fieldElement = (
         <Input.Password
@@ -145,6 +149,14 @@ export const getField = (field: FieldProp) => {
       };
 
       break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
@@ -168,7 +180,7 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
       );
 
       break;
@@ -214,6 +226,18 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+
+    case FieldTypes.USER_TEAM_SELECT_INPUT:
+      {
+        fieldElement = (
+          <UserTeamSelectableListSearchInput
+            {...(props as unknown as UserSelectDropdownProps)}
+          />
+        );
+      }
+
+      break;
+
     case FieldTypes.USER_MULTI_SELECT:
       {
         const { children, ...rest } = props;
@@ -235,6 +259,40 @@ export const getField = (field: FieldProp) => {
       break;
   }
 
+  const formProps = {
+    id: id,
+    key: id,
+    name: name,
+    rules: fieldRules,
+    ...internalFormItemProps,
+    ...formItemProps,
+  };
+
+  const labelValue = (
+    <FormItemLabel
+      align={props.tooltipAlign as TooltipProps['align']}
+      helperText={helperText}
+      helperTextType={helperTextType}
+      isBeta={isBeta}
+      label={label}
+      overlayClassName={props.overlayClassName as string}
+      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
+      placement={props.tooltipPlacement as TooltipPlacement}
+      showHelperText={showHelperText}
+    />
+  );
+
+  if (type === FieldTypes.SWITCH && newLook) {
+    return (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item className="m-b-0" {...formProps}>
+          <Switch />
+        </Form.Item>
+        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+      </div>
+    );
+  }
+
   return (
     <Fragment key={id}>
       <Form.Item
@@ -243,25 +301,8 @@ export const getField = (field: FieldProp) => {
           'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
           'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
-        id={id}
-        key={id}
-        label={
-          <FormItemLabel
-            align={props.tooltipAlign as TooltipProps['align']}
-            helperText={helperText}
-            helperTextType={helperTextType}
-            isBeta={isBeta}
-            label={label}
-            overlayClassName={props.overlayClassName as string}
-            overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-            placement={props.tooltipPlacement as TooltipPlacement}
-            showHelperText={showHelperText}
-          />
-        }
-        name={name}
-        rules={fieldRules}
-        {...internalFormItemProps}
-        {...formItemProps}>
+        {...formProps}
+        label={labelValue}>
         {fieldElement}
       </Form.Item>
 
@@ -304,12 +345,12 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
       const errorMessages = {
         required: () => ({
-          message: i18n.t('message.field-text-is-required', {
+          message: t('message.field-text-is-required', {
             fieldText: startCase(params?.missingProperty),
           }),
         }),
         minimum: () => ({
-          message: i18n.t('message.value-must-be-greater-than', {
+          message: t('message.value-must-be-greater-than', {
             field: fieldName,
             minimum: params?.limit,
           }),
@@ -396,4 +437,93 @@ export const handleEntityCreationError = ({
     getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
+};
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;
+
+/**
+ * Configuration options for custom scroll-to-error behavior
+ */
+export interface ScrollToErrorOptions {
+  /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
+  scrollContainer?: string;
+  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
+  errorSelector?: string;
+  /** Offset from top in pixels for better visibility. Defaults to 100 */
+  offsetTop?: number;
+  /** Delay in milliseconds before scrolling. Defaults to 100 */
+  delay?: number;
+  /** Scroll behavior. Defaults to 'smooth' */
+  behavior?: ScrollBehavior;
+}
+
+/**
+ * Creates a reusable scroll-to-error handler for forms in complex layouts
+ *
+ * This utility is particularly useful when:
+ * - Form is inside a drawer or modal with custom scroll containers
+ * - Ant Design's built-in scrollToFirstError doesn't work due to layout complexity
+ * - Form is nested within grid layouts or other complex structures
+ *
+ * @param options - Configuration options for scroll behavior
+ * @returns Function to be used as onFinishFailed handler for Ant Design forms
+ *
+ * @example
+ * ```tsx
+ * // Basic usage for drawer forms
+ * const scrollToError = createScrollToErrorHandler();
+ *
+ * <Form onFinishFailed={scrollToError}>
+ *   // form content
+ * </Form>
+ *
+ * // Custom configuration
+ * const scrollToError = createScrollToErrorHandler({
+ *   scrollContainer: '.my-custom-scroll-container',
+ *   offsetTop: 150,
+ *   delay: 50
+ * });
+ * ```
+ */
+export const createScrollToErrorHandler = (
+  options: ScrollToErrorOptions = {}
+) => {
+  const {
+    scrollContainer = '.drawer-form-content',
+    errorSelector = '.ant-form-item-has-error',
+    offsetTop = 100,
+    delay = 100,
+    behavior = 'smooth',
+  } = options;
+
+  return () => {
+    setTimeout(() => {
+      const firstError = document.querySelector(errorSelector);
+      if (firstError) {
+        const scrollableContainer = document.querySelector(scrollContainer);
+        if (scrollableContainer) {
+          const errorRect = firstError.getBoundingClientRect();
+          const containerRect = scrollableContainer.getBoundingClientRect();
+          const scrollTop =
+            scrollableContainer.scrollTop +
+            errorRect.top -
+            containerRect.top -
+            offsetTop;
+
+          scrollableContainer.scrollTo({
+            top: Math.max(0, scrollTop), // Ensure we don't scroll to negative values
+            behavior,
+          });
+        } else {
+          // Fallback to standard scrollIntoView if container not found
+          firstError.scrollIntoView({
+            behavior,
+            block: 'center',
+            inline: 'nearest',
+          });
+        }
+      }
+    }, delay);
+  };
 };

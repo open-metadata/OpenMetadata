@@ -12,10 +12,11 @@
  */
 
 import { DefaultOptionType, SelectProps } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -34,6 +35,9 @@ export interface TagSuggestionProps {
   isTreeSelect?: boolean;
   hasNoActionButtons?: boolean;
   open?: boolean;
+  newLook?: boolean;
+  autoFocus?: boolean;
+  dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({
@@ -46,11 +50,16 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   isTreeSelect = false,
   hasNoActionButtons = false,
   open = true,
+  newLook,
+  autoFocus = false,
+  dropdownContainerRef,
 }) => {
   const isGlossaryType = useMemo(
     () => tagType === TagSource.Glossary,
     [tagType]
   );
+
+  const { t } = useTranslation();
 
   const handleTagSelection = (
     newValue: DefaultOptionType | DefaultOptionType[]
@@ -100,6 +109,9 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
       }),
     value: value?.map((item) => item.tagFQN) ?? [],
     onChange: handleTagSelection,
+    newLook,
+    autoFocus,
+    dropdownContainerRef,
   };
 
   return isTreeSelect ? (

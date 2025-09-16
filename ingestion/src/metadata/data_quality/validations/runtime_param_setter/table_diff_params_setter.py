@@ -11,10 +11,13 @@
 """Module that defines the TableDiffParamsSetter class."""
 from ast import literal_eval
 from typing import List, Optional, Set
-from urllib.parse import urlparse
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    BaseTableParameter,
+    ServiceSpecPatch,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -22,24 +25,8 @@ from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.ingestion.source.connections import get_connection
-from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
-from metadata.utils.importer import get_module_dir, import_from_module
-
-
-def get_for_source(
-    service_type: ServiceType, source_type: str, from_: str = "ingestion"
-):
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
-            from_,
-            service_type.name.lower(),
-            get_module_dir(source_type),
-            "service_spec",
-        )
-    )
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
@@ -62,22 +49,17 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         }
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
-        # Using the specs class method causes circular import as TestSuiteInterface
-        # imports RuntimeParameterSetter
-        cls_path = get_for_source(
-            ServiceType.Database,
-            source_type=self.service_connection_config.type.value.lower(),
-        ).data_diff
-        cls = import_from_module(cls_path)()
+        service_spec_patch = ServiceSpecPatch(
+            ServiceType.Database, self.service_connection_config.type.value.lower()
+        )
+        cls = service_spec_patch.get_data_diff_class()()
 
         service1: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, self.table_entity.service.id, nullable=False
         )
 
-        service1_url = (
-            str(get_connection(self.service_connection_config).url)
-            if self.service_connection_config
-            else None
+        service1_url = BaseTableParameter._get_service_connection_config(
+            self.service_connection_config
         )
 
         table2_fqn = self.get_parameter(test_case, "table2")
@@ -208,41 +190,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         return next(
             (p.value for p in test_case.parameterValues if p.name == key), default
         )
-
-    @staticmethod
-    def get_data_diff_url(
-        db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
-    ) -> str:
-        """Get the url for the data diff service.
-
-        Args:
-            db_service (DatabaseService): The database service entity
-            table_fqn (str): The fully qualified name of the table
-            override_url (Optional[str], optional): Override the url. Defaults to None.
-
-        Returns:
-            str: The url for the data diff service
-        """
-        source_url = (
-            str(get_connection(db_service.connection.config).url)
-            if not override_url
-            else override_url
-        )
-        url = urlparse(source_url)
-        # remove the driver name from the url because table-diff doesn't support it
-        kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
-            table_fqn
-        )
-        # path needs to include the database AND schema in some of the connectors
-        if hasattr(db_service.connection.config, "supportsDatabase"):
-            kwargs["path"] = f"/{database}"
-        # this can be found by going to:
-        # https://github.com/open-metadata/collate-data-diff/blob/main/data_diff/databases/<connector>.py
-        # and looking at the `CONNECT_URI_HELPER` variable
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
-            kwargs["path"] = f"/{database}/{schema}"
-        return url._replace(**kwargs).geturl()
 
     @staticmethod
     def get_data_diff_table_path(table_fqn: str) -> str:

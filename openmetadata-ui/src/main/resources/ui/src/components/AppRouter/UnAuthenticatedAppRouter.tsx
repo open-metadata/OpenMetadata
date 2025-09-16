@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { LoginCallback } from '@okta/okta-react';
-import React, { useMemo } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { lazy, useMemo } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -24,21 +24,19 @@ import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LoginPage/SignInPage'))
+  lazy(() => import('../../pages/LoginPage/SignInPage'))
 );
 
 const ForgotPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/ForgotPassword/ForgotPassword.component')
-  )
+  lazy(() => import('../../pages/ForgotPassword/ForgotPassword.component'))
 );
 
 const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
+  lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
+  lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
 export const UnAuthenticatedAppRouter = () => {
@@ -50,7 +48,7 @@ export const UnAuthenticatedAppRouter = () => {
     (authConfig.provider === AuthProvider.Basic ||
       authConfig.provider === AuthProvider.LDAP);
 
-  const callbackComponent = useMemo(() => {
+  const CallbackComponent = useMemo(() => {
     switch (authConfig?.provider) {
       case AuthProvider.Okta: {
         return LoginCallback;
@@ -65,42 +63,34 @@ export const UnAuthenticatedAppRouter = () => {
   }, [authConfig?.provider]);
 
   if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-    return <Redirect to={ROUTES.SIGNIN} />;
+    return <Navigate replace to={ROUTES.SIGNIN} />;
   }
 
   return (
-    <Switch>
-      <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-
-      {callbackComponent && (
-        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+    <Routes>
+      <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
+      {CallbackComponent && (
+        <Route element={<CallbackComponent />} path={ROUTES.CALLBACK} />
       )}
-
       {!isSigningUp && (
-        <Route exact path={ROUTES.HOME}>
-          <Redirect to={ROUTES.SIGNIN} />
-        </Route>
+        <Route
+          element={<Navigate replace to={ROUTES.SIGNIN} />}
+          path={ROUTES.HOME}
+        />
       )}
-
       {/* keep this route before any conditional JSX.Element rendering */}
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-
+      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
       {isBasicAuthProvider && (
         <>
-          <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+          <Route element={<BasicSignupPage />} path={ROUTES.REGISTER} />
+          <Route element={<ForgotPassword />} path={ROUTES.FORGOT_PASSWORD} />
+          <Route element={<ResetPassword />} path={ROUTES.RESET_PASSWORD} />
           <Route
-            exact
-            component={ForgotPassword}
-            path={ROUTES.FORGOT_PASSWORD}
-          />
-          <Route exact component={ResetPassword} path={ROUTES.RESET_PASSWORD} />
-          <Route
-            exact
-            component={AccountActivationConfirmation}
+            element={<AccountActivationConfirmation />}
             path={ROUTES.ACCOUNT_ACTIVATION}
           />
         </>
       )}
-    </Switch>
+    </Routes>
   );
 };

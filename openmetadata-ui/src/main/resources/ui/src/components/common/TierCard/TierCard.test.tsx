@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -98,6 +97,14 @@ describe('Test TierCard Component', () => {
 
     await act(async () => {
       fireEvent.click(radioButton);
+    });
+
+    const updateTierCard = await screen.findByTestId('update-tier-card');
+
+    expect(updateTierCard).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(updateTierCard);
     });
 
     expect(mockOnUpdate).toHaveBeenCalled();

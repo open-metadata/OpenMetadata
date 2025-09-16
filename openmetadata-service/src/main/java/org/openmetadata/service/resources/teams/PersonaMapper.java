@@ -10,6 +10,7 @@ public class PersonaMapper implements EntityMapper<Persona, CreatePersona> {
   @Override
   public Persona createToEntity(CreatePersona create, String user) {
     return copy(new Persona(), create, user)
-        .withUsers(EntityUtil.toEntityReferences(create.getUsers(), Entity.USER));
+        .withUsers(EntityUtil.toEntityReferences(create.getUsers(), Entity.USER))
+        .withDefault(create.getDefault());
   }
 }

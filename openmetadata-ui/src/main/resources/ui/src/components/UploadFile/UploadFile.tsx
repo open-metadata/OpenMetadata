@@ -13,23 +13,27 @@
 import { Space, Typography, UploadProps } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { FC, useCallback, useState } from 'react';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
+import { FC, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import './upload-file.less';
 import { UploadFileProps } from './UploadFile.interface';
 
-export const UploadFile: FC<UploadFileProps> = ({
+const UploadFile: FC<UploadFileProps> = ({
+  disabled,
   fileType,
   beforeUpload,
   onCSVUploaded,
 }) => {
   const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
 
   const handleUpload: UploadProps['customRequest'] = useCallback(
-    (options) => {
+    (options: UploadRequestOption) => {
       setUploading(true);
       try {
         const reader = new FileReader();
@@ -53,9 +57,10 @@ export const UploadFile: FC<UploadFileProps> = ({
     <Dragger
       accept={fileType}
       beforeUpload={beforeUpload}
-      className="file-dragger-wrapper p-lg bg-white"
+      className="file-dragger-wrapper"
       customRequest={handleUpload}
       data-testid="upload-file-widget"
+      disabled={disabled}
       multiple={false}
       showUploadList={false}>
       <Space
@@ -64,10 +69,10 @@ export const UploadFile: FC<UploadFileProps> = ({
         direction="vertical"
         size={42}>
         <ImportIcon height={86} width={86} />
-        <Typography.Text className="font-medium text-md">
+        <Typography.Text>
           <Transi18next
             i18nKey="message.drag-and-drop-or-browse-csv-files-here"
-            renderElement={<span className="text-primary browse-text" />}
+            renderElement={<span className="browse-text" />}
             values={{
               text: t('label.browse'),
             }}
@@ -77,3 +82,5 @@ export const UploadFile: FC<UploadFileProps> = ({
     </Dragger>
   );
 };
+
+export default UploadFile;

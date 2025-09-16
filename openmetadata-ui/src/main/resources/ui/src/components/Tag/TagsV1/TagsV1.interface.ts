@@ -32,4 +32,5 @@ export type TagsV1Props = {
   tagType?: TagSource;
   size?: SelectProps['size'];
   isEditTags?: boolean;
+  newLook?: boolean;
 };

@@ -14,6 +14,10 @@
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
+import {
+  StartChartDataStreamConnectionResponse,
+  StopChartDataStreamConnectionResponse,
+} from './DataInsightAPI.interface';
 import APIClient from './index';
 
 export interface DataInsightCustomChartResult {
@@ -63,6 +67,33 @@ export const getMultiChartsPreviewByName = async (
       ...params,
     },
   });
+
+  return response.data;
+};
+
+export const setChartDataStreamConnection = async (params: {
+  chartNames: SystemChartType[];
+  serviceName: string;
+  startTime: number;
+  endTime: number;
+  entityLink: string;
+}) => {
+  const response = await APIClient.post<StartChartDataStreamConnectionResponse>(
+    `/analytics/dataInsights/system/charts/stream`,
+    {},
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const stopChartDataStreamConnection = async (sessionId: string) => {
+  const response =
+    await APIClient.delete<StopChartDataStreamConnectionResponse>(
+      `/analytics/dataInsights/system/charts/stream/${sessionId}`
+    );
 
   return response.data;
 };

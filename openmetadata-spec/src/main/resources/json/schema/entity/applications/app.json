@@ -292,9 +292,9 @@
       },
       "uniqueItems": true
     },
-    "domain": {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "supportsInterrupt": {
       "description": "If the app run can be interrupted as part of the execution.",
@@ -304,6 +304,15 @@
     "eventSubscriptions": {
       "description": "Event Subscriptions for the Application.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "supportsIngestionRunner": {
+      "description": "If the app support execution through the external runner.",
+      "type": "boolean",
+      "default": false
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { mockVersionTableProps } from '../../../mocks/VersionTable.mock';
 import VersionTable from './VersionTable.component';
 
@@ -36,6 +35,12 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search: '',
   }));
+});
+
+jest.mock('react-router-dom', () => {
+  return {
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  };
 });
 
 describe('VersionTable component', () => {

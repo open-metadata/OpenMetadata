@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
 } from '../../../mocks/MlModelVersion.mock';
 import MlModelVersion from './MlModelVersion.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -58,12 +56,10 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('MlModelVersion tests', () => {
@@ -137,11 +133,9 @@ describe('MlModelVersion tests', () => {
 
     expect(customPropertyTabLabel).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/mlmodel/mlflow_svc.eta_predictions/versions/0.3/custom_properties'
     );
   });

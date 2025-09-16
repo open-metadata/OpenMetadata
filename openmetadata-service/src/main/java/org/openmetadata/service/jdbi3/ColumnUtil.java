@@ -96,9 +96,6 @@ public final class ColumnUtil {
 
   /**
    * Finds a column by its Fully Qualified Name (FQN).
-   * @param columns List of columns in the table.
-   * @param columnFqn The fully qualified name of the column.
-   * @return The matched column if found, otherwise null.
    */
   public static Column findColumn(List<Column> columns, String columnFqn) {
     for (Column column : columns) {
@@ -119,9 +116,6 @@ public final class ColumnUtil {
    * Adds or updates a column within the given column list.
    * If the column exists, it updates its values.
    * If the column does not exist, it adds it to the list.
-   *
-   * @param columns The list of columns where the column should be added/updated.
-   * @param newColumn The new column to add or update.
    */
   public static void addOrUpdateColumn(List<Column> columns, Column newColumn) {
     Optional<Column> existingColumn =

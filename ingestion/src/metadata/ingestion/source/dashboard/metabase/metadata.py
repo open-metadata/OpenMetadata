@@ -210,9 +210,11 @@ class MetabaseSource(DashboardServiceSource):
                 name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.context.get().project_name,
                 charts=[
                     FullyQualifiedEntityName(
@@ -286,7 +288,7 @@ class MetabaseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MetabaseDashboardDetails,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
@@ -308,7 +310,7 @@ class MetabaseSource(DashboardServiceSource):
                 if chart_details.dataset_query.type == "native":
                     yield from self._yield_lineage_from_query(
                         chart_details=chart_details,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         dashboard_name=dashboard_name,
                     ) or []
 
@@ -319,7 +321,7 @@ class MetabaseSource(DashboardServiceSource):
                         continue
                     yield from self._yield_lineage_from_api(
                         chart_details=chart_details,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         dashboard_name=dashboard_name,
                     ) or []
 
@@ -341,10 +343,17 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_query(
         self,
         chart_details: MetabaseChart,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
+
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
 
         query = None
         if (
@@ -359,23 +368,54 @@ class MetabaseSource(DashboardServiceSource):
 
         database_name = database.details.db if database and database.details else None
 
-        db_service = self._get_database_service(db_service_name)
+        db_service = self._get_database_service(prefix_service_name)
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
-            if db_service
-            else Dialect.ANSI,
+            (
+                ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+                if db_service
+                else Dialect.ANSI
+            ),
         )
+
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
+            logger.debug(
+                f"Database {database_name} does not match prefix {prefix_database_name}"
+            )
+            return
 
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
+
+            if (
+                prefix_table_name
+                and table
+                and prefix_table_name.lower() != table.lower()
+            ):
+                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")
+                continue
+
+            if (
+                prefix_schema_name
+                and database_schema_name
+                and prefix_schema_name.lower() != database_schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                )
+                continue
+
             fqn_search_string = build_es_fqn_search_string(
-                database_name=database_name,
-                schema_name=database_schema_name,
-                service_name=db_service_name or "*",
-                table_name=table,
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or database_schema_name,
+                service_name=prefix_service_name or "*",
+                table_name=prefix_table_name or table,
             )
             from_entities = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -401,7 +441,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_api(
         self,
         chart_details: MetabaseChart,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
@@ -410,12 +450,50 @@ class MetabaseSource(DashboardServiceSource):
         if table is None or table_name is None:
             return
 
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         database_name = table.db.details.db if table.db and table.db.details else None
+
+        if (
+            prefix_table_name
+            and table_name
+            and prefix_table_name.lower() != table_name.lower()
+        ):
+            logger.debug(
+                f"Table {table_name} does not match prefix {prefix_table_name}"
+            )
+            return
+
+        if (
+            prefix_schema_name
+            and table.table_schema
+            and prefix_schema_name.lower() != table.table_schema.lower()
+        ):
+            logger.debug(
+                f"Schema {table.table_schema} does not match prefix {prefix_schema_name}"
+            )
+            return
+
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
+            logger.debug(
+                f"Database {database_name} does not match prefix {prefix_database_name}"
+            )
+            return
+
         fqn_search_string = build_es_fqn_search_string(
-            database_name=database_name,
-            schema_name=table.table_schema,
-            service_name=db_service_name or "*",
-            table_name=table_name,
+            service_name=prefix_service_name or "*",
+            database_name=prefix_database_name or database_name,
+            schema_name=prefix_schema_name or table.table_schema,
+            table_name=prefix_table_name or table_name,
         )
         from_entities = self.metadata.search_in_any_service(
             entity_type=Table,

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
@@ -27,11 +26,11 @@ const mockParams = {
   version: '1.2',
   fqn: 'sample_data',
 };
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockOtherData = { data: [], paging: {} };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({ push: mockPush })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -122,13 +121,13 @@ jest.mock('../../rest/topicsAPI', () => ({
 
 describe('ServiceVersionPage tests', () => {
   it('Component should render properly for databaseServices while having view permissions', async () => {
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
+    expect(
+      await screen.findByText('DataAssetsVersionHeader')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('ServiceVersionMainTabContent')
     ).toBeInTheDocument();
@@ -136,39 +135,31 @@ describe('ServiceVersionPage tests', () => {
   });
 
   it('Correct version should reflect in the URL while changing versions form EntityVersionTimeline', async () => {
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    const versionHandler = screen.getByText('versionHandler');
+    const versionHandler = await screen.findByText('versionHandler');
 
-    await act(async () => {
-      versionHandler.click();
-    });
+    versionHandler.click();
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/service/databaseServices/sample_data/versions/0.7'
     );
   });
 
   it('Closing the version page should redirect to the service details page', async () => {
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    const onBack = screen.getByText('onBack');
+    const onBack = await screen.findByText('onBack');
 
-    await act(async () => {
-      onBack.click();
-    });
+    onBack.click();
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/service/databaseServices/sample_data'
     );
   });
@@ -180,17 +171,19 @@ describe('ServiceVersionPage tests', () => {
         .mockImplementation(() => ({ ViewAll: false, ViewBasic: true })),
     }));
 
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Error placeholder should be displayed in case of no view permissions', async () => {
@@ -200,13 +193,11 @@ describe('ServiceVersionPage tests', () => {
         .mockImplementation(() => ({ ViewAll: false, ViewBasic: false })),
     }));
 
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('Component should render properly for messagingServices', async () => {
@@ -214,17 +205,19 @@ describe('ServiceVersionPage tests', () => {
       ...mockParams,
       serviceCategory: 'messagingServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Component should render properly for dashboardServices', async () => {
@@ -232,17 +225,19 @@ describe('ServiceVersionPage tests', () => {
       ...mockParams,
       serviceCategory: 'dashboardServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Component should render properly for pipelineServices', async () => {
@@ -251,17 +246,19 @@ describe('ServiceVersionPage tests', () => {
       fqn: 'sample_data',
       serviceCategory: 'pipelineServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Component should render properly for storageServices', async () => {
@@ -270,17 +267,19 @@ describe('ServiceVersionPage tests', () => {
       fqn: 'sample_data',
       serviceCategory: 'storageServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Component should render properly for mlmodelServices', async () => {
@@ -289,17 +288,19 @@ describe('ServiceVersionPage tests', () => {
       fqn: 'sample_data',
       serviceCategory: 'mlmodelServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
     expect(
-      screen.getByText('ServiceVersionMainTabContent')
+      await screen.findByText('DataAssetsVersionHeader')
     ).toBeInTheDocument();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('ServiceVersionMainTabContent')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 
   it('Only basic information should be rendered for metadataServices', async () => {
@@ -308,14 +309,16 @@ describe('ServiceVersionPage tests', () => {
       fqn: 'sample_data',
       serviceCategory: 'metadataServices',
     }));
-    await act(async () => {
-      render(<ServiceVersionPage />);
+    render(<ServiceVersionPage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
 
-    expect(screen.getByText('DataAssetsVersionHeader')).toBeInTheDocument();
+    expect(
+      await screen.findByText('DataAssetsVersionHeader')
+    ).toBeInTheDocument();
     expect(screen.queryByText('ServiceVersionMainTabContent')).toBeNull();
-    expect(screen.getByText('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityVersionTimeLine')
+    ).toBeInTheDocument();
   });
 });

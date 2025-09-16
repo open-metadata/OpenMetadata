@@ -85,7 +85,9 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.create_table_and_view(self)
 
     def delete_table_and_view(self) -> None:
-        SQACommonMethods.delete_table_and_view(self)
+        with self.engine.connect() as connection:
+            connection.execute(self.drop_view_query)
+            connection.execute(self.drop_table_query)
 
     def delete_table_rows(self) -> None:
         SQACommonMethods.run_delete_queries(self)

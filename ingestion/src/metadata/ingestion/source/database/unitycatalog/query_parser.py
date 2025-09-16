@@ -27,6 +27,9 @@ from metadata.ingestion.source.database.databricks.query_parser import (
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
+from metadata.ingestion.source.database.unitycatalog.connection import (
+    get_sqlalchemy_connection,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -55,6 +58,7 @@ class UnityCatalogQueryParserSource(
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self._init_super(config=config, metadata=metadata)
         self.client = UnityCatalogClient(self.service_connection)
+        self.sql_client = get_sqlalchemy_connection(self.service_connection)
 
     @classmethod
     def create(

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.permissions;
 
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DESCRIPTION;
@@ -55,6 +56,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -65,6 +68,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.ResourceRegistry;
@@ -75,12 +79,15 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.permissions.PermissionsResource.ResourcePermissionList;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
+import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -165,9 +172,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   void get_admin_permissions_for_role() throws HttpResponseException {
     // Ensure an admin has all the permissions
     List<ResourcePermission> actualPermissions = getPermissions(ADMIN_AUTH_HEADERS);
-    assertEquals(
-        PolicyEvaluator.trimResourcePermissions(PolicyEvaluator.getResourcePermissions(ALLOW)),
-        actualPermissions);
+    assertEquals(PolicyEvaluator.getResourcePermissions(ALLOW), actualPermissions);
   }
 
   @Test
@@ -227,18 +232,14 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     permissionsBuilder.setPermission(
         DATA_CONSUMER_ALLOWED, ALLOW, null, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
 
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actual);
+    assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actual);
 
     // Get permissions for DATA_CONSUMER and DATA_STEWARD policies together and assert it is correct
     policies.add(DATA_STEWARD_POLICY.getId());
     actual = getPermissionsForPolicies(policies, ADMIN_AUTH_HEADERS);
     permissionsBuilder.setPermission(
         DATA_STEWARD_ALLOWED, ALLOW, null, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actual);
+    assertResourcePermissions(permissionsBuilder.getResourcePermissions(), actual);
   }
 
   @Test
@@ -275,9 +276,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     // Note that conditional list is empty. All the required context to resolve is met when
     // requesting permission of a specific resource (both subject and resource context).
     // Only Deny, Allow, NotAllow permissions are expected.
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
   }
 
   @Test
@@ -311,23 +310,17 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         ORG_IS_OWNER_RULE_OPERATIONS, ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
     ResourcePermission actualPermission =
         getPermission(Entity.TABLE, table.getId(), null, authHeaders);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     // get permissions by resource entity name
     actualPermission =
         getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     // Admin getting permissions for a specific resource on for Data consumer
     actualPermission =
         getPermission(Entity.TABLE, table.getId(), DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
-    assertResourcePermission(
-        PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-        actualPermission);
+    assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     Policy orgPolicy =
@@ -363,9 +356,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
           allowedOperations, ALLOW, null, ORGANIZATION_POLICY_NAME, orgPolicy.getRules().get(1));
       actualPermission =
           getPermissionByName(Entity.TABLE, table.getFullyQualifiedName(), null, authHeaders);
-      assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(Entity.TABLE)),
-          actualPermission);
+      assertResourcePermission(permissionsBuilder.getPermission(Entity.TABLE), actualPermission);
 
       // Finally, try to patch the field that can't be edited and expect permission denied
       String field = ResourceRegistry.getField(editOperation);
@@ -485,5 +476,214 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         }
       }
     }
+  }
+
+  @Test
+  void test_debugPermissions_adminCanDebugAnyUser() throws HttpResponseException {
+    // Create test users and teams
+    User testUser = createUser("test-debug-user");
+    Team testTeam = createTeam("test-debug-team");
+
+    // Add user to team
+    addUserToTeam(testTeam, testUser);
+
+    // Admin should be able to debug permissions for any user
+    WebTarget target = getResource("permissions/debug/user/" + testUser.getName());
+    PermissionDebugInfo debugInfo =
+        TestUtils.get(target, PermissionDebugInfo.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the debug info
+    assertEquals(testUser.getName(), debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+  }
+
+  @Test
+  void test_debugPermissions_userCanDebugOwnPermissions() throws HttpResponseException {
+    // Create test user
+    User testUser = createUser("test-debug-own-user");
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(testUser.getName() + "@open-metadata.org");
+
+    // User should be able to debug their own permissions
+    WebTarget target = getResource("permissions/debug/user/" + testUser.getName());
+    PermissionDebugInfo debugInfo =
+        TestUtils.get(target, PermissionDebugInfo.class, userAuthHeaders);
+
+    // Verify the debug info
+    assertEquals(testUser.getName(), debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+  }
+
+  @Test
+  void test_debugPermissions_userCannotDebugOtherUserPermissions() throws HttpResponseException {
+    // Create two test users
+    User testUser1 = createUser("test-debug-user1");
+    User testUser2 = createUser("test-debug-user2");
+    Map<String, String> user1AuthHeaders =
+        SecurityUtil.authHeaders(testUser1.getName() + "@open-metadata.org");
+
+    // User1 should not be able to debug user2's permissions
+    WebTarget target = getResource("permissions/debug/user/" + testUser2.getName());
+    assertResponse(
+        () -> TestUtils.get(target, PermissionDebugInfo.class, user1AuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not admin");
+  }
+
+  @Test
+  void test_debugMyPermissions() throws HttpResponseException {
+    // Create test user
+    User testUser = createUser("test-debug-me-user");
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(testUser.getName() + "@open-metadata.org");
+
+    // User should be able to debug their own permissions via /me endpoint
+    WebTarget target = getResource("permissions/debug/me");
+    PermissionDebugInfo debugInfo =
+        TestUtils.get(target, PermissionDebugInfo.class, userAuthHeaders);
+
+    // Verify the debug info
+    assertEquals(testUser.getName(), debugInfo.getUser().getName());
+    assertNotNull(debugInfo.getDirectRoles());
+    assertNotNull(debugInfo.getTeamPermissions());
+    assertNotNull(debugInfo.getSummary());
+  }
+
+  @Test
+  void test_debugPermissionEvaluation_adminCanDebugAnyUser() throws HttpResponseException {
+    // Create test user
+    User testUser = createUser("test-debug-eval-user");
+
+    // Admin should be able to debug permission evaluation for any user
+    WebTarget target =
+        getResource("permissions/debug/evaluate")
+            .queryParam("user", testUser.getName())
+            .queryParam("resource", "table")
+            .queryParam("operation", "VIEW_ALL");
+
+    PermissionEvaluationDebugInfo evalInfo =
+        TestUtils.get(target, PermissionEvaluationDebugInfo.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the evaluation info
+    assertEquals(testUser.getName(), evalInfo.getUser().getName());
+    assertEquals("table", evalInfo.getResource());
+    assertEquals(MetadataOperation.VIEW_ALL, evalInfo.getOperation());
+    assertNotNull(evalInfo.getEvaluationSteps());
+    assertNotNull(evalInfo.getSummary());
+    assertNotNull(evalInfo.getFinalDecision());
+  }
+
+  @Test
+  void test_debugPermissionEvaluation_userCanDebugOwnEvaluation() throws HttpResponseException {
+    // Create test user
+    User testUser = createUser("test-debug-eval-own-user");
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(testUser.getName() + "@open-metadata.org");
+
+    // User should be able to debug their own permission evaluation
+    WebTarget target =
+        getResource("permissions/debug/evaluate")
+            .queryParam("user", testUser.getName())
+            .queryParam("resource", "table")
+            .queryParam("operation", "VIEW_ALL");
+
+    PermissionEvaluationDebugInfo evalInfo =
+        TestUtils.get(target, PermissionEvaluationDebugInfo.class, userAuthHeaders);
+
+    // Verify the evaluation info
+    assertEquals(testUser.getName(), evalInfo.getUser().getName());
+    assertEquals("table", evalInfo.getResource());
+    assertEquals(MetadataOperation.VIEW_ALL, evalInfo.getOperation());
+    assertNotNull(evalInfo.getEvaluationSteps());
+    assertNotNull(evalInfo.getSummary());
+    assertNotNull(evalInfo.getFinalDecision());
+  }
+
+  @Test
+  void test_debugPermissionEvaluation_userCannotDebugOtherUserEvaluation()
+      throws HttpResponseException {
+    // Create two test users
+    User testUser1 = createUser("test-debug-eval-user1");
+    User testUser2 = createUser("test-debug-eval-user2");
+    Map<String, String> user1AuthHeaders =
+        SecurityUtil.authHeaders(testUser1.getName() + "@open-metadata.org");
+
+    // User1 should not be able to debug user2's permission evaluation
+    WebTarget target =
+        getResource("permissions/debug/evaluate")
+            .queryParam("user", testUser2.getName())
+            .queryParam("resource", "table")
+            .queryParam("operation", "VIEW_ALL");
+
+    assertResponse(
+        () -> TestUtils.get(target, PermissionEvaluationDebugInfo.class, user1AuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='" + testUser1.getName() + "'} is not admin");
+  }
+
+  @Test
+  void test_debugPermissionEvaluation_withResourceId() throws HttpResponseException {
+    // Create test user and table
+    User testUser = createUser("test-debug-eval-resource-user");
+    CreateTable createTable = new TableResourceTest().createRequest("test-debug-table");
+    Table table = new TableResourceTest().createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Debug permission evaluation for specific resource
+    WebTarget target =
+        getResource("permissions/debug/evaluate")
+            .queryParam("user", testUser.getName())
+            .queryParam("resource", "table")
+            .queryParam("resourceId", table.getId())
+            .queryParam("operation", "EDIT_ALL");
+
+    PermissionEvaluationDebugInfo evalInfo =
+        TestUtils.get(target, PermissionEvaluationDebugInfo.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the evaluation info
+    assertEquals(testUser.getName(), evalInfo.getUser().getName());
+    assertEquals("table", evalInfo.getResource());
+    assertEquals(table.getId().toString(), evalInfo.getResourceId());
+    assertEquals(MetadataOperation.EDIT_ALL, evalInfo.getOperation());
+    assertNotNull(evalInfo.getEvaluationSteps());
+    assertNotNull(evalInfo.getSummary());
+    assertNotNull(evalInfo.getFinalDecision());
+  }
+
+  // Helper methods
+
+  private User createUser(String name) throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest(name).withEmail(name + "@test.com");
+    return userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
+  }
+
+  private Team createTeam(String name) throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(name);
+    return teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+  }
+
+  private void addUserToTeam(Team team, User user) throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+
+    // Get the current user state
+    User currentUser = userResourceTest.getEntity(user.getId(), "teams", ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(currentUser);
+
+    // Update teams
+    List<EntityReference> teams = new ArrayList<>();
+    if (currentUser.getTeams() != null) {
+      teams.addAll(currentUser.getTeams());
+    }
+    teams.add(team.getEntityReference());
+    currentUser.setTeams(teams);
+
+    // Patch the user
+    userResourceTest.patchEntity(
+        currentUser.getId(), originalJson, currentUser, ADMIN_AUTH_HEADERS);
   }
 }

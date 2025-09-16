@@ -1,0 +1,26 @@
+{
+  "name": "RdfIndexApp",
+  "displayName": "RDF Knowledge Graph Indexing",
+  "description": "OpenMetadata connects with RDF triple stores (Apache Jena Fuseki, QLever) to provide Knowledge Graph capabilities. This application synchronizes data from OpenMetadata to RDF format.",
+  "features": "Sync OpenMetadata entities and relationships to RDF triple stores, enabling Knowledge Graph visualization and SPARQL queries.",
+  "appType": "internal",
+  "appScreenshots": [],
+  "developer": "OpenMetadata",
+  "developerUrl": "https://open-metadata.org",
+  "privacyPolicyUrl": "https://open-metadata.org",
+  "supportEmail": "support@open-metadata.org",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.rdf.RdfIndexApp",
+  "runtime": {
+    "enabled": true
+  },
+  "supportsInterrupt": true,
+  "appConfiguration": {
+    "entities": [
+      "all"
+    ],
+    "recreateIndex": false,
+    "batchSize": "100"
+  }
+}

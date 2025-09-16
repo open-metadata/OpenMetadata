@@ -13,7 +13,7 @@
 import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { split } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -24,9 +24,11 @@ import './query-viewer.style.less';
 const QueryViewer = ({
   title,
   sqlQuery,
+  isActive,
 }: {
   title?: React.ReactNode;
   sqlQuery: string;
+  isActive?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -69,6 +71,7 @@ const QueryViewer = ({
         )}
         mode={{ name: CSMode.SQL }}
         options={{ readOnly: true }}
+        refreshEditor={isActive}
         showCopyButton={false}
         value={sqlQuery}
       />

@@ -24,9 +24,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
-  reloadAndWaitForNetworkIdle,
 } from '../../utils/common';
+import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const user = new UserClass();
@@ -49,11 +50,6 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
   trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
-});
-
-test.describe.configure({
-  // 6 minutes max for AutoPilot tests.
-  timeout: 6 * 60 * 1000,
 });
 
 test.beforeAll(async ({ browser }) => {
@@ -83,21 +79,24 @@ services.forEach((ServiceClass) => {
     service.serviceType,
     PLAYWRIGHT_INGESTION_TAG_OBJ,
     () => {
+      const testData = {
+        service: {
+          name: '',
+          id: '',
+          fullyQualifiedName: '',
+        },
+      };
+
       test.beforeEach('Visit entity details page', async ({ page }) => {
         await redirectToHomePage(page);
-      });
-
-      test.afterAll('Delete service by API', async ({ browser }) => {
-        const { afterAction, apiContext } = await createNewPage(browser);
-
-        await service.deleteServiceByAPI(apiContext);
-
-        await afterAction();
       });
 
       test('Create Service and check the AutoPilot status', async ({
         page,
       }) => {
+        // 8 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(8 * 60 * 1000);
+
         await settingClick(
           page,
           service.category as unknown as SettingOptionsType
@@ -106,6 +105,8 @@ services.forEach((ServiceClass) => {
         // Create service
         await service.createService(page);
 
+        testData.service = service.serviceResponseData;
+
         // Wait for the service details page to load
         await page.waitForURL('**/service/**');
         await page.waitForLoadState('networkidle');
@@ -113,55 +114,105 @@ services.forEach((ServiceClass) => {
           state: 'detached',
         });
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Wait for the auto pilot status banner to be visible
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
-          {
-            state: 'visible',
-          }
-        );
-
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-RUNNING')
-        ).toBeHidden();
-
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
         // Wait for the auto pilot status banner to be visible
         await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
+          page.getByText('AutoPilot agents run completed successfully.')
         ).toBeVisible();
 
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
+        if (service.serviceType === 'Mysql') {
+          await page.getByTestId('agent-status-widget-view-more').click();
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
+          await page.waitForSelector(
+            '[data-testid="agent-status-card-Metadata"]',
+            {
+              state: 'visible',
+            }
+          );
 
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeHidden();
+          // Check the agents statuses
+          await expect(
+            page.getByTestId('agent-status-card-Lineage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Usage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Auto Classification')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Profiler')
+          ).toBeVisible();
+
+          // Check the agents summary
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Successful')
+              .getByTestId('pipeline-count')
+          ).toHaveText('3');
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Pending')
+              .getByTestId('pipeline-count')
+          ).toHaveText('2');
+
+          // Check the total data assets count
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database Schema-count')
+          ).toHaveText('2');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Table-count')
+          ).toHaveText('3');
+        }
+      });
+
+      test('Agents created by AutoPilot should be deleted', async ({
+        page,
+      }) => {
+        const { apiContext } = await getApiContext(page);
+
+        // Get the agents created by AutoPilot
+        const getAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsList = (await getAgents.json()).data;
+
+        // Check if the agents are created
+        expect(agentsList.length).toBeGreaterThan(0);
+
+        // Delete the service
+        await service.deleteService(page);
+
+        // Get the agents after deleting the service
+        const getAfterDeletingAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsListAfterDeleting = (await getAfterDeletingAgents.json())
+          .data;
+
+        // Check if the agents are deleted
+        expect(agentsListAfterDeleting).toHaveLength(0);
       });
     }
   );

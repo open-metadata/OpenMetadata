@@ -15,12 +15,13 @@ import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -32,7 +33,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
-import { getEmptyPlaceholder, getFeedCounts } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -43,9 +44,14 @@ import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -65,11 +71,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   versionHandler,
   handleToggleDelete,
   onMlModelUpdate,
+  onMlModelUpdateCertification,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -139,8 +146,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
-        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey),
+        { replace: true }
       );
     }
   };
@@ -188,9 +196,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.ml-model'),
-        }),
-        // Autoclose timer
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -257,7 +263,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           {t('label.hyper-parameter-plural')}{' '}
         </Typography.Title>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
-          getEmptyPlaceholder()
+          <ErrorPlaceHolder size={SIZE.MEDIUM} />
         ) : (
           <Table
             columns={getMlHyperParametersColumn}
@@ -287,14 +293,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             size="small"
           />
         ) : (
-          getEmptyPlaceholder()
+          <ErrorPlaceHolder size={SIZE.MEDIUM} />
         )}
       </>
     );
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -360,6 +366,24 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     fetchMlModel,
     customizedPage?.tabs,
   ]);
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (mlModelDetail) {
+        const certificationTag: Mlmodel['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedMlModelDetails = {
+          ...mlModelDetail,
+          certification: certificationTag,
+        };
+
+        await onMlModelUpdateCertification(
+          updatedMlModelDetails,
+          'certification'
+        );
+      }
+    },
+    [mlModelDetail, onMlModelUpdateCertification]
+  );
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -389,6 +413,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             entityType={EntityType.MLMODEL}
             openTaskCount={feedCount.openTaskCount}
             permissions={mlModelPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMlModel}
             onOwnerUpdate={onOwnerUpdate}

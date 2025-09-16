@@ -33,3 +33,52 @@ export const getFeedFilterWidgets = (
         ...ACTIVITY_FEED_FILTER_LIST,
       ];
 };
+
+/**
+ * Determines the safest container for rendering dropdown/popups like from Ant Design.
+ * It avoids containers that may clip the popup (e.g., with overflow: hidden),
+ * while still trying to keep the popup within a scrollable context if possible.
+ *
+ * @param trigger - The element that triggered the popup.
+ * @returns A suitable container element for rendering the popup.
+ */
+export const getVisiblePopupContainer = (
+  trigger?: HTMLElement
+): HTMLElement => {
+  // Fallback to document.body if no trigger is provided
+  if (!trigger) {
+    return document.body;
+  }
+
+  // Start from the trigger and walk up the DOM tree
+  let node: HTMLElement | null = trigger;
+
+  // Acceptable overflow values for scrollable containers
+  const scrollableValues = ['auto', 'scroll', 'overlay'];
+
+  while (node && node !== document.body) {
+    const style = window.getComputedStyle(node);
+
+    // Extract overflow styles from the current element
+    const { overflowY, overflow } = style;
+
+    // Check if the element is considered scrollable
+    const isScrollable =
+      scrollableValues.includes(overflowY) ||
+      scrollableValues.includes(overflow);
+
+    // Check if the element might clip content (e.g., overflow: hidden)
+    const willClip = overflow === 'hidden' || overflowY === 'hidden';
+
+    // Ensure it is scrollable, does not clip, and has actual scrollable content
+    if (isScrollable && !willClip && node.scrollHeight > node.clientHeight) {
+      return node; // Found a safe scrollable container
+    }
+
+    // Move up to the parent element
+    node = node.parentElement;
+  }
+
+  // Fallback to the <body> if no suitable container is found
+  return document.body;
+};

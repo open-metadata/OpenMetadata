@@ -10,22 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row, Select, Typography } from 'antd';
+import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
@@ -40,7 +35,6 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
@@ -50,7 +44,7 @@ const LineageConfigPage = () => {
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -150,6 +144,7 @@ const LineageConfigPage = () => {
                     id="lineage-config"
                     initialValues={lineageConfig}
                     layout="vertical"
+                    validateMessages={VALIDATION_MESSAGES}
                     onFinish={handleSave}
                     onFocus={handleFieldFocus}>
                     <Form.Item
@@ -159,14 +154,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.upstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-upstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
@@ -178,14 +174,15 @@ const LineageConfigPage = () => {
                       rules={[
                         {
                           required: true,
-                          message: t('message.downstream-depth-message'),
+                        },
+                        {
+                          type: 'number',
+                          min: 0,
                         },
                       ]}>
-                      <Input
+                      <InputNumber
+                        className="w-full"
                         data-testid="field-downstream"
-                        max={5}
-                        min={1}
-                        type="number"
                       />
                     </Form.Item>
 
@@ -211,7 +208,7 @@ const LineageConfigPage = () => {
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => history.goBack()}>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
@@ -249,6 +246,4 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.lineage-config'))(
-  LineageConfigPage
-);
+export default withPageLayout(LineageConfigPage);

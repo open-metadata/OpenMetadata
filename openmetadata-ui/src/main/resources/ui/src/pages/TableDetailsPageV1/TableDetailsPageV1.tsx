@@ -17,9 +17,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
@@ -28,6 +28,7 @@ import { AlignRightIconButton } from '../../components/common/IconButtons/EditIc
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -50,11 +51,13 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { DataContract } from '../../generated/entity/data/dataContract';
 import { Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
   SuggestionType,
 } from '../../generated/entity/feed/suggestion';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -64,6 +67,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
+import { getContractByEntityId } from '../../rest/contractAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -88,7 +92,11 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
@@ -98,8 +106,9 @@ import {
   getTierTags,
   updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 
 const TableDetailsPageV1: React.FC = () => {
@@ -108,11 +117,12 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -127,6 +137,7 @@ const TableDetailsPageV1: React.FC = () => {
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const [dataContract, setDataContract] = useState<DataContract>();
 
   const tableFqn = useMemo(
     () =>
@@ -162,7 +173,8 @@ const TableDetailsPageV1: React.FC = () => {
             EntityType.TABLE,
             tableFqn,
             tablePermissions,
-            tableDetails
+            tableDetails,
+            navigate
           )
         : [],
     [tablePermissions, tableFqn, tableDetails]
@@ -170,12 +182,20 @@ const TableDetailsPageV1: React.FC = () => {
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
-      viewUsagePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewUsage,
-      viewTestCasePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewTests,
+      viewUsagePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewUsage
+      ),
+      viewTestCasePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewTests
+      ),
     }),
-    [tablePermissions]
+    [
+      tablePermissions,
+      getPrioritizedViewPermission,
+      getPrioritizedEditPermission,
+    ]
   );
 
   const isViewTableType = useMemo(
@@ -195,7 +215,6 @@ const TableDetailsPageV1: React.FC = () => {
       }
 
       const details = await getTableDetailsByFQN(tableFqn, { fields });
-
       setTableDetails(details);
       addToRecentViewed({
         displayName: getEntityName(details),
@@ -207,7 +226,7 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
@@ -280,6 +299,15 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
+  const fetchDataContract = async (tableId: string) => {
+    try {
+      const contract = await getContractByEntityId(tableId, EntityType.TABLE);
+      setDataContract(contract);
+    } catch {
+      // Do nothing
+    }
+  };
+
   const {
     tableTags,
     deleted,
@@ -314,10 +342,8 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
   const fetchResourcePermission = useCallback(
-    async (tableFqn) => {
+    async (tableFqn: string) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -359,9 +385,9 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.replace(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+          replace: true,
+        });
       }
     }
   };
@@ -463,30 +489,44 @@ const TableDetailsPageV1: React.FC = () => {
   } = useMemo(
     () => ({
       editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewSampleData
+      ),
+      viewQueriesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewQueries
+      ),
+      viewProfilerPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewDataProfile
+      ),
       viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+      viewBasicPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewBasic
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -565,6 +605,21 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (tableDetails) {
+        const certificationTag: Table['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...tableDetails,
+          certification: certificationTag,
+        };
+
+        await onTableUpdate(updatedTableDetails, 'certification');
+      }
+    },
+    [tableDetails, onTableUpdate]
+  );
   const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
@@ -587,8 +642,7 @@ const TableDetailsPageV1: React.FC = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -661,15 +715,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+      navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
+  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
@@ -736,6 +790,12 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTestCaseSummary();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (tableDetails) {
+      fetchDataContract(tableDetails.id);
+    }
+  }, [tableDetails?.id]);
 
   useSub(
     'updateDetails',
@@ -804,10 +864,12 @@ const TableDetailsPageV1: React.FC = () => {
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
               dataAsset={tableDetails}
+              dataContract={dataContract}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}
               openTaskCount={feedCount.openTaskCount}
               permissions={tablePermissions}
+              onCertificationUpdate={onCertificationUpdate}
               onDisplayNameUpdate={handleDisplayNameUpdate}
               onFollowClick={handleFollowTable}
               onOwnerUpdate={handleUpdateOwner}

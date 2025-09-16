@@ -40,8 +40,10 @@ export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  appVersion?: string;
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
+  isAuthenticating: boolean;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona?: EntityReference;
@@ -52,8 +54,9 @@ export interface ApplicationStore
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
   appPreferences: AppPreferences;
+  rdfEnabled?: boolean;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
-  setSelectedPersona: (persona: EntityReference) => void;
+  setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
@@ -72,6 +75,9 @@ export interface ApplicationStore
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
+  setAppVersion: (version: string) => void;
+  setRdfEnabled: (enabled: boolean) => void;
+  initializeAuthState: () => void;
 }
 
 export interface DomainStore {

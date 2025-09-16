@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -32,7 +33,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
@@ -60,8 +60,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      Set<String> receivers =
-          getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
+      Set<String> receivers = getTargetsForAlert(emailAlertConfig, subscriptionDestination, event);
       EmailMessage emailMessage =
           emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       for (String email : receivers) {

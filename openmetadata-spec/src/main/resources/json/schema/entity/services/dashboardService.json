@@ -30,7 +30,9 @@
         "Lightdash",
         "MicroStrategy",
         "QlikCloud",
-        "Sigma"
+        "Sigma",
+        "ThoughtSpot",
+        "Grafana"
       ],
       "javaEnums": [
         {
@@ -80,6 +82,12 @@
         },
         {
           "name": "Sigma"
+        },
+        {
+          "name": "ThoughtSpot"
+        },
+        {
+          "name": "Grafana"
         }
       ]
     },
@@ -141,6 +149,12 @@
             },
             {
               "$ref": "./connections/dashboard/sigmaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/thoughtSpotConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/grafanaConnection.json"
             }
           ]
         }
@@ -229,9 +243,9 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the Dashboard service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Dashboard service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this entity.",

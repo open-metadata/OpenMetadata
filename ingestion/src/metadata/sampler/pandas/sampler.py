@@ -60,7 +60,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self._table
 
     def get_client(self):
-        return self.connection.client
+        return self.connection
 
     def _partitioned_table(self):
         """Get partitioned table"""

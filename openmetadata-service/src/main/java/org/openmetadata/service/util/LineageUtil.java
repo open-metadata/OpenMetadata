@@ -8,6 +8,7 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -17,9 +18,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.models.IndexMapping;
 
 public class LineageUtil {
 
@@ -115,13 +117,14 @@ public class LineageUtil {
 
   private static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     Entity.getSearchRepository()
         .getSearchClient()
         .updateChildren(
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-            new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
+            new ImmutablePair<>(
+                REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
 
   private static void insertDomainLineage(EntityReference fromDomain, EntityReference toDomain) {

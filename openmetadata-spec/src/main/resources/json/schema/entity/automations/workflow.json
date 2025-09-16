@@ -15,7 +15,9 @@
       "type": "string",
       "enum": [
         "TEST_CONNECTION",
-        "REVERSE_INGESTION"
+        "REVERSE_INGESTION",
+        "QUERY_RUNNER",
+        "TEST_SPARK_ENGINE_CONNECTION"
       ]
     },
     "workflowStatus": {
@@ -68,6 +70,12 @@
         },
         {
           "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
+        },
+        {
+          "$ref": "queryRunnerRequest.json"
+        },
+        {
+          "$ref": "testSparkEngineConnection.json"
         }
       ]
     },
@@ -79,6 +87,9 @@
         },
         {
           "$ref": "../services/ingestionPipelines/reverseIngestionResponse.json"
+        },
+        {
+          "$ref": "response/queryRunnerResponse.json"
         }
       ]
     },
@@ -119,9 +130,9 @@
       "type": "boolean",
       "default": false
     },
-    "domain": {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",

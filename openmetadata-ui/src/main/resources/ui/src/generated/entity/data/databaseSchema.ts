@@ -45,10 +45,14 @@ export interface DatabaseSchema {
      */
     displayName?: string;
     /**
-     * Domain the Database Schema belongs to. When not set, the Schema inherits the domain from
+     * Domains the Database Schema belongs to. When not set, the Schema inherits the domain from
      * the database it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the DatabaseSchema.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -322,9 +326,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Database Schema belongs to. When not set, the Schema inherits the domain from
- * the database it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to the database cluster/service where this schema is hosted in.
@@ -489,6 +490,20 @@ export enum SamplingMethodType {
 }
 
 /**
+ * Status of the DatabaseSchema.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -556,6 +571,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -577,8 +593,10 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",

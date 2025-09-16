@@ -23,6 +23,18 @@ from pandas import DataFrame
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
+TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
+    "columnValuesLengthToBeBetween",
+    "columnValuesToBeBetween",
+    "columnValuesToBeInSet",
+    "columnValuesToBeNotInSet",
+    "columnValuesToBeNotNull",
+    "columnValuesToBeUnique",
+    "columnValuesToMatchRegex",
+    "columnValuesToNotMatchRegex",
+    "tableCustomSQLQuery",
+}
+
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 DL_DATA = (
     [
@@ -36,6 +48,7 @@ DL_DATA = (
         60001,
         49.6852237,
         1.7743058,
+        True,
     ],
     [
         "2",
@@ -48,6 +61,7 @@ DL_DATA = (
         19005,
         45.2589385,
         1.4731471,
+        False,
     ],
     [
         "3",
@@ -60,6 +74,7 @@ DL_DATA = (
         11008,
         42.9974445,
         2.2518325,
+        None,
     ],
 )
 
@@ -77,6 +92,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
         "postal_code",
         "lat",
         "lon",
+        "is_active",
     ],
 )
 
@@ -403,7 +419,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "TABLE",
             (
                 TestCaseResult,
-                "10",
+                "11",
                 None,
                 TestCaseStatus.Success,
                 None,
@@ -416,7 +432,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "10", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
@@ -517,6 +533,36 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
             ),
         ),
+        (
+            "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Success,
+                4000.0,
+                0.0,
+                66.67,
+                0.0,
+            ),
+        ),
+        (
+            "test_case_table_custom_sql_query_success_dl_with_partition_expression",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (
+                TestCaseResult,
+                None,
+                None,
+                TestCaseStatus.Success,
+                2000,
+                0,
+                100.0,
+                0.0,
+            ),
+        ),
     ],
 )
 def test_suite_validation_datalake(
@@ -539,6 +585,9 @@ def test_suite_validation_datalake(
         passed_percentage,
         failed_percentage,
     ) = expected
+
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED:
+        test_case.computePassedFailedRowCount = True
 
     test_handler_obj = import_test_case_class(
         test_type,
@@ -568,3 +617,8 @@ def test_suite_validation_datalake(
     if failed_percentage:
         assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED:
+        assert res.failedRows is not None
+        assert res.failedRowsPercentage is not None
+        assert res.passedRows is not None
+        assert res.passedRowsPercentage is not None

@@ -81,7 +81,7 @@ jobs:
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
       - name: Run Python Tests
-        if: ${{ matrix.py-version != '3.9' }}
+        if: ${{ matrix.py-version != '3.10' }}
         run: |
           source env/bin/activate
           make run_python_tests
@@ -89,7 +89,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run Python Tests & record coverage
-        if: ${{ matrix.py-version == '3.9' }}
+        if: ${{ matrix.py-version == '3.10' }}
         run: |
           source env/bin/activate
           make coverage
@@ -106,7 +106,7 @@ jobs:
         # we have to pass these args values since we are working with the 'pull_request_target' trigger
       - name: Push Results in PR to Sonar
         id: push-to-sonar
-        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.10' }}
         continue-on-error: true
         uses: sonarsource/sonarcloud-github-action@v2.3.0
         env:
@@ -124,13 +124,13 @@ jobs:
 
       # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
       - name: Wait to retry 'Push Results in PR to Sonar'
-        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.10' && steps.push-to-sonar.outcome != 'success' }}
         run: sleep 20s
         shell: bash
 
       - name: Retry 'Push Results in PR to Sonar'
         uses: sonarsource/sonarcloud-github-action@master
-        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.10' && steps.push-to-sonar.outcome != 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

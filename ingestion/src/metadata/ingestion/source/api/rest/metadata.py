@@ -40,6 +40,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
+from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_collection
 from metadata.utils.helpers import clean_uri
@@ -77,7 +78,7 @@ class RestSource(ApiServiceSource):
         Here is where filtering happens
         """
         try:
-            self.json_response = self.connection.json()
+            self.json_response = parse_openapi_schema(self.connection)
             collections_list = []
             tags_collection_set = set()
             if self.json_response.get("tags", []):
@@ -300,38 +301,80 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error while parsing response schema: {err}")
         return None
 
-    def process_schema_fields(self, schema_ref: str) -> Optional[List[FieldModel]]:
+    def process_schema_fields(
+        self, schema_ref: str, parent_refs: Optional[List[str]] = None
+    ) -> Optional[List[FieldModel]]:
         try:
+            if parent_refs is None:
+                parent_refs = []
             schema_name = schema_ref.split("/")[-1]
             schema_fields = (
                 self.json_response.get("components").get("schemas").get(schema_name)
             )
-
+            parent_refs.append(schema_ref)
             fetched_fields = []
             for key, val in schema_fields.get("properties", {}).items():
                 dtype = val.get("type")
                 if dtype:
+                    dtype = "INT" if dtype.upper() == "INTEGER" else dtype
                     parsed_dtype = (
                         DataTypeTopic[dtype.upper()]
                         if dtype.upper() in DataTypeTopic.__members__
                         else DataTypeTopic.UNKNOWN
                     )
-                    fetched_fields.append(FieldModel(name=key, dataType=parsed_dtype))
+                    children = None
+                    if parsed_dtype.value == DataTypeTopic.ARRAY.value:
+                        # If field of array type then parse children
+                        children_ref = val.get("items", {}).get("$ref")
+                        if children_ref:
+                            # check infinite recursion by checking pre-processed schemas(parent_refs)
+                            if children_ref not in parent_refs:
+                                logger.debug(
+                                    f"Processing array fields inside schema: {children_ref}"
+                                )
+                                children = self.process_schema_fields(
+                                    children_ref, parent_refs
+                                )
+                                logger.debug(
+                                    f"Completed processing array fields inside schema: {children_ref}"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
+                                )
+                    fetched_fields.append(
+                        FieldModel(name=key, dataType=parsed_dtype, children=children)
+                    )
                 else:
                     # If type of field is not defined then check for sub-schema
                     # Check if it's `object` type field
-                    # check infinite recrusrion by comparing with parent(schema_ref)
-                    object_children = None
-                    if val.get("$ref") and val.get("$ref") != schema_ref:
-                        object_children = self.process_schema_fields(val.get("$ref"))
+                    children = None
+                    if val.get("$ref"):
+                        # check infinite recursion by checking pre-processed schemas(parent_refs)
+                        if val.get("$ref") not in parent_refs:
+                            children = self.process_schema_fields(
+                                val.get("$ref"), parent_refs
+                            )
+                        else:
+                            logger.debug(
+                                f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
+                            )
                     fetched_fields.append(
                         FieldModel(
                             name=key,
                             dataType=DataTypeTopic.UNKNOWN,
-                            children=object_children,
+                            dataTypeDisplay="OBJECT",
+                            children=children,
                         )
                     )
+            if parent_refs and (schema_ref in parent_refs):
+                parent_refs.pop()
             return fetched_fields
         except Exception as err:
             logger.warning(f"Error while processing schema fields: {err}")
+            if parent_refs and (schema_ref in parent_refs):
+                parent_refs.pop()
+                logger.debug(
+                    f"Popping {schema_ref} from parent_refs due to processing error"
+                )
         return None

@@ -16,6 +16,7 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import gc
 import math
 import threading
 import time
@@ -51,7 +52,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.metrics.system.system import System, SystemMetricsComputer
+from metadata.profiler.metrics.system.system import System, SystemMetricsRegistry
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
@@ -111,13 +112,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self.sampler.raw_dataset
         self.create_session()
-        self.system_metrics_computer = self.initialize_system_metrics_computer()
-
-    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
-        """Initialize system metrics computer. Override this if you want to use a metric source with
-        state or other dependencies.
-        """
-        return SystemMetricsComputer()
+        self.system_metrics_class = SystemMetricsRegistry.get(
+            self.session.get_bind().dialect
+        )
 
     def create_session(self):
         self.session_factory = self._session_factory()
@@ -362,7 +359,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         *args,
         **kwargs,
     ) -> List[SystemProfile]:
-        """Get system metric for tables
+        """Get system metric for tables. Override this in the interface if you want to use a metric source with
+        for other sources.
 
         Args:
             metric_type: type of metric
@@ -372,8 +370,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        logger.debug(f"Computing system metrics for {runner.table_name}")
-        return self.system_metrics_computer.get_system_metrics(runner=runner)
+        logger.debug(
+            f"No implementation found for {self.session.get_bind().dialect.name} for {metrics.name()} metric"
+        )
+        return []
 
     def _create_thread_safe_runner(self, session, column=None):
         """Create thread safe runner"""
@@ -461,6 +461,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     )
                     logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
+                    break
+                finally:
+                    # Force garbage collection to help with memory management
+                    gc.collect()
 
         # If we've exhausted all retries without success, return a tuple of None values
         return None, None, None

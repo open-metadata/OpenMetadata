@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/charts")
 @Tag(
@@ -74,7 +74,8 @@ import org.openmetadata.service.util.ResultList;
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartMapper mapper = new ChartMapper();
-  static final String FIELDS = "owners,followers,tags,domain,dataProducts,sourceHash,dashboards";
+  static final String FIELDS =
+      "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {

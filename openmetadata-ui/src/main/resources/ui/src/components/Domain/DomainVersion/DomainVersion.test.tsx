@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import DomainVersion from './DomainVersion.component';
@@ -80,11 +79,11 @@ const MOCK_VERSION = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     fqn: 'Domain1',
     version: 0.4,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/domainAPI', () => ({
@@ -102,7 +101,17 @@ jest.mock('../../../rest/domainAPI', () => ({
 jest.mock(
   '../../../components/Domain/DomainDetailsPage/DomainDetailsPage.component',
   () => {
-    return jest.fn().mockReturnValue(<>Domain component</>);
+    return jest.fn().mockReturnValue(
+      <div data-testid="domain-details-page">
+        <div>Domain component</div>
+        <div data-testid="asset-description-container">
+          Mocked Domain Description
+        </div>
+        <div data-testid="tags-container">Mocked Tags Container</div>
+        <div data-testid="glossary-container">Mocked Glossary Container</div>
+        <div data-testid="domain-expert-name">Mocked Domain Expert Name</div>
+      </div>
+    );
   }
 );
 
@@ -125,5 +134,32 @@ describe('DomainVersion', () => {
 
     // Check that the version timeline is displayed
     expect(screen.getByText('Version timeline')).toBeInTheDocument();
+
+    // Check that no edit permissions are present in version view
+    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId('edit-owner')).not.toBeInTheDocument();
+
+    const tagsContainer = screen.getByTestId('tags-container');
+
+    expect(
+      within(tagsContainer).queryByTestId('edit-button')
+    ).not.toBeInTheDocument();
+
+    const glossaryContainer = screen.getByTestId('glossary-container');
+
+    expect(
+      within(glossaryContainer).queryByTestId('edit-button')
+    ).not.toBeInTheDocument();
+
+    const domainExpertContainer = screen.getByTestId('domain-expert-name');
+
+    expect(
+      within(domainExpertContainer).queryByTestId('Add')
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByTestId('edit-domainType-button')
+    ).not.toBeInTheDocument();
   });
 });

@@ -12,7 +12,7 @@
  */
 
 import { Collapse, Tag, Typography } from 'antd';
-import React, { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import './message-card.less';

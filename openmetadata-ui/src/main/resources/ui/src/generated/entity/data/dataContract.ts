@@ -47,6 +47,14 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Approval status of the data contract.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
@@ -63,6 +71,10 @@ export interface DataContract {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Latest validation result for this data contract.
+     */
+    latestResult?: LatestResult;
+    /**
      * Name of the data contract.
      */
     name: string;
@@ -73,20 +85,39 @@ export interface DataContract {
     /**
      * Quality expectations defined in the data contract.
      */
-    qualityExpectations?: QualityExpectation[];
+    qualityExpectations?: EntityReference[];
+    /**
+     * User references of the reviewers for this data contract.
+     */
+    reviewers?: EntityReference[];
     /**
      * Schema definition for the data contract.
      */
-    schema?: Field[];
+    schema?: Column[];
+    /**
+     * Security and access policy expectations defined in the data contract.
+     */
+    security?: ContractSecurity;
     /**
      * Semantics rules defined in the data contract.
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations defined in the data contract.
+     */
+    sla?: ContractSLA;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
+    /**
+     * Terms of use for the data contract for both human and AI agents consumption.
+     */
+    termsOfUse?: string;
+    /**
+     * Reference to the test suite that contains tests related to this data contract.
+     */
+    testSuite?: EntityReference;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -206,7 +237,7 @@ export interface ContractUpdate {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to a test case that enforces this quality expectation.
+ * Reference to the test suite that contains tests related to this data contract.
  */
 export interface EntityReference {
     /**
@@ -252,42 +283,71 @@ export interface EntityReference {
 }
 
 /**
- * Quality expectation defined in the data contract.
+ * Approval status of the data contract.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export interface QualityExpectation {
-    /**
-     * Definition of the quality expectation.
-     */
-    definition: string;
-    /**
-     * Description of the quality expectation.
-     */
-    description?: string;
-    /**
-     * Name of the quality expectation.
-     */
-    name: string;
-    /**
-     * Reference to a test case that enforces this quality expectation.
-     */
-    testCase?: EntityReference;
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
- * Field defined in the data contract's schema.
- *
- * This schema defines the nested object to capture protobuf/avro/jsonschema of topic's
- * schema.
+ * Latest validation result for this data contract.
  */
-export interface Field {
+export interface LatestResult {
+    message?:   string;
+    resultId?:  string;
+    status?:    ContractExecutionStatus;
+    timestamp?: number;
+}
+
+/**
+ * Status of the data contract execution.
+ */
+export enum ContractExecutionStatus {
+    Aborted = "Aborted",
+    Failed = "Failed",
+    PartialSuccess = "PartialSuccess",
+    Queued = "Queued",
+    Running = "Running",
+    Success = "Success",
+}
+
+/**
+ * This schema defines the type for a column in a table.
+ */
+export interface Column {
     /**
-     * Child fields if dataType or arrayDataType is `map`, `record`, `message`
+     * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+     * arrayDataType as `int`.
      */
-    children?: Field[];
+    arrayDataType?: DataType;
     /**
-     * Data type of the field (int, date etc.).
+     * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
      */
-    dataType: DataTypeTopic;
+    children?: Column[];
+    /**
+     * Column level constraint.
+     */
+    constraint?: Constraint;
+    /**
+     * List of Custom Metrics registered for a table.
+     */
+    customMetrics?: CustomMetric[];
+    /**
+     * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
+     * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+     */
+    dataLength?: number;
+    /**
+     * Data type of the column (int, date etc.).
+     */
+    dataType: DataType;
     /**
      * Display name used for dataType. This is useful for complex types, such as `array<int>`,
      * `map<int,string>`, `struct<>`, and union types.
@@ -298,11 +358,36 @@ export interface Field {
      */
     description?: string;
     /**
-     * Display Name that identifies this field name.
+     * Display Name that identifies this column name.
      */
     displayName?:        string;
     fullyQualifiedName?: string;
-    name:                string;
+    /**
+     * Json schema only if the dataType is JSON else null.
+     */
+    jsonSchema?: string;
+    name:        string;
+    /**
+     * Ordinal position of the column.
+     */
+    ordinalPosition?: number;
+    /**
+     * The precision of a numeric is the total count of significant digits in the whole number,
+     * that is, the number of digits to both sides of the decimal point. Precision is applicable
+     * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
+     * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    precision?: number;
+    /**
+     * Latest Data profile for a Column.
+     */
+    profile?: ColumnProfile;
+    /**
+     * The scale of a numeric is the count of decimal digits in the fractional part, to the
+     * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
+     * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    scale?: number;
     /**
      * Tags associated with the column.
      */
@@ -310,31 +395,321 @@ export interface Field {
 }
 
 /**
- * Data type of the field (int, date etc.).
+ * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+ * arrayDataType as `int`.
  *
- * This enum defines the type of data defined in schema.
+ * This enum defines the type of data stored in a column.
+ *
+ * Data type of the column (int, date etc.).
  */
-export enum DataTypeTopic {
+export enum DataType {
+    AggState = "AGG_STATE",
+    Aggregatefunction = "AGGREGATEFUNCTION",
     Array = "ARRAY",
+    Bigint = "BIGINT",
+    Binary = "BINARY",
+    Bit = "BIT",
+    Bitmap = "BITMAP",
+    Blob = "BLOB",
     Boolean = "BOOLEAN",
+    Bytea = "BYTEA",
+    Byteint = "BYTEINT",
     Bytes = "BYTES",
+    CIDR = "CIDR",
+    Char = "CHAR",
+    Clob = "CLOB",
     Date = "DATE",
+    Datetime = "DATETIME",
+    Datetimerange = "DATETIMERANGE",
+    Decimal = "DECIMAL",
     Double = "DOUBLE",
     Enum = "ENUM",
     Error = "ERROR",
     Fixed = "FIXED",
     Float = "FLOAT",
+    Geography = "GEOGRAPHY",
+    Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
+    Hll = "HLL",
+    Hllsketch = "HLLSKETCH",
+    Image = "IMAGE",
+    Inet = "INET",
     Int = "INT",
+    Interval = "INTERVAL",
+    Ipv4 = "IPV4",
+    Ipv6 = "IPV6",
+    JSON = "JSON",
+    Kpi = "KPI",
+    Largeint = "LARGEINT",
     Long = "LONG",
+    Longblob = "LONGBLOB",
+    Lowcardinality = "LOWCARDINALITY",
+    Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
+    Mediumblob = "MEDIUMBLOB",
+    Mediumtext = "MEDIUMTEXT",
+    Money = "MONEY",
+    Ntext = "NTEXT",
     Null = "NULL",
+    Number = "NUMBER",
+    Numeric = "NUMERIC",
+    PGLsn = "PG_LSN",
+    PGSnapshot = "PG_SNAPSHOT",
+    Point = "POINT",
+    Polygon = "POLYGON",
+    QuantileState = "QUANTILE_STATE",
     Record = "RECORD",
+    Rowid = "ROWID",
+    Set = "SET",
+    Smallint = "SMALLINT",
+    Spatial = "SPATIAL",
     String = "STRING",
+    Struct = "STRUCT",
+    Super = "SUPER",
+    Table = "TABLE",
+    Text = "TEXT",
     Time = "TIME",
     Timestamp = "TIMESTAMP",
     Timestampz = "TIMESTAMPZ",
+    Tinyint = "TINYINT",
+    Tsquery = "TSQUERY",
+    Tsvector = "TSVECTOR",
+    Tuple = "TUPLE",
+    TxidSnapshot = "TXID_SNAPSHOT",
+    UUID = "UUID",
+    Uint = "UINT",
     Union = "UNION",
     Unknown = "UNKNOWN",
+    Varbinary = "VARBINARY",
+    Varchar = "VARCHAR",
+    Variant = "VARIANT",
+    XML = "XML",
+    Year = "YEAR",
+}
+
+/**
+ * Column level constraint.
+ *
+ * This enum defines the type for column constraint.
+ */
+export enum Constraint {
+    NotNull = "NOT_NULL",
+    Null = "NULL",
+    PrimaryKey = "PRIMARY_KEY",
+    Unique = "UNIQUE",
+}
+
+/**
+ * Custom Metric definition that we will associate with a column.
+ */
+export interface CustomMetric {
+    /**
+     * Name of the column in a table.
+     */
+    columnName?: string;
+    /**
+     * Description of the Metric.
+     */
+    description?: string;
+    /**
+     * SQL expression to compute the Metric. It should return a single numerical value.
+     */
+    expression: string;
+    /**
+     * Unique identifier of this Custom Metric instance.
+     */
+    id?: string;
+    /**
+     * Name that identifies this Custom Metric.
+     */
+    name: string;
+    /**
+     * Owners of this Custom Metric.
+     */
+    owners?: EntityReference[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+}
+
+/**
+ * Latest Data profile for a Column.
+ *
+ * This schema defines the type to capture the table's column profile.
+ */
+export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
+     * Custom Metrics profile list bound to a column.
+     */
+    customMetrics?: CustomMetricProfile[];
+    /**
+     * Number of values that contain distinct values.
+     */
+    distinctCount?: number;
+    /**
+     * Proportion of distinct values in a column.
+     */
+    distinctProportion?: number;
+    /**
+     * No.of Rows that contain duplicates in a column.
+     */
+    duplicateCount?: number;
+    /**
+     * First quartile of a column.
+     */
+    firstQuartile?: number;
+    /**
+     * Histogram of a column.
+     */
+    histogram?: any[] | boolean | HistogramClass | number | number | null | string;
+    /**
+     * Inter quartile range of a column.
+     */
+    interQuartileRange?: number;
+    /**
+     * Maximum value in a column.
+     */
+    max?: number | string;
+    /**
+     * Maximum string length in a column.
+     */
+    maxLength?: number;
+    /**
+     * Avg value in a column.
+     */
+    mean?: number;
+    /**
+     * Median of a column.
+     */
+    median?: number;
+    /**
+     * Minimum value in a column.
+     */
+    min?: number | string;
+    /**
+     * Minimum string length in a column.
+     */
+    minLength?: number;
+    /**
+     * Missing count is calculated by subtracting valuesCount - validCount.
+     */
+    missingCount?: number;
+    /**
+     * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
+     */
+    missingPercentage?: number;
+    /**
+     * Column Name.
+     */
+    name: string;
+    /**
+     * Non parametric skew of a column.
+     */
+    nonParametricSkew?: number;
+    /**
+     * No.of null values in a column.
+     */
+    nullCount?: number;
+    /**
+     * No.of null value proportion in columns.
+     */
+    nullProportion?: number;
+    /**
+     * Standard deviation of a column.
+     */
+    stddev?: number;
+    /**
+     * Median value in a column.
+     */
+    sum?: number;
+    /**
+     * First quartile of a column.
+     */
+    thirdQuartile?: number;
+    /**
+     * Timestamp on which profile is taken.
+     */
+    timestamp: number;
+    /**
+     * No. of unique values in the column.
+     */
+    uniqueCount?: number;
+    /**
+     * Proportion of number of unique values in a column.
+     */
+    uniqueProportion?: number;
+    /**
+     * Total count of valid values in this column.
+     */
+    validCount?: number;
+    /**
+     * Total count of the values in this column.
+     */
+    valuesCount?: number;
+    /**
+     * Percentage of values in this column with respect to row count.
+     */
+    valuesPercentage?: number;
+    /**
+     * Variance of a column.
+     */
+    variance?: number;
+}
+
+/**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
+ * Profiling results of a Custom Metric.
+ */
+export interface CustomMetricProfile {
+    /**
+     * Custom metric name.
+     */
+    name?: string;
+    /**
+     * Profiling results for the metric.
+     */
+    value?: number;
+}
+
+export interface HistogramClass {
+    /**
+     * Boundaries of Histogram.
+     */
+    boundaries?: any[];
+    /**
+     * Frequencies of Histogram.
+     */
+    frequencies?: any[];
 }
 
 /**
@@ -426,6 +801,57 @@ export interface Style {
 }
 
 /**
+ * Security and access policy expectations defined in the data contract.
+ *
+ * Security and access policy expectations
+ */
+export interface ContractSecurity {
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    consumers?: DataConsumers[];
+    /**
+     * Expected data classification (e.g. Confidential, PII, etc.)
+     */
+    dataClassification?: string;
+    [property: string]: any;
+}
+
+/**
+ * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+ */
+export interface DataConsumers {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * List of groups that are intended consumers of the data
+     */
+    identities?: string[];
+    /**
+     * List of filters that define what subset of the data is accessible to the consumers
+     */
+    rowFilters?: RowFilter[];
+    [property: string]: any;
+}
+
+/**
+ * Filter that defines what subset of the data is accessible to certain consumers
+ */
+export interface RowFilter {
+    /**
+     * Column to apply the filter
+     */
+    columnName?: string;
+    /**
+     * Values applied to the filter
+     */
+    values?: string[];
+    [property: string]: any;
+}
+
+/**
  * Semantics rule defined in the data contract.
  */
 export interface SemanticsRule {
@@ -434,9 +860,26 @@ export interface SemanticsRule {
      */
     description: string;
     /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
      * Name of the semantics rule.
      */
-    name: string;
+    name:      string;
+    provider?: ProviderType;
     /**
      * Definition of the semantics rule.
      */
@@ -444,10 +887,86 @@ export interface SemanticsRule {
 }
 
 /**
- * Status of the data contract.
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
-export enum ContractStatus {
-    Active = "Active",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+/**
+ * Service Level Agreement expectations defined in the data contract.
+ *
+ * Service Level Agreement expectations (timeliness, availability, etc.)
+ */
+export interface ContractSLA {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaximumLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: DataRetentionPeriod;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaximumLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface DataRetentionPeriod {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Month = "month",
+    Week = "week",
+    Year = "year",
 }

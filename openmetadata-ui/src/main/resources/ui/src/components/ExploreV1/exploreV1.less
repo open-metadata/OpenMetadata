@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 @quick-filters-container-height: 86px;
 
@@ -30,6 +30,13 @@
   .explore-icon {
     width: 16px;
     height: 16px;
+  }
+
+  .explore-tab-label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
   }
 
   .explore-left-panel {

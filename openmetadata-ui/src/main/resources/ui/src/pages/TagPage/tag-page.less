@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../styles/variables.less');
+@import '../../styles/variables.less';
 
 .tag-height-with-resizable-panel {
   height: @tag-page-height;
+}
+
+.tag-page-tabs.ant-tabs.tabs-new {
+  .ant-tabs-tabpane {
+    background-color: transparent;
+  }
 }

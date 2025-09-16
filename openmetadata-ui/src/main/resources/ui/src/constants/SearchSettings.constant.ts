@@ -10,8 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SearchIndex } from '../enums/search.enum';
 import { Property } from '../pages/SearchSettingsPage/searchSettings.interface';
 import i18n from '../utils/i18next/LocalUtil';
+
+export const ENTITY_PATH_TO_SEARCH_INDEX: Record<string, SearchIndex> = {
+  table: SearchIndex.TABLE,
+  topic: SearchIndex.TOPIC,
+  dashboard: SearchIndex.DASHBOARD,
+  pipeline: SearchIndex.PIPELINE,
+  mlmodel: SearchIndex.MLMODEL,
+  container: SearchIndex.CONTAINER,
+  tag: SearchIndex.TAG,
+  glossary: SearchIndex.GLOSSARY,
+  glossaryTerm: SearchIndex.GLOSSARY_TERM,
+  database: SearchIndex.DATABASE,
+  databaseSchema: SearchIndex.DATABASE_SCHEMA,
+  dashboardDataModel: SearchIndex.DASHBOARD_DATA_MODEL,
+  apiCollection: SearchIndex.API_COLLECTION_INDEX,
+  apiEndpoint: SearchIndex.API_ENDPOINT_INDEX,
+  dataProduct: SearchIndex.DATA_PRODUCT,
+  metric: SearchIndex.METRIC_SEARCH_INDEX,
+  dataAsset: SearchIndex.DATA_ASSET,
+  query: SearchIndex.QUERY,
+  testCase: SearchIndex.TEST_CASE,
+  domain: SearchIndex.DOMAIN,
+  searchIndex: SearchIndex.SEARCH_INDEX,
+  storedProcedure: SearchIndex.STORED_PROCEDURE,
+};
 
 export const globalSettings: Property[] = [
   {

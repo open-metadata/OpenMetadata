@@ -13,7 +13,8 @@
 import { AlertProps } from 'antd';
 
 export interface AlertBarProps {
-  type: AlertProps['type'];
+  type: AlertProps['type'] | 'grey-info';
   message: string | JSX.Element;
   defafultExpand?: boolean;
+  className?: string;
 }

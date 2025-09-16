@@ -86,7 +86,7 @@ export const getApiEndPointVersions = async (id: string) => {
   return response.data;
 };
 
-export const getApiEndPointVersion = async (id: string, version: string) => {
+export const getApiEndPointVersion = async (id: string, version?: string) => {
   const url = `/apiEndpoints/${id}/versions/${version}`;
 
   const response = await APIClient.get<APIEndpoint>(url);

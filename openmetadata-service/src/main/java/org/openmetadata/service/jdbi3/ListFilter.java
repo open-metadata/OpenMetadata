@@ -6,12 +6,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
@@ -39,19 +43,24 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWebhookCondition(tableName));
     conditions.add(getWebhookTypeCondition(tableName));
     conditions.add(getTestCaseCondition());
+    conditions.add(getEntityProfileCondition());
     conditions.add(getTestCaseIncidentCondition());
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getDirectoryCondition(tableName));
+    conditions.add(getSpreadsheetCondition(tableName));
+    conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
-    conditions.add(getProviderCondition());
+    conditions.add(getProviderCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -67,10 +76,10 @@ public class ListFilter extends Filter<ListFilter> {
         && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
       return new ResourceContext<>(
           Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
-    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
-        && queryParams.get(Entity.API_COLLCECTION) != null) {
+    } else if (queryParams.containsKey(Entity.API_COLLECTION)
+        && queryParams.get(Entity.API_COLLECTION) != null) {
       return new ResourceContext<>(
-          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+          Entity.API_COLLECTION, null, queryParams.get(Entity.API_COLLECTION));
     }
     return new ResourceContext<>(entityType);
   }
@@ -78,6 +87,16 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getCreatedByCondition() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
+    } else {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+    }
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -105,15 +124,19 @@ public class ListFilter extends Filter<ListFilter> {
     }
   }
 
-  public String getProviderCondition() {
+  public String getProviderCondition(String tableName) {
     String provider = queryParams.get("provider");
     if (provider == null) {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.provider') = '%s'", provider);
+        return tableName == null
+            ? "JSON_EXTRACT(json, '$.provider') = :provider"
+            : String.format("JSON_EXTRACT(%s.json, '$.provider') = :provider", tableName);
       } else {
-        return String.format("json->>'provider' = '%s'", provider);
+        return tableName == null
+            ? "json->>'provider' = :provider"
+            : String.format("%s.json->>'provider' = :provider", tableName);
       }
     }
   }
@@ -209,6 +232,30 @@ public class ListFilter extends Filter<ListFilter> {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
   }
 
+  public String getDirectoryCondition(String tableName) {
+    String directoryFqn = queryParams.get("directory");
+    if (directoryFqn == null) {
+      return "";
+    }
+    return String.format("directoryFqn = '%s'", directoryFqn);
+  }
+
+  public String getSpreadsheetCondition(String tableName) {
+    String spreadsheetFqn = queryParams.get("spreadsheet");
+    if (spreadsheetFqn == null) {
+      return "";
+    }
+    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+  }
+
+  public String getFileTypeCondition(String tableName) {
+    String fileType = queryParams.get("fileType");
+    if (fileType == null) {
+      return "";
+    }
+    return String.format("fileType = '%s'", fileType);
+  }
+
   public String getDisabledCondition() {
     String disabledStr = queryParams.get("disabled");
     if (disabledStr == null) {
@@ -260,6 +307,51 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     return "(appType = :applicationType)";
+  }
+
+  private String getEntityProfileCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+
+    String profileType = getQueryParam("entityProfileType");
+    String columnName = getQueryParam("entityProfileColumnName");
+    String fqn = getQueryParam("entityProfileFQN");
+    String entityType = getQueryParam("entityProfileEntityType");
+
+    if (columnName != null && !columnName.isEmpty()) {
+      Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns", Include.ALL);
+      Column column = EntityUtil.getColumn(table, columnName);
+      fqn = column.getFullyQualifiedName();
+      queryParams.put("entityProfileFQNHash", FullyQualifiedName.buildHash(fqn, Entity.SEPARATOR));
+      conditions.add("entityFQNHash = :entityProfileFQNHash");
+    }
+
+    if (fqn != null && !fqn.isEmpty() && (columnName == null || columnName.isEmpty())) {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        conditions.add("json -> '$.entityReference.fullyQualifiedName' = :entityProfileFQN");
+      } else {
+        conditions.add("json -> 'entityReference' ->> 'fullyQualifiedName' = :entityProfileFQN");
+      }
+      queryParams.put("entityProfileFQN", fqn);
+    }
+
+    if (profileType != null) {
+      String extension =
+          EntityProfileRepository.getExtension(
+              CreateEntityProfile.ProfileTypeEnum.fromValue(profileType));
+      conditions.add("extension = :entityProfileExtension");
+      queryParams.put("entityProfileExtension", extension);
+    }
+
+    if (entityType != null) {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        conditions.add("json -> '$.entityReference.type' = :entityProfileType");
+      } else {
+        conditions.add("json -> 'entityReference' ->> 'type' = :entityProfileType");
+      }
+      queryParams.put("entityProfileType", entityType);
+    }
+
+    return addCondition(conditions);
   }
 
   private String getTestCaseCondition() {

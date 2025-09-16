@@ -21,8 +21,8 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 public class ElasticSearchSummaryCardAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -32,7 +32,8 @@ public class ElasticSearchSummaryCardAggregator
       long start,
       long end,
       List<FormulaHolder> formulas,
-      Map metricFormulaMap)
+      Map metricFormulaMap,
+      boolean live)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
@@ -48,15 +49,21 @@ public class ElasticSearchSummaryCardAggregator
         dateHistogramAggregationBuilder,
         formulas);
 
-    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
-
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
-    searchSourceBuilder.query(queryFilter);
     searchSourceBuilder.size(0);
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    es.org.elasticsearch.action.search.SearchRequest searchRequest;
+    if (!live) {
+      QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
+      searchSourceBuilder.query(queryFilter);
+      searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    } else {
+      searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getLiveSearchIndex(null));
+    }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

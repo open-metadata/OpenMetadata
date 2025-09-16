@@ -42,10 +42,14 @@ export interface Topic {
      */
     displayName?: string;
     /**
-     * Domain the Topic belongs to. When not set, the Topic inherits the domain from the
+     * Domains the Topic belongs to. When not set, the Topic inherits the domain from the
      * messaging service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the Topic.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -345,9 +349,6 @@ export enum CleanupPolicy {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Topic belongs to. When not set, the Topic inherits the domain from the
- * messaging service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to the messaging cluster/service where this topic is hosted in.
@@ -393,6 +394,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the Topic.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

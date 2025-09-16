@@ -85,10 +85,27 @@ public class RuleEvaluator {
       return false;
     }
     // If the Entity belongs to a domain , then user needs to be part of that domain
-    if (!nullOrEmpty(resourceContext.getDomain())) {
-      return subjectContext.hasDomain(resourceContext.getDomain());
+    if (!nullOrEmpty(resourceContext.getDomains())) {
+      return subjectContext.hasDomains(resourceContext.getDomains());
     }
     return true;
+  }
+
+  @Function(
+      name = "noDomain",
+      input = "none",
+      description =
+          "Returns true if the entity being accessed has no domains assigned (empty or null domain list)",
+      examples = {"noDomain()", "!noDomain()"})
+  public boolean noDomain() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    // Returns true only if entity has no domains
+    return nullOrEmpty(resourceContext.getDomains());
   }
 
   @Function(
@@ -110,6 +127,10 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
+    if (nullOrEmpty(tags)) {
+      LOG.debug("No Tags found for resource");
+      return false;
+    }
     LOG.debug(
         "matchAllTags {} resourceTags {}",
         Arrays.toString(tagFQNs),

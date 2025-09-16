@@ -109,6 +109,7 @@ export class SearchIndexClass extends EntityClass {
     this.childrenSelectorId = `${this.fqn}.${this.children[0].name}`;
     this.serviceCategory = SERVICE_TYPE.Search;
     this.serviceType = ServiceTypes.SEARCH_SERVICES;
+    this.childrenSelectorId = `${this.fqn}.${this.children[0].name}`;
   }
 
   async create(apiContext: APIRequestContext) {

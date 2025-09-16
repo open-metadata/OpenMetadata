@@ -211,12 +211,17 @@ export const hardDeleteUserProfilePage = async (
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName"]', '');
-  await page.getByTestId('displayName').fill(editedUserName);
 
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.getByTestId('displayName-input').click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save-display-name"]');
+  await page.getByText('Save').click();
   await saveResponse;
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -289,21 +294,12 @@ export const handleUserUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit description
 };
 
 export const updateUserDetails = async (
   page: Page,
-  {
-    updatedDisplayName,
-    isAdmin,
-  }: {
-    updatedDisplayName: string;
-    teamName: string;
-    isAdmin?: boolean;
-    role?: string;
-  }
+  updatedDisplayName: string,
+  isAdmin?: boolean
 ) => {
   if (isAdmin) {
     await handleAdminUpdateDetails(page, updatedDisplayName);
@@ -468,7 +464,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -491,15 +487,25 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
+  // Wait for dropdown to close and ensure no overlays are present
+  await page.waitForTimeout(100);
+
+  // Click outside to close any open dropdowns
+  await page.mouse.click(1, 1);
+
+  // Wait for any dropdown animations to complete
+  await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+
+  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -578,6 +584,21 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
+
+  await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
+    state: 'detached',
+  });
+
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('table');
+  await dataAssetDropdownRequest;
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
@@ -590,6 +611,8 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
+
+  await page.waitForLoadState('networkidle');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();

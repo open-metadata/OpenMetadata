@@ -18,7 +18,7 @@ import {
   queryByText,
   render,
 } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';

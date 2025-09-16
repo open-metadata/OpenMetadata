@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { MemoryRouter } from 'react-router-dom';
 import {
   MOCK_CURRENT_TEAM,
@@ -81,13 +82,18 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
 
+const renderComponent = (props = {}) => {
+  return render(
+    <DndProvider backend={HTML5Backend}>
+      <TeamHierarchy {...teamHierarchyPropsData} {...props} />
+    </DndProvider>,
+    { wrapper: MemoryRouter }
+  );
+};
+
 describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
 
@@ -95,11 +101,7 @@ describe('Team Hierarchy page', () => {
   });
 
   it('Should render all table columns', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
     const teamsColumn = await screen.findByText('label.team-plural');
@@ -122,11 +124,7 @@ describe('Team Hierarchy page', () => {
   });
 
   it('Should render child row in table', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
 

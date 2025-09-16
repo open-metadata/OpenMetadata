@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CreateGlossary,
@@ -62,8 +61,8 @@ const AddGlossary = ({
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
-  const selectedDomain = Form.useWatch<EntityReference | undefined>(
-    'domain',
+  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
+    'domains',
     form
   );
 
@@ -98,7 +97,10 @@ const AddGlossary = ({
       owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
-      domain: selectedDomain?.fullyQualifiedName,
+      domains:
+        (selectedDomain
+          ?.map((d) => d.fullyQualifiedName)
+          .filter(Boolean) as string[]) ?? [],
     };
     onSave(data);
   };
@@ -246,10 +248,10 @@ const AddGlossary = ({
   };
 
   const domainsField: FieldProp = {
-    name: 'domain',
-    id: 'root/domain',
+    name: 'domains',
+    id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef,
@@ -261,6 +263,7 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: true,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -309,7 +312,7 @@ const AddGlossary = ({
                   {getField(domainsField)}
                   {selectedDomain && (
                     <DomainLabel
-                      domain={selectedDomain}
+                      domains={selectedDomain}
                       entityFqn=""
                       entityId=""
                       entityType={EntityType.GLOSSARY}

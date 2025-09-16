@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TabItem } from './DraggableTabs';
 
-// Mock the getEntityName utility function
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Test Tab'),
+jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+  getTabDisplayName: jest.fn().mockReturnValue('Test Tab'),
 }));
 
 describe('TabItem', () => {
@@ -54,12 +52,12 @@ describe('TabItem', () => {
   it('renders tab item with correct name', () => {
     renderComponent();
 
-    expect(screen.getByText('Test Tab')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-Test Tab')).toBeInTheDocument();
   });
 
   it('calls onItemClick when tab is clicked', () => {
     renderComponent();
-    fireEvent.click(screen.getByText('Test Tab'));
+    fireEvent.click(screen.getByTestId('tab-Test Tab'));
 
     expect(defaultProps.onItemClick).toHaveBeenCalledWith(mockTab.id);
   });

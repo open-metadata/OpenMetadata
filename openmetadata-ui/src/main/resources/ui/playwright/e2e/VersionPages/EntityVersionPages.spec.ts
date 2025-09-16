@@ -10,18 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  createNewPage,
   descriptionBoxReadOnly,
+  getApiContext,
   redirectToHomePage,
+  reloadAndWaitForNetworkIdle,
   toastNotification,
 } from '../../utils/common';
-import { addMultiOwner, assignTier } from '../../utils/entity';
+import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 
 const entityCreationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
@@ -51,13 +55,24 @@ const entities = [
 ];
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
 
     await EntityDataClass.preRequisitesForTests(
       apiContext,
@@ -66,6 +81,7 @@ test.describe('Entity Version pages', () => {
     const domain = EntityDataClass.domain1.responseData;
 
     for (const entity of entities) {
+      const dataTypeDisplayPath = getEntityDataTypeDisplayPatch(entity);
       await entity.patch({
         apiContext,
         patchData: [
@@ -96,7 +112,7 @@ test.describe('Entity Version pages', () => {
           },
           {
             op: 'add',
-            path: '/domain',
+            path: '/domains/0',
             value: {
               id: domain.id,
               type: 'domain',
@@ -104,6 +120,15 @@ test.describe('Entity Version pages', () => {
               description: domain.description,
             },
           },
+          ...(dataTypeDisplayPath
+            ? [
+                {
+                  op: 'add' as const,
+                  path: dataTypeDisplayPath,
+                  value: 'OBJECT',
+                },
+              ]
+            : []),
         ],
       });
     }
@@ -118,7 +143,9 @@ test.describe('Entity Version pages', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     test.slow();
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
+
     await EntityDataClass.postRequisitesForTests(
       apiContext,
       entityCreationConfig
@@ -130,8 +157,14 @@ test.describe('Entity Version pages', () => {
     test(`${entity.getType()}`, async ({ page }) => {
       test.slow();
 
+      const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
-      const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+
+      await page.waitForLoadState('networkidle');
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions/0.2') && response.status() === 200
+      );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
 
@@ -166,18 +199,25 @@ test.describe('Entity Version pages', () => {
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
-        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER1 = EntityDataClass.user1.responseData;
 
-        await addMultiOwner({
-          page,
-          ownerNames: [OWNER1],
-          activatorBtnDataTestId: 'edit-owner',
-          resultTestId: 'data-assets-header',
-          endpoint: entity.endpoint,
-          type: 'Users',
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/owners/0',
+              value: {
+                id: OWNER1.id,
+                type: 'user',
+              },
+            },
+          ],
         });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        await reloadAndWaitForNetworkIdle(page);
+
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -227,9 +267,25 @@ test.describe('Entity Version pages', () => {
       await test.step('should show tier changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
 
-        await assignTier(page, 'Tier1', entity.endpoint);
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                name: COMMON_TIER_TAG[0].name,
+                tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        await reloadAndWaitForNetworkIdle(page);
+
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -270,7 +326,7 @@ test.describe('Entity Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 

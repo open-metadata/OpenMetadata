@@ -23,6 +23,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
@@ -38,7 +39,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -143,14 +143,14 @@ public class DataAssetsWorkflow {
           new OpenSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new DataInsightsElasticSearchProcessor(totalRecords);
       this.searchIndexSink =
           new ElasticSearchIndexSink(
               searchRepository,
               totalRecords,
-              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
+              searchRepository.getSearchConfiguration().getPayLoadSize());
     }
   }
 

@@ -86,7 +86,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
-    def run(  # pylint: disable=unused-argument
+    def run(  # pylint: disable=unused-argument, arguments-differ
         self,
         checkpoint_result: CheckpointResult,
         action_context: Union[ActionContext, None],
@@ -119,9 +119,8 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                 )
 
             if table_entity:
-                test_suite = self._check_or_create_test_suite(table_entity)
                 for result in v.results:
-                    self._handle_test_case(result, table_entity, test_suite)
+                    self._handle_test_case(result, table_entity)
 
     @staticmethod
     def _get_checkpoint_batch_spec(
@@ -320,23 +319,96 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Returns:
             TestCaseResult: a test case result object
         """
-        try:
-            test_result_value = TestResultValue(
-                name="observed_value",
-                value=str(result["result"]["observed_value"]),
-            )
-        except KeyError:
-            unexpected_percent_total = result["result"].get("unexpected_percent_total")
-            test_result_value = TestResultValue(
-                name="unexpected_percentage_total",
-                value=str(unexpected_percent_total),
-            )
+        test_result_values = []
+        result_data = result.get("result", {})
 
-        return [test_result_value]
+        numeric_fields = [
+            "unexpected_percent",
+            "unexpected_percent_total",
+            "missing_percent",
+            "unexpected_count",
+            "missing_count",
+            "element_count",
+            "observed_value",
+            "success_rate",
+        ]
 
-    def _handle_test_case(
-        self, result: Dict, table_entity: Table, test_suite: TestSuite
-    ):
+        for field in numeric_fields:
+            if field in result_data:
+                value = result_data[field]
+
+                if isinstance(value, (int, float)):
+                    test_result_values.append(
+                        TestResultValue(
+                            name=field,
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                elif field == "observed_value":
+                    test_result_values.extend(
+                        self._extract_complex_value_from_observed_value(value)
+                    )
+
+        return test_result_values
+
+    def _extract_complex_value_from_observed_value(
+        self, observed_value
+    ) -> List[TestResultValue]:
+        """Extract complex value from observed value
+
+        Args:
+            observed_value: observed value
+        Returns:
+            str: complex value
+        """
+        if isinstance(observed_value, list):
+            return [
+                TestResultValue(
+                    name="element_count",
+                    value=str(len(observed_value)),
+                    predictedValue=None,
+                )
+            ]
+
+        if isinstance(observed_value, dict):
+            if "quantiles" in observed_value:
+                result_values = []
+                quantiles = observed_value["quantiles"]
+                values = observed_value["values"]
+                for quantile, value in zip(quantiles, values):
+                    result_values.append(
+                        TestResultValue(
+                            name=f"quantile_{str(quantile)}",
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                return result_values
+
+            # catch all other cases that are not a quantile
+            for k, v in observed_value.items():
+                if isinstance(v, (int, float)):
+                    return [
+                        TestResultValue(
+                            name=k,
+                            value=str(v),
+                            predictedValue=None,
+                        )
+                    ]
+
+        if isinstance(observed_value, str):
+            return [
+                TestResultValue(
+                    name="observed_value",
+                    value=str(1),
+                    predictedValue=None,
+                )
+            ]
+
+        return []
+
+    def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
         great expectations run. We will then write the test case results to the
@@ -345,7 +417,6 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Args:
             result: GE test result
             table_entity: table entity object
-            test_suite: test suite object
         """
 
         try:
@@ -375,7 +446,6 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                     fqn=table_entity.fullyQualifiedName.root,
                     column_name=fqn.split_test_case_fqn(test_case_fqn).column,
                 ),
-                test_suite_fqn=test_suite.fullyQualifiedName.root,
                 test_definition_fqn=test_definition.fullyQualifiedName.root,
                 test_case_parameter_values=self._get_test_case_params_value(result),
             )

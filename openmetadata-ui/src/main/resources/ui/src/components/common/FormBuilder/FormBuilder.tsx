@@ -16,7 +16,7 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -42,9 +42,10 @@ export interface Props extends FormProps {
   status?: LoadingState;
   onCancel?: () => void;
   useSelectWidget?: boolean;
+  hasTestedConnection?: boolean;
 }
 
-const FormBuilder: FunctionComponent<Props> = forwardRef(
+const FormBuilder = forwardRef<Form, Props>(
   (
     {
       formData,
@@ -61,6 +62,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       onFocus,
       useSelectWidget = false,
       children,
+      hasTestedConnection,
       ...props
     },
     ref
@@ -94,6 +96,9 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     };
 
     const submitButton = useMemo(() => {
+      if (hasTestedConnection === false) {
+        return null;
+      }
       if (status === 'waiting') {
         return (
           <Button
@@ -124,7 +129,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
           </Button>
         );
       }
-    }, [status, isLoading, okText]);
+    }, [status, isLoading, okText, hasTestedConnection]);
 
     return (
       <Form

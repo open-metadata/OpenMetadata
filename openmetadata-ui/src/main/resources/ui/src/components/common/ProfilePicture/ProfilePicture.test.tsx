@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import ProfilePicture from './ProfilePicture';
 
 jest.mock('../AvatarComponent/Avatar', () => {

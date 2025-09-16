@@ -29,9 +29,9 @@ export interface CreateSearchService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Search Service belongs to.
+     * Fully qualified names of the domains the Search Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
@@ -55,7 +55,7 @@ export interface CreateSearchService {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -66,7 +66,7 @@ export interface SearchConnection {
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Choose Auth Config Type.
      */
@@ -102,6 +102,7 @@ export interface ConfigClass {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**

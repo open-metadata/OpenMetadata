@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apiCollections")
 @Tag(
@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
   private final APICollectionMapper mapper = new APICollectionMapper();
-  static final String FIELDS = "owners,apiEndpoints,tags,extension,domain,sourceHash";
+  static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
 
   @Override
   public APICollection addHref(UriInfo uriInfo, APICollection apiCollection) {
@@ -90,7 +90,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
   }
 
   public APICollectionResource(Authorizer authorizer, Limits limits) {
-    super(Entity.API_COLLCECTION, authorizer, limits);
+    super(Entity.API_COLLECTION, authorizer, limits);
   }
 
   public static class APICollectionList extends ResultList<APICollection> {

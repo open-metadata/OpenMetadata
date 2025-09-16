@@ -30,6 +30,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   onEditDisplayName,
   link,
   allowRename,
+  hasEditPermission = false,
 }) => {
   const { t } = useTranslation();
 
@@ -80,12 +81,12 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   }, [displayName, name, renderNameWithOptionalLink]);
 
   return (
-    <div className="flex-column hover-icon-group w-max-full">
+    <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
       <Typography.Text className="m-b-0 d-block" data-testid="column-name">
         {renderMainContent}
       </Typography.Text>
 
-      {allowRename ? (
+      {hasEditPermission ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
             ghost

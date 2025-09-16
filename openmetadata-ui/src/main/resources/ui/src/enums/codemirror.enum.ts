@@ -16,4 +16,5 @@ export enum CSMode {
   SQL = 'sql',
   PYTHON = 'python',
   CLIKE = 'clike',
+  YAML = 'yaml',
 }

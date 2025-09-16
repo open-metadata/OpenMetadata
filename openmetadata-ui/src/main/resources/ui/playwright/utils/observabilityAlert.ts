@@ -45,11 +45,21 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
+
+  // Set up the response promise before navigation
   const getAlerts = page.waitForResponse(
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
+
+  // Set up navigation promise before clicking
+  const navigationPromise = page.waitForURL('**/observability/alerts', {
+    waitUntil: 'networkidle',
+  });
+
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
-  await getAlerts;
+
+  // Wait for both navigation and API response
+  await Promise.all([navigationPromise, getAlerts]);
 };
 
 export const addExternalDestination = async ({

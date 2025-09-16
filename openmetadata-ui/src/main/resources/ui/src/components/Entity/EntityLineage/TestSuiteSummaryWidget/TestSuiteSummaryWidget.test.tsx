@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget.component';
 
 const mockSummary = {
@@ -24,7 +23,7 @@ const mockSummary = {
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Skeleton: {
-    Input: jest.fn().mockImplementation(() => <div>Skeleton.Input</div>),
+    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
   },
 }));
 
@@ -32,7 +31,7 @@ describe('TestSuiteSummaryWidget', () => {
   it('should show loader when isLoading is true', () => {
     render(<TestSuiteSummaryWidget isLoading />);
 
-    expect(screen.getByText('Skeleton.Input')).toBeInTheDocument();
+    expect(screen.getByText('Skeleton.Button')).toBeInTheDocument();
     expect(screen.queryByTestId('test-passed-value')).toBeNull();
     expect(screen.queryByTestId('test-aborted-value')).toBeNull();
     expect(screen.queryByTestId('test-failed-value')).toBeNull();

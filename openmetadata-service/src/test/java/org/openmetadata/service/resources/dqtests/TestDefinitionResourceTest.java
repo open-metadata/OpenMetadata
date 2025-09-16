@@ -23,9 +23,9 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 public class TestDefinitionResourceTest
@@ -50,6 +50,12 @@ public class TestDefinitionResourceTest
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName(
             "columnValuesMissingCount", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION4 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToBeBetween", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION5 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToEqual", "owners", ADMIN_AUTH_HEADERS);
   }
 
   @Test

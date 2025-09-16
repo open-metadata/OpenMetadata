@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockHandleForgotPassword = jest.fn();
 const mockHandleError = jest.fn().mockImplementation(() => {
   return Promise.reject({
@@ -54,9 +53,27 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: any) => {
+      const translations: Record<string, string> = {
+        'message.enter-your-registered-email': 'Enter your registered email',
+        'label.email': 'Email',
+        'label.send-login-link': 'Send Login Link',
+        'server.email-not-found': 'Email not found',
+        'label.field-invalid': '{{field}} is invalid',
+      };
+
+      if (options && translations[key]) {
+        return translations[key].replace('{{field}}', options.field || '');
+      }
+
+      return translations[key] || key;
+    },
+  }),
 }));
 
 describe('ForgotPassword', () => {
@@ -64,9 +81,7 @@ describe('ForgotPassword', () => {
     const { getByTestId, getByText } = render(<ForgotPassword />);
 
     expect(getByTestId('forgot-password-container')).toBeInTheDocument();
-    expect(
-      getByText('message.enter-your-registered-email')
-    ).toBeInTheDocument();
+    expect(getByText('Enter your registered email')).toBeInTheDocument();
   });
 
   it('calls handleForgotPassword with the correct email', async () => {
@@ -75,8 +90,8 @@ describe('ForgotPassword', () => {
     });
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
-    const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const emailInput = getByLabelText('Email');
+    const submitButton = getByText('Send Login Link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -88,19 +103,18 @@ describe('ForgotPassword', () => {
   });
 
   it('shows an error when email is not provided', async () => {
-    jest.useFakeTimers();
     const { getByLabelText, getByText, findByText } = render(
       <ForgotPassword />
     );
-    const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const emailInput = getByLabelText('Email');
+    const submitButton = getByText('Send Login Link');
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: '' } });
       fireEvent.click(submitButton);
     });
-    jest.advanceTimersByTime(20);
-    const errorMessage = await findByText('label.field-invalid');
+
+    const errorMessage = await findByText('Email is invalid');
 
     expect(errorMessage).toBeInTheDocument();
   });
@@ -109,8 +123,8 @@ describe('ForgotPassword', () => {
     const { getByLabelText, getByText, getByTestId } = render(
       <ForgotPassword />
     );
-    const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const emailInput = getByLabelText('Email');
+    const submitButton = getByText('Send Login Link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -129,7 +143,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(goBackButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should call show error toast', async () => {
@@ -140,8 +154,8 @@ describe('ForgotPassword', () => {
     const { getByLabelText, getByText, getByTestId } = render(
       <ForgotPassword />
     );
-    const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const emailInput = getByLabelText('Email');
+    const submitButton = getByText('Send Login Link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -149,7 +163,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(submitButton);
     });
 
-    expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
+    expect(showErrorToast).toHaveBeenCalledWith('Email not found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
     expect(getByTestId('alert-bar')).toBeInTheDocument();
   });

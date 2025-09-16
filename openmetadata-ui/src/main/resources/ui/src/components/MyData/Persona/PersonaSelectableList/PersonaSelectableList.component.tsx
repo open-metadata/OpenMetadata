@@ -12,8 +12,7 @@
  */
 import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -32,6 +31,8 @@ import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
+  const { t } = useTranslation();
+
   return (
     <Space>
       {props ? (
@@ -189,7 +190,9 @@ export const PersonaSelectableList = ({
               className={classNames('profile-edit-popover', {
                 'single-select': isDefaultPersona,
               })}
-              data-testid="persona-select-list"
+              data-testid={`${
+                isDefaultPersona ? 'default-' : ''
+              }persona-select-list`}
               defaultValue={selectedPersonas.map((persona) => persona.id)}
               dropdownStyle={{
                 maxHeight: '200px',
@@ -206,6 +209,7 @@ export const PersonaSelectableList = ({
                 label: persona.displayName || persona.name,
                 value: persona.id,
                 className: 'font-normal',
+                'data-testid': `${persona.displayName || persona.name}-option`,
               }))}
               placeholder="Please select"
               popupClassName="persona-custom-dropdown-class"
@@ -227,7 +231,9 @@ export const PersonaSelectableList = ({
           <div className="flex justify-end gap-2">
             <Button
               className="persona-profile-edit-save"
-              data-testid="user-profile-persona-edit-cancel"
+              data-testid={`user-profile${
+                isDefaultPersona ? '-default' : ''
+              }persona-edit-cancel`}
               icon={<ClosePopoverIcon height={24} />}
               size="small"
               type="primary"
@@ -235,7 +241,9 @@ export const PersonaSelectableList = ({
             />
             <Button
               className="persona-profile-edit-cancel"
-              data-testid="user-profile-persona-edit-save"
+              data-testid={`user-profile${
+                isDefaultPersona ? '-default' : ''
+              }-persona-edit-save`}
               icon={<SavePopoverIcon height={24} />}
               loading={isSaving}
               size="small"
@@ -261,7 +269,9 @@ export const PersonaSelectableList = ({
           })}>
           <EditIcon
             className="cursor-pointer"
-            data-testid="edit-user-persona"
+            data-testid={`${
+              isDefaultPersona ? 'default-' : ''
+            }edit-user-persona`}
             height={16}
           />
         </Tooltip>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -23,10 +22,25 @@ import {
   getExpandHandle,
 } from './CustomNode.utils';
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: {
+    Button: jest.fn().mockImplementation(() => <p data-testid="loader" />),
+  },
+}));
+
 // Add mock before describe blocks
 jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
   __esModule: true,
-  default: () => <div data-testid="test-suite-summary" />,
+  default: jest
+    .fn()
+    .mockImplementation(({ isLoading }) =>
+      isLoading ? (
+        <p data-testid="loader" />
+      ) : (
+        <div data-testid="test-suite-summary" />
+      )
+    ),
 }));
 
 describe('Custom Node Utils', () => {
@@ -163,6 +177,31 @@ describe('Custom Node Utils', () => {
       expect(getByTestId('column-test.column')).toHaveClass(
         'custom-node-header-tracing'
       );
+    });
+
+    it('should render loading on TestSuiteSummaryWidget when showDataObservabilitySummary is true with isLoading true', () => {
+      const mockSummary = {
+        success: 1,
+        failed: 0,
+        aborted: 0,
+        total: 1,
+      };
+
+      const { getAllByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            true,
+            true,
+            mockSummary
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getAllByTestId('loader')).toHaveLength(2);
     });
 
     it('should render TestSuiteSummaryWidget when showDataObservabilitySummary is true', () => {

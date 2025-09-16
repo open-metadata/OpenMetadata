@@ -96,6 +96,12 @@
       "type": "boolean",
       "default": true
     },
+    "displayTableNameFromSource": {
+      "title": "Display Table Name from source",
+      "description": "Display Table Name from source instead of renamed table name for datamodel tables",
+      "type": "boolean",
+      "default": false
+    },
     "pbitFilesSource": {
       "title": "PowerBI .pbit Files Source",
       "description": "Source to get the .pbit files to extract lineage information",

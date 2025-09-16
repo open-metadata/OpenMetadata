@@ -10,12 +10,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
-import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ChangeSummarizer<T extends EntityInterface> {
@@ -45,7 +45,7 @@ public class ChangeSummarizer<T extends EntityInterface> {
             change ->
                 Optional.ofNullable(currentSummary)
                         .map(summary -> summary.get(change.getName()))
-                        .map(c -> c.getChangedAt())
+                        .map(ChangeSummary::getChangedAt)
                         .orElse(0L)
                         .compareTo(changedAt)
                     < 0)
@@ -98,8 +98,6 @@ public class ChangeSummarizer<T extends EntityInterface> {
 
   /**
    * Given a list of fields that were deleted, process the fields and return the set of keys to delete
-   * @param fieldsDeleted list of fields that were deleted
-   * @return set of keys to delete
    */
   public Set<String> processDeleted(List<FieldChange> fieldsDeleted) {
     Set<String> keysToDelete = new HashSet<>();
@@ -144,11 +142,10 @@ public class ChangeSummarizer<T extends EntityInterface> {
               .map(map -> (Map<String, Object>) map)
               .map(map -> (String) map.get("name"))
               .forEach(
-                  name -> {
-                    keysToDelete.add(
-                        FullyQualifiedName.build(fieldChange.getName(), name, nestedField));
-                  });
-        } catch (UnhandledServerException e) {
+                  name ->
+                      keysToDelete.add(
+                          FullyQualifiedName.build(fieldChange.getName(), name, nestedField)));
+        } catch (JsonParsingException e) {
           LOG.warn("Error processing deleted fields", e);
         }
       }

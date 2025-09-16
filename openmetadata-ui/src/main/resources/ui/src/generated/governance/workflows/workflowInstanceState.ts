@@ -42,6 +42,10 @@ export interface WorkflowInstanceState {
 
 export interface Stage {
     /**
+     * Display name of the workflow stage node.
+     */
+    displayName?: string;
+    /**
      * Timestamp on which the workflow instance stage ended.
      */
     endedAt?: number;

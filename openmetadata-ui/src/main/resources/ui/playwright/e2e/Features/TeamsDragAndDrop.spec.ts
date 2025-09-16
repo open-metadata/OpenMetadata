@@ -101,11 +101,11 @@ test.describe('Teams drag and drop should work properly', () => {
 
   test('Add teams in hierarchy', async ({ page }) => {
     for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
-      const getOrganizationResponse = page.waitForResponse(
-        '/api/v1/teams/name/*'
-      );
       await addTeamHierarchy(page, teamDetails);
-      await getOrganizationResponse;
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(
         page.locator(`[data-row-key="${teamDetails.name}"]`)

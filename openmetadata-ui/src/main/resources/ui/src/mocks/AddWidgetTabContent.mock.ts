@@ -19,7 +19,7 @@ export const mockWidget: Document = {
   displayName: 'Following',
   fullyQualifiedName: 'KnowledgePanel.Following',
   description:
-    'Following KnowledgePanel shows all the Assets that the User is Following.',
+    'Lists data assets that the user is actively following and provides quick access.',
   entityType: 'KnowledgePanel',
   data: {
     gridSizes: ['small'],

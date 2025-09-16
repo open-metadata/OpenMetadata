@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -66,7 +67,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
 @Tag(
@@ -79,7 +79,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public static final String COLLECTION_PATH = "v1/databases/";
   private final DatabaseMapper mapper = new DatabaseMapper();
   static final String FIELDS =
-      "owners,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,followers";
+      "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {

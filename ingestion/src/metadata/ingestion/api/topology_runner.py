@@ -393,32 +393,31 @@ class TopologyRunnerMixin(Generic[C]):
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)
-            if entity_source_hash:
-                # if the source hash is present, compare it with new hash
-                # if overrideMetadata is true, we will always update the entity
-                if (
-                    entity_source_hash != create_entity_request_hash
-                    or self.source_config.overrideMetadata
-                ):
-                    # the entity has changed, get the entity from server and make a patch request
-                    entity = self.metadata.get_by_name(
-                        entity=stage.type_,
-                        fqn=entity_fqn,
-                        fields=["*"],
-                    )
+            # if the source hash is not present or different from new hash, update the entity
+            # if overrideMetadata is true, we will always update the entity
+            if (
+                entity_source_hash != create_entity_request_hash
+                or self.source_config.overrideMetadata
+            ):
+                # the entity has changed, get the entity from server and make a patch request
+                entity = self.metadata.get_by_name(
+                    entity=stage.type_,
+                    fqn=entity_fqn,
+                    fields=["*"],
+                )
 
-                    # we return the entity for a patch update
-                    if entity:
-                        patch_entity = self.create_patch_request(
-                            original_entity=entity, create_request=entity_request.right
-                        )
-                        entity_request.right = patch_entity
-                else:
-                    # nothing has changed on the source skip the API call
-                    logger.debug(
-                        f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
+                # we return the entity for a patch update
+                if entity:
+                    patch_entity = self.create_patch_request(
+                        original_entity=entity, create_request=entity_request.right
                     )
-                    same_fingerprint = True
+                    entity_request.right = patch_entity
+            else:
+                # nothing has changed on the source skip the API call
+                logger.debug(
+                    f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
+                )
+                same_fingerprint = True
 
         if not same_fingerprint:
             # We store the generated source hash and yield the request

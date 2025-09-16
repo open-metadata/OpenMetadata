@@ -12,7 +12,6 @@
  */
 import { Skeleton } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { TestSummary } from '../../../../generated/tests/testCase';
 
 const TestSuiteSummaryWidget = ({
@@ -25,7 +24,7 @@ const TestSuiteSummaryWidget = ({
   size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
-    return <Skeleton.Input active data-tesid="loader" />;
+    return <Skeleton.Button active data-tesid="loader" size="small" />;
   }
 
   return (

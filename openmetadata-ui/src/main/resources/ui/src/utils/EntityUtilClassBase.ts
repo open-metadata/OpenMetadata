@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
@@ -28,6 +29,7 @@ import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { ServicesType } from '../interface/service.interface';
 import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
 import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
+import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
@@ -51,12 +53,26 @@ import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { EntityTypeName } from './EntityUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
+  getBotsPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -73,6 +89,30 @@ import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -95,6 +135,14 @@ class EntityUtilClassBase {
       case EntityType.DASHBOARD:
         return getEntityDetailsPath(
           EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.CHART:
+        return getEntityDetailsPath(
+          EntityType.CHART,
           fullyQualifiedName,
           tab,
           subTab
@@ -272,6 +320,12 @@ class EntityUtilClassBase {
           subTab
         );
 
+      case EntityType.BOT:
+        return getBotsPath(fullyQualifiedName);
+
+      case EntityType.KPI:
+        return getKpiPath(fullyQualifiedName);
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -312,6 +366,8 @@ class EntityUtilClassBase {
         return TopicDetailsPage;
       case EntityType.DASHBOARD:
         return DashboardDetailsPage;
+      case EntityType.CHART:
+        return ChartDetailsPage;
       case EntityType.STORED_PROCEDURE:
         return StoredProcedurePage;
       case EntityType.DASHBOARD_DATA_MODEL:
@@ -348,6 +404,9 @@ class EntityUtilClassBase {
       }
       case EntityType.DASHBOARD: {
         return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.CHART: {
+        return ResourceEntity.CHART;
       }
       case EntityType.PIPELINE: {
         return ResourceEntity.PIPELINE;
@@ -408,24 +467,36 @@ class EntityUtilClassBase {
       | ServicesType
       | Database
       | DatabaseSchema
-      | APICollection
+      | APICollection,
+    navigate: NavigateFunction
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
       case EntityType.TABLE:
         return [
-          ...ExtraTableDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraTableDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE:
         return [
-          ...ExtraDatabaseDropdownOptions(_fqn, _permission, isEntityDeleted),
+          ...ExtraDatabaseDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
         ];
       case EntityType.DATABASE_SCHEMA:
         return [
           ...ExtraDatabaseSchemaDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       case EntityType.DATABASE_SERVICE:
@@ -433,12 +504,39 @@ class EntityUtilClassBase {
           ...ExtraDatabaseServiceDropdownOptions(
             _fqn,
             _permission,
-            isEntityDeleted
+            isEntityDeleted,
+            navigate
           ),
         ];
       default:
         return [];
     }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
   }
 }
 

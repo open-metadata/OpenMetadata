@@ -15,12 +15,7 @@ import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -34,6 +29,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   sizeCap = LIST_SIZE,
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
+  newLook = false,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +43,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
         isVersionPage={tag?.added || tag?.removed}
         key={tag.tagFQN}
+        newLook={newLook}
         showOnlyName={tag.source === TagSource.Glossary}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}

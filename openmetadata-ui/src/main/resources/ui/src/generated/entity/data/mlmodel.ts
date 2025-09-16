@@ -45,10 +45,14 @@ export interface Mlmodel {
      */
     displayName?: string;
     /**
-     * Domain the MLModel belongs to. When not set, the MLModel inherits the domain from the ML
+     * Domains the MLModel belongs to. When not set, the MLModel inherits the domain from the ML
      * Model Service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the MlModel.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -332,9 +336,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the MLModel belongs to. When not set, the MLModel inherits the domain from the ML
- * Model Service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Description of the Data Source (e.g., a Table).
@@ -382,6 +383,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the MlModel.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

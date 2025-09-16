@@ -31,7 +31,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
-import React, {
+import {
   Reducer,
   useCallback,
   useEffect,
@@ -275,7 +275,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const handleSave: FormProps['onFinish'] = useCallback(
-    async (data) => {
+    async (data: ProfilerForm) => {
       const {
         excludeCol,
         sqlQuery,
@@ -301,7 +301,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             : profileSampleRows
           : undefined,
         profileSampleType: isUndefined(profileSampleType)
-          ? null
+          ? undefined
           : profileSampleType,
         includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
           ? getIncludesColumns()
@@ -355,7 +355,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   }, [state]);
 
   const handleProfileSampleType = useCallback(
-    (selectedProfileSampleType) =>
+    (selectedProfileSampleType: ProfileSampleType) =>
       handleStateChange({
         selectedProfileSampleType,
       }),
@@ -363,51 +363,54 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   );
 
   const handleProfileSample = useCallback(
-    (value) =>
+    (value: number | null) =>
       handleStateChange({
         profileSample: Number(value),
       }),
     []
   );
 
-  const handleCodeMirrorChange = useCallback((value) => {
+  const handleCodeMirrorChange = useCallback((value: string) => {
     handleStateChange({
       sqlQuery: value,
     });
   }, []);
 
-  const handleIncludeColumnsProfiler = useCallback((changedValues, data) => {
-    const { partitionIntervalType, enablePartitioning } = changedValues;
-    if (partitionIntervalType || !isNil(enablePartitioning)) {
-      form.setFieldsValue({
-        partitionColumnName: undefined,
-        partitionIntegerRangeStart: undefined,
-        partitionIntegerRangeEnd: undefined,
-        partitionIntervalUnit: undefined,
-        partitionInterval: undefined,
-        partitionValues: [''],
-      });
-    }
-    if (!isNil(enablePartitioning)) {
-      form.setFieldsValue({
-        partitionIntervalType: undefined,
-      });
-    }
+  const handleIncludeColumnsProfiler = useCallback(
+    (changedValues: Partial<ProfilerForm>, data: ProfilerForm) => {
+      const { partitionIntervalType, enablePartitioning } = changedValues;
+      if (partitionIntervalType || !isNil(enablePartitioning)) {
+        form.setFieldsValue({
+          partitionColumnName: undefined,
+          partitionIntegerRangeStart: undefined,
+          partitionIntegerRangeEnd: undefined,
+          partitionIntervalUnit: undefined,
+          partitionInterval: undefined,
+          partitionValues: [''],
+        });
+      }
+      if (!isNil(enablePartitioning)) {
+        form.setFieldsValue({
+          partitionIntervalType: undefined,
+        });
+      }
 
-    handleStateChange({
-      includeCol: data.includeColumns,
-      partitionData: pick(
-        data,
-        'partitionColumnName',
-        'partitionIntegerRangeEnd',
-        'partitionIntegerRangeStart',
-        'partitionInterval',
-        'partitionIntervalType',
-        'partitionIntervalUnit',
-        'partitionValues'
-      ),
-    });
-  }, []);
+      handleStateChange({
+        includeCol: data.includeColumns,
+        partitionData: pick(
+          data,
+          'partitionColumnName',
+          'partitionIntegerRangeEnd',
+          'partitionIntegerRangeStart',
+          'partitionInterval',
+          'partitionIntervalType',
+          'partitionIntervalUnit',
+          'partitionValues'
+        ),
+      });
+    },
+    []
+  );
 
   const handleChange =
     (field: keyof ProfilerSettingModalState) =>
@@ -457,7 +460,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       ) : (
         <Row gutter={[16, 16]}>
           <Col data-testid="profile-sample-container" span={24}>
-            <Form
+            <Form<ProfilerForm>
               data-testid="configure-ingestion-container"
               form={form}
               initialValues={{
@@ -543,6 +546,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
               data-testid="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
+              refreshEditor={visible}
               value={state?.sqlQuery ?? ''}
               onChange={handleCodeMirrorChange}
             />
@@ -567,7 +571,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </Col>
 
           <Col span={24}>
-            <Form
+            <Form<ProfilerForm>
               autoComplete="off"
               form={form}
               id="profiler-setting-form"
@@ -588,7 +592,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         {`${t('label.include')}:`}
                       </p>
                       <Button
-                        className="include-columns-add-button"
+                        className="include-columns-add-button flex-center"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -873,7 +877,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               {`${t('label.value')}:`}
                             </p>
                             <Button
-                              className="include-columns-add-button"
+                              className="include-columns-add-button flex-center"
                               icon={<PlusOutlined />}
                               size="small"
                               type="primary"

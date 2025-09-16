@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
@@ -64,7 +65,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/pipelines")
 @Tag(
@@ -78,7 +78,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public static final String COLLECTION_PATH = "v1/pipelines/";
   private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
-      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {

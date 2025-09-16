@@ -13,7 +13,7 @@
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, {
+import {
   UIEventHandler,
   useCallback,
   useEffect,
@@ -96,8 +96,6 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
-      } catch (_) {
-        // Nothing here
       } finally {
         setIsLoading(false);
       }
@@ -281,7 +279,7 @@ export const AddTestCaseList = ({
             loading={isLoading}
             type="primary"
             onClick={handleSubmit}>
-            {submitText ?? t('label.submit')}
+            {submitText ?? t('label.create')}
           </Button>
         </Col>
       )}

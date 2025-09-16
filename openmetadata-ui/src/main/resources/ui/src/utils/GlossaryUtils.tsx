@@ -16,7 +16,6 @@ import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React from 'react';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -34,8 +33,8 @@ import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.e
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
@@ -123,7 +122,7 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
         must: [
           {
             term: {
-              status: Status.Approved,
+              entityStatus: EntityStatus.Approved,
             },
           },
         ],
@@ -133,15 +132,15 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
 };
 
 export const StatusClass = {
-  [Status.Approved]: StatusType.Success,
-  [Status.Draft]: StatusType.Pending,
-  [Status.Rejected]: StatusType.Failure,
-  [Status.Deprecated]: StatusType.Deprecated,
-  [Status.InReview]: StatusType.InReview,
+  [EntityStatus.Approved]: StatusType.Success,
+  [EntityStatus.Draft]: StatusType.Pending,
+  [EntityStatus.Rejected]: StatusType.Failure,
+  [EntityStatus.Deprecated]: StatusType.Deprecated,
+  [EntityStatus.InReview]: StatusType.InReview,
 };
 
-export const StatusFilters = Object.values(Status)
-  .filter((status) => status !== Status.Deprecated) // Deprecated not in use for this release
+export const StatusFilters = Object.values(EntityStatus)
+  .filter((status) => status !== EntityStatus.Deprecated) // Deprecated not in use for this release
   .map((status) => ({
     text: status,
     value: status,
@@ -233,7 +232,8 @@ export const findItemByFqn = (
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
-  level = 0
+  level = 0,
+  allowParentSelection = false
 ): Omit<DefaultOptionType, 'label'>[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
@@ -252,14 +252,15 @@ export const convertGlossaryTermsToTreeOptions = (
         </Typography.Text>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      checkable: isGlossaryTerm,
+      checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
-      selectable: isGlossaryTerm,
+      selectable: allowParentSelection || isGlossaryTerm,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
-          level + 1
+          level + 1,
+          allowParentSelection
         ),
     };
   });
@@ -448,7 +449,7 @@ export const glossaryTermTableColumnsWidth = (
   havingCreatePermission: boolean
 ) => {
   return {
-    name: calculatePercentageFromValue(tableWidth, 20),
+    name: calculatePercentageFromValue(tableWidth, 30),
     description: calculatePercentageFromValue(
       tableWidth,
       havingCreatePermission ? 21 : 33
@@ -495,4 +496,27 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
       widgetConfig={widget}
     />
   );
+};
+
+export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
+  const keys: string[] = [];
+
+  processTerms(terms, keys);
+
+  return keys;
+};
+
+const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
+  termList.forEach((term) => {
+    if (
+      term.childrenCount &&
+      term.childrenCount > 0 &&
+      term.fullyQualifiedName
+    ) {
+      keys.push(term.fullyQualifiedName);
+      if (term.children && term.children.length > 0) {
+        processTerms(term.children as ModifiedGlossary[], keys as string[]);
+      }
+    }
+  });
 };

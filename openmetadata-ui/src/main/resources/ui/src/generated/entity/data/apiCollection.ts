@@ -42,14 +42,18 @@ export interface APICollection {
      */
     displayName?: string;
     /**
-     * Domain the API Collection belongs to. When not set, the API Collection inherits the
+     * Domains the API Collection belongs to. When not set, the API Collection inherits the
      * domain from the API service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * EndPoint URL for the API Collection. Capture the Root URL of the collection.
      */
     endpointURL: string;
+    /**
+     * Status of the API Collection.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -130,9 +134,6 @@ export interface APICollection {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the API Collection belongs to. When not set, the API Collection inherits the
- * domain from the API service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -347,6 +348,20 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Status of the API Collection.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

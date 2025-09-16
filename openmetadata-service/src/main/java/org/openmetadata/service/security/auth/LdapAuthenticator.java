@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -70,7 +71,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -150,11 +150,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   /**
    * Check if the user exists in database by userName, if user exist, reassign roles for user according to it's ldap
    * group else, create a new user and assign roles according to it's ldap group
-   *
-   * @param userDn userDn from LDAP
-   * @param email Email of the User
-   * @return user info
-   * @author Eric Wen@2023-07-16 17:06:43
    */
   private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
     // Check if the user exists in OM Database
@@ -303,10 +298,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   /**
    * Getting user's roles according to the mapping between ldap groups and roles
-   *
-   * @param user user object
-   * @param reAssign flag to decide whether to reassign roles
-   * @author Eric Wen@2023-07-16 17:23:57
    */
   private void getRoleForLdap(String userDn, User user, Boolean reAssign)
       throws JsonProcessingException {

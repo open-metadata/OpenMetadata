@@ -47,10 +47,14 @@ export interface GlossaryTerm {
      */
     displayName?: string;
     /**
-     * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
+     * Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
      * from the Glossary it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Approval status of the glossary term.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -109,11 +113,7 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    /**
-     * Status of the glossary term.
-     */
-    status?: Status;
-    style?:  Style;
+    style?:     Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */
@@ -227,9 +227,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
- * from the Glossary it belongs to.
- *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
@@ -279,11 +276,27 @@ export interface EntityReference {
 }
 
 /**
+ * Approval status of the glossary term.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+}
+
+/**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -297,17 +310,6 @@ export interface TermReference {
      * Name that identifies the source of an external glossary term. Example `HealthCare.gov`.
      */
     name?: string;
-}
-
-/**
- * Status of the glossary term.
- */
-export enum Status {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**

@@ -12,6 +12,7 @@
 Hosts the singledispatch to get DBT files
 """
 import json
+import os
 import traceback
 from collections import defaultdict
 from functools import singledispatch
@@ -78,11 +79,7 @@ def _(config: DbtLocalConfig):
     try:
         blob_grouped_by_directory = defaultdict(list)
 
-        subdirectory = (
-            config.dbtManifestFilePath.rsplit("/", 1)[0]
-            if "/" in config.dbtManifestFilePath
-            else ""
-        )
+        subdirectory = os.path.dirname(config.dbtManifestFilePath)
         blob_grouped_by_directory[subdirectory] = [
             config.dbtManifestFilePath,
             config.dbtCatalogFilePath,
@@ -247,8 +244,8 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
     """
     blob_grouped_by_directory = defaultdict(list)
     for blob in blobs:
-        subdirectory = blob.rsplit("/", 1)[0] if "/" in blob else ""
-        blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
+        subdirectory = os.path.dirname(blob)
+        blob_file_name = os.path.basename(blob)
         # We'll be processing multiple run_result files from a single dir
         # Grouping them together to process them in a single go
         if (
@@ -283,7 +280,7 @@ def download_dbt_files(
             for blob in blobs:
                 if blob:
                     reader = get_reader(config_source=config, client=client)
-                    blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
+                    blob_file_name = os.path.basename(blob)
                     if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
                         logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)

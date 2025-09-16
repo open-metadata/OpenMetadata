@@ -94,8 +94,8 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Domain',
-    name: 'domain.displayName.keyword',
+    id: 'Domains',
+    name: 'domains.displayName.keyword',
     localSearch: false,
   },
   {
@@ -111,7 +111,7 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Status',
-    name: 'status',
+    name: 'entityStatus',
     localSearch: false,
   },
   {
@@ -197,13 +197,34 @@ export const showAdvancedSearchDialog = async (page: Page) => {
 export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
-  optionTitle: string
+  optionTitle: string,
+  isSearchable = false
 ) => {
-  await dropdownLocator.click();
+  if (isSearchable) {
+    // Force click on the selector to ensure it opens even if there's an existing selection
+    await dropdownLocator
+      .locator('.ant-select-selector')
+      .click({ force: true });
+
+    // Clear any existing input and type the new value
+    const combobox = dropdownLocator.getByRole('combobox');
+    await combobox.clear();
+    await combobox.fill(optionTitle);
+  } else {
+    await dropdownLocator.click();
+  }
+
+  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
+
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
+  await optionLocator.waitFor({ state: 'visible' });
+  await optionLocator.click();
 };
 
 export const fillRule = async (
@@ -226,7 +247,8 @@ export const fillRule = async (
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    field.id
+    field.id,
+    true
   );
 
   // Perform click on operator
@@ -257,6 +279,9 @@ export const fillRule = async (
       }
 
       await dropdownInput.click();
+      if (aggregateRes) {
+        await aggregateRes;
+      }
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
@@ -298,7 +323,10 @@ export const checkMustPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchData,
+      true
+    )}*`
   );
   await page.getByTestId('apply-btn').click();
 
@@ -341,7 +369,10 @@ export const checkMustNotPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchData,
+      true
+    )}*`
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -381,7 +412,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*"exists"*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -524,7 +555,7 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
 
@@ -534,9 +565,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id !== 'Column' && operator === 'AND') {
     const res = await searchRes;
     const json = await res.json();
+    const hits = json.hits.hits;
 
-    expect(JSON.stringify(json)).toContain(searchCriteria1);
-    expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+    expect(JSON.stringify(hits)).toContain(searchCriteria1);
+    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
   }
 };
 
@@ -580,4 +612,34 @@ export const runRuleGroupTests = async (
     );
     await page.getByTestId('clear-filters').click();
   }
+};
+
+export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
+  await showAdvancedSearchDialog(page);
+  const ruleLocator = page.locator('.rule').nth(0);
+
+  // Perform click on rule field
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    'Database',
+    true
+  );
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    '=='
+  );
+
+  const inputElement = ruleLocator.locator(
+    '.rule--widget--SELECT .ant-select-selection-search-input'
+  );
+  await inputElement.fill('non-existing-value');
+  const dropdownText = page.locator('.ant-select-item-empty');
+
+  await expect(dropdownText).toContainText('Loading...');
+
+  await page.waitForTimeout(1000);
+
+  await expect(dropdownText).not.toContainText('Loading...');
 };

@@ -131,9 +131,9 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain": {
-      "description": "Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -155,6 +155,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "entityStatus": {
+      "description": "Status of the Dashboard.",
+      "$ref": "../../type/status.json",
+      "default": "Approved"
     }
   },
   "required": ["id", "name", "service"],

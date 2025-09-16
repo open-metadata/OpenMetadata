@@ -35,11 +35,13 @@ export interface CustomDashboardConnection {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?: string;
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Custom dashboard service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

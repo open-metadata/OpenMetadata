@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Avatar } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
 const AppLogo = ({

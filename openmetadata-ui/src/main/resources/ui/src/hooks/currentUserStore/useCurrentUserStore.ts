@@ -11,12 +11,22 @@
  *  limitations under the License.
  */
 
+import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { detectBrowserLanguage } from '../../utils/i18next/LocalUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { useApplicationStore } from '../useApplicationStore';
 
-interface UserPreferences {
+export interface UserPreferences {
   isSidebarCollapsed: boolean;
+  language: SupportedLocales;
+  selectedEntityTableColumns: Record<string, string[]>;
+  globalPageSize: number;
+  recentlyViewed: RecentlyViewedData[];
+  recentlySearched: RecentlySearchedData[];
+  recentlyViewedQuickLinks: RecentlyViewedData[];
 }
 
 interface Store {
@@ -31,6 +41,12 @@ interface Store {
 
 const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
+  language: detectBrowserLanguage(),
+  selectedEntityTableColumns: {},
+  globalPageSize: PAGE_SIZE_BASE,
+  recentlyViewed: [],
+  recentlySearched: [],
+  recentlyViewedQuickLinks: [],
   // Add default values for other preferences
 };
 
@@ -92,7 +108,9 @@ export const useCurrentUserPreferences = () => {
   }
 
   return {
-    preferences: preferences[currentUser.name] || defaultPreferences,
+    preferences: preferences[currentUser.name]
+      ? { ...defaultPreferences, ...preferences[currentUser.name] }
+      : defaultPreferences,
     setPreference: (newPreferences: Partial<UserPreferences>) =>
       setUserPreference(currentUser.name, newPreferences),
   };

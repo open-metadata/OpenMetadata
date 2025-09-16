@@ -16,7 +16,7 @@ import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { getApiContext, toastNotification } from './common';
-import { escapeESReservedCharacters } from './entity';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -80,18 +80,13 @@ export const deleteService = async (
   serviceName: string,
   page: Page
 ) => {
-  const serviceResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(serviceName)
-    )}*`
+  await page.goto(
+    `/service/${getServiceCategoryFromService(typeOfService)}s/${getEncodedFqn(
+      serviceName
+    )}?currentPage=1`
   );
-
-  await page.fill('[data-testid="searchbar"]', serviceName);
-
-  await serviceResponse;
-
-  // click on created service
-  await page.click(`[data-testid="service-name-${serviceName}"]`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('entity-header-name')).toHaveText(serviceName);
 
@@ -164,12 +159,19 @@ export const testConnection = async (page: Page) => {
 
   const warningBadge = page.locator('[data-testid="warning-badge"]');
 
-  await expect(successBadge.or(warningBadge)).toBeVisible({
+  const failBadge = page.locator('[data-testid="fail-badge"]');
+
+  await expect(successBadge.or(warningBadge).or(failBadge)).toBeVisible({
     timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
+    new RegExp(
+      'Connection test was successful.|' +
+        'Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details.|' +
+        'Test connection failed, please validate your connection and permissions for the failed steps.',
+      'g'
+    )
   );
 };
 

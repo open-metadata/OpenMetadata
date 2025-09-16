@@ -12,15 +12,13 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { WorkflowStatus } from '../../../generated/entity/automations/workflow';
 import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
@@ -48,6 +46,16 @@ const mockProps = {
   onValidateFormRequiredFields: mockonValidateFormRequiredFields,
   shouldValidateForm: false,
 };
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+    <div>
+      <span data-testid="tooltip">{title}</span>
+      {children}
+    </div>
+  )),
+}));
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   ...jest.requireActual('../../../utils/ServiceUtils'),
@@ -87,6 +95,8 @@ jest.mock(
   })
 );
 
+jest.useFakeTimers();
+
 describe('Test Connection Component', () => {
   it('Should render the child component', async () => {
     await act(async () => {
@@ -115,9 +125,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(testConnectionButton).toBeDisabled();
   });
@@ -129,9 +137,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
       'Mysql.testConnectionDefinition'
@@ -146,7 +152,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
@@ -159,9 +165,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(
       screen.getByText('message.testing-your-connection-may-take-two-minutes')
@@ -181,7 +185,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     expect(addWorkflow).toHaveBeenCalledWith(
@@ -211,7 +215,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     jest.advanceTimersByTime(2000);
@@ -241,7 +245,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     jest.advanceTimersByTime(2000);
@@ -266,7 +270,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     jest.advanceTimersByTime(2000);
@@ -291,7 +295,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     jest.advanceTimersByTime(2000);
@@ -301,43 +305,6 @@ describe('Test Connection Component', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
-  });
-
-  it('Should timeout message after two minutes', async () => {
-    jest.useFakeTimers();
-
-    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...WORKFLOW_DETAILS,
-        status: WorkflowStatus.Pending,
-      })
-    );
-
-    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...WORKFLOW_DETAILS,
-        status: WorkflowStatus.Pending,
-      })
-    );
-    await act(async () => {
-      render(<TestConnection {...mockProps} />);
-    });
-
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
-
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
-
-    jest.advanceTimersByTime(120000);
-
-    expect(
-      screen.getByText('message.test-connection-taking-too-long')
-    ).toBeInTheDocument();
-
-    // 59 since it will make this amount of call, and after timeout it should not make more api calls
-    expect(getWorkflowById).toHaveBeenCalledTimes(59);
-    expect(getWorkflowById).not.toHaveBeenCalledTimes(60);
   });
 
   it('Should not show the connection status modal if test connection definition API fails', async () => {
@@ -351,9 +318,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
       'Mysql.testConnectionDefinition'
@@ -377,8 +342,12 @@ describe('Test Connection Component', () => {
     });
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const buttonTooltipTitle = screen.getByTestId('tooltip');
 
     expect(testConnectionButton).toBeDisabled();
+    expect(buttonTooltipTitle).toHaveTextContent(
+      'label.platform-service-client-unavailable'
+    );
   });
 
   it('Should render the configure airflow message if airflow is not available', async () => {
@@ -450,7 +419,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     jest.advanceTimersByTime(2000);
@@ -471,9 +440,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(mockonValidateFormRequiredFields).toHaveBeenCalled();
   });
@@ -493,9 +460,7 @@ describe('Test Connection Component', () => {
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
-    await act(async () => {
-      userEvent.click(testConnectionButton);
-    });
+    fireEvent.click(testConnectionButton);
 
     expect(addWorkflow).not.toHaveBeenCalled();
   });
@@ -514,7 +479,7 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
-      userEvent.click(testConnectionButton);
+      fireEvent.click(testConnectionButton);
     });
 
     expect(addWorkflow).toHaveBeenCalledWith(

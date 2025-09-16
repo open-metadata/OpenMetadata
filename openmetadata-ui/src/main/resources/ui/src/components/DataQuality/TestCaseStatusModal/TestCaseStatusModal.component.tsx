@@ -13,7 +13,7 @@
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -175,7 +175,7 @@ export const TestCaseStatusModal = ({
         EntityType.USER
       );
       setUsersList(filterData);
-    } catch (error) {
+    } catch {
       setUsersList([]);
     }
   }, []);
@@ -210,7 +210,7 @@ export const TestCaseStatusModal = ({
         htmlType: 'submit',
         loading: isLoading,
       }}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       open={open}
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}

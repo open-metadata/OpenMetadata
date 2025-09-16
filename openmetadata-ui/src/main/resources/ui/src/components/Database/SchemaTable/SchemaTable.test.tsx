@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
+import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import SchemaTable from './SchemaTable.component';
 
@@ -80,8 +80,27 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     .mockImplementation(() => mockGenericContextProps),
 }));
 
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableColumnsByFQN: jest.fn().mockImplementation(() => ({
+    data: mockColumns,
+    paging: { total: mockColumns.length },
+  })),
+  searchTableColumnsByFQN: jest.fn().mockImplementation(() => ({
+    data: mockColumns,
+    paging: { total: mockColumns.length },
+  })),
+}));
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
+}));
+
 jest.mock('../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../utils/TableUtils'),
+  getAllRowKeysByKeyName: jest.fn(),
+  pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+  makeData: jest.fn().mockImplementation((value) => value),
+  prepareConstraintIcon: jest.fn(),
+  updateFieldTags: jest.fn(),
   getTableExpandableConfig: jest.fn().mockImplementation(() => ({
     expandIcon: jest.fn(({ onExpand, expandable, record }) =>
       expandable ? (
@@ -100,15 +119,21 @@ jest.mock('../../../utils/TableUtils', () => ({
       'tags',
       'glossary',
     ]),
-  handleUpdateTableColumnSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
+}));
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({
+    fqn: MOCK_TABLE.fullyQualifiedName,
+  }),
 }));
 
 const columnsWithDisplayName = [
@@ -170,6 +195,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityNameModal</p>);
+});
+
 jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
   return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
 });
@@ -188,6 +217,11 @@ jest.mock('../TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
 
+jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
+  getAllTags: jest.fn(),
+  searchTagInData: jest.fn(),
+}));
+
 jest.mock('../TableDescription/TableDescription.component', () => {
   return jest.fn().mockReturnValue(<p>TableDescription</p>);
 });
@@ -205,20 +239,44 @@ jest.mock('../../../rest/testAPI', () => ({
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../utils/StringsUtils'),
   stringToHTML: jest.fn((text) => text),
 }));
 
+jest.mock('../../../utils/FeedUtils', () => ({
+  getEntityColumnFQN: jest.fn(),
+}));
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  columnFilterIcon: jest.fn().mockReturnValue(<p>ColumnFilterIcon</p>),
+}));
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
+  getEntityByFqn: jest.fn(),
+}));
+
 jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
-  highlightSearchText: jest.fn((text) => text),
+  getColumnSorter: jest.fn(),
+  getEntityBulkEditPath: jest.fn(),
+  getEntityName: jest
+    .fn()
+    .mockImplementation(({ displayName, name }) => displayName || name || ''),
+  getFrequentlyJoinedColumns: jest.fn(),
+  highlightSearchArrayElement: jest.fn(),
+  highlightSearchText: jest.fn().mockImplementation((value) => value),
 }));
 
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
-    render(<SchemaTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
     });
+
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+      MOCK_TABLE.fullyQualifiedName,
+      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+    );
 
     const entityTable = await screen.findByTestId('entity-table');
 
@@ -228,9 +286,16 @@ describe('Test EntityTable Component', () => {
   });
 
   it('Should render tags and description components', async () => {
-    render(<SchemaTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
     });
+
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+      MOCK_TABLE.fullyQualifiedName,
+      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+    );
 
     const tableTags = await screen.findAllByText('TableTags');
 
@@ -242,9 +307,15 @@ describe('Test EntityTable Component', () => {
   });
 
   it('Table should load empty when no data present', async () => {
-    mockGenericContextProps.data = { ...MOCK_TABLE, columns: [] } as Table;
-    render(<SchemaTable />, {
-      wrapper: MemoryRouter,
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const entityTable = await screen.findByTestId('entity-table');
@@ -257,10 +328,10 @@ describe('Test EntityTable Component', () => {
   });
 
   it('should render column name only if displayName is not present', async () => {
-    mockGenericContextProps.data = {
-      ...MOCK_TABLE,
-      columns: mockColumns,
-    } as Table;
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
     render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
@@ -275,10 +346,10 @@ describe('Test EntityTable Component', () => {
   });
 
   it('should render column name & displayName for column if both presents', async () => {
-    mockGenericContextProps.data = {
-      ...MOCK_TABLE,
-      columns: columnsWithDisplayName,
-    } as Table;
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: columnsWithDisplayName,
+      paging: { total: columnsWithDisplayName.length },
+    });
     render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });

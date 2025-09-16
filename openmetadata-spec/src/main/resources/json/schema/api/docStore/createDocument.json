@@ -29,9 +29,12 @@
     "data": {
       "$ref": "../../entity/docStore/document.json#/definitions/data"
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Document belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": ["name", "fullyQualifiedName","entityType", "data"],

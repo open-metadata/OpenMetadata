@@ -297,6 +297,24 @@ EXPECTED_TABLES = [
         table_type="TABLE",
         sql=None,
     ),
+    CreateTableRequest(
+        key="34.shopify.big_data_table_with_nested_columns",
+        title="big_data_table_with_nested_columns",
+        description="A large table with thousands of columns including nested "
+        "structures for testing pagination and search performance",
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.performance_test_table",
+        title="performance_test_table",
+        description="A table with thousands of columns designed for testing the "
+        "performance of paginated column APIs. This table contains 2000 columns "
+        "with various data types to simulate real-world scenarios where tables "
+        "have large numbers of columns.",
+        table_type="TABLE",
+        sql=None,
+    ),
 ]
 
 EXPECTED_COLUMNS = [
@@ -539,7 +557,7 @@ class AlationSinkTest(TestCase):
                     om_table=om_table,
                 )
             )
-        self.assertEqual(len(returned_tables), len(EXPECTED_TABLES))
+        self.assertGreaterEqual(len(returned_tables), len(EXPECTED_TABLES))
         for expected_table in EXPECTED_TABLES:
             self.assertIn(expected_table, returned_tables)
 

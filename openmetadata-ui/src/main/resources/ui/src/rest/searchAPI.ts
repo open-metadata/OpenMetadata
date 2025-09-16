@@ -176,11 +176,12 @@ export const rawSearchQuery = <
 
   const queryWithSlash = getQueryWithSlash(query || '');
 
-  const apiQuery = query
-    ? filters
-      ? `${queryWithSlash} AND `
-      : queryWithSlash
-    : '';
+  const apiQuery =
+    query && query !== '**'
+      ? filters
+        ? `${queryWithSlash} AND `
+        : queryWithSlash
+      : '';
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
@@ -202,6 +203,7 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      exclude_source_fields: req.excludeSourceFields,
     },
     paramsSerializer: {
       indexes: null,

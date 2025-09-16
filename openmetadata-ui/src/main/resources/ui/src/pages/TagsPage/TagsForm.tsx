@@ -12,11 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Modal, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { Button, Form, Modal, Space, Typography } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
@@ -32,7 +33,7 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../interface/FormUtils.interface';
-import { generateFormFields } from '../../utils/formUtils';
+import { generateFormFields, getField } from '../../utils/formUtils';
 import { RenameFormProps, SubmitProps } from './TagsPage.interface';
 
 const TagsForm = ({
@@ -52,8 +53,8 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const selectedDomain = Form.useWatch<EntityReference | undefined>(
-    'domain',
+  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
+    'domains',
     form
   );
 
@@ -61,6 +62,12 @@ const TagsForm = ({
     'mutuallyExclusive',
     form
   );
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
   const { activeDomainEntityRef } = useDomainStore();
 
   useEffect(() => {
@@ -104,6 +111,57 @@ const TagsForm = ({
     () => (isEditing ? !permissions?.editAll : !isClassification),
     [isEditing, isClassification, permissions]
   );
+
+  const ownerField: FieldProp = {
+    name: 'owners',
+    id: 'root/owner',
+    required: false,
+    label: t('label.owner-plural'),
+    type: FieldTypes.USER_TEAM_SELECT,
+    props: {
+      hasPermission: true,
+      children: (
+        <Button
+          data-testid="add-owner"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+      multiple: { user: true, team: false },
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'owners',
+      trigger: 'onUpdate',
+    },
+  };
+
+  const domainField: FieldProp = {
+    name: 'domains',
+    id: 'root/domains',
+    required: false,
+    label: t('label.domain-plural'),
+    type: FieldTypes.DOMAIN_SELECT,
+    props: {
+      selectedDomain: activeDomainEntityRef,
+      children: (
+        <Button
+          data-testid="add-domain"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+      multiple: true,
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'selectedDomain',
+      trigger: 'onUpdate',
+      initialValue: activeDomainEntityRef,
+    },
+  };
 
   const formFields: FieldProp[] = [
     {
@@ -228,30 +286,6 @@ const TagsForm = ({
           },
         ] as FieldProp[])
       : []),
-    {
-      name: 'domain',
-      id: 'root/domain',
-      required: false,
-      label: t('label.domain'),
-      type: FieldTypes.DOMAIN_SELECT,
-      props: {
-        selectedDomain: activeDomainEntityRef,
-        children: (
-          <Button
-            data-testid="add-domain"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            size="small"
-            type="primary"
-          />
-        ),
-      },
-      formItemLayout: FormItemLayout.HORIZONTAL,
-      formItemProps: {
-        valuePropName: 'selectedDomain',
-        trigger: 'onUpdate',
-        initialValue: activeDomainEntityRef,
-      },
-    },
   ];
 
   const handleSave = async (data: SubmitProps) => {
@@ -259,7 +293,7 @@ const TagsForm = ({
       setSaving(true);
       const submitData = {
         ...data,
-        domain: selectedDomain?.fullyQualifiedName,
+        domains: selectedDomain?.map((domain) => domain.fullyQualifiedName),
       };
       await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);
@@ -307,18 +341,29 @@ const TagsForm = ({
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           {generateFormFields(formFields)}
+          <div className="m-y-xs">
+            {getField(ownerField)}
+            {Boolean(ownersList.length) && (
+              <Space wrap data-testid="owner-container" size={[8, 8]}>
+                <OwnerLabel owners={ownersList} />
+              </Space>
+            )}
+          </div>
+          <div className="m-t-xss">
+            {getField(domainField)}
+            {selectedDomain && (
+              <DomainLabel
+                domains={selectedDomain}
+                entityFqn=""
+                entityId=""
+                entityType={
+                  isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+                }
+                hasPermission={false}
+              />
+            )}
+          </div>
         </Form>
-        {selectedDomain && (
-          <DomainLabel
-            domain={selectedDomain}
-            entityFqn=""
-            entityId=""
-            entityType={
-              isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
-            }
-            hasPermission={false}
-          />
-        )}
       </EntityAttachmentProvider>
     </Modal>
   );

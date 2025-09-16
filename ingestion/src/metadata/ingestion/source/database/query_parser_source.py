@@ -20,13 +20,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -67,6 +64,7 @@ class QueryParserSource(Source, ABC):
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.graph = None
+        self.procedure_graph_map = None
 
         self.engine = None
         if get_engine:
@@ -134,6 +132,4 @@ class QueryParserSource(Source, ABC):
         masked_query_cache.clear()
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.metadata, self.engine, self.service_connection)
-        raise_test_connection_exception(result)
+        test_connection_common(self.metadata, self.engine, self.service_connection)

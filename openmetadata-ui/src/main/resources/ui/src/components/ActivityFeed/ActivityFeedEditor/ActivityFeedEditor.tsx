@@ -12,15 +12,17 @@
  */
 
 import classNames from 'classnames';
-import React, {
+import { noop } from 'lodash';
+import {
   forwardRef,
   HTMLAttributes,
+  LegacyRef,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
-import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
@@ -35,12 +37,7 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   focused?: boolean;
 }
 
-export type EditorContentRef = {
-  getEditorValue: () => string;
-  clearEditorValue: () => string;
-};
-
-const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
+const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
   (
     {
       className,
@@ -66,10 +63,12 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
 
     const onSaveHandler = () => {
       if (editorRef.current) {
-        if (editorRef.current?.getEditorValue()) {
+        if (editorRef.current?.getEditorContent()) {
           setEditorValue('');
-          editorRef.current?.clearEditorValue();
-          const message = getBackendFormat(editorRef.current?.getEditorValue());
+          editorRef.current?.clearEditorContent();
+          const message = getBackendFormat(
+            editorRef.current?.getEditorContent()
+          );
           onSave && onSave(message);
         }
       }
@@ -79,7 +78,9 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
      * Handle forward ref logic and provide method access to parent component
      */
     useImperativeHandle(ref, () => ({
-      ...editorRef.current,
+      getEditorContent: editorRef.current?.getEditorContent ?? (() => ''),
+      clearEditorContent: editorRef.current?.clearEditorContent ?? noop,
+      setEditorContent: editorRef.current?.setEditorContent ?? noop,
     }));
 
     return (
@@ -91,7 +92,7 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
           editorClass={editorClass}
           focused={focused}
           placeHolder={placeHolder}
-          ref={editorRef}
+          ref={editorRef as LegacyRef<EditorContentRef>}
           onChangeHandler={onChangeHandler}
           onSave={onSaveHandler}
         />

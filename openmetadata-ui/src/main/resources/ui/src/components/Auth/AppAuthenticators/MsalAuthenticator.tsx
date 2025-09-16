@@ -16,7 +16,7 @@ import {
   InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -54,13 +54,14 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         if (isInIframe) {
           // Use popup login when in iframe to avoid redirect issues
           const response = await instance.loginPopup(msalLoginRequest);
+          const msalResponse = await parseMSALResponse(response);
 
-          handleSuccessfulLogin(parseMSALResponse(response));
+          handleSuccessfulLogin(msalResponse);
         } else {
           // Use login with redirect for normal window context
           await instance.loginRedirect(msalLoginRequest);
         }
-      } catch (error) {
+      } catch {
         handleFailedLogin();
       }
     };
@@ -87,8 +88,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       };
       try {
         const response = await instance.ssoSilent(tokenRequest);
+        const msalResponse = await parseMSALResponse(response);
 
-        return parseMSALResponse(response);
+        return msalResponse;
       } catch (error) {
         if (
           error instanceof InteractionRequiredAuthError &&
@@ -117,7 +119,9 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               throw e;
             });
 
-          return parseMSALResponse(response);
+          const msalResponse = await parseMSALResponse(response);
+
+          return msalResponse;
         } else {
           // eslint-disable-next-line no-console
           console.error(error);
@@ -146,11 +150,11 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         const response = await instance.handleRedirectPromise();
 
         if (response) {
-          const user = parseMSALResponse(response);
+          const user = await parseMSALResponse(response);
 
           handleSuccessfulLogin(user);
         }
-      } catch (error) {
+      } catch {
         handleFailedLogin();
       }
     };

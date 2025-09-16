@@ -39,6 +39,10 @@ export interface PowerBIConnection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Dashboard URL for PowerBI service.
      */
     hostPort?: string;

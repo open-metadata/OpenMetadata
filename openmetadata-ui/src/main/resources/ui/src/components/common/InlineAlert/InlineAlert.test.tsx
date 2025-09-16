@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import InlineAlert from './InlineAlert';
 
 const mockSetInlineAlertDetails = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     inlineAlertDetails: undefined,
     setInlineAlertDetails: mockSetInlineAlertDetails,
-  }),
+  })),
 }));
 
 const mockProps = {
@@ -32,10 +31,6 @@ const mockProps = {
 };
 
 describe('InlineAlert', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should render alert with basic props', () => {
     render(<InlineAlert {...mockProps} />);
 

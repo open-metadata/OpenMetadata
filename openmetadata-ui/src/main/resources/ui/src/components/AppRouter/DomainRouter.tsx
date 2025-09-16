@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import i18n from '../../utils/i18next/LocalUtil';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import AddDomain from '../Domain/AddDomain/AddDomain.component';
 import DomainPage from '../Domain/DomainPage.component';
@@ -29,21 +30,43 @@ const DomainRouter = () => {
   );
 
   return (
-    <Switch>
-      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN}
+    <Routes>
+      <Route
+        element={
+          <AddDomain
+            pageTitle={i18n.t('label.add-entity', {
+              entity: i18n.t('label.domain'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_DOMAIN.replace(ROUTES.DOMAIN, '')}
       />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={[ROUTES.DOMAIN_DETAILS, ROUTES.DOMAIN_DETAILS_WITH_TAB]}
+      <Route
+        index
+        element={
+          <AdminProtectedRoute hasPermission={domainPermission}>
+            <DomainPage pageTitle={i18n.t('label.domain')} />
+          </AdminProtectedRoute>
+        }
+        path="/"
       />
-    </Switch>
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={domainPermission}>
+            <DomainPage pageTitle={i18n.t('label.domain')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={domainPermission}>
+            <DomainPage pageTitle={i18n.t('label.domain')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
+      />
+    </Routes>
   );
 };
 

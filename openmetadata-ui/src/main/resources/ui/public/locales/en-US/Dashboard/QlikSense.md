@@ -4,9 +4,9 @@ In this section, we provide guides and references to use the Metabase connector.
 
 ## Requirements
 
-We will extract the metadata using the [Qlik Sense Engine JSON API](https://help.qlik.com/en-US/sense-developer/May2023/Subsystems/EngineAPI/Content/Sense_EngineAPI/introducing-engine-API.htm).
+We will extract the metadata using the <a href="https://help.qlik.com/en-US/sense-developer/May2023/Subsystems/EngineAPI/Content/Sense_EngineAPI/introducing-engine-API.htm" target="_blank">Qlik Sense Engine JSON API</a>.
 
-You can find further information on the Qlik Sense connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/qliksense).
+You can find further information on the Qlik Sense connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/qliksense" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -21,7 +21,7 @@ $$
 $$section
 ### Qlik Engine JSON API Websocket URL $(id="hostPort")
 
-Enter the websocket url of Qlik Sense Engine JSON API. Refer to [this](https://help.qlik.com/en-US/sense-developer/May2023/Subsystems/EngineAPI/Content/Sense_EngineAPI/GettingStarted/connecting-to-engine-api.htm) document for more details about 
+Enter the websocket url of Qlik Sense Engine JSON API. Refer to <a href="https://help.qlik.com/en-US/sense-developer/May2023/Subsystems/EngineAPI/Content/Sense_EngineAPI/GettingStarted/connecting-to-engine-api.htm" target="_blank">this</a> document for more details about 
 
 Example: `wss://server.domain.com:4747` or `wss://server.domain.com[/virtual proxy]`
 

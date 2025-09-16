@@ -11,8 +11,8 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.index.query.QueryBuilder;
@@ -30,7 +30,8 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
       long start,
       long end,
       List<FormulaHolder> formulas,
-      Map metricHolder)
+      Map metricHolder,
+      boolean live)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
@@ -46,15 +47,22 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
         dateHistogramAggregationBuilder,
         formulas);
 
-    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
-
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
-    searchSourceBuilder.query(queryFilter);
     searchSourceBuilder.size(0);
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+
+    os.org.opensearch.action.search.SearchRequest searchRequest;
+    if (!live) {
+      QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
+      searchSourceBuilder.query(queryFilter);
+      searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    } else {
+      searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+              DataInsightSystemChartRepository.getLiveSearchIndex(null));
+    }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

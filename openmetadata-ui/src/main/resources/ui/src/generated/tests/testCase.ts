@@ -40,10 +40,10 @@ export interface TestCase {
      */
     displayName?: string;
     /**
-     * Domain the test case belongs to. When not set, the test case inherits the domain from the
-     * table it belongs to.
+     * Domains the test case belongs to. When not set, the test case inherits the domain from
+     * the table it belongs to.
      */
-    domain?:    EntityReference;
+    domains?:   EntityReference[];
     entityFQN?: string;
     /**
      * Link to the entity that this test case is testing.
@@ -196,17 +196,15 @@ export interface FieldChange {
 }
 
 /**
- * Domain the test case belongs to. When not set, the test case inherits the domain from the
- * table it belongs to.
+ * Domains the test case belongs to. When not set, the test case inherits the domain from
+ * the table it belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this Pipeline.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -222,10 +220,11 @@ export interface FieldChange {
  * Entity reference the test suite needs to execute the test against. Only applicable if the
  * test suite is basic.
  *
- * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
- * the table it belongs to.
+ * Reference to the data contract that this test suite is associated with.
  *
  * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+ *
+ * Link to the ingestion pipeline that ingested this entity.
  */
 export interface EntityReference {
     /**
@@ -516,6 +515,10 @@ export interface TestSuite {
      */
     connection?: TestSuiteConnection;
     /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -528,10 +531,10 @@ export interface TestSuite {
      */
     displayName?: string;
     /**
-     * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+     * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
      * the table it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * DEPRECATED in 1.6.2: Use 'basic'
      */
@@ -556,6 +559,10 @@ export interface TestSuite {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Link to the ingestion pipeline that ingested this entity.
+     */
+    ingestionRunner?: EntityReference;
     /**
      * Indicates if the test suite is inherited from a parent entity.
      */

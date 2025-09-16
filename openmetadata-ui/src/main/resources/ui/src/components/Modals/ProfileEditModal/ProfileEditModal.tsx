@@ -11,41 +11,35 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal, Typography } from 'antd';
+import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useCallback, useState } from 'react';
+import { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './profile-edit-modal.less';
 
 interface ProfileEditModalProps {
   userData: User;
-  header: string;
-  value: string;
-  placeholder: string;
-  onSave?: () => void;
-  onCancel?: () => void;
-  visible: boolean;
+  onCancel: () => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
 
 export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   userData,
-  onSave,
   onCancel,
-  visible,
   updateUserDetails,
 }: ProfileEditModalProps) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [displayName, setDisplayName] = useState(userData.displayName);
 
-  const handleSaveData = async () => {
+  const handleSaveData: FormProps['onFinish'] = async ({
+    displayName,
+  }): Promise<void> => {
     setIsLoading(true);
     try {
       await updateUserDetails({ displayName }, 'displayName');
-      onSave?.();
+      onCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -53,59 +47,42 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
     }
   };
 
-  const onDisplayNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
-    []
-  );
+  useEffect(() => {
+    form.setFieldsValue({ displayName: userData.displayName });
+  }, [userData.displayName]);
 
   return (
     <Modal
       centered
-      closable
-      destroyOnClose
-      className="profile-edit-modal"
+      open
+      cancelText={t('label.cancel')}
+      closable={false}
+      confirmLoading={isLoading}
       data-testid="profile-edit-modal"
-      footer={[
-        <Button
-          className="m-t-xs m-r-xs cancel-name-edit-btn"
-          data-testid="cancel"
-          disabled={isLoading}
-          key="cancelButton"
-          type="primary"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          className="m-t-xs save-updated-name-btn"
-          data-testid="save-display-name"
-          key="saveButton"
-          loading={isLoading}
-          type="primary"
-          onClick={handleSaveData}>
-          {t('label.save')}
-        </Button>,
-      ]}
       maskClosable={false}
-      open={visible}
-      title={
-        <Typography.Text className="modal-header">
-          {t('label.edit-name')}
-        </Typography.Text>
-      }
+      okButtonProps={{
+        form: 'profile-edit-form',
+        type: 'primary',
+        htmlType: 'submit',
+      }}
+      okText={t('label.save')}
+      title={t('label.edit-entity', {
+        entity: t('label.display-name'),
+      })}
+      width={500}
       onCancel={onCancel}>
-      <Typography.Text className="modal-label m-b-xs">
-        {t('label.display-name')}
-      </Typography.Text>
-      <Input
-        className="w-full display-name-edit-input"
-        data-testid="displayName"
-        id="displayName"
-        name="displayName"
-        placeholder={t('label.display-name')}
-        type="text"
-        value={displayName}
-        onChange={onDisplayNameChange}
-      />
+      <Form
+        form={form}
+        id="profile-edit-form"
+        layout="vertical"
+        onFinish={handleSaveData}>
+        <Form.Item label={t('label.display-name')} name="displayName">
+          <Input
+            data-testid="displayName-input"
+            placeholder={t('label.display-name')}
+          />
+        </Form.Item>
+      </Form>
     </Modal>
   );
 };

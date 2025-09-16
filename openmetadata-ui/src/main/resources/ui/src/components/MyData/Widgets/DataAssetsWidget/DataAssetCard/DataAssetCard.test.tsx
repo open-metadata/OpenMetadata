@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Bucket } from 'Models';
-import React from 'react';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import DataAssetCard from './DataAssetCard.component';
 
@@ -58,7 +57,7 @@ describe('DataAssetCard', () => {
     render(<DataAssetCard service={mockServiceData} />);
 
     expect(screen.getByText('getServiceLogo')).toBeInTheDocument();
-    expect(screen.getByText('Mysql')).toBeInTheDocument();
+    expect(screen.getByText('MySQL')).toBeInTheDocument();
     expect(screen.getByText('AppBadge')).toBeInTheDocument();
 
     expect(getExplorePath).toHaveBeenCalledWith({

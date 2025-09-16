@@ -19,6 +19,7 @@ package org.openmetadata.service.resources.glossary;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -88,12 +89,15 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -109,7 +113,6 @@ import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -758,6 +761,78 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
+  void test_importCsvWithFullTermUpdate() throws IOException {
+    // Create a glossary
+    String glossaryName = "fullUpdateTest";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    // Create custom property for testing
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("glossaryTermStringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(
+        entityType.getId(), stringCp, OK, ADMIN_AUTH_HEADERS);
+
+    // First create terms with initial hierarchy and values
+    String initialCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                ",term1,Term 1,Description 1,syn1;syn2,,,PII.None,,,Draft,",
+                ",term2,Term 2,Description 2,,,,,,,Approved,",
+                "fullUpdateTest.term1,term3,Term 3,Description 3,,,,,,,Approved,"),
+            null);
+
+    // Import initial terms
+    CsvImportResult result = importCsv(glossaryName, initialCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0);
+
+    // Now update with changes - move term3 to term2 and update other fields
+    String updateCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                "fullUpdateTest.term2,term3,Term 3 Updated,Description 3 Updated,newSyn1;newSyn2,,ref1;http://ref1.com,PII.Sensitive,,,Approved,glossaryTermStringCp:test value"),
+            null);
+
+    // Import updates
+    result = importCsv(glossaryName, updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    // Verify all fields were updated
+    GlossaryTerm term3 =
+        new GlossaryTermResourceTest()
+            .getEntityByName(
+                "fullUpdateTest.term2.term3",
+                "owners,reviewers,parent,glossary,tags,extension",
+                ADMIN_AUTH_HEADERS);
+    assertEquals("Term 3 Updated", term3.getDisplayName());
+    assertEquals("Description 3 Updated", term3.getDescription());
+    assertEquals(List.of("newSyn1", "newSyn2"), term3.getSynonyms());
+    assertEquals("term2", term3.getParent().getName());
+    assertEquals(1, term3.getReferences().size());
+    assertEquals("ref1", term3.getReferences().getFirst().getName());
+    assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
+    assertEquals(1, term3.getTags().size());
+    assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
+    assertEquals(EntityStatus.APPROVED, term3.getEntityStatus());
+    // Fix: Safely extract the custom property from the extension map
+    Object extension = term3.getExtension();
+    String customPropValue = null;
+    if (extension instanceof Map) {
+      Object val = ((Map<?, ?>) extension).get("glossaryTermStringCp");
+      if (val != null) customPropValue = val.toString();
+    }
+    assertEquals("test value", customPropValue);
+  }
+
+  @Test
   void testGlossaryImportExport() throws IOException {
     EventSubscriptionResourceTest eventSubscriptionResourceTest =
         new EventSubscriptionResourceTest();
@@ -926,20 +1001,20 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 user1, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,g1.g1t1;g2.g2t1,,,user:%s,team:%s,%s,",
-                reviewerRef.get(0), team11, "Draft"));
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;importExportTest.g2;g2.g2t1,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
-                reviewerRef.get(0), user1, "Approved", team11, user1, user2),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;g2.g2t1;importExportTest.g2,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                reviewerRef.getFirst(), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,importExportTest.g1;g1.g1t1;g2.g2t1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,g1.g1t1;g2.g2t1;importExportTest.g1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
-                reviewerRef.get(0), team11, "Draft"));
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
@@ -1220,5 +1295,124 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                         "ApproveGlossaryTerm.approvalTask",
                         getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
                         entityLink));
+  }
+
+  @Test
+  void testBulkTermCountLoading() throws IOException {
+    // Create multiple glossaries
+    List<Glossary> glossaries = new ArrayList<>();
+    Map<String, Integer> expectedTermCounts = new HashMap<>();
+
+    // Create 5 glossaries with different numbers of terms
+    for (int i = 0; i < 5; i++) {
+      CreateGlossary createGlossary = createRequest("test-glossary-" + i, "", "", null);
+      Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+      glossaries.add(glossary);
+
+      // Create different number of terms for each glossary
+      int termCount = (i + 1) * 2; // 2, 4, 6, 8, 10 terms
+      for (int j = 0; j < termCount; j++) {
+        CreateGlossaryTerm createTerm =
+            new CreateGlossaryTerm()
+                .withName("term-" + i + "-" + j)
+                .withDescription("Test term")
+                .withGlossary(glossary.getFullyQualifiedName());
+        new GlossaryTermResourceTest().createEntity(createTerm, ADMIN_AUTH_HEADERS);
+      }
+      expectedTermCounts.put(glossary.getName(), termCount);
+    }
+
+    // Test: List glossaries with termCount field and verify counts are correct
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "termCount");
+    queryParams.put("limit", "10");
+
+    ResultList<Glossary> resultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Verify all glossaries have correct term counts
+    for (Glossary glossary : resultList.getData()) {
+      if (expectedTermCounts.containsKey(glossary.getName())) {
+        assertEquals(
+            expectedTermCounts.get(glossary.getName()),
+            glossary.getTermCount(),
+            "Term count for glossary " + glossary.getName() + " should match expected value");
+      }
+    }
+
+    // Cleanup
+    for (Glossary glossary : glossaries) {
+      deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void testGlossaryPaginationWithTermCount() throws IOException {
+    // Create glossaries with names that ensure deterministic ordering
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    Map<String, Integer> glossaryTermCounts = new HashMap<>();
+
+    // Create 10 glossaries with predictable names for ordering
+    for (int i = 0; i < 10; i++) {
+      String glossaryName = String.format("pagination-test-%02d", i);
+      CreateGlossary createGlossary = createRequest(glossaryName, "", "", null);
+      Glossary glossary = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary);
+
+      // Create one term per glossary for simplicity
+      CreateGlossaryTerm createTerm =
+          new CreateGlossaryTerm()
+              .withName("term-" + i)
+              .withDescription("Test term")
+              .withGlossary(glossary.getFullyQualifiedName());
+      new GlossaryTermResourceTest().createEntity(createTerm, ADMIN_AUTH_HEADERS);
+      glossaryTermCounts.put(glossary.getName(), 1);
+    }
+
+    // Test pagination with termCount field
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "termCount");
+    queryParams.put("limit", "3");
+
+    // Get first page
+    ResultList<Glossary> firstPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, firstPage.getData().size(), "First page should have 3 items");
+
+    // Verify term counts are included
+    for (Glossary glossary : firstPage.getData()) {
+      if (glossaryTermCounts.containsKey(glossary.getName())) {
+        assertEquals(
+            1, glossary.getTermCount(), "Term count should be 1 for " + glossary.getName());
+      }
+    }
+
+    // Get second page using after cursor
+    assertNotNull(firstPage.getPaging().getAfter(), "After cursor should be present");
+    queryParams.put("after", firstPage.getPaging().getAfter());
+
+    ResultList<Glossary> secondPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, secondPage.getData().size(), "Second page should have 3 items");
+
+    // Verify no duplicate glossaries between pages
+    Set<String> firstPageNames =
+        firstPage.getData().stream().map(Glossary::getName).collect(Collectors.toSet());
+    Set<String> secondPageNames =
+        secondPage.getData().stream().map(Glossary::getName).collect(Collectors.toSet());
+
+    assertTrue(
+        firstPageNames.stream().noneMatch(secondPageNames::contains),
+        "No glossary should appear in both pages");
+
+    // Verify term counts are still included in paginated results
+    for (Glossary glossary : secondPage.getData()) {
+      if (glossaryTermCounts.containsKey(glossary.getName())) {
+        assertEquals(
+            1, glossary.getTermCount(), "Term count should be 1 for " + glossary.getName());
+      }
+    }
+
+    // Cleanup
+    for (Glossary glossary : createdGlossaries) {
+      deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
   }
 }

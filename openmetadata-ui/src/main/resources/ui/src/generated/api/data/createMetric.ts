@@ -15,6 +15,10 @@
  */
 export interface CreateMetric {
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -27,9 +31,9 @@ export interface CreateMetric {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Metric belongs to.
+     * Fully qualified names of the domains the Metric belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -282,6 +286,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",

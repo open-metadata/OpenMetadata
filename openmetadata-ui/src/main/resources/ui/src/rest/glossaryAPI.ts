@@ -16,12 +16,14 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { MoveGlossaryTermWebsocketResponse } from '../components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
@@ -163,6 +165,17 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
+export const moveGlossaryTerm = async (id: string, parent: EntityReference) => {
+  const response = await APIClient.put<
+    MoveGlossaryTermRequest,
+    AxiosResponse<MoveGlossaryTermWebsocketResponse>
+  >(`/glossaryTerms/${id}/moveAsync`, {
+    parent,
+  });
+
+  return response.data;
+};
+
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   const response = await APIClient.get<CSVExportResponse>(
     `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
@@ -251,7 +264,6 @@ export const addAssetsToGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: dryRun,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -269,7 +281,6 @@ export const removeAssetsFromGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: false,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -297,6 +308,50 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
   return data;
 };
 
+export const searchGlossaryTermsPaginated = async (
+  query?: string,
+  glossaryId?: string,
+  glossaryFqn?: string,
+  parentId?: string,
+  parentFqn?: string,
+  limit = 50,
+  offset = 0,
+  fields?: string
+) => {
+  const params: Record<string, any> = {
+    limit,
+    offset,
+  };
+
+  if (query) {
+    params.q = query;
+  }
+  if (glossaryId) {
+    params.glossary = glossaryId;
+  }
+  if (glossaryFqn) {
+    params.glossaryFqn = glossaryFqn;
+  }
+  if (parentId) {
+    params.parent = parentId;
+  }
+  if (parentFqn) {
+    params.parentFqn = parentFqn;
+  }
+  if (fields) {
+    params.fields = fields;
+  }
+
+  const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
+    '/glossaryTerms/search',
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
 };
@@ -315,6 +370,54 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
         TabSpecificField.REVIEWERS,
       ],
       limit: 100000,
+    },
+  });
+
+  return data;
+};
+
+export const getFirstLevelGlossaryTermsPaginated = async (
+  parentFQN: string,
+  pageSize = 50,
+  after?: string
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit: pageSize,
+      after: after,
+    },
+  });
+
+  return data;
+};
+
+export const getGlossaryTermChildrenLazy = async (
+  parentFQN: string,
+  limit = 50
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit,
     },
   });
 

@@ -17,6 +17,12 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom/extend-expect';
 
+// Polyfill for TextEncoder and TextDecoder
+import { TextDecoder, TextEncoder } from 'util';
+
+// eslint-disable-next-line no-undef
+Object.assign(global, { TextDecoder, TextEncoder });
+
 // Reference: https://github.com/ant-design/ant-design/issues/21096
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -95,6 +101,7 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
   }),
+  detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
   dir: jest.fn().mockReturnValue('ltr'),
 }));
@@ -115,4 +122,35 @@ jest.mock('./utils/ToastUtils', () => ({
 
 jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({
   FeedEditor: jest.fn().mockImplementation(() => 'FeedEditor'),
+}));
+/**
+ * Global mock for TableColumn.util to prevent ownerTableObject errors
+ */
+jest.mock('./utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+  columnFilterIcon: jest.fn(),
+}));
+
+/**
+ * Global mock for AdvancedSearchClassBase to fix circular dependency issues
+ */
+jest.mock('./utils/AdvancedSearchClassBase', () => {
+  const actual = jest.requireActual('./utils/AdvancedSearchClassBase');
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: {
+      ...actual.default,
+      autocomplete: jest.fn().mockReturnValue(jest.fn()),
+      getQbConfigs: jest.fn().mockReturnValue({}),
+    },
+  };
+});
+
+jest.mock('./utils/EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue('test'),
 }));

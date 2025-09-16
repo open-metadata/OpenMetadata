@@ -23,9 +23,9 @@ export interface CreatePolicy {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Policy belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the policy enabled.
      */
@@ -150,10 +150,13 @@ export enum Operation {
     All = "All",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
+    CreateScim = "CreateScim",
     Delete = "Delete",
+    DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
     EditAll = "EditAll",
+    EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
     EditDataProfile = "EditDataProfile",
     EditDescription = "EditDescription",
@@ -171,6 +174,7 @@ export enum Operation {
     EditReviewers = "EditReviewers",
     EditRole = "EditRole",
     EditSampleData = "EditSampleData",
+    EditScim = "EditScim",
     EditStatus = "EditStatus",
     EditTags = "EditTags",
     EditTeams = "EditTeams",
@@ -187,6 +191,7 @@ export enum Operation {
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
     ViewSampleData = "ViewSampleData",
+    ViewScim = "ViewScim",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",
