@@ -944,10 +944,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
 
   const isAllExpanded = useMemo(() => {
-    return (
-      expandedRowKeys.length === expandableKeys.length &&
-      expandableKeys.length > 0
-    );
+    return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
   const statusDropdownMenu: MenuProps = useMemo(
