@@ -57,7 +57,13 @@ export const useDataTable = <T extends { id: string }>(
                   checked={listing.isAllSelected}
                   indeterminate={listing.isIndeterminate}
                   size="medium"
-                  onChange={(e) => listing.handleSelectAll(e.target.checked)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    listing.handleSelectAll(e.target.checked);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                 />
               </TableCell>
             )}

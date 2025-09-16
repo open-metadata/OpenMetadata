@@ -247,6 +247,7 @@ export const dataDisplayTheme = (colors: any): Components<Theme> & Record<string
           color: colors.gray[750],
           fontWeight: 400,
           fontSize: '12px',
+          borderRadius: '8px',
         },
       },
     ],

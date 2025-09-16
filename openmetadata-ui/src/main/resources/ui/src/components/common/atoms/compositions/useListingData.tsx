@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useDataFetching } from '../data/useDataFetching';
 import { useFilterOptions } from '../data/useFilterOptions';
@@ -135,6 +135,29 @@ export const useListingData = <T extends { id: string }>(
     [setCurrentPage]
   );
 
+  // Map selected IDs to actual entity objects
+  const selectedEntities = useMemo(
+    () =>
+      dataFetching.entities.filter((entity) =>
+        selectionState.selectedEntities.includes(entity.id)
+      ),
+    [dataFetching.entities, selectionState.selectedEntities]
+  );
+
+  // Refetch function to reload data with current filters
+  const refetch = useCallback(() => {
+    dataFetching.searchEntities(
+      urlState.currentPage,
+      urlState.searchQuery,
+      urlState.filters
+    );
+  }, [
+    urlState.currentPage,
+    urlState.searchQuery,
+    urlState.filters,
+    dataFetching,
+  ]);
+
   return {
     entities: dataFetching.entities,
     loading: dataFetching.loading,
@@ -144,7 +167,7 @@ export const useListingData = <T extends { id: string }>(
     pageSize: paginationState.pageSize,
     columns,
     renderers,
-    selectedEntities: selectionState.selectedEntities,
+    selectedEntities,
     isAllSelected: selectionState.isAllSelected,
     isIndeterminate: selectionState.isIndeterminate,
     handleSelectAll: selectionState.handleSelectAll,
@@ -158,5 +181,6 @@ export const useListingData = <T extends { id: string }>(
     handleFilterChange,
     handlePageChange,
     searchFilterOptions: filterOptionsHook.searchFilterOptions,
+    refetch,
   };
 };

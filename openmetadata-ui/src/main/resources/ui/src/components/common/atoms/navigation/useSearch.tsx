@@ -13,6 +13,7 @@
 
 import { InputAdornment, TextField, useTheme } from '@mui/material';
 import { SearchLg } from '@untitledui/icons';
+import { debounce } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -29,25 +30,25 @@ export const useSearch = (config: SearchConfig) => {
     config.initialSearchQuery || ''
   );
 
-  const handleSearchSubmit = (query: string) => {
-    config.onSearchChange(query);
-  };
-
-  const handleSearchChange = handleSearchSubmit; // For backwards compatibility
+  // Create debounced search function
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        config.onSearchChange(query);
+      }, 300), // 300ms delay
+    [config.onSearchChange]
+  );
 
   const handleInputChange = (query: string) => {
     setSearchQuery(query);
+    debouncedSearch(query); // Trigger debounced search
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      handleSearchSubmit(searchQuery);
-    }
-  };
+  const handleSearchChange = handleInputChange; // For backwards compatibility
 
   const clearSearch = () => {
     setSearchQuery('');
-    handleSearchSubmit('');
+    debouncedSearch('');
   };
 
   // Inline implementation copying exact EntitySearchBox styling
@@ -96,10 +97,9 @@ export const useSearch = (config: SearchConfig) => {
         }}
         value={searchQuery}
         onChange={(e) => handleInputChange(e.target.value)}
-        onKeyDown={handleKeyDown}
       />
     ),
-    [searchQuery, config.searchPlaceholderKey, theme, t]
+    [searchQuery, config.searchPlaceholderKey, theme, t, handleInputChange]
   );
 
   return {

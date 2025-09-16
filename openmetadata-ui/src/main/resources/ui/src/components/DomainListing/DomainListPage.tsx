@@ -13,14 +13,18 @@
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useDelete } from '../common/atoms/actions/useDelete';
+import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterConfig } from '../common/atoms/filters/useFilterConfig';
 import { useFilterDropdowns } from '../common/atoms/filters/useFilterDropdowns';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
+import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { DOMAIN_FILTER_CONFIGS } from '../common/atoms/shared/utils/commonFilterConfigs';
+import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
@@ -66,10 +70,18 @@ const DomainListPage = () => {
     filters: dropdownConfigs,
   });
 
+  const { view, viewToggle } = useViewToggle();
+  const { domainCardTemplate } = useDomainCardTemplates();
+
   const { dataTable } = useDataTable({
     listing: domainListing,
     enableSelection: true,
     entityLabelKey: 'label.domain',
+  });
+
+  const { cardView } = useCardView({
+    listing: domainListing,
+    cardTemplate: domainCardTemplate,
   });
 
   const { paginationControls } = usePaginationControls({
@@ -79,6 +91,16 @@ const DomainListPage = () => {
     pageSize: domainListing.pageSize,
     onPageChange: domainListing.handlePageChange,
     loading: domainListing.loading,
+  });
+
+  const { deleteIconButton, deleteModal } = useDelete({
+    entityType: 'domains',
+    entityLabel: 'Domain',
+    selectedEntities: domainListing.selectedEntities,
+    onDeleteComplete: () => {
+      domainListing.clearSelection();
+      domainListing.refetch();
+    },
   });
 
   return (
@@ -100,12 +122,16 @@ const DomainListPage = () => {
           {titleAndCount}
           {search}
           {filterDropdowns}
+          <Box ml="auto" />
+          {viewToggle}
+          {deleteIconButton}
         </Box>
 
-        {dataTable}
+        {view === 'table' ? dataTable : cardView}
 
         {paginationControls}
       </TableContainer>
+      {deleteModal}
     </>
   );
 };

@@ -12,12 +12,16 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { useDelete } from '../../common/atoms/actions/useDelete';
+import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterConfig } from '../../common/atoms/filters/useFilterConfig';
 import { useFilterDropdowns } from '../../common/atoms/filters/useFilterDropdowns';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
+import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { SUBDOMAIN_FILTER_CONFIGS } from '../../common/atoms/shared/utils/commonFilterConfigs';
+import { useCardView } from '../../common/atoms/table/useCardView';
 import { useDataTable } from '../../common/atoms/table/useDataTable';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
@@ -56,10 +60,18 @@ const SubDomainsTable = ({
     filters: dropdownConfigs,
   });
 
+  const { view, viewToggle } = useViewToggle();
+  const { domainCardTemplate } = useDomainCardTemplates();
+
   const { dataTable } = useDataTable({
     listing: subdomainListing,
     enableSelection: true,
     entityLabelKey: 'label.sub-domain',
+  });
+
+  const { cardView } = useCardView({
+    listing: subdomainListing,
+    cardTemplate: domainCardTemplate,
   });
 
   const { paginationControls } = usePaginationControls({
@@ -71,27 +83,43 @@ const SubDomainsTable = ({
     loading: subdomainListing.loading,
   });
 
+  const { deleteIconButton, deleteModal } = useDelete({
+    entityType: 'domains',
+    entityLabel: 'Sub-domain',
+    selectedEntities: subdomainListing.selectedEntities,
+    onDeleteComplete: () => {
+      subdomainListing.clearSelection();
+      subdomainListing.refetch();
+    },
+  });
+
   return (
-    <TableContainer component={Paper} sx={{ mb: 5 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 5,
-          alignItems: 'center',
-          px: 6,
-          py: 4,
-          borderBottom: `1px solid`,
-          borderColor: theme.palette.allShades?.gray?.[200],
-        }}>
-        {titleAndCount}
-        {search}
-        {filterDropdowns}
-      </Box>
+    <>
+      <TableContainer component={Paper} sx={{ mb: 5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 5,
+            alignItems: 'center',
+            px: 6,
+            py: 4,
+            borderBottom: `1px solid`,
+            borderColor: theme.palette.allShades?.gray?.[200],
+          }}>
+          {titleAndCount}
+          {search}
+          {filterDropdowns}
+          <Box ml="auto" />
+          {viewToggle}
+          {deleteIconButton}
+        </Box>
 
-      {dataTable}
+        {view === 'table' ? dataTable : cardView}
 
-      {paginationControls}
-    </TableContainer>
+        {paginationControls}
+      </TableContainer>
+      {deleteModal}
+    </>
   );
 };
 
