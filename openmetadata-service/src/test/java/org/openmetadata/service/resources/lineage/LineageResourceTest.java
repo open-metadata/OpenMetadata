@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -344,20 +343,20 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add invalid column lineage (from column or to column are invalid)
+    // invalid columns are now silently filtered out instead of throwing errors
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // This should now succeed with the invalid column being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
+
+    // Clear and test invalid toColumn
+    details.getColumnsLineage().clear();
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // the invalid column lineage being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
@@ -406,10 +405,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f3FQN = "test_non_existent_filed";
     topicToTableLineage.add(
         new ColumnLineage().withFromColumns(List.of(f3FQN)).withToColumn(d1c1FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS);
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -423,10 +420,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f2c3FQN = "test_non_existent_container_column";
     topicToContainerLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2FQN)).withToColumn(f2c3FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f2c3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS);
 
     LineageDetails containerToTable = new LineageDetails();
     List<ColumnLineage> containerToTableLineage = containerToTable.getColumnsLineage();
@@ -448,10 +443,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String m3f3 = "test_non_existent_feature";
     tableToMlModelLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2t2)).withToColumn(m3f3));
-    assertResponse(
-        () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", m3f3));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS);
 
     LineageDetails tableToDashboard = new LineageDetails();
     String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
@@ -1029,7 +1022,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Check the number of upstream edges (downstreamEdges will always be empty for platformLineage)
     // 5 edges are created
     int expectedUpstreamEdges = serviceViewResult.getUpstreamEdges().size();
-    assertEquals(5, expectedUpstreamEdges, "Should have 3 upstream edges");
+    assertEquals(5, expectedUpstreamEdges, "Should have 5 upstream edges");
     assertTrue(
         serviceViewResult.getDownstreamEdges().isEmpty(),
         "Downstream edges should be empty for platformLineage");

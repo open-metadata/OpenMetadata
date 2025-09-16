@@ -2379,6 +2379,8 @@ export interface ServiceConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2438,6 +2440,8 @@ export interface ServiceConnection {
  * Azure Data Factory Connection Config
  *
  * Stitch Connection
+ *
+ * Snowplow Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -2659,6 +2663,8 @@ export interface ConfigObject {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -2745,6 +2751,8 @@ export interface ConfigObject {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -2853,6 +2861,9 @@ export interface ConfigObject {
      *
      * Username
      *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -2910,6 +2921,8 @@ export interface ConfigObject {
      * API key to authenticate with the SAP ERP APIs.
      *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -3336,13 +3349,16 @@ export interface ConfigObject {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
-     */
-    authMechanism?: AuthMechanismEnum;
-    /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Use slow logs to extract lineage.
      */
@@ -3378,6 +3394,8 @@ export interface ConfigObject {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -3444,6 +3462,10 @@ export interface ConfigObject {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -3535,6 +3557,16 @@ export interface ConfigObject {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3890,6 +3922,22 @@ export interface ConfigObject {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -4560,6 +4608,15 @@ export interface ConsumerConfigSSLClass {
 }
 
 /**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
+}
+
+/**
  * Available sources to fetch the metadata.
  *
  * Deltalake Metastore configuration.
@@ -5161,6 +5218,16 @@ export enum MssqlScheme {
  */
 export enum MssqlType {
     Mssql = "Mssql",
+}
+
+/**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
 }
 
 /**
@@ -5929,11 +5996,13 @@ export enum PurpleType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",

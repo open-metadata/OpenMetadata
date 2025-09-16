@@ -45,7 +45,6 @@ jest.mock('../ApplicationsProvider/ApplicationsProvider', () => ({
   useApplicationsProvider: () => ({ applications: [], plugins: [] }),
 }));
 
-const mockConfigureApp = jest.fn();
 const mockDeployApp = jest.fn();
 const mockRestoreApp = jest.fn();
 const mockTriggerOnDemandApp = jest.fn();
@@ -53,8 +52,12 @@ const mockUninstallApp = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
 const mockNavigate = jest.fn();
-const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
-const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
+const mockPatchApplication = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve(mockApplicationData));
+const mockGetApplicationByName = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve(mockApplicationData));
 
 jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
   jest.fn().mockImplementation(({ onConfigSave }) => (
@@ -67,7 +70,7 @@ jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
 );
 
 jest.mock('../../../../rest/applicationAPI', () => ({
-  configureApp: mockConfigureApp,
+  configureApp: jest.fn(),
   deployApp: jest.fn().mockImplementation(() => mockDeployApp()),
   getApplicationByName: jest
     .fn()
@@ -154,6 +157,9 @@ jest.mock('../AppSchedule/AppSchedule.component', () =>
 jest.mock('./ApplicationsClassBase', () => ({
   importSchema: jest.fn().mockReturnValue({ default: ['table'] }),
   getJSONUISchema: jest.fn().mockReturnValue({}),
+  getApplicationConfigurationComponent: jest
+    .fn()
+    .mockReturnValue(() => <div>MockApplicationConfiguration</div>),
 }));
 
 jest.mock('react-router-dom', () => ({

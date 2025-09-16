@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import { TextDecoder, TextEncoder } from 'util';
-global.TextEncoder = TextEncoder as unknown as typeof TextEncoder;
-global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
-
 import {
   act,
   fireEvent,

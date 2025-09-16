@@ -44,7 +44,7 @@ test(
       await page.getByTestId('test-case-name').clear();
       await page.getByTestId('test-case-name').fill(testCaseName);
       await page.getByTestId('test-type').locator('div').click();
-      await page.getByText('Table Column Count To Equal').click();
+      await page.getByTestId('tableColumnCountToEqual').click();
       await page.getByPlaceholder('Enter a Count').fill('13');
       const createTestCaseResponse = page.waitForResponse(
         (response) =>

@@ -250,6 +250,11 @@
           },
           "default": []
         },
+        "jsonTree": {
+          "title": "JSON Tree to represents rule in UI.",
+          "description": "JSON Tree to represents rule in UI.",
+          "type": "string"
+        },
         "provider": {
           "$ref": "#/definitions/providerType"
         }
