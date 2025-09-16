@@ -4127,7 +4127,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test) throws HttpResponseException, ParseException {
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
+      throws HttpResponseException, ParseException {
     // Create a test user
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
@@ -4152,9 +4153,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
-    
+
     TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
-    
+
     // Verify the user is assigned to the incident
     assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
     assertTrue(assignedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned);
@@ -4167,14 +4168,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Retrieve the incident status and verify the user assignment is removed after user deletion
     TestCaseResolutionStatus retrievedIncident = getTestCaseFailureStatus(assignedIncident.getId());
-    
+
     // The user should no longer be assigned to the incident after deletion
     // The incident should either have no assignee or the assignee reference should be null
     if (retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned) {
-      Assigned retrievedAssignedDetails = (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
-      assertNull(retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
+      Assigned retrievedAssignedDetails =
+          (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
+      assertNull(
+          retrievedAssignedDetails.getAssignee(),
+          "User should no longer be assigned after deletion");
     } else {
-      // The incident status type may have changed from Assigned to something else after user deletion
+      // The incident status type may have changed from Assigned to something else after user
+      // deletion
       assertFalse(
           retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
           "Incident should no longer have an assigned status after user deletion");
