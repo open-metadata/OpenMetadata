@@ -4056,6 +4056,90 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void test_testCaseResult_64bitIntegerFields(TestInfo testInfo)
+      throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(TABLE_LINK)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    long maxInt64PassedRows = Long.MAX_VALUE; // 9,223,372,036,854,775,807
+    long maxInt64FailedRows = Long.MAX_VALUE - 1000; // Close to max but different
+
+    long largePassedRows = 3_000_000_000L;
+    long largeFailedRows = 5_000_000_000L;
+
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested with 64-bit integers")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"))
+            .withPassedRows(largePassedRows)
+            .withFailedRows(largeFailedRows);
+
+    TestCaseResult result =
+        postTestCaseResult(
+            testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        largePassedRows, result.getPassedRows(), "Passed rows should match the large 64-bit value");
+    assertEquals(
+        largeFailedRows, result.getFailedRows(), "Failed rows should match the large 64-bit value");
+
+    CreateTestCaseResult maxValueTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested with maximum 64-bit integers")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
+            .withPassedRows(maxInt64PassedRows)
+            .withFailedRows(maxInt64FailedRows);
+
+    TestCaseResult maxValueResult =
+        postTestCaseResult(
+            testCase.getFullyQualifiedName(), maxValueTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        maxInt64PassedRows,
+        maxValueResult.getPassedRows(),
+        "Passed rows should match the maximum 64-bit value");
+    assertEquals(
+        maxInt64FailedRows,
+        maxValueResult.getFailedRows(),
+        "Failed rows should match the maximum 64-bit value");
+
+    CreateTestCaseResult zeroValueTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested with zero values")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-11"))
+            .withPassedRows(0L)
+            .withFailedRows(0L);
+
+    TestCaseResult zeroValueResult =
+        postTestCaseResult(
+            testCase.getFullyQualifiedName(), zeroValueTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    assertEquals(0L, zeroValueResult.getPassedRows(), "Passed rows should be zero");
+    assertEquals(0L, zeroValueResult.getFailedRows(), "Failed rows should be zero");
+
+    CreateTestCaseResult nullValueTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested with null values")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-12"));
+
+    TestCaseResult nullValueResult =
+        postTestCaseResult(
+            testCase.getFullyQualifiedName(), nullValueTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
+    assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
+  }
+
+  @Test
   void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
     // Create a test case with APPROVED status by default
     CreateTestCase createTestCase = createRequest(getEntityName(test));
