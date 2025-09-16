@@ -15,7 +15,7 @@ import { Col, Row, Tag, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-full.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Column } from '../../../generated/entity/data/table';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -67,7 +67,7 @@ const ContractSchemaTable: React.FC<{
         ),
       },
     ],
-    [t]
+    []
   );
 
   return (
@@ -78,7 +78,8 @@ const ContractSchemaTable: React.FC<{
           dataSource={schemaDetail}
           pagination={{
             size: 'default',
-            pageSize: 5,
+            hideOnSinglePage: true,
+            pageSize: LIST_SIZE,
             prevIcon: <Icon component={ArrowIcon} />,
             nextIcon: <Icon component={ArrowIcon} />,
             className: 'schema-custom-pagination',

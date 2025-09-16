@@ -15,32 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { Column, DataType } from '../../../generated/entity/data/table';
 import ContractSchemaTable from './ContractSchemaTable.component';
 
-// Mock the usePaging hook
-jest.mock('../../../hooks/paging/usePaging', () => ({
-  usePaging: () => ({
-    currentPage: 1,
-    pageSize: 10,
-    handlePageChange: jest.fn(),
-    handlePageSizeChange: jest.fn(),
-    showPagination: true,
-    paging: { total: 0 },
-    handlePagingChange: jest.fn(),
-  }),
-}));
-
-// Mock Table component
-jest.mock('../../common/Table/Table', () => {
-  return function MockTable({ dataSource, customPaginationProps, columns }) {
-    return (
-      <div data-testid="schema-table">
-        <div data-testid="pagination-props">
-          {JSON.stringify(customPaginationProps)}
-        </div>
-        <div data-testid="data-rows">{dataSource?.length || 0} rows</div>
-        <div data-testid="columns">{columns?.length || 0} columns</div>
-      </div>
-    );
-  };
+jest.mock('../../common/StatusBadge/StatusBadgeV2.component', () => {
+  return jest.fn().mockImplementation(() => <p>StatusBadgeV2</p>);
 });
 
 const mockSchemaDetail: Column[] = [
@@ -58,58 +34,49 @@ const mockSchemaDetail: Column[] = [
     name: 'email',
     dataType: DataType.Varchar,
   } as Column,
+  {
+    name: 'contract',
+    dataType: DataType.Varchar,
+  } as Column,
+  {
+    name: 'property',
+    dataType: DataType.Varchar,
+  } as Column,
+  {
+    name: 'business',
+    dataType: DataType.Varchar,
+  } as Column,
 ];
 
 describe('ContractSchemaTable', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  it('should render ContractSchemaTable', () => {
+    render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
+
+    expect(screen.getByText('label.name')).toBeInTheDocument();
+    expect(screen.getByText('label.type')).toBeInTheDocument();
+    expect(screen.getByText('label.constraint-plural')).toBeInTheDocument();
+
+    expect(screen.queryByText('StatusBadgeV2')).not.toBeInTheDocument();
   });
 
   it('should render schema table with pagination', () => {
     render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
 
-    expect(screen.getByTestId('schema-table')).toBeInTheDocument();
-    expect(screen.getByTestId('data-rows')).toHaveTextContent('3 rows');
-    expect(screen.getByTestId('columns')).toHaveTextContent('3 columns');
+    expect(screen.getByTitle('Previous Page')).toBeInTheDocument();
+    expect(screen.getByTitle('Next Page')).toBeInTheDocument();
+    // Pagination items
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  it('should pass pagination props to Table component', () => {
-    render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
+  it('should render SchemaTable Status badge', () => {
+    render(
+      <ContractSchemaTable
+        contractStatus="passed"
+        schemaDetail={mockSchemaDetail}
+      />
+    );
 
-    const paginationProps = screen.getByTestId('pagination-props');
-    const props = JSON.parse(paginationProps.textContent || '{}');
-
-    expect(props).toHaveProperty('currentPage', 1);
-    expect(props).toHaveProperty('showPagination', true);
-    expect(props).toHaveProperty('pageSize', 10);
-    expect(props).toHaveProperty('isNumberBased', true);
-    expect(props).toHaveProperty('isLoading', false);
-    expect(props).toHaveProperty('pagingHandler');
-    expect(props).toHaveProperty('onShowSizeChange');
-  });
-
-  it('should handle empty schema detail', () => {
-    render(<ContractSchemaTable schemaDetail={[]} />);
-
-    expect(screen.getByTestId('schema-table')).toBeInTheDocument();
-    expect(screen.getByTestId('data-rows')).toHaveTextContent('0 rows');
-  });
-
-  it('should use default page size of 10', () => {
-    render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
-
-    const paginationProps = screen.getByTestId('pagination-props');
-    const props = JSON.parse(paginationProps.textContent || '{}');
-
-    expect(props.pageSize).toBe(10);
-  });
-
-  it('should update paging total based on schema detail length', () => {
-    render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
-
-    const paginationProps = screen.getByTestId('pagination-props');
-    const props = JSON.parse(paginationProps.textContent || '{}');
-
-    expect(props.paging.total).toBe(mockSchemaDetail.length);
+    expect(screen.queryByText('StatusBadgeV2')).toBeInTheDocument();
   });
 });

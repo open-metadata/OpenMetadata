@@ -120,7 +120,7 @@ const ContractDetail: React.FC<{
         label: (
           <div
             className="contract-action-dropdown-item"
-            data-testid="edit-contract-button">
+            data-testid="contract-edit-button">
             <EditIcon className="anticon" />
 
             {t('label.edit')}
@@ -132,7 +132,7 @@ const ContractDetail: React.FC<{
         label: (
           <div
             className="contract-action-dropdown-item"
-            data-testid="delete-contract-button">
+            data-testid="contract-run-now-button">
             <RunIcon className="anticon" />
 
             {t('label.run-now')}

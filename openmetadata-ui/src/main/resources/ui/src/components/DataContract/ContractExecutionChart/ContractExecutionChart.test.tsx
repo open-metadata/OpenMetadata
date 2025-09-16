@@ -125,9 +125,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
-        'label.contract-execution-history': 'Contract Execution History',
-        'message.contract-execution-history-description':
-          'View contract execution history over time',
         'label.success': 'Success',
         'label.failed': 'Failed',
         'label.aborted': 'Aborted',
@@ -178,10 +175,6 @@ describe('ContractExecutionChart', () => {
 
       render(<ContractExecutionChart contract={mockContract} />);
 
-      expect(screen.getByTestId('expandable-card')).toBeInTheDocument();
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
       expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
@@ -194,17 +187,6 @@ describe('ContractExecutionChart', () => {
 
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
       expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
-    });
-
-    it('should display chart title and description', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('View contract execution history over time')
-      ).toBeInTheDocument();
     });
   });
 
@@ -317,10 +299,6 @@ describe('ContractExecutionChart', () => {
     it('should render bars for each status type', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      //   expect(screen.getByTestId('bar-success')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-failed')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-aborted')).toBeInTheDocument();
-
       expect(await screen.findByTestId('bar-success')).toHaveTextContent(
         'Success'
       );
@@ -338,7 +316,7 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(screen.getByTestId('bar-success')).toHaveAttribute(
           'data-fill',
-          '#48ca9e'
+          '#039855'
         );
         expect(screen.getByTestId('bar-failed')).toHaveAttribute(
           'data-fill',
@@ -377,16 +355,6 @@ describe('ContractExecutionChart', () => {
       });
 
       expect(getAllContractResults).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('Component Structure', () => {
-    it('should display card title structure correctly', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      const cardTitle = screen.getByTestId('card-title');
-
-      expect(cardTitle).toBeInTheDocument();
     });
   });
 

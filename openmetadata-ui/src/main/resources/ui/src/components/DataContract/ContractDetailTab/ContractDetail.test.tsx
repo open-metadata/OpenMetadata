@@ -12,13 +12,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
@@ -28,23 +22,16 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { TestCase } from '../../../generated/tests/testCase';
 import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('../../../rest/contractAPI', () => ({
   getContractResultByResultId: jest.fn(),
   validateContractById: jest.fn(),
-}));
-
-jest.mock('../../../rest/testAPI', () => ({
-  getListTestCaseBySearch: jest.fn(),
-  getTestCaseExecutionSummary: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -70,6 +57,10 @@ jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
       </div>
     );
   };
+});
+
+jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
+  return jest.fn().mockImplementation(() => <p>ContractQualityCard</p>);
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
@@ -189,31 +180,10 @@ const mockContractResults: DataContractResult = {
   },
   contractExecutionStatus: ContractExecutionStatus.Success,
 };
-const mockTestCases: TestCase[] = [
-  {
-    id: 'test-1',
-    name: 'Test Case 1',
-    fullyQualifiedName: 'test.case.1',
-    entityLink: '',
-    testDefinition: {
-      id: 'test-definition',
-      type: 'testDefinition',
-    },
-    testSuite: {
-      id: 'suite-1',
-      name: 'Test Suite 1',
-      fullyQualifiedName: 'suite.1',
-      type: 'testSuite',
-    },
-  },
-];
 
 describe('ContractDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
-      data: mockTestCases,
-    });
     (getContractResultByResultId as jest.Mock).mockResolvedValue(
       mockContractResults
     );
@@ -258,10 +228,7 @@ describe('ContractDetail', () => {
       );
       debug();
 
-      expect(getByTestId('contract-edit-button')).toBeInTheDocument();
-      expect(getByTestId('delete-contract-button')).toBeInTheDocument();
-      expect(getByTestId('export-contract-button')).toBeInTheDocument();
-      expect(getByTestId('contract-run-now-button')).toBeInTheDocument();
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
     });
   });
 
@@ -275,6 +242,8 @@ describe('ContractDetail', () => {
         />,
         { wrapper: MemoryRouter }
       );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
 
       const editButton = screen.getByTestId('contract-edit-button');
       fireEvent.click(editButton);
@@ -292,6 +261,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const deleteButton = screen.getByTestId('delete-contract-button');
       fireEvent.click(deleteButton);
 
@@ -310,6 +280,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const validateButton = screen.getByTestId('contract-run-now-button');
 
       await act(async () => {
@@ -335,6 +306,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
       const validateButton = screen.getByTestId('contract-run-now-button');
 
       await act(async () => {
@@ -342,31 +314,6 @@ describe('ContractDetail', () => {
       });
 
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-
-    it('should show loading state during validation', async () => {
-      (validateContractById as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
-      const { debug } = render(
-        <ContractDetail
-          contract={mockContract}
-          onDelete={mockOnDelete}
-          onEdit={mockOnEdit}
-        />,
-        { wrapper: MemoryRouter }
-      );
-
-      const validateButton = screen.getByTestId('contract-run-now-button');
-
-      fireEvent.click(validateButton);
-
-      debug(validateButton);
-
-      await waitFor(() => {
-        expect(validateButton).toHaveClass('ant-btn-loading');
-      });
     });
   });
 
@@ -417,33 +364,20 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(getListTestCaseBySearch).toHaveBeenCalled();
-
-      expect(await screen.findByText('Test Case 1')).toBeInTheDocument();
-
-      expect(screen.getByTestId('mock-table')).toBeInTheDocument();
+      expect(screen.queryByText('ContractQualityCard')).toBeInTheDocument();
     });
 
-    it('should handle test case loading state', async () => {
-      (getListTestCaseBySearch as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
+    it('should not display test cases when contract has quality expectations', async () => {
       render(
         <ContractDetail
-          contract={mockContract}
+          contract={{ ...mockContract, testSuite: undefined }}
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
         { wrapper: MemoryRouter }
       );
 
-      expect(getContractResultByResultId).toHaveBeenCalled();
-      expect(
-        await screen.findByTestId('contract-status-card-item-label.schema')
-      ).toBeInTheDocument();
-
-      expect(screen.getByTestId('loading')).toBeInTheDocument();
+      expect(screen.queryByText('ContractQualityCard')).not.toBeInTheDocument();
     });
   });
 
@@ -510,23 +444,6 @@ describe('ContractDetail', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle API errors gracefully', async () => {
-      const mockError = new AxiosError('API Error');
-      (getListTestCaseBySearch as jest.Mock).mockRejectedValue(mockError);
-
-      render(
-        <ContractDetail
-          contract={mockContract}
-          onDelete={mockOnDelete}
-          onEdit={mockOnEdit}
-        />,
-        { wrapper: MemoryRouter }
-      );
-
-      // Should not crash and continue rendering
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
-    });
-
     it('should handle undefined contract gracefully', () => {
       render(
         <ContractDetail
@@ -556,23 +473,6 @@ describe('ContractDetail', () => {
       expect(
         screen.getByTestId('contract-execution-chart')
       ).toBeInTheDocument();
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper button roles and ARIA attributes', () => {
-      render(
-        <ContractDetail
-          contract={mockContract}
-          onDelete={mockOnDelete}
-          onEdit={mockOnEdit}
-        />,
-        { wrapper: MemoryRouter }
-      );
-
-      expect(screen.getByTestId('contract-edit-button')).toBeInTheDocument();
-      expect(screen.getByTestId('delete-contract-button')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-run-now-button')).toBeInTheDocument();
     });
   });
 });

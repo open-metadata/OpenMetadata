@@ -120,7 +120,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   }, [dateRangeObject]);
 
   return (
-    <div className="expandable-card-contract-body contract-execution-chart-container">
+    <div className="contract-execution-chart-container">
       {isLoading ? (
         <Loader />
       ) : (
