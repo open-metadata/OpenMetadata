@@ -12,9 +12,14 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, toLower } from 'lodash';
+import { get, isEmpty, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import GlossaryIcon from '../assets/svg/book.svg';
+import DataProductIcon from '../assets/svg/ic-data-product.svg';
+import DatabaseIcon from '../assets/svg/ic-database.svg';
+import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
+import MetricIcon from '../assets/svg/metric.svg';
+import TagIcon from '../assets/svg/tag-grey.svg';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
@@ -125,6 +130,7 @@ import {
   SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
 import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -172,6 +178,8 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
+    DriveServiceType.GoogleDrive,
+    PipelineServiceType.Snowplow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -368,7 +376,7 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string) {
+  public getServiceLogo(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.CustomDatabase:
@@ -681,13 +689,28 @@ class ServiceUtilClassBase {
 
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  ): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
-    // metric entity does not have service so we need to handle it separately
-    if (entityType === EntityType.METRIC) {
-      return MetricIcon;
+    // Handle entities that don't have serviceType by using entity-specific icons
+    if (isEmpty(type)) {
+      switch (entityType) {
+        case EntityType.TAG:
+          return TagIcon;
+        case EntityType.GLOSSARY_TERM:
+          return GlossaryIcon;
+        case EntityType.DATABASE:
+          return DatabaseIcon;
+        case EntityType.DATABASE_SCHEMA:
+          return DatabaseSchemaIcon;
+        case EntityType.METRIC:
+          return MetricIcon;
+        case EntityType.DATA_PRODUCT:
+          return DataProductIcon;
+        default:
+          return this.getServiceLogo('');
+      }
     }
 
     return this.getServiceLogo(type);

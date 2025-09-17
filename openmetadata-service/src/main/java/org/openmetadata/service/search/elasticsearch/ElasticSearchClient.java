@@ -120,8 +120,8 @@ import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -451,6 +451,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
         fieldSortBuilder.unmappedType("integer");
       }
       searchSourceBuilder.sort(fieldSortBuilder);
+
+      // Add tiebreaker sort for stable pagination when sorting by score
+      // This ensures consistent ordering when multiple documents have identical scores
+      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
+      }
     }
 
     buildHierarchyQuery(request, searchSourceBuilder, client);
@@ -559,7 +566,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
           .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-          .must(QueryBuilders.matchQuery("status", "Approved"));
+          .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
     } else if (indexName.equalsIgnoreCase(domainIndex)) {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
@@ -594,7 +601,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
         parentTermQueryBuilder
             .minimumShouldMatch(1)
-            .must(QueryBuilders.matchQuery("status", "Approved"));
+            .must(QueryBuilders.matchQuery("entityStatus", "Approved"));
       } else {
         parentTermQueryBuilder.minimumShouldMatch(1);
       }
@@ -902,6 +909,40 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       }
     } else {
       return fallbackToBasicSearch(request, subjectContext);
+    }
+  }
+
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    try {
+      XContentParser parser = createXContentParser(request.getQueryFilter());
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+
+      // Apply RBAC constraints
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      // Add aggregations if needed
+      ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+      sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+
+      es.org.elasticsearch.action.search.SearchRequest esRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
+      esRequest.source(searchSourceBuilder);
+
+      es.org.elasticsearch.action.search.SearchResponse response =
+          client.search(esRequest, RequestOptions.DEFAULT);
+
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(response.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
     }
   }
 

@@ -73,7 +73,6 @@ import {
   verifyAllColumns,
   verifyColumnsVisibility,
   verifyGlossaryDetails,
-  verifyGlossaryTermAssets,
   verifyGlossaryWorkflowReviewerCase,
   verifyTaskCreated,
   verifyWorkflowInstanceExists,
@@ -744,12 +743,18 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm1.data.displayName);
         await addAssetToGlossaryTerm(page, assets);
         await renameGlossaryTerm(page, glossaryTerm1, newName);
-        await verifyGlossaryTermAssets(
-          page,
-          glossary1.data,
-          glossaryTerm1.data,
-          assets.length
+
+        await page.click('[data-testid="overview"]');
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?q=*&index=all&from=0&size=15'
         );
+        await page.getByTestId('assets').click();
+        await queryRes;
+        await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+
+        await expect(
+          page.getByTestId('assets').getByTestId('filter-count')
+        ).toContainText(`${assets.length}`);
       });
 
       await test.step('Rename the same entity again', async () => {
@@ -763,12 +768,17 @@ test.describe('Glossary tests', () => {
           assets.length
         );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
-        await verifyGlossaryTermAssets(
-          page,
-          glossary1.data,
-          glossaryTerm1.data,
-          assets.length
+        await page.click('[data-testid="overview"]');
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?q=*&index=all&from=0&size=15'
         );
+        await page.getByTestId('assets').click();
+        await queryRes;
+        await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
+
+        await expect(
+          page.getByTestId('assets').getByTestId('filter-count')
+        ).toContainText(`${assets.length}`);
       });
     } finally {
       await table.delete(apiContext);
@@ -1018,8 +1028,13 @@ test.describe('Glossary tests', () => {
       ).not.toBeVisible();
 
       await selectActiveGlossary(page, glossary2.data.displayName);
+
+      const termRes = page.waitForResponse(
+        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
+      );
       // verify the term is moved to the destination glossary
       await page.getByTestId('expand-collapse-all-button').click();
+      await termRes;
 
       await expect(
         page.getByRole('cell', {
@@ -1228,7 +1243,12 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
+
+      const termRes = page.waitForResponse(
+        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
+      );
       await page.getByTestId('expand-collapse-all-button').click();
+      await termRes;
 
       await expect(
         page.getByRole('cell', { name: glossaryTerm2.data.displayName })
@@ -1419,7 +1439,12 @@ test.describe('Glossary tests', () => {
     try {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
+
+      const termRes = page.waitForResponse(
+        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
+      );
       await page.getByTestId('expand-collapse-all-button').click();
+      await termRes;
 
       await expect(
         page.getByRole('cell', { name: glossaryTerm1.data.displayName })

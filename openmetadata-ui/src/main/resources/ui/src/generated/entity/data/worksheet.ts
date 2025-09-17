@@ -49,6 +49,10 @@ export interface Worksheet {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Worksheet.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -611,6 +615,10 @@ export interface EntityReference {
  */
 export interface ColumnProfile {
     /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Custom Metrics profile list bound to a column.
      */
     customMetrics?: CustomMetricProfile[];
@@ -729,6 +737,24 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -751,6 +777,20 @@ export interface HistogramClass {
      * Frequencies of Histogram.
      */
     frequencies?: any[];
+}
+
+/**
+ * Status of the Worksheet.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**

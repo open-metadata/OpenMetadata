@@ -17,6 +17,12 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom/extend-expect';
 
+// Polyfill for TextEncoder and TextDecoder
+import { TextDecoder, TextEncoder } from 'util';
+
+// eslint-disable-next-line no-undef
+Object.assign(global, { TextDecoder, TextEncoder });
+
 // Reference: https://github.com/ant-design/ant-design/issues/21096
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -144,3 +150,7 @@ jest.mock('./utils/AdvancedSearchClassBase', () => {
     },
   };
 });
+
+jest.mock('./utils/EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue('test'),
+}));

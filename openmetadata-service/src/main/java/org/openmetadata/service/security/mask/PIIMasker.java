@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class PIIMasker {
@@ -165,6 +166,22 @@ public class PIIMasker {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
+  }
+
+  public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
+    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
+    String columnFQN = columnObj.getFullyQualifiedName();
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElse(null);
+
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return new ColumnProfile().withName(columnProfile.getName());
+    }
+    return columnProfile;
   }
 
   private static TestCase getTestCase(Column column, TestCase testCase) {

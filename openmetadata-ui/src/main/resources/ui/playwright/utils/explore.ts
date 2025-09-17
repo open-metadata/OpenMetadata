@@ -125,7 +125,15 @@ export const selectDataAssetFilter = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
   );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  await page.getByTestId(`${filterValue}-checkbox`).check();
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill(filterValue.toLowerCase());
+  await dataAssetDropdownRequest;
+  await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
   await page.getByTestId('update-btn').click();
 };
 
@@ -249,31 +257,42 @@ export const selectSortOrder = async (page: Page, sortOrder: string) => {
   await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
     state: 'visible',
   });
+  const nameFilter = page.waitForResponse(
+    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
+  );
   await page.getByRole('menuitem', { name: sortOrder }).click();
+  await nameFilter;
 
   await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
     sortOrder
   );
 
+  const ascSortOrder = page.waitForResponse(
+    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=asc*`
+  );
   await page.getByTestId('sort-order-button').click();
+  await ascSortOrder;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const verifyEntitiesAreSorted = async (page: Page) => {
+  // Wait for search results to be stable after sort
+  await page.waitForSelector('[data-testid="search-results"]', {
+    state: 'visible',
+  });
+  await page.waitForLoadState('networkidle');
+
   const entityNames = await page.$$eval(
     '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
     (elements) => elements.map((el) => el.textContent?.trim() ?? '')
   );
 
-  // Normalize for case insensitivity, but retain punctuation
-  const normalize = (str: string) => str.toLowerCase().trim();
-
-  // Sort using ASCII-based string comparison (ES behavior)
+  // Elasticsearch keyword field with case-insensitive sorting
   const sortedEntityNames = [...entityNames].sort((a, b) => {
-    const normA = normalize(a);
-    const normB = normalize(b);
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
 
-    return normA < normB ? -1 : normA > normB ? 1 : 0;
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
   });
 
   expect(entityNames).toEqual(sortedEntityNames);

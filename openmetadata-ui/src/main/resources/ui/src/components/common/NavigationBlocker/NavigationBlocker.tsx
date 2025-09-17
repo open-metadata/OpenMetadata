@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import { NavigationBlockerProps } from './NavigationBlocker.interface';
 
 /**
@@ -32,24 +32,23 @@ import { NavigationBlockerProps } from './NavigationBlocker.interface';
 export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   children,
   enabled = false,
-  message = 'You have unsaved changes which will be discarded.',
-  title = 'Are you sure you want to leave?',
-  confirmText = 'Leave',
-  cancelText = 'Stay',
+  message = 'Do you want to save or discard changes?',
+  title = 'Unsaved changes',
   onConfirm,
   onCancel,
 }) => {
   const [isBlocking, setIsBlocking] = useState(enabled);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [blockingMessage, setBlockingMessage] = useState(message);
+  const [loading, setLoading] = useState(false);
   const pendingNavigationRef = useRef<string | null>(null);
   const isNavigatingRef = useRef(false);
 
-  // Update blocking state when enabled/message changes
+  // Update blocking state when enabled/message/title changes
   useEffect(() => {
     setIsBlocking(enabled);
     setBlockingMessage(message);
-  }, [enabled, message]);
+  }, [enabled, message, title]);
 
   useEffect(() => {
     if (!isBlocking || isNavigatingRef.current) {
@@ -61,9 +60,10 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       // Only show for actual tab close, not for programmatic navigation
       if (!isNavigatingRef.current) {
         event.preventDefault();
-        event.returnValue = blockingMessage;
+        // Modern browsers ignore the custom message and show their own
+        event.returnValue = '';
 
-        return blockingMessage;
+        return '';
       }
 
       return undefined;
@@ -135,7 +135,21 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
 
       if (link) {
         const href = link.getAttribute('href');
-        if (href && (href.startsWith('/') || href.startsWith('http'))) {
+        const linkTarget = link.getAttribute('target');
+        const download = link.getAttribute('download');
+
+        // Don't block navigation if:
+        // 1. Link has target="_blank" (opens in new tab/window)
+        // 2. Link has target="_parent" or "_top" (opens in parent/top frame)
+        // 3. Link has download attribute (file download)
+        // 4. Link is external (starts with http and is different origin)
+        const shouldBlockNavigation =
+          href &&
+          (href.startsWith('/') || href.startsWith('http')) &&
+          !download &&
+          (!linkTarget || linkTarget === '_self');
+
+        if (shouldBlockNavigation) {
           event.preventDefault();
           event.stopPropagation();
           setIsModalVisible(true);
@@ -177,12 +191,9 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     };
   }, [isBlocking, blockingMessage]);
 
-  const handleConfirm = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     setIsModalVisible(false);
     isNavigatingRef.current = true;
-
-    // Call custom onConfirm if provided
-    onConfirm?.();
 
     // Disable blocking to prevent double modals
     setIsBlocking(false);
@@ -205,28 +216,63 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         }
       }, 50);
     }
+  }, []);
+
+  const handleSaveAndLeave = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      // Call custom onConfirm if provided (to save changes)
+      await onConfirm?.();
+
+      setIsModalVisible(false);
+      isNavigatingRef.current = true;
+
+      // Disable blocking to prevent double modals
+      setIsBlocking(false);
+
+      if (pendingNavigationRef.current) {
+        const pendingUrl = pendingNavigationRef.current;
+        pendingNavigationRef.current = null;
+
+        // Handle different navigation types
+        setTimeout(() => {
+          if (pendingUrl === 'back') {
+            window.history.back();
+          } else if (pendingUrl === 'reload') {
+            window.location.reload();
+          } else if (pendingUrl.startsWith('http')) {
+            window.location.href = pendingUrl;
+          } else {
+            // For internal routes, use full URL to ensure proper loading
+            window.location.href = window.location.origin + pendingUrl;
+          }
+        }, 50);
+      }
+    } catch (error) {
+      // If saving fails, keep the modal open and reset loading state
+      setLoading(false);
+    }
   }, [onConfirm]);
 
-  const handleCancel = useCallback(() => {
+  const handleModalClose = useCallback(() => {
     setIsModalVisible(false);
     pendingNavigationRef.current = null;
 
-    // Call custom onCancel if provided
+    // Call custom onCancel if provided (same as staying)
     onCancel?.();
   }, [onCancel]);
 
   return (
     <>
       {children}
-      <Modal
-        cancelText={cancelText}
-        okText={confirmText}
+      <UnsavedChangesModal
+        loading={loading}
         open={isModalVisible}
-        title={title}
-        onCancel={handleCancel}
-        onOk={handleConfirm}>
-        <p>{blockingMessage}</p>
-      </Modal>
+        onCancel={handleModalClose}
+        onDiscard={handleLeave}
+        onSave={handleSaveAndLeave}
+      />
     </>
   );
 };
