@@ -62,6 +62,22 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.GLOSSARY_TERM;
     case EntityType.CHART:
       return GlobalSettingOptions.CHARTS;
+    case EntityType.DOMAIN:
+      return GlobalSettingOptions.DOMAINS;
+    case EntityType.STORED_PROCEDURE:
+      return GlobalSettingOptions.STORED_PROCEDURES;
+    case EntityType.SEARCH_INDEX:
+      return GlobalSettingOptions.SEARCH_INDEXES;
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return GlobalSettingOptions.DASHBOARD_DATA_MODEL;
+    case EntityType.API_ENDPOINT:
+      return GlobalSettingOptions.API_ENDPOINTS;
+    case EntityType.API_COLLECTION:
+      return GlobalSettingOptions.API_COLLECTIONS;
+    case EntityType.DATA_PRODUCT:
+      return GlobalSettingOptions.DATA_PRODUCT;
+    case EntityType.METRIC:
+      return GlobalSettingOptions.METRICS;
 
     case EntityType.TABLE:
     default:
