@@ -917,6 +917,11 @@
       <artifactId>client-java</artifactId>
       <version>${kubernetes-client.version}</version>
     </dependency>
+    <!-- Handlebars Template Engine -->
+    <dependency>
+      <groupId>com.github.jknack</groupId>
+      <artifactId>handlebars</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>
       <artifactId>bolt-servlet</artifactId>
