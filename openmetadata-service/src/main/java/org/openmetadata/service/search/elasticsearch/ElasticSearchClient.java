@@ -23,13 +23,14 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
+import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
@@ -305,14 +306,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
         String indexName = indexMapping.getIndexName(clusterAlias);
 
         CreateIndexRequest request =
-                CreateIndexRequest.of(
-                        builder -> {
-                          builder.index(indexName);
-                          if (indexMappingContent != null) {
-                            builder.withJson(new StringReader(indexMappingContent));
-                          }
-                          return builder;
-                        });
+            CreateIndexRequest.of(
+                builder -> {
+                  builder.index(indexName);
+                  if (indexMappingContent != null) {
+                    builder.withJson(new StringReader(indexMappingContent));
+                  }
+                  return builder;
+                });
 
         newClient.indices().create(request);
 
@@ -320,28 +321,40 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
         createAliases(indexMapping);
 
       } catch (Exception e) {
-        LOG.error("Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
+        LOG.error(
+            "Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
       }
     } else {
-      LOG.error("Failed to create Elasticsearch index: client is not properly configured. Check your OpenMetadata configuration.");
+      LOG.error(
+          "Failed to create Elasticsearch index: client is not properly configured. Check your OpenMetadata configuration.");
     }
   }
 
   @Override
-  public void addIndexAlias(IndexMapping indexMapping, String... aliasName) {
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
     try {
-      IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName(clusterAlias))
-              .aliases(aliasName);
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      String indexName = indexMapping.getIndexName(clusterAlias);
+
+      // Build the request
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              u -> {
+                for (String alias : aliasNames) {
+                  u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
+                }
+                return u;
+              });
+
+      UpdateAliasesResponse response = newClient.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} added to index {}", Arrays.toString(aliasNames), indexName);
+      } else {
+        LOG.warn("Alias update for index {} was not acknowledged", indexName);
+      }
+
     } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
+      LOG.error("Failed to create alias for {} due to", indexMapping.getAlias(clusterAlias), e);
     }
   }
 

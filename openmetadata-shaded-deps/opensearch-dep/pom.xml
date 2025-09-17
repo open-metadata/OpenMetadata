@@ -150,10 +150,6 @@
                             <shadedPattern>os.org.opensearch.client.transport</shadedPattern>
                         </relocation>
                         <relocation>
-                            <pattern>jakarta.json</pattern>
-                            <shadedPattern>os.jakarta.json</shadedPattern>
-                        </relocation>
-                        <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>
                             <shadedPattern>org/apache/logging/log4j/</shadedPattern>
                         </relocation>
