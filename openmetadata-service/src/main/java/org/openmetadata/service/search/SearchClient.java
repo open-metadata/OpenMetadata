@@ -52,17 +52,24 @@ public interface SearchClient<T> {
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
-  String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+  String DEFAULT_UPDATE_SCRIPT =
+      """
+      for (k in params.keySet()) {
+        ctx._source.put(k, params.get(k))
+      }
+      """;
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.
   String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if (ctx._source.%s == null || (ctx._source.%s != null && ctx._source.%s.inherited == true)) { "
-          + "def newObject = params.%s; "
-          + "newObject.inherited = true; "
-          + "ctx._source.put('%s', newObject); "
-          + "}";
+      """
+      if (ctx._source.%s == null || (ctx._source.%s != null && ctx._source.%s.inherited == true)) {
+        def newObject = params.%s;
+        newObject.inherited = true;
+        ctx._source.put('%s', newObject);
+      }
+      """;
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
@@ -75,49 +82,81 @@ public interface SearchClient<T> {
   // Updates field if inherited is true and the parent is the same (matched by previous ID), setting
   // inherited=true on the new object.
   String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if (ctx._source.%s == null || (ctx._source.%s.inherited == true && ctx._source.%s.id == params.entityBeforeUpdate.id)) { "
-          + "def newObject = params.%s; "
-          + "newObject.inherited = true; "
-          + "ctx._source.put('%s', newObject); "
-          + "}";
+      """
+      if (ctx._source.%s == null || (ctx._source.%s.inherited == true && ctx._source.%s.id == params.entityBeforeUpdate.id)) {
+        def newObject = params.%s;
+        newObject.inherited = true;
+        ctx._source.put('%s', newObject);
+      }
+      """;
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT = "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn)";
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
   String UPDATE_CERTIFICATION_SCRIPT =
-      "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
+      """
+      if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {
+        ctx._source.certification.tagLabel.style = params.style;
+        ctx._source.certification.tagLabel.description = params.description;
+        ctx._source.certification.tagLabel.tagFQN = params.tagFQN;
+        ctx._source.certification.tagLabel.name = params.name;
+      }
+      """;
 
   String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
-      "if (ctx._source.containsKey('tags')) { "
-          + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
-          + "        if (ctx._source.tags[i].containsKey('tagFQN') && "
-          + "            ctx._source.tags[i].containsKey('source') && "
-          + "            ctx._source.tags[i].source == 'Glossary' && "
-          + "            ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) { "
-          + "            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
-          + "        } "
-          + "    } "
-          + "}";
+      """
+      if (ctx._source.containsKey('tags')) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].containsKey('tagFQN') &&
+              ctx._source.tags[i].containsKey('source') &&
+              ctx._source.tags[i].source == 'Glossary' &&
+              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
+            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+          }
+        }
+      }
+      """;
 
   String REMOVE_LINEAGE_SCRIPT =
-      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == '%s')";
+      "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == '%s')";
+      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
 
   String ADD_UPDATE_LINEAGE =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
+      """
+      boolean docIdExists = false;
+      for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) {
+        if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) {
+          ctx._source.upstreamLineage[i] = params.lineageData;
+          docIdExists = true;
+          break;
+        }
+      }
+      if (!docIdExists) {
+        ctx._source.upstreamLineage.add(params.lineageData);
+      }
+      """;
 
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
-      "boolean docIdExists = false; "
-          + "for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) { "
-          + " if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { "
-          + "   ctx._source.upstreamEntityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}"
-          + "if (!docIdExists) {ctx._source.upstreamEntityRelationship.add(params.entityRelationshipData);}";
+      """
+      boolean docIdExists = false;
+      for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) {
+        if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) {
+          ctx._source.upstreamEntityRelationship[i] = params.entityRelationshipData;
+          docIdExists = true;
+          break;
+        }
+      }
+      if (!docIdExists) {
+        ctx._source.upstreamEntityRelationship.add(params.entityRelationshipData);
+      }
+      """;
+
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
       """
         if (ctx._source.tags != null) {
@@ -154,47 +193,58 @@ public interface SearchClient<T> {
         Collections.sort(uniqueTags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
         ctx._source.tags = uniqueTags;
         """;
+
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
-      "ctx._source.testSuites.removeIf(suite -> suite.id == '%s')";
+      "ctx._source.testSuites.removeIf(suite -> suite.id == params.suiteId)";
 
   String ADD_OWNERS_SCRIPT =
-      "if (ctx._source.owners == null || ctx._source.owners.isEmpty() || "
-          + "(ctx._source.owners.size() > 0 && ctx._source.owners[0] != null && ctx._source.owners[0].inherited == true)) { "
-          + "ctx._source.owners = params.updatedOwners; "
-          + "}";
+      """
+      if (ctx._source.owners == null || ctx._source.owners.isEmpty() ||
+          (ctx._source.owners.size() > 0 && ctx._source.owners[0] != null && ctx._source.owners[0].inherited == true)) {
+        ctx._source.owners = params.updatedOwners;
+      }
+      """;
 
   String ADD_DOMAINS_SCRIPT =
-      "if (ctx._source.domains == null || ctx._source.domains.isEmpty() || "
-          + "(ctx._source.domains.size() > 0 && ctx._source.domains[0] != null && ctx._source.domains[0].inherited == true)) { "
-          + "ctx._source.domains = params.updatedDomains; "
-          + "}";
+      """
+      if (ctx._source.domains == null || ctx._source.domains.isEmpty() ||
+          (ctx._source.domains.size() > 0 && ctx._source.domains[0] != null && ctx._source.domains[0].inherited == true)) {
+        ctx._source.domains = params.updatedDomains;
+      }
+      """;
 
   String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
 
   String REMOVE_OWNERS_SCRIPT =
-      "if (ctx._source.owners != null) { "
-          + "ctx._source.owners.removeIf(owner -> owner.inherited == true); "
-          + "ctx._source.owners.addAll(params.deletedOwners); "
-          + "}";
+      """
+      if (ctx._source.owners != null) {
+        ctx._source.owners.removeIf(owner -> owner.inherited == true);
+        ctx._source.owners.addAll(params.deletedOwners);
+      }
+      """;
 
   String REMOVE_DOMAINS_SCRIPT =
-      "if (ctx._source.domains != null) { "
-          + "ctx._source.domains.removeIf(domain -> domain.inherited == true); "
-          + "ctx._source.domains.addAll(params.deletedDomains); "
-          + "}";
+      """
+      if (ctx._source.domains != null) {
+        ctx._source.domains.removeIf(domain -> domain.inherited == true);
+        ctx._source.domains.addAll(params.deletedDomains);
+      }
+      """;
 
   String UPDATE_TAGS_FIELD_SCRIPT =
-      "if (ctx._source.tags != null) { "
-          + "for (int i = 0; i < ctx._source.tags.size(); i++) { "
-          + "if (ctx._source.tags[i].tagFQN == params.tagFQN) { "
-          + "for (String field : params.updates.keySet()) { "
-          + "if (field != null && params.updates[field] != null) { "
-          + "ctx._source.tags[i][field] = params.updates[field]; "
-          + "} "
-          + "} "
-          + "} "
-          + "} "
-          + "}";
+      """
+      if (ctx._source.tags != null) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].tagFQN == params.tagFQN) {
+            for (String field : params.updates.keySet()) {
+              if (field != null && params.updates[field] != null) {
+                ctx._source.tags[i][field] = params.updates[field];
+              }
+            }
+          }
+        }
+      }
+      """;
 
   String UPDATE_COLUMN_LINEAGE_SCRIPT =
       """

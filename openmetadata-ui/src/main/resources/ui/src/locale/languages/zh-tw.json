@@ -1192,6 +1192,7 @@
     "pipeline-state": "管線狀態",
     "pipeline-type": "管線類型",
     "platform": "平台",
+    "platform-service-client-unavailable": "平台服務客戶端無法使用",
     "platform-type-lineage": "{{platformType}} 血緣",
     "play": "播放",
     "please-enter-value": "請輸入 {{name}} 值",
@@ -1558,6 +1559,7 @@
     "support": "支援",
     "support-url": "支援 URL",
     "supported-language-plural": "支援的語言",
+    "switch-persona": "切換角色",
     "sync-alert-offset": "同步警示",
     "synonym-lowercase-plural": "同義詞",
     "synonym-plural": "同義詞",
@@ -2447,6 +2449,7 @@
     "team-moved-success": "團隊移動成功！",
     "team-no-asset": "您的團隊沒有任何資產。",
     "test-case-insight-description": "根據設定的測試驗證，存取您資料集的健康狀況集中檢視。",
+    "test-case-name-validation": "名稱不能包含雙冒號(::)、引號(\")或大於符號(>)。",
     "test-case-schedule-description": "可以排程資料品質測試以所需的頻率執行。時區為 UTC。",
     "test-connection-cannot-be-triggered": "無法觸發測試連線。",
     "test-connection-taking-too-long": {
