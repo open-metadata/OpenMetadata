@@ -2315,7 +2315,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "config": {
           "entityTypes": ["table", "dashboard"],
           "schedule": {
-            "cronExpression": "0 0 * * *"
+            "scheduleTimeline": "None"
           },
           "batchSize": 10
         }

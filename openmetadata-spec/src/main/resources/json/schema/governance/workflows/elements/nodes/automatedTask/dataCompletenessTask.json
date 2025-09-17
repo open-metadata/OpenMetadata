@@ -81,7 +81,7 @@
             {"name": "poor", "minimumScore": 0}
           ],
           "minItems": 1
-        },
+        }
       },
       "required": ["fieldsToCheck"],
       "additionalProperties": false
