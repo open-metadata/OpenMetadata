@@ -104,7 +104,7 @@ export const ExtraInfoLabel = ({
           <span className="extra-info-label-heading">{label}</span>
         )}
         <div className={classNames('font-medium extra-info-value')}>
-          {value}
+          {value ?? NO_DATA_PLACEHOLDER}
         </div>
       </Typography.Text>
     </div>

@@ -187,24 +187,30 @@ public class AbstractNativeApplication implements NativeApplication {
     }
   }
 
+  protected Map<String, Object> decryptConfiguration(Map<String, Object> appConfig) {
+    return appConfig;
+  }
+
   private void updateAppConfig(
       IngestionPipelineRepository repository,
       Map<String, Object> appConfiguration,
       String updatedBy) {
+    Map<String, Object> decryptedConfig = decryptConfiguration(appConfiguration);
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
         JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
-        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(decryptedConfig)));
     repository.update(null, original, updated, updatedBy);
   }
 
-  private void createAndBindIngestionPipeline(
-      App app,
-      IngestionPipelineRepository ingestionPipelineRepository,
-      Map<String, Object> config) {
+    private void createAndBindIngestionPipeline(
+            App app,
+            IngestionPipelineRepository ingestionPipelineRepository,
+            Map<String, Object> config) {
+    Map<String, Object> decryptedConfig = decryptConfiguration(config);
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -237,7 +243,7 @@ public class AbstractNativeApplication implements NativeApplication {
                         new ApplicationPipeline()
                             .withApplicationFqn(app.getFullyQualifiedName())
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
-                            .withAppConfig(config)
+                            .withAppConfig(decryptedConfig)
                             .withAppPrivateConfig(privateConfig)))
             .withAirflowConfig(
                 new AirflowConfig()
