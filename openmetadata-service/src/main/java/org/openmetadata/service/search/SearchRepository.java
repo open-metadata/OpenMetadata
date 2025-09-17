@@ -497,18 +497,8 @@ public class SearchRepository {
       }
 
       // Use async update for better performance
-      if (searchClient instanceof org.openmetadata.service.search.opensearch.OpenSearchClient) {
-        ((org.openmetadata.service.search.opensearch.OpenSearchClient) searchClient)
-            .updateEntityAsync(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      } else if (searchClient
-          instanceof org.openmetadata.service.search.elasticsearch.ElasticSearchClient) {
-        ((org.openmetadata.service.search.elasticsearch.ElasticSearchClient) searchClient)
-            .updateEntityAsync(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      } else {
-        // Fallback to sync for other implementations
-        searchClient.updateEntity(
-            indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      }
+      searchClient.updateEntityAsync(
+          indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
 
       long updateTime = System.currentTimeMillis() - startTime;
 

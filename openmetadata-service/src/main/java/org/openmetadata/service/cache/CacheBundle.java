@@ -5,8 +5,6 @@ import io.dropwizard.core.ConfiguredBundle;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.lifecycle.Managed;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -19,7 +17,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedEntityDao cachedEntityDao;
   private static CachedRelationshipDao cachedRelationshipDao;
   private static CachedTagUsageDao cachedTagUsageDao;
-  private static CacheWarmupService warmupService;
 
   public CacheBundle() {
     instance = this;
@@ -68,10 +65,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       environment.lifecycle().manage(new CacheLifecycleManager());
       environment.healthChecks().register("cache", new CacheHealthCheck());
 
-      // Warmup service is optional - write-through caching populates cache naturally
-      // Can still be used for load testing via POST /api/v1/system/cache/warmup endpoint
-      warmupService = null; // Disabled for now since warmup config was removed
-
       LOG.info("Cache bundle initialized successfully");
 
     } catch (Exception e) {
@@ -96,14 +89,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     return cachedTagUsageDao;
   }
 
-  public static CacheWarmupService getWarmupService() {
-    return warmupService;
-  }
-
-  public CacheWarmupService.WarmupStats getStats() {
-    return warmupService != null ? warmupService.getStats() : new CacheWarmupService.WarmupStats();
-  }
-
   private static class CacheLifecycleManager implements Managed {
     @Override
     public void start() {
@@ -119,26 +104,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
         LOG.info("Cache provider closed successfully");
       } catch (Exception e) {
         LOG.error("Error closing cache provider", e);
-      }
-    }
-  }
-
-  private static class WarmupLifecycleManager implements Managed {
-    @Override
-    public void start() {
-      CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)
-          .execute(
-              () -> {
-                if (warmupService != null) {
-                  warmupService.startWarmup();
-                }
-              });
-    }
-
-    @Override
-    public void stop() {
-      if (warmupService != null) {
-        warmupService.shutdown();
       }
     }
   }
@@ -167,26 +132,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
         }
       } catch (Exception e) {
         return Result.unhealthy("Cache health check failed: " + e.getMessage());
-      }
-    }
-  }
-
-  private static class WarmupHealthCheck extends HealthCheck {
-    @Override
-    protected Result check() {
-      try {
-        if (warmupService == null) {
-          return Result.healthy("Warmup service not configured");
-        }
-
-        CacheWarmupService.WarmupStats stats = warmupService.getStats();
-        if (stats.isInProgress()) {
-          return Result.healthy("Cache warmup in progress: " + stats.toString());
-        } else {
-          return Result.healthy("Cache warmup completed: " + stats.toString());
-        }
-      } catch (Exception e) {
-        return Result.unhealthy("Warmup health check failed: " + e.getMessage());
       }
     }
   }

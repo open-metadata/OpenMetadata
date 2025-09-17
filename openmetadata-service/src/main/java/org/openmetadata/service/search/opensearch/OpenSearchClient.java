@@ -1966,6 +1966,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  @Override
   public void updateEntityAsync(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     if (isClientAvailable) {
