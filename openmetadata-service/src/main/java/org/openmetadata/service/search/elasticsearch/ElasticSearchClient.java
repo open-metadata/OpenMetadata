@@ -25,10 +25,13 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
+import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
+import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.transport.endpoints.BooleanResponse;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
@@ -292,7 +295,11 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public boolean indexExists(String indexName) {
     try {
-      return newClient.indices().exists(e -> e.index(getIndexName(indexName))).value();
+      ElasticsearchIndicesClient indicesClient = newClient.indices();
+      ExistsRequest request = ExistsRequest.of(e -> e.index(indexName));
+      BooleanResponse response = indicesClient.exists(request);
+      LOG.info("index {} exist: {}", getIndexName(indexName), response.value());
+      return response.value();
     } catch (IOException e) {
       LOG.error("Failed to check if index {} exists", indexName, e);
       return false;

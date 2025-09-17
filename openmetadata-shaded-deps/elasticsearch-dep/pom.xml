@@ -27,7 +27,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        
+
         <!-- New Elasticsearch Java API Client -->
         <dependency>
             <groupId>co.elastic.clients</groupId>

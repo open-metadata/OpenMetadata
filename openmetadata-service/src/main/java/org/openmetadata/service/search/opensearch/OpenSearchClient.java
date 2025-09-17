@@ -168,6 +168,7 @@ import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexResponse;
+import os.org.opensearch.client.opensearch.indices.ExistsRequest;
 import os.org.opensearch.client.opensearch.indices.IndexSettings;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
@@ -317,7 +318,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public boolean indexExists(String indexName) {
     try {
-      BooleanResponse response = newClient.indices().exists(e -> e.index(indexName));
+      BooleanResponse response =
+          newClient.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
       return response.value();
     } catch (IOException e) {
       LOG.error("Failed to check if index {} exists", indexName, e);
