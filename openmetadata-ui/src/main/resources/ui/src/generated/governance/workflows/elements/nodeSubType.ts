@@ -14,7 +14,6 @@
  * SubType of the Node.
  */
 export enum NodeSubType {
-    ChangeReviewTask = "changeReviewTask",
     CheckEntityAttributesTask = "checkEntityAttributesTask",
     CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     DataCompletenessTask = "dataCompletenessTask",
