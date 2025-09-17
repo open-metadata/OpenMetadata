@@ -215,6 +215,9 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     // Enable it for the test
     glossaryRule.setEnabled(true);
 
+    // Enable the rule for testing
+    glossaryRule.withEnabled(true);
+
     // No glossary terms, should pass
     RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false);
 

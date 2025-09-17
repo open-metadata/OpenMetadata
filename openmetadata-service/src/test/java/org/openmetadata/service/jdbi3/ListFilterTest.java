@@ -40,11 +40,11 @@ class ListFilterTest {
   void getCondition() {
     ListFilter filter = new ListFilter();
     String condition = filter.getCondition("foo");
-    assertEquals("WHERE foo.deleted = FALSE", condition);
+    assertEquals("WHERE foo.deleted =FALSE", condition);
 
     filter = new ListFilter();
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
-    assertEquals("WHERE foo.deleted = FALSE AND status = 'Failed'", condition);
+    assertEquals("WHERE foo.deleted =FALSE AND status = :testCaseStatus", condition);
   }
 }
