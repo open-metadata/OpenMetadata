@@ -3,8 +3,8 @@ CREATE INDEX IF NOT EXISTS idx_pdts_entityFQNHash ON profiler_data_time_series(e
 CREATE INDEX IF NOT EXISTS idx_pdts_extension ON profiler_data_time_series(extension);
 CREATE INDEX IF NOT EXISTS idx_te_fqnHash ON table_entity(fqnHash);
 
--- Add prefix index for LIKE queries (service.database.schema.table = 4 MD5 hashes + 3 dots = 131 chars)
-CREATE INDEX IF NOT EXISTS idx_pdts_entityFQNHash_prefix ON profiler_data_time_series(entityFQNHash(131));
+-- Add prefix index for LIKE queries (service.database.schema.table = 4 MD5 hashes + 3 dots = 132 chars)
+CREATE INDEX IF NOT EXISTS idx_pdts_entityFQNHash_prefix ON profiler_data_time_series(entityFQNHash(132));
 
 -- Add composite index for better join performance
 CREATE INDEX IF NOT EXISTS idx_pdts_composite ON profiler_data_time_series(extension, entityFQNHash);
