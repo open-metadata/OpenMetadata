@@ -1,3 +1,6 @@
+-- Add an index on the first 132 characters of entityFQNHash to optimize queries filtering by this column
+CREATE INDEX idx_pdts_entityFQNHash_prefix ON profiler_data_time_series USING btree (LEFT(entityFQNHash,132));
+
 -- Modify the path to the auto-generated operation column to extract from the JSON field
 -- 1. Drop the unique constraint first
 ALTER TABLE profiler_data_time_series
