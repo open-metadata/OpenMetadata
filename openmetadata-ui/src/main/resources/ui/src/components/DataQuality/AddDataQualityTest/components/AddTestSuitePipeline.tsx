@@ -28,6 +28,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
@@ -47,7 +48,7 @@ const AddTestSuitePipeline = ({
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { ingestionFQN } = useFqn();
+  const { fqn, ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
   const testSuiteId = useMemo(() => {
@@ -58,7 +59,7 @@ const AddTestSuitePipeline = ({
     const testSuiteIdData =
       testSuite?.id ?? (searchData as { testSuiteId: string }).testSuiteId;
 
-    return testSuiteIdData;
+    return testSuite?.basic ? undefined : testSuiteIdData;
   }, [location.search]);
 
   const [selectAllTestCases, setSelectAllTestCases] = useState(
@@ -182,6 +183,13 @@ const AddTestSuitePipeline = ({
                   ]}
                   valuePropName="selectedTest">
                   <AddTestCaseList
+                    filters={
+                      !testSuiteId
+                        ? `testSuite.fullyQualifiedName:"${escapeESReservedCharacters(
+                            testSuite?.fullyQualifiedName ?? fqn
+                          )}"`
+                        : undefined
+                    }
                     showButton={false}
                     testCaseParams={{ testSuiteId }}
                   />
