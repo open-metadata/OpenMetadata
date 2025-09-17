@@ -1179,7 +1179,7 @@ const SSOConfigurationFormRJSF = ({
   };
 
   if (isInitializing) {
-    return <Loader />;
+    return <Loader data-testid="loader" />;
   }
 
   // If we have an onChangeProvider callback, don't show internal provider selector
@@ -1247,6 +1247,7 @@ const SSOConfigurationFormRJSF = ({
 
         <ResizablePanels
           className="content-height-with-resizable-panel sso-configured"
+          data-testid="resizable-panels"
           firstPanel={{
             children: (
               <>
@@ -1344,6 +1345,7 @@ const SSOConfigurationFormRJSF = ({
 
       <ResizablePanels
         className="content-height-with-resizable-panel"
+        data-testid="resizable-panels"
         firstPanel={{
           children: (
             <>

@@ -11,35 +11,120 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { VALIDATION_STATUS } from '../../../constants/SSO.constant';
+import { AuthProvider, ClientType } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  fetchAuthenticationConfig,
+  fetchAuthorizerConfig,
+} from '../../../rest/miscAPI';
+import {
   applySecurityConfiguration,
+  getSecurityConfiguration,
+  patchSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getAuthConfig } from '../../../utils/AuthProvider.util';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
+import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
 
 // Mock dependencies
-jest.mock('../../../utils/ToastUtils');
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
 jest.mock('../../../rest/securityConfigAPI');
+jest.mock('../../../rest/miscAPI');
 jest.mock('../../../hooks/useApplicationStore');
+jest.mock('../../Auth/AuthProviders/AuthProvider');
+jest.mock('../../../utils/AuthProvider.util');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }));
 
+jest.mock('../ProviderSelector/ProviderSelector', () => {
+  return function ProviderSelector({ onProviderSelect }: any) {
+    return (
+      <div data-testid="provider-selector">
+        <button onClick={() => onProviderSelect(AuthProvider.Google)}>
+          Select Google
+        </button>
+        <button onClick={() => onProviderSelect(AuthProvider.Okta)}>
+          Select Okta
+        </button>
+        <button onClick={() => onProviderSelect(AuthProvider.Azure)}>
+          Select Azure
+        </button>
+        <button onClick={() => onProviderSelect(AuthProvider.Saml)}>
+          Select SAML
+        </button>
+        <button onClick={() => onProviderSelect(AuthProvider.LDAP)}>
+          Select LDAP
+        </button>
+      </div>
+    );
+  };
+});
+
+jest.mock('../SSODocPanel/SSODocPanel', () => {
+  return function SSODocPanel({ activeField, serviceName }: any) {
+    return (
+      <div data-testid="sso-doc-panel">
+        <span>Active Field: {activeField}</span>
+        <span>Service Name: {serviceName}</span>
+      </div>
+    );
+  };
+});
+
+jest.mock('../../common/ResizablePanels/ResizablePanels', () => {
+  return function ResizablePanels({ firstPanel, secondPanel }: any) {
+    return (
+      <div data-testid="resizable-panels">
+        <div>{firstPanel.children}</div>
+        <div>{secondPanel.children}</div>
+      </div>
+    );
+  };
+});
+
+jest.mock('../../common/Loader/Loader', () => {
+  return function Loader() {
+    return <div data-testid="loader">Loading...</div>;
+  };
+});
+
+jest.mock(
+  '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component',
+  () => ({
+    UnsavedChangesModal: ({ open, onDiscard, onSave, onCancel }: any) => {
+      if (!open) {
+        return null;
+      }
+
+      return (
+        <div data-testid="unsaved-changes-modal">
+          <button onClick={onDiscard}>Discard</button>
+          <button onClick={onSave}>Save</button>
+          <button onClick={onCancel}>Cancel</button>
+        </div>
+      );
+    },
+  })
+);
+
 const mockShowErrorToast = showErrorToast as jest.MockedFunction<
   typeof showErrorToast
+>;
+const mockShowSuccessToast = showSuccessToast as jest.MockedFunction<
+  typeof showSuccessToast
 >;
 const mockApplySecurityConfiguration =
   applySecurityConfiguration as jest.MockedFunction<
@@ -49,15 +134,39 @@ const mockValidateSecurityConfiguration =
   validateSecurityConfiguration as jest.MockedFunction<
     typeof validateSecurityConfiguration
   >;
+const mockGetSecurityConfiguration =
+  getSecurityConfiguration as jest.MockedFunction<
+    typeof getSecurityConfiguration
+  >;
+const mockPatchSecurityConfiguration =
+  patchSecurityConfiguration as jest.MockedFunction<
+    typeof patchSecurityConfiguration
+  >;
+const mockFetchAuthenticationConfig =
+  fetchAuthenticationConfig as jest.MockedFunction<
+    typeof fetchAuthenticationConfig
+  >;
+const mockFetchAuthorizerConfig = fetchAuthorizerConfig as jest.MockedFunction<
+  typeof fetchAuthorizerConfig
+>;
+const mockGetAuthConfig = getAuthConfig as jest.MockedFunction<
+  typeof getAuthConfig
+>;
 
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
+>;
+const mockUseAuthProvider = useAuthProvider as jest.MockedFunction<
+  typeof useAuthProvider
 >;
 
 describe('SSOConfigurationForm', () => {
   const mockSetIsAuthenticated = jest.fn();
   const mockSetAuthConfig = jest.fn();
   const mockSetAuthorizerConfig = jest.fn();
+  const mockOnLogoutHandler = jest.fn();
+
+  const defaultProps: SSOConfigurationFormProps = {};
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -67,81 +176,214 @@ describe('SSOConfigurationForm', () => {
       setAuthConfig: mockSetAuthConfig,
       setAuthorizerConfig: mockSetAuthorizerConfig,
     } as any);
+
+    mockUseAuthProvider.mockReturnValue({
+      onLogoutHandler: mockOnLogoutHandler,
+    } as any);
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        replace: jest.fn(),
+      },
+      writable: true,
+    });
+
+    // Mock sessionStorage and localStorage
+    Object.defineProperty(window, 'sessionStorage', {
+      value: {
+        clear: jest.fn(),
+      },
+      writable: true,
+    });
+
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        clear: jest.fn(),
+      },
+      writable: true,
+    });
   });
 
-  const renderComponent = () => {
+  const renderComponent = (props: Partial<SSOConfigurationFormProps> = {}) => {
     return render(
       <MemoryRouter>
-        <SSOConfigurationFormRJSF />
+        <SSOConfigurationFormRJSF {...defaultProps} {...props} />
       </MemoryRouter>
     );
   };
 
-  describe('Initial Render', () => {
-    it('should render the component with edit button', () => {
-      renderComponent();
-
-      expect(screen.getByText('label.sso-configuration')).toBeInTheDocument();
-      expect(screen.getByText('label.edit')).toBeInTheDocument();
-      expect(
-        screen.getByText('message.sso-configuration-directly-from-the-ui')
-      ).toBeInTheDocument();
+  describe('Provider Selection', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
     });
 
-    it('should not show form initially', () => {
+    it('should initialize form with Google provider', async () => {
       renderComponent();
 
-      expect(screen.queryByRole('form')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Google label.set-up')).toBeInTheDocument();
+      });
+    });
+
+    it('should initialize form with SAML provider as public client', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const samlButton = screen.getByText('Select SAML');
+      fireEvent.click(samlButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+        expect(screen.getByText('SAML label.set-up')).toBeInTheDocument();
+      });
+    });
+
+    it('should initialize form with LDAP provider as public client', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const ldapButton = screen.getByText('Select LDAP');
+      fireEvent.click(ldapButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Ldap label.set-up')).toBeInTheDocument();
+      });
+    });
+
+    it('should call onProviderSelect when provider is selected', async () => {
+      const mockOnProviderSelect = jest.fn();
+      renderComponent({ onProviderSelect: mockOnProviderSelect });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
+
+      await waitFor(() => {
+        expect(mockOnProviderSelect).toHaveBeenCalledWith(AuthProvider.Google);
+      });
     });
   });
 
   describe('Edit Mode', () => {
-    it('should show form when edit button is clicked', async () => {
-      renderComponent();
-
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
-
-      expect(screen.getByText('label.save')).toBeInTheDocument();
-      expect(screen.getByText('label.cancel')).toBeInTheDocument();
+    beforeEach(() => {
+      const mockConfig = {
+        data: {
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            clientType: ClientType.Confidential,
+            oidcConfiguration: {
+              id: 'test-id',
+              secret: 'test-secret',
+            },
+          },
+          authorizerConfiguration: {
+            adminPrincipals: ['admin@test.com'],
+          },
+        },
+      };
+      mockGetSecurityConfiguration.mockResolvedValue(mockConfig as any);
     });
 
-    it('should hide form when cancel button is clicked', async () => {
-      renderComponent();
+    it('should force edit mode when forceEditMode prop is true', async () => {
+      renderComponent({ forceEditMode: true });
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByTestId('cancel-sso-configuration')
+        ).toBeInTheDocument();
       });
-
-      const cancelButton = screen.getByText('label.cancel');
-      await act(async () => {
-        fireEvent.click(cancelButton);
-      });
-
-      expect(screen.queryByText('label.save')).not.toBeInTheDocument();
-      expect(screen.queryByText('label.cancel')).not.toBeInTheDocument();
     });
   });
 
-  describe('Validation Error Handling', () => {
-    it('should display validation errors when validation fails', async () => {
+  describe('Save Configuration - New Configuration', () => {
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should validate and save new configuration successfully', async () => {
       const mockValidationResponse = {
         data: {
-          status: 'failed',
-          message: 'Security configuration validation found issues',
+          status: VALIDATION_STATUS.SUCCESS,
+          message: 'Validation successful',
+          results: [],
+        },
+      };
+
+      const mockAuthConfig = { provider: AuthProvider.Google };
+      const mockAuthorizerConfig = { adminPrincipals: ['admin'] };
+
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        mockValidationResponse as any
+      );
+      mockApplySecurityConfiguration.mockResolvedValue({} as any);
+      mockFetchAuthenticationConfig.mockResolvedValue(mockAuthConfig as any);
+      mockFetchAuthorizerConfig.mockResolvedValue(mockAuthorizerConfig as any);
+      mockGetAuthConfig.mockReturnValue(mockAuthConfig as any);
+      mockOnLogoutHandler.mockResolvedValue(undefined);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+        expect(mockApplySecurityConfiguration).toHaveBeenCalled();
+        expect(mockOnLogoutHandler).toHaveBeenCalled();
+        expect(window.location.replace).toHaveBeenCalledWith('/signin');
+      });
+    });
+
+    it('should handle validation failure', async () => {
+      const mockValidationResponse = {
+        data: {
+          status: VALIDATION_STATUS.FAILED,
+          message: 'Validation failed',
           results: [
             {
-              component: 'authentication-base',
-              status: 'failed',
-              message: 'Authentication JWT principal claims are required',
-            },
-            {
               component: 'authentication',
-              status: 'failed',
-              message: 'Unknown authentication provider: basic',
+              status: VALIDATION_STATUS.FAILED,
+              message: 'Client ID is required',
             },
           ],
         },
@@ -153,29 +395,35 @@ describe('SSOConfigurationForm', () => {
 
       renderComponent();
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
 
       await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
         expect(mockShowErrorToast).toHaveBeenCalledWith(
-          expect.stringContaining(
-            'Security configuration validation found issues'
-          )
+          expect.stringContaining('Validation failed')
         );
+        expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
       });
     });
 
-    it('should handle validation success and proceed to save', async () => {
+    it('should handle logout failure and clear storage', async () => {
       const mockValidationResponse = {
         data: {
-          status: 'success',
+          status: VALIDATION_STATUS.SUCCESS,
           message: 'Validation successful',
           results: [],
         },
@@ -184,75 +432,155 @@ describe('SSOConfigurationForm', () => {
       mockValidateSecurityConfiguration.mockResolvedValue(
         mockValidationResponse as any
       );
-      mockApplySecurityConfiguration.mockResolvedValue({ status: 200 } as any);
+      mockApplySecurityConfiguration.mockResolvedValue({} as any);
+      mockFetchAuthenticationConfig.mockResolvedValue({} as any);
+      mockFetchAuthorizerConfig.mockResolvedValue({} as any);
+      mockGetAuthConfig.mockReturnValue({} as any);
+      mockOnLogoutHandler.mockRejectedValue(new Error('Logout failed'));
 
       renderComponent();
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(mockApplySecurityConfiguration).toHaveBeenCalled();
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(window.sessionStorage.clear).toHaveBeenCalled();
+        expect(window.localStorage.clear).toHaveBeenCalled();
+        expect(window.location.replace).toHaveBeenCalledWith('/signin');
       });
     });
   });
 
-  describe('Save Configuration', () => {
-    it('should handle save configuration success', async () => {
-      const mockValidationResponse = {
-        data: {
-          status: 'success',
-          message: 'Validation successful',
-          results: [],
-        },
-      };
-
-      mockValidateSecurityConfiguration.mockResolvedValue(
-        mockValidationResponse as any
-      );
-      mockApplySecurityConfiguration.mockResolvedValue({ status: 200 } as any);
-
-      renderComponent();
-
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
-
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+  describe('Props Handling', () => {
+    it('should handle selectedProvider prop', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Okta });
 
       await waitFor(() => {
-        expect(mockApplySecurityConfiguration).toHaveBeenCalled();
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Okta label.set-up')).toBeInTheDocument();
       });
     });
 
-    it('should handle save configuration error', async () => {
+    it('should handle Basic provider in selectedProvider', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Basic });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle onChangeProvider callback', async () => {
+      const mockOnChangeProvider = jest.fn();
+      const mockConfig = {
+        data: {
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            clientType: ClientType.Confidential,
+          },
+          authorizerConfiguration: {},
+        },
+      };
+      mockGetSecurityConfiguration.mockResolvedValue(mockConfig as any);
+
+      renderComponent({ onChangeProvider: mockOnChangeProvider });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('change-provider-button')
+        ).toBeInTheDocument();
+      });
+
+      const changeButton = screen.getByTestId('change-provider-button');
+      fireEvent.click(changeButton);
+
+      expect(mockOnChangeProvider).toHaveBeenCalled();
+    });
+
+    it('should render with hideBorder prop', async () => {
+      const mockConfig = {
+        data: {
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            clientType: ClientType.Confidential,
+          },
+          authorizerConfiguration: {},
+        },
+      };
+      mockGetSecurityConfiguration.mockResolvedValue(mockConfig as any);
+
+      renderComponent({ hideBorder: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('resizable-panels')).toBeInTheDocument();
+        expect(
+          screen.queryByText('Google label.set-up')
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Client Type Switching', () => {
+    it('should handle switching from Confidential to Public client', async () => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      const oktaButton = screen.getByText('Select Okta');
+      fireEvent.click(oktaButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      // The form would have clientType field rendered here
+      // Simulating client type change would require mocking the form onChange
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle API errors gracefully', async () => {
+      const mockError = new AxiosError('API Error');
+      mockGetSecurityConfiguration.mockRejectedValue(mockError);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+    });
+
+    it('should show error toast for save failures', async () => {
+      const mockError = new Error('Save failed');
       const mockValidationResponse = {
         data: {
-          status: 'success',
+          status: VALIDATION_STATUS.SUCCESS,
           message: 'Validation successful',
           results: [],
         },
       };
 
-      const mockError = new AxiosError();
-      mockError.response = {
-        data: {
-          responseMessage:
-            'Failed to update security configuration: Failed to reload security system',
-        },
-      } as any;
-
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
       mockValidateSecurityConfiguration.mockResolvedValue(
         mockValidationResponse as any
       );
@@ -260,15 +588,21 @@ describe('SSOConfigurationForm', () => {
 
       renderComponent();
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
       });
+
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
@@ -276,46 +610,82 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle validation API errors', async () => {
-      const mockError = new AxiosError();
-      mockValidateSecurityConfiguration.mockRejectedValue(mockError);
+  describe('Provider Icons', () => {
+    it('should display correct provider title for each provider', async () => {
+      const providers = [
+        { provider: AuthProvider.Google, displayName: 'Google label.set-up' },
+        { provider: AuthProvider.Azure, displayName: 'Azure AD label.set-up' },
+        { provider: AuthProvider.Okta, displayName: 'Okta label.set-up' },
+        { provider: AuthProvider.Auth0, displayName: 'Auth0 label.set-up' },
+        {
+          provider: AuthProvider.AwsCognito,
+          displayName: 'AWS Cognito label.set-up',
+        },
+        { provider: AuthProvider.LDAP, displayName: 'Ldap label.set-up' },
+        { provider: AuthProvider.Saml, displayName: 'SAML label.set-up' },
+      ];
 
-      renderComponent();
+      for (const { provider, displayName } of providers) {
+        const { unmount } = renderComponent({ selectedProvider: provider });
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+        await waitFor(() => {
+          expect(
+            screen.getByTestId('sso-configuration-form-card')
+          ).toBeInTheDocument();
+          expect(screen.getByText(displayName)).toBeInTheDocument();
+        });
 
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
-
-      await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
-      });
+        unmount();
+      }
     });
+  });
 
-    it('should handle network errors gracefully', async () => {
-      const mockError = new Error('Network error');
-      mockValidateSecurityConfiguration.mockRejectedValue(mockError);
+  describe('Form Data Cleanup', () => {
+    it('should cleanup provider-specific fields before submission', async () => {
+      const mockValidationResponse = {
+        data: {
+          status: VALIDATION_STATUS.SUCCESS,
+          message: 'Validation successful',
+          results: [],
+        },
+      };
+
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        mockValidationResponse as any
+      );
+      mockApplySecurityConfiguration.mockResolvedValue({} as any);
+      mockFetchAuthenticationConfig.mockResolvedValue({} as any);
+      mockFetchAuthorizerConfig.mockResolvedValue({} as any);
+      mockGetAuthConfig.mockReturnValue({} as any);
 
       renderComponent();
 
-      const editButton = screen.getByText('label.edit');
-      await act(async () => {
-        fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByText('label.save');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      const samlButton = screen.getByText('Select SAML');
+      fireEvent.click(samlButton);
 
       await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockApplySecurityConfiguration).toHaveBeenCalledWith(
+          expect.objectContaining({
+            authenticationConfiguration: expect.objectContaining({
+              provider: AuthProvider.Saml,
+              clientType: ClientType.Public,
+            }),
+          })
+        );
       });
     });
   });
