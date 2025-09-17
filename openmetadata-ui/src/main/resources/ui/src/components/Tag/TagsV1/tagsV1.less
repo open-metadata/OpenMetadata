@@ -37,11 +37,12 @@
 
 .ant-tag.tag-chip-content {
   width: max-content;
-  height: 30px;
+  max-width: 200px;
   margin: 0px;
   border: none;
-  padding: 0;
+  padding: 2px 0;
   background: @tag-background-color;
+  border-radius: @border-rad-xs;
 
   &.diff-added {
     background: @success-background-color;
@@ -90,8 +91,15 @@
 }
 
 .tags-label {
-  display: inline-block;
+  display: block;
   font-size: 12px;
   font-weight: 500;
   color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-content-container {
+  min-width: 0;
 }

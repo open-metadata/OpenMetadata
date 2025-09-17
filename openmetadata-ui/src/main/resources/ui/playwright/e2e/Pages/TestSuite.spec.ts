@@ -107,7 +107,7 @@ test('Logical TestSuite', async ({ page }) => {
     await assignDomain(page, domain1.responseData);
     // TODO: Add domain update
     // await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain1.responseData);
+    await removeDomain(page, domain1.responseData, false);
   });
 
   await test.step(
