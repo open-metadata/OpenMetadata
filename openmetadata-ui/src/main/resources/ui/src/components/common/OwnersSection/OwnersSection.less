@@ -11,6 +11,60 @@
  *  limitations under the License.
  */
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.owners-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 60px;
+}
+
+.owners-loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.owner-label-section {
+  gap: 4px !important;
+  color: #21263c !important;
+  margin-left: 0px !important;
+  .owner-label-container {
+    border: 1px solid #e3e8f0;
+    border-radius: 56px;
+    padding: 5px 8px;
+    background-color: #f9fafc;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 45%;
+    text-align: center;
+    justify-content: unset;
+  }
+}
+.loading-text {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .owners-section {
   border-bottom: dotted;
   border-bottom-width: thin;
@@ -74,6 +128,11 @@
           background-color: #40a9ff;
           border-color: #40a9ff;
         }
+      }
+
+      .opacity-50 {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
     }
   }

@@ -27,6 +27,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../../generated/entity/type';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
@@ -174,7 +175,30 @@ export default function EntitySummaryPanel({
 
       if (entityPromise) {
         const data = await entityPromise;
-        setEntityData(data);
+        // Merge API data with essential fields from entityDetails.details
+        const mergedData = {
+          ...data,
+          // Essential fields that are used in DataAssetSummaryPanelV1
+          entityType: entityDetails.details.entityType,
+          fullyQualifiedName: entityDetails.details.fullyQualifiedName,
+          id: entityDetails.details.id,
+          description: entityDetails.details.description,
+          displayName: entityDetails.details.displayName,
+          name: entityDetails.details.name,
+          deleted: entityDetails.details.deleted,
+          serviceType: (entityDetails.details as any).serviceType,
+          service: entityDetails.details.service,
+          // Fields that might not be in API response but are needed for UI
+          owners: data.owners || entityDetails.details.owners, // ✅ Preserve owners from API or fallback to search result
+          domains: entityDetails.details.domains,
+          tags: entityDetails.details.tags,
+          tier: entityDetails.details.tier,
+          columnNames: (entityDetails.details as any).columnNames,
+          database: (entityDetails.details as any).database,
+          databaseSchema: (entityDetails.details as any).databaseSchema,
+          tableType: (entityDetails.details as any).tableType,
+        };
+        setEntityData(mergedData);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -221,6 +245,55 @@ export default function EntitySummaryPanel({
     }
   }, [entityDetails?.details?.fullyQualifiedName, entityType]);
 
+  const handleOwnerUpdate = useCallback(
+    (updatedOwners: EntityReference[]) => {
+      // Update the entityData state with the new owners
+      setEntityData((prevData: any) => {
+        if (!prevData) {
+          return prevData;
+        }
+
+        const updatedData = {
+          ...prevData,
+          owners: updatedOwners,
+          // Preserve all essential fields from entityDetails.details
+          entityType: prevData.entityType || entityDetails.details.entityType,
+          fullyQualifiedName:
+            prevData.fullyQualifiedName ||
+            entityDetails.details.fullyQualifiedName,
+          id: prevData.id || entityDetails.details.id,
+          description:
+            prevData.description || entityDetails.details.description,
+          displayName:
+            prevData.displayName || entityDetails.details.displayName,
+          name: prevData.name || entityDetails.details.name,
+          deleted:
+            prevData.deleted !== undefined
+              ? prevData.deleted
+              : entityDetails.details.deleted,
+          serviceType:
+            prevData.serviceType || (entityDetails.details as any).serviceType,
+          service: prevData.service || entityDetails.details.service,
+          domains: prevData.domains || entityDetails.details.domains,
+          tags: prevData.tags || entityDetails.details.tags,
+          tier: prevData.tier || entityDetails.details.tier,
+          columnNames:
+            prevData.columnNames || (entityDetails.details as any).columnNames,
+          database:
+            prevData.database || (entityDetails.details as any).database,
+          databaseSchema:
+            prevData.databaseSchema ||
+            (entityDetails.details as any).databaseSchema,
+          tableType:
+            prevData.tableType || (entityDetails.details as any).tableType,
+        };
+
+        return updatedData;
+      });
+    },
+    [entityData]
+  );
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -233,6 +306,8 @@ export default function EntitySummaryPanel({
       fetchEntityTypeDetail();
     } else if (activeTab === EntityRightPanelTab.LINEAGE) {
       fetchLineageData();
+    } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
+      fetchEntityData();
     }
   }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData]);
 
@@ -297,7 +372,7 @@ export default function EntitySummaryPanel({
     }
     const type = (get(entityDetails, 'details.entityType') ??
       EntityType.TABLE) as EntityType;
-    const entity = entityDetails.details;
+    const entity = entityData || entityDetails.details;
 
     return (
       <DataAssetSummaryPanelV1
@@ -313,9 +388,17 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        onOwnerUpdate={handleOwnerUpdate}
       />
     );
-  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
+  }, [
+    tab,
+    entityDetails,
+    entityData,
+    viewPermission,
+    isPermissionLoading,
+    handleOwnerUpdate,
+  ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
@@ -452,8 +535,7 @@ export default function EntitySummaryPanel({
                                     (column: string, index: number) => (
                                       <th
                                         className="ant-table-cell"
-                                        key={index}
-                                      >
+                                        key={index}>
                                         {column}
                                       </th>
                                     )
@@ -467,8 +549,7 @@ export default function EntitySummaryPanel({
                                       (column: string, colIndex: number) => (
                                         <td
                                           className="ant-table-cell"
-                                          key={colIndex}
-                                        >
+                                          key={colIndex}>
                                           {row[column] || '-'}
                                         </td>
                                       )
@@ -506,8 +587,7 @@ export default function EntitySummaryPanel({
                       to={getEntityLinkFromType(
                         entityDetails.details.fullyQualifiedName || '',
                         entityType as EntityType
-                      )}
-                    >
+                      )}>
                       <Button size="small" type="primary">
                         {t('label.view-all')}
                       </Button>
@@ -534,8 +614,7 @@ export default function EntitySummaryPanel({
             target={searchClassBase.getSearchEntityLinkTarget(
               entityDetails.details
             )}
-            to={entityLink}
-          >
+            to={entityLink}>
             <Typography.Text>
               {entityIcon}
               {stringToHTML(

@@ -65,6 +65,7 @@ export const DataAssetSummaryPanelV1 = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
   isLineageView = false,
+  onOwnerUpdate,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -298,10 +299,15 @@ export const DataAssetSummaryPanelV1 = ({
             )}
 
             <OwnersSection
+              entityId={dataAsset.id}
               hasPermission={
                 entityPermissions?.EditAll || entityPermissions?.EditTags
               }
+              key={`owners-${dataAsset.id}-${
+                (dataAsset.owners as EntityReference[])?.length || 0
+              }`}
               owners={dataAsset.owners as EntityReference[]}
+              onOwnerUpdate={onOwnerUpdate}
             />
 
             <DomainsSection
@@ -314,90 +320,6 @@ export const DataAssetSummaryPanelV1 = ({
               }
             />
             <TagsSection tags={dataAsset.tags} />
-            {/* <SummaryTagsDescription
-              entityDetail={dataAsset}
-              tags={
-                tags ??
-                getSortedTagsWithHighlight(
-                  dataAsset.tags,
-                  get(highlights, 'tag.name')
-                )
-              }
-            /> */}
-            {/* {entityInfo.some((info) =>
-              info.visible?.includes(componentType)
-            ) && (
-              <Row
-                className="p-md border-radius-card summary-panel-card"
-                gutter={[0, 4]}>
-                <Col span={24}>
-                  <CommonEntitySummaryInfo
-                    componentType={componentType}
-                    entityInfo={entityInfo}
-                    isDomainVisible={isDomainVisible}
-                  />
-                </Col>
-              </Row>
-            )} */}
-            {/* {isLineageView && (
-              <Row
-                className="p-md border-radius-card summary-panel-card"
-                gutter={[0, 8]}>
-                <Col span={24}>
-                  <Typography.Text
-                    className="summary-panel-section-title"
-                    data-testid="owner-header">
-                    {t('label.owner-plural')}
-                  </Typography.Text>
-                </Col>
-                <Col className="d-flex flex-wrap gap-2" span={24}>
-                  <OwnerLabel
-                    isCompactView={false}
-                    owners={(dataAsset.owners as EntityReference[]) ?? []}
-                    showLabel={false}
-                  />
-                </Col>
-              </Row>
-            )}
-            <Row
-              className="p-md border-radius-card summary-panel-card"
-              gutter={[0, 8]}>
-              <Col span={24}>
-                <Typography.Text
-                  className="summary-panel-section-title"
-                  data-testid="domain-header">
-                  {t('label.domain-plural')}
-                </Typography.Text>
-              </Col>
-              <Col className="d-flex flex-wrap gap-2" span={24}>
-                <DomainLabel
-                  multiple
-                  domains={dataAsset.domains}
-                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
-                  entityId={dataAsset.id ?? ''}
-                  entityType={entityType}
-                  hasPermission={false}
-                  textClassName="render-domain-lebel-style"
-                />
-              </Col>
-            </Row>
-            {entityType === EntityType.TABLE && (
-              <TableSummary
-                entityDetails={dataAsset as Table}
-                permissions={entityPermissions}
-              />
-            )}
-            <SummaryTagsDescription
-              entityDetail={dataAsset}
-              tags={
-                tags ??
-                getSortedTagsWithHighlight(
-                  dataAsset.tags,
-                  get(highlights, 'tag.name')
-                )
-              }
-            />
-            <SummaryDataProducts dataAsset={dataAsset} /> */}
           </>
         );
       case EntityType.GLOSSARY_TERM:

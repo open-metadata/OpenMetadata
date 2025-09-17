@@ -11,39 +11,112 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import React, { useState } from 'react';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
-import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import { EntityReference } from '../../../generated/entity/type';
+import { patchTableDetails } from '../../../rest/tableAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import './OwnersSection.less';
+
 interface OwnersSectionProps {
   owners?: EntityReference[];
   showEditButton?: boolean;
   hasPermission?: boolean;
+  entityId?: string;
+  onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
 }
 
 const OwnersSection: React.FC<OwnersSectionProps> = ({
   owners = [],
   showEditButton = true,
   hasPermission = false,
+  entityId,
+  onOwnerUpdate,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleEditClick = () => {
     setEditingOwners(owners);
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    // TODO: Implement actual save functionality
-    setIsEditing(false);
-  };
+  const handleSaveWithOwners = useCallback(
+    async (ownersToSave: EntityReference[]) => {
+      const idToUse = entityId;
+
+      if (!idToUse) {
+        showErrorToast(t('message.entity-id-required'));
+
+        return;
+      }
+
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          idToUse
+        );
+
+      if (!isUUID) {
+        showErrorToast(t('message.invalid-entity-id'));
+
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+
+        // Create JSON patch by comparing the owners arrays
+        const currentData = { owners };
+        const updatedData = { owners: ownersToSave };
+        const jsonPatch = compare(currentData, updatedData);
+
+        // Only proceed if there are actual changes
+        if (jsonPatch.length === 0) {
+          setIsLoading(false);
+
+          return;
+        }
+
+        // Make the API call
+        await patchTableDetails(idToUse, jsonPatch);
+
+        // Show success message
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.owner-plural'),
+          })
+        );
+
+        // Call the callback to update parent component with the new owners
+        if (onOwnerUpdate) {
+          onOwnerUpdate(ownersToSave);
+        }
+
+        // Keep loading state for a brief moment to ensure smooth transition
+        setTimeout(() => {
+          setIsEditing(false);
+          setIsLoading(false);
+        }, 500);
+      } catch (error) {
+        setIsLoading(false);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.owner-lowercase-plural'),
+          })
+        );
+      }
+    },
+    [entityId, owners, onOwnerUpdate, t]
+  );
 
   const handleCancel = () => {
     setEditingOwners(owners);
@@ -52,6 +125,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
   const handleOwnerSelection = async (selectedOwners: EntityReference[]) => {
     setEditingOwners(selectedOwners);
+
+    // Call API immediately like the existing system
+    await handleSaveWithOwners(selectedOwners);
   };
 
   if (!owners.length) {
@@ -61,24 +137,27 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           <Typography.Text className="owners-title">
             {t('label.owner-plural')}
           </Typography.Text>
-          {showEditButton && !isEditing && (
+          {showEditButton && !isEditing && !isLoading && (
             <span className="cursor-pointer" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
-          {isEditing && (
+          {isEditing && !isLoading && (
             <div className="edit-actions">
               <span className="cursor-pointer" onClick={handleCancel}>
                 <CloseIcon />
-              </span>
-              <span className="cursor-pointer" onClick={handleSave}>
-                <TickIcon />
               </span>
             </div>
           )}
         </div>
         <div className="owners-content">
-          {isEditing ? (
+          {isLoading ? (
+            <div className="owners-loading-container">
+              <div className="owners-loading-spinner">
+                <div className="loading-spinner" />
+              </div>
+            </div>
+          ) : isEditing ? (
             <div className="inline-edit-container">
               <UserSelectableList
                 multiSelect
@@ -123,24 +202,27 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         <Typography.Text className="owners-title">
           {t('label.owner-plural')}
         </Typography.Text>
-        {showEditButton && !isEditing && (
+        {showEditButton && !isEditing && !isLoading && (
           <span className="cursor-pointer" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
-        {isEditing && (
+        {isEditing && !isLoading && (
           <div className="edit-actions">
             <span className="cursor-pointer" onClick={handleCancel}>
               <CloseIcon />
-            </span>
-            <span className="cursor-pointer" onClick={handleSave}>
-              <TickIcon />
             </span>
           </div>
         )}
       </div>
       <div className="owners-content">
-        {isEditing ? (
+        {isLoading ? (
+          <div className="owners-loading-container">
+            <div className="owners-loading-spinner">
+              <div className="loading-spinner" />
+            </div>
+          </div>
+        ) : isEditing ? (
           <div className="inline-edit-container">
             <UserSelectableList
               multiSelect
@@ -172,8 +254,12 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         ) : (
           <div className="owners-display">
             <OwnerLabel
+              isCompactView
+              avatarSize={19}
+              className="owner-label-section"
               hasPermission={hasPermission}
-              isCompactView={false}
+              maxVisibleOwners={2}
+              ownerLabelClassName="owner-label-container"
               owners={owners}
               showLabel={false}
             />

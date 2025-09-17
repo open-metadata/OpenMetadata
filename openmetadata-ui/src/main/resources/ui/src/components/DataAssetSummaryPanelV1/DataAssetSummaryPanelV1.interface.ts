@@ -27,4 +27,5 @@ export type DataAssetSummaryPanelProps = {
   entityType: EntityType;
   isDomainVisible?: boolean;
   isLineageView?: boolean;
+  onOwnerUpdate?: (updatedOwners: any[]) => void;
 };

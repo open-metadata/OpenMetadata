@@ -31,4 +31,5 @@ export interface OwnerLabelProps {
   avatarSize?: number;
   isAssignee?: boolean;
   onEditClick?: () => void;
+  ownerLabelClassName?: string;
 }
