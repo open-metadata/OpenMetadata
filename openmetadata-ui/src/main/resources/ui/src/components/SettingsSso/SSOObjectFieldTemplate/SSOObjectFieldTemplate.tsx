@@ -20,8 +20,8 @@ import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
-import { ADVANCED_PROPERTIES } from '../../constants/Services.constant';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-object-field-template.less';
 
 interface PropertyMap {

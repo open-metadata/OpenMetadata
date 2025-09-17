@@ -20,12 +20,12 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   applySecurityConfiguration,
   validateSecurityConfiguration,
-} from '../../rest/securityConfigAPI';
-import { showErrorToast } from '../../utils/ToastUtils';
+} from '../../../rest/securityConfigAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 
 // Mock dependencies
