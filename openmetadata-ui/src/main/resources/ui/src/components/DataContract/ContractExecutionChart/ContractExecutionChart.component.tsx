@@ -132,15 +132,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
           />
 
           <ResponsiveContainer height="100%" width="100%">
-            <BarChart
-              data={processedChartData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-              width={500}>
+            <BarChart data={processedChartData}>
               <CartesianGrid
                 stroke={GREY_100}
                 strokeDasharray="0"
