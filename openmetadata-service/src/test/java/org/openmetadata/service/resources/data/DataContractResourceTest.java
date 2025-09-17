@@ -1775,17 +1775,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Verify createdBy is always set
     assertNotNull(created.getCreatedBy());
-    assertNotNull(created.getCreatedBy().getId());
-    assertNotNull(created.getCreatedBy().getName());
-    assertEquals("user", created.getCreatedBy().getType());
+    assertEquals("admin", created.getCreatedBy());
 
     // Get with fields parameter to ensure fields are persisted
     DataContract retrieved = getDataContract(created.getId(), "createdBy,createdAt");
     assertNotNull(retrieved.getCreatedAt());
     assertNotNull(retrieved.getCreatedBy());
     assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
-    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
-    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
   }
 
   @Test
@@ -1797,7 +1794,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Store original creation metadata
     Long originalCreatedAt = created.getCreatedAt();
-    EntityReference originalCreatedBy = created.getCreatedBy();
+    String originalCreatedBy = created.getCreatedBy();
 
     // Update the contract
     create.withEntityStatus(EntityStatus.APPROVED).withDescription("Updated description");
@@ -1806,10 +1803,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify creation fields are preserved
     assertNotNull(updated.getCreatedAt());
     assertNotNull(updated.getCreatedBy());
-    // Note: Not comparing exact timestamps due to potential CI environment timing variations
-    assertEquals(originalCreatedBy.getId(), updated.getCreatedBy().getId());
-    assertEquals(originalCreatedBy.getName(), updated.getCreatedBy().getName());
-    assertEquals(originalCreatedBy.getType(), updated.getCreatedBy().getType());
+    assertEquals(originalCreatedAt, updated.getCreatedAt());
+    assertEquals(originalCreatedBy, updated.getCreatedBy());
 
     // Verify updatedAt exists
     assertNotNull(updated.getUpdatedAt());
@@ -1826,7 +1821,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Store original creation metadata
     Long originalCreatedAt = created.getCreatedAt();
-    EntityReference originalCreatedBy = created.getCreatedBy();
+    String originalCreatedBy = created.getCreatedBy();
 
     // Apply patch
     created.setEntityStatus(EntityStatus.APPROVED);
@@ -1836,9 +1831,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Verify creation fields are preserved
     assertEquals(originalCreatedAt, patched.getCreatedAt());
-    assertEquals(originalCreatedBy.getId(), patched.getCreatedBy().getId());
-    assertEquals(originalCreatedBy.getName(), patched.getCreatedBy().getName());
-    assertEquals(originalCreatedBy.getType(), patched.getCreatedBy().getType());
+    assertEquals(originalCreatedBy, patched.getCreatedBy());
 
     // Verify the patch was applied
     assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
@@ -1865,8 +1858,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(retrieved.getCreatedAt());
     assertNotNull(retrieved.getCreatedBy());
     assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
-    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
-    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
 
     // Get by entity ID without fields parameter should still return creation fields (they're audit
     // fields)
@@ -1894,8 +1886,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // createdBy should always be set
     assertNotNull(created.getCreatedBy());
     assertNotNull(retrieved.getCreatedBy());
-    assertEquals(created.getCreatedBy().getId(), retrieved.getCreatedBy().getId());
-    assertEquals(created.getCreatedBy().getName(), retrieved.getCreatedBy().getName());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
   }
 
   // ===================== Business Logic Tests =====================

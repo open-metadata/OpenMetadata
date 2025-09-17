@@ -50,7 +50,7 @@ public class DataContractMapper {
             .withExtension(create.getExtension())
             .withUpdatedBy(user)
             .withUpdatedAt(currentTimeMillis)
-            .withCreatedBy(Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED))
+            .withCreatedBy(user)
             .withCreatedAt(currentTimeMillis);
 
     return dataContract;

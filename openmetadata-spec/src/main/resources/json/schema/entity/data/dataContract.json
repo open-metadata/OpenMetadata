@@ -208,7 +208,7 @@
     },
     "createdBy": {
       "description": "User or Bot who created the data contract.",
-      "$ref": "../../type/entityReference.json"
+      "type": "string"
     },
     "href": {
       "description": "Link to this data contract resource.",
