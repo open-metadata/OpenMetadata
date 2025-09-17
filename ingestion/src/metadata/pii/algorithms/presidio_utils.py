@@ -31,6 +31,17 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 
+def load_nlp_engine(
+    model_name: str = SPACY_EN_MODEL, supported_language: str = SUPPORTED_LANG
+) -> SpacyNlpEngine:
+    _load_spacy_model(model_name)
+    model = {
+        "lang_code": supported_language,
+        "model_name": model_name,
+    }
+    return SpacyNlpEngine(models=[model])
+
+
 def build_analyzer_engine(
     model_name: str = SPACY_EN_MODEL,
 ) -> AnalyzerEngine:
@@ -39,14 +50,9 @@ def build_analyzer_engine(
 
     If the model is not found locally, it will be downloaded.
     """
-    _load_spacy_model(model_name)
-
-    model = {
-        "lang_code": SUPPORTED_LANG,
-        "model_name": model_name,
-    }
-
-    nlp_engine = SpacyNlpEngine(models=[model])
+    nlp_engine = load_nlp_engine(
+        model_name=model_name, supported_language=SUPPORTED_LANG
+    )
     analyzer_engine = AnalyzerEngine(
         nlp_engine=nlp_engine, supported_languages=[SUPPORTED_LANG]
     )
