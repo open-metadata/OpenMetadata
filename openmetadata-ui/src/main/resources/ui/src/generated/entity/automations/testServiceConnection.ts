@@ -62,7 +62,7 @@ export interface TestServiceConnection {
  * Security Connection.
  */
 export interface TestServiceConnectionConnection {
-    config?: ConfigClass;
+    config?: MetabaseConnection;
 }
 
 /**
@@ -287,7 +287,7 @@ export interface TestServiceConnectionConnection {
  *
  * Apache Ranger Connection Config
  */
-export interface ConfigClass {
+export interface MetabaseConnection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -651,7 +651,7 @@ export interface ConfigClass {
      *
      * Password
      *
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -754,8 +754,7 @@ export interface ConfigClass {
      *
      * Username
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -1118,6 +1117,9 @@ export interface ConfigClass {
     tmode?: TransactionMode;
     /**
      * API key to authenticate with the SAP ERP APIs.
+     *
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
      *
      * API key of the redash instance to access.
      *

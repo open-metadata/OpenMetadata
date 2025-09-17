@@ -2718,7 +2718,7 @@ export interface ServiceConnections {
  * Drive Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigClass;
+    config?: MetabaseConnection;
 }
 
 /**
@@ -2949,7 +2949,7 @@ export interface ServiceConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface MetabaseConnection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -3165,7 +3165,25 @@ export interface ConfigClass {
      */
     projectFilterPattern?: FilterPattern;
     /**
-     * Password to connect to Metabase.
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
+     * API key of the redash instance to access.
+     *
+     * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
+     * API key to authenticate with the SAP ERP APIs.
+     *
+     * Fivetran API Secret.
+     */
+    apiKey?: string;
+    /**
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -3229,8 +3247,7 @@ export interface ConfigClass {
      */
     password?: string;
     /**
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -3372,21 +3389,6 @@ export interface ConfigClass {
      * Web Portal Virtual Directory Name.
      */
     webPortalVirtualDirectory?: string;
-    /**
-     * API key of the redash instance to access.
-     *
-     * The personal access token you can generate in the Lightdash app under the user settings
-     *
-     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
-     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
-     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
-     * Admin role for full metadata extraction.
-     *
-     * API key to authenticate with the SAP ERP APIs.
-     *
-     * Fivetran API Secret.
-     */
-    apiKey?: string;
     /**
      * Version of the Redash instance
      */
