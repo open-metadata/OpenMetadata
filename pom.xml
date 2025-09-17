@@ -118,6 +118,7 @@
     <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
+    <handlebars.version>4.3.1</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
@@ -615,6 +616,11 @@
       <artifactId>json-patch</artifactId>
       <version>${json-patch.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.jknack</groupId>
+      <artifactId>handlebars</artifactId>
+      <version>${handlebars.version}</version>
+    </dependency>
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
@@ -953,7 +959,18 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
+              <include>org.openmetadata.service.apps.*.java</include>
+              <include>org.openmetadata.service.cache.*.java</include>
+              <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.governance.*.java</include>
+              <include>org.openmetadata.service.jdbi3.*.java</include>
+              <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.rules.*.java</include>
+              <include>org.openmetadata.service.search.*.java</include>
+              <include>org.openmetadata.service.secrets.*.java</include>
+              <include>org.openmetadata.service.security.*.java</include>
               <include>org.openmetadata.service.util.*.java</include>
               <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>

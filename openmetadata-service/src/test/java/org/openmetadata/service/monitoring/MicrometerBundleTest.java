@@ -40,6 +40,9 @@ public class MicrometerBundleTest {
     when(environment.admin()).thenReturn(adminEnv);
     when(adminEnv.addServlet(anyString(), any(jakarta.servlet.Servlet.class)))
         .thenReturn(servletRegistration);
+
+    // Mock config for all tests
+    when(config.getClusterName()).thenReturn("test-cluster");
   }
 
   @Test
@@ -57,9 +60,6 @@ public class MicrometerBundleTest {
     // Initialize first
     bundle.initialize(bootstrap);
 
-    // Configure application
-    when(config.getClusterName()).thenReturn("test-cluster");
-
     // Run bundle
     bundle.run(config, environment);
 
@@ -70,21 +70,22 @@ public class MicrometerBundleTest {
     // The bundle creates real objects, not mocks, so we can't verify mock calls
     // Instead, verify that the objects were created correctly
     assertTrue(bundle.getPrometheusMeterRegistry().getMeters().size() > 0);
+    verify(jerseyEnv, times(1))
+        .register(any(org.glassfish.jersey.internal.inject.AbstractBinder.class));
   }
 
   @Test
   public void testPrometheusEndpoint() {
     // Initialize and run bundle
     bundle.initialize(bootstrap);
-    when(config.getClusterName()).thenReturn("test-cluster");
     bundle.run(config, environment);
 
     // Get the Prometheus registry
     PrometheusMeterRegistry registry = bundle.getPrometheusMeterRegistry();
 
     // Add some test metrics
-    registry.counter("test.counter", "type", "test").increment();
-    registry.gauge("test.gauge", 42.0);
+    registry.counter("test_counter", "type", "test").increment();
+    registry.gauge("test_gauge", 42.0);
 
     // Scrape metrics
     String metrics = registry.scrape();
@@ -120,6 +121,7 @@ public class MicrometerBundleTest {
     assertTrue(
         bundle.getPrometheusMeterRegistry().getMeters().size() > 0,
         "Should have registered meters");
+    assertTrue(metrics.length() > 1000, "Should have substantial metrics output");
   }
 
   @Test
@@ -137,10 +139,17 @@ public class MicrometerBundleTest {
     omMetrics.recordSearchQuery("test", 10);
     omMetrics.recordAuthenticationAttempt("basic");
 
-    // Verify metrics are recorded
+    // Verify metrics are recorded - the counters should be incremented from their initial 0 values
     String metrics = bundle.getPrometheusMeterRegistry().scrape();
+    // After recording, these counters should show > 0 values
     assertTrue(metrics.contains("entity_operations_total"));
     assertTrue(metrics.contains("search_queries_total"));
     assertTrue(metrics.contains("auth_attempts_total"));
+    // Verify the metrics actually changed from default 0 values
+    assertTrue(
+        !metrics.contains(
+                "entity_operations_total{application=\"openmetadata\",cluster=\"test-cluster\",operation=\"create\",type=\"test\"} 0.0")
+            || metrics.contains(
+                "entity_operations_total{application=\"openmetadata\",cluster=\"test-cluster\",operation=\"create\",type=\"test\"} 1.0"));
   }
 }
