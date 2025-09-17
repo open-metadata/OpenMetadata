@@ -30,7 +30,7 @@ export interface DataContract {
     /**
      * User or Bot who created the data contract.
      */
-    createdBy?: EntityReference;
+    createdBy?: string;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -232,14 +232,12 @@ export interface ContractUpdate {
 }
 
 /**
- * User or Bot who created the data contract.
+ * Reference to the data entity (table, topic, etc.) this contract applies to.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data entity (table, topic, etc.) this contract applies to.
  *
  * Owners of this data contract.
  *
