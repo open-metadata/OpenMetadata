@@ -40,7 +40,7 @@
           "$ref": "../services/securityService.json#/definitions/securityConnection"
         },
         {
-          "$ref": "../services/securityService.json#/definitions/driveConnection"
+          "$ref": "../services/driveService.json#/definitions/driveConnection"
         }
       ]
     },
