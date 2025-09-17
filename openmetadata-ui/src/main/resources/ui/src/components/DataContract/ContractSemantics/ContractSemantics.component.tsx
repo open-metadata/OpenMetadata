@@ -76,7 +76,7 @@ const ContractSemantics: React.FC<{
               entity: t('label.schema'),
             })} :`}</Typography.Text>
             <StatusBadgeV2
-              dataTestId="contract-status-card-item-schema-status"
+              dataTestId="contract-status-card-item-semantics-status"
               label={contractStatus}
               status={getContractStatusType(contractStatus)}
             />

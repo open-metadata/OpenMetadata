@@ -292,12 +292,7 @@ test.describe('Data Contracts', () => {
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
-        page.getByTestId('contract-card-title-container').filter({
-          hasText: 'Contract Status',
-        })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('contract-status-card-item-Semantics-status')
+        page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Failed');
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -315,6 +310,12 @@ test.describe('Data Contracts', () => {
         '/api/v1/dataContracts/*/validate'
       );
 
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
       await page.getByTestId('contract-run-now-button').click();
       await runNowResponse;
 
@@ -331,13 +332,19 @@ test.describe('Data Contracts', () => {
       });
 
       await expect(
-        page.getByTestId('contract-status-card-item-Semantics-status')
+        page.getByTestId('contract-status-card-item-semantic-status')
       ).toContainText('Passed');
     });
 
     await test.step(
       'Add table test case and validate for quality',
       async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
         await page.getByTestId('contract-edit-button').click();
 
         await page.getByRole('tab', { name: 'Quality' }).click();
@@ -483,6 +490,12 @@ test.describe('Data Contracts', () => {
 
         await page.getByTestId('contract').click();
 
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
         await page.getByTestId('contract-edit-button').click();
 
         const qualityResponse = page.waitForResponse(
@@ -536,6 +549,12 @@ test.describe('Data Contracts', () => {
     await test.step('Export YAML', async () => {
       const downloadPromise = page.waitForEvent('download');
 
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
       await page.getByTestId('export-contract-button').click();
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
@@ -543,6 +562,11 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Edit and Validate Contract data', async () => {
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
@@ -625,6 +649,12 @@ test.describe('Data Contracts', () => {
       const deleteContractResponse = page.waitForResponse(
         'api/v1/dataContracts/*?hardDelete=true&recursive=true'
       );
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       await page.getByTestId('delete-contract-button').click();
 
@@ -734,12 +764,7 @@ test.describe('Data Contracts', () => {
         await saveAndTriggerDataContractValidation(page, true);
 
         await expect(
-          page.getByTestId('contract-card-title-container').filter({
-            hasText: 'Contract Status',
-          })
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('contract-status-card-item-Semantics-status')
+          page.getByTestId('contract-status-card-item-semantics-status')
         ).toContainText('Failed');
         await expect(
           page.getByTestId('data-contract-latest-result-btn')
@@ -831,7 +856,7 @@ test.describe('Data Contracts', () => {
       await page.waitForLoadState('networkidle');
 
       // Navigate to Table customization
-      await page.getByText('Data Assets').click();
+      await page.getByTestId('data-assets').getByText('Data Assets').click();
       await page.getByText('Table', { exact: true }).click();
 
       await page.waitForSelector('[data-testid="loader"]', {
@@ -1003,22 +1028,33 @@ test.describe('Data Contracts', () => {
 
         await saveContractResponse;
 
-        // Check all schema from 1 to 50
+        // Check all schema from 1 to 50, and 10 is the max-pagination chip
+        await expect(page.getByTitle('10')).toBeVisible();
+
         for (let i = 1; i <= 50; i++) {
           if (i < 10) {
             await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
           } else {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
           }
-        }
 
-        // Schema from 51 to 75 Should not be visible
-        for (let i = 51; i <= 75; i++) {
-          await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+          // Click "Next Page" after every 5 checks
+          if (i % 5 === 0) {
+            // Schema from 51 to 75 Should not be visible
+            for (let i = 51; i <= 75; i++) {
+              await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+            }
+            await page.getByRole('listitem', { name: 'Next Page' }).click();
+          }
         }
       });
 
       await test.step('Update the Schema and Validate', async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
         await page.getByTestId('contract-edit-button').click();
 
         const columnResponse = page.waitForResponse(
@@ -1055,12 +1091,22 @@ test.describe('Data Contracts', () => {
         // Check all schema from 26 to 50
         for (let i = 26; i <= 50; i++) {
           await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+
+          // Click "Next Page" after every 5 checks
+          if (i % 5 === 0) {
+            await page.getByRole('listitem', { name: 'Next Page' }).click();
+          }
         }
       });
 
       await test.step(
         'Re-select some columns on page 1, save and validate',
         async () => {
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
           await page.getByTestId('contract-edit-button').click();
 
           const columnResponse = page.waitForResponse(
@@ -1095,12 +1141,19 @@ test.describe('Data Contracts', () => {
           });
 
           // Check all schema from 1 to 5 and then, the one we didn't touch 26 to 50
-          for (let i = 1; i <= 5; i++) {
-            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
-          }
-
           for (let i = 26; i <= 50; i++) {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+
+            // Click "Next Page" after every 5 checks
+            if (i % 5 === 0) {
+              await page.getByRole('listitem', { name: 'Next Page' }).click();
+            }
+          }
+
+          await page.getByRole('listitem', { name: 'Next Page' }).click();
+
+          for (let i = 1; i <= 5; i++) {
+            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
           }
         }
       );
@@ -1123,6 +1176,12 @@ test.describe('Data Contracts', () => {
         const deleteContractResponse = page.waitForResponse(
           'api/v1/dataContracts/*?hardDelete=true&recursive=true'
         );
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
 
         await page.getByTestId('delete-contract-button').click();
 
@@ -1254,12 +1313,7 @@ test.describe('Data Contracts', () => {
     await saveAndTriggerDataContractValidation(page, true);
 
     await expect(
-      page.getByTestId('contract-card-title-container').filter({
-        hasText: 'Contract Status',
-      })
-    ).toBeVisible();
-    await expect(
-      page.getByTestId('contract-status-card-item-Semantics-status')
+      page.getByTestId('contract-status-card-item-semantics-status')
     ).toContainText('Failed');
     await expect(
       page.getByTestId('data-contract-latest-result-btn')
@@ -1285,6 +1339,12 @@ test.describe('Data Contracts', () => {
       '/api/v1/dataContracts/*/validate'
     );
 
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+
     await page.getByTestId('contract-run-now-button').click();
     await runNowResponse;
 
@@ -1298,7 +1358,7 @@ test.describe('Data Contracts', () => {
     });
 
     await expect(
-      page.getByTestId('contract-status-card-item-Semantics-status')
+      page.getByTestId('contract-status-card-item-semantics-status')
     ).toContainText('Passed');
   });
 
@@ -1655,6 +1715,11 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Validate Security and SLA Details', async () => {
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
       await validateSecurityAndSLADetails(
         page,
@@ -1669,6 +1734,11 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Validate the updated values Security and SLA Details',
       async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
         await page.getByTestId('contract-edit-button').click();
         await validateSecurityAndSLADetails(
           page,

@@ -47,7 +47,6 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
   downloadContractYamlFile,
   getConstraintStatus,
@@ -57,6 +56,7 @@ import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -287,6 +287,26 @@ const ContractDetail: React.FC<{
               status={StatusType.Success}
             />
           </div>
+
+          <Divider className="self-center vertical-divider" type="vertical" />
+
+          <div
+            className="d-flex items-center"
+            data-testid="contract-owner-card">
+            <Typography.Text
+              className="contract-sub-header-title"
+              data-testid="contract-status-label">
+              {`${t('label.owner-plural')} : `}
+            </Typography.Text>
+
+            <OwnerLabel
+              avatarSize={24}
+              isCompactView={false}
+              maxVisibleOwners={5}
+              owners={contract.owners}
+              showLabel={false}
+            />
+          </div>
         </Col>
       </Row>
     );
@@ -357,27 +377,21 @@ const ContractDetail: React.FC<{
           </Col>
 
           {/* Terms of Use Component */}
-          <Col className="contract-card-items" span={24}>
-            <div className="contract-card-header-container">
-              <Typography.Text className="contract-card-header">
-                {t('label.terms-of-service')}
-              </Typography.Text>
-              <Divider dashed />
-            </div>
+          {!isEmpty(contract.termsOfUse) && (
+            <Col className="contract-card-items" span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.terms-of-service')}
+                </Typography.Text>
+                <Divider dashed />
+              </div>
 
-            {isDescriptionContentEmpty(contract.termsOfUse ?? '') ? (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.terms-of-service'),
-                })}
-              </span>
-            ) : (
               <RichTextEditorPreviewerV1
                 enableSeeMoreVariant
                 markdown={contract.termsOfUse ?? ''}
               />
-            )}
-          </Col>
+            </Col>
+          )}
 
           {/* SLA Component */}
           <ContractSLA contract={contract} />
