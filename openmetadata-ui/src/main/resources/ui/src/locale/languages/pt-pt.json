@@ -1192,6 +1192,7 @@
     "pipeline-state": "Estado do Pipeline",
     "pipeline-type": "Tipo de Pipeline",
     "platform": "Plataforma",
+    "platform-service-client-unavailable": "Cliente do Serviço de Plataforma Indisponível",
     "platform-type-lineage": "{{platformType}} Linhagem",
     "play": "Reproduzir",
     "please-enter-value": "Por favor, insira o valor de {{name}}",
@@ -1558,6 +1559,7 @@
     "support": "Suporte",
     "support-url": "URL de Suporte",
     "supported-language-plural": "Idiomas Suportados",
+    "switch-persona": "Trocar Persona",
     "sync-alert-offset": "Sync Alert",
     "synonym-lowercase-plural": "sinónimos",
     "synonym-plural": "Sinónimos",
@@ -2447,6 +2449,7 @@
     "team-moved-success": "Equipa movida com sucesso!",
     "team-no-asset": "Sua equipa não possui ativos.",
     "test-case-insight-description": "Aceda a uma vista centralizada da saúde do seu conjunto de dados baseada em validações de teste configuradas.",
+    "test-case-name-validation": "O nome não pode conter dois pontos duplos (::), aspas (\") ou símbolos de maior que (>).",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Não é possível acionar o teste de conexão.",
     "test-connection-taking-too-long": {

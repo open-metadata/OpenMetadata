@@ -160,9 +160,9 @@ class MetabaseClient:
                     chart = MetabaseChart.model_validate(chart_data)
                     charts_dict[chart.id] = chart
             return charts_dict
-        except Exception:
+        except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the cards")
+            logger.warning(f"Failed to fetch the cards : {e}")
         return {}
 
     def _create_default_dashboard_details(

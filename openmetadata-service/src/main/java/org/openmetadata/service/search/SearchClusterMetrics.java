@@ -81,8 +81,8 @@ public class SearchClusterMetrics {
 
       Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
       Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
-      long heapUsedBytes = ((Number) mem.get("heap_used_in_bytes")).longValue();
-      long heapMaxBytes = ((Number) mem.get("heap_max_in_bytes")).longValue();
+      long heapUsedBytes = extractLongValue(mem, "heap_used_in_bytes", 512 * 1024 * 1024L);
+      long heapMaxBytes = extractLongValue(mem, "heap_max_in_bytes", 1024 * 1024 * 1024L);
       double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
 
       long maxContentLength = extractMaxContentLength(clusterSettings);
@@ -130,8 +130,8 @@ public class SearchClusterMetrics {
 
       Map<String, Object> jvm = (Map<String, Object>) firstNode.get("jvm");
       Map<String, Object> mem = (Map<String, Object>) jvm.get("mem");
-      long heapUsedBytes = ((Number) mem.get("heap_used_in_bytes")).longValue();
-      long heapMaxBytes = ((Number) mem.get("heap_max_in_bytes")).longValue();
+      long heapUsedBytes = extractLongValue(mem, "heap_used_in_bytes", 512 * 1024 * 1024L);
+      long heapMaxBytes = extractLongValue(mem, "heap_max_in_bytes", 1024 * 1024 * 1024L);
       double memoryUsagePercent = (double) heapUsedBytes / heapMaxBytes * 100;
 
       long maxContentLength = extractMaxContentLength(clusterSettings);
@@ -401,6 +401,15 @@ public class SearchClusterMetrics {
     // Fallback: return default 50% if unable to extract
     LOG.warn("Unable to extract CPU percent from response, using default 50%");
     return 50.0;
+  }
+
+  private static long extractLongValue(Map<String, Object> map, String key, long defaultValue) {
+    Object value = map.get(key);
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    LOG.debug("Unable to extract long value for key '{}', using default: {}", key, defaultValue);
+    return defaultValue;
   }
 
   private static int extractIntValue(Map<String, Object> map, String key, int defaultValue) {

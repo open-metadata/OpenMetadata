@@ -17,7 +17,9 @@ export interface TableTypePropertyEditTableProps {
   columns: Column<Record<string, string>[]>[];
   dataSource: Record<string, string>[];
   handleCopy: (event: CopyEvent<Record<string, string>>) => void;
-  handlePaste: (event: PasteEvent<Record<string, string>>) => void;
+  handlePaste: (
+    event: PasteEvent<Record<string, string>>
+  ) => Record<string, string>;
   handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
   setGridContainer: (container: HTMLElement | null) => void;
 }
