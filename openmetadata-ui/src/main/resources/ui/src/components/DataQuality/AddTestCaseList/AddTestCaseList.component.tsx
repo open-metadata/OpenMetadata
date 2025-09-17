@@ -70,7 +70,9 @@ export const AddTestCaseList = ({
         setIsLoading(true);
 
         const testCaseResponse = await getListTestCaseBySearch({
-          q: filters ? `${searchText} && ${filters}` : searchText,
+          q: filters
+            ? `${searchText || WILD_CARD_CHAR} && ${filters}`
+            : searchText,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
           ...(testCaseParams ?? {}),
