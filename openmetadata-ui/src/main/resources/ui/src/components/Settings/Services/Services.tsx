@@ -20,7 +20,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  DISABLED,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -77,7 +76,7 @@ interface ServicesProps {
 
 const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
-  const { isFetchingStatus, platform } = useAirflowStatus();
+  const { isFetchingStatus } = useAirflowStatus();
 
   const navigate = useNavigate();
   const handleAddServiceClick = () => {
@@ -108,8 +107,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           .join(' OR ')})`
       : undefined;
   }, [serviceTypeFilter]);
-
-  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const searchIndex = useMemo(() => {
     setSearchTerm('');
@@ -493,7 +490,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                     })
                   : NO_PERMISSION_FOR_ACTION
               }>
-              {addServicePermission && !isPlatFormDisabled && (
+              {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
                   <Button
                     className="m-b-xs"

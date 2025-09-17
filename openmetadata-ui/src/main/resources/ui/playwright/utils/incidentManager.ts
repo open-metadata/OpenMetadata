@@ -51,6 +51,13 @@ export const acknowledgeTask = async (data: {
   await page.click('#update-status-button');
   await statusChangeResponse;
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=Ack`);
+  await page.waitForLoadState('networkidle');
+
+  await expect(
+    page.locator(
+      `[data-testid="${testCase}-status"] [data-testid="badge-container"]`
+    )
+  ).toContainText('Ack');
 };
 
 export const assignIncident = async (data: {
@@ -60,6 +67,7 @@ export const assignIncident = async (data: {
 }) => {
   const { testCaseName, page, user } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
   await page.click(
     `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
