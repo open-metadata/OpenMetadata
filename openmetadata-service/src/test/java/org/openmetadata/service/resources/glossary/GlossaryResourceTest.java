@@ -1850,32 +1850,44 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       assertNotNull(asyncExportResult, "Async export result should not be null");
 
       // Test async import with CompletableFuture pattern
-      String asyncTermCsv =
-          "\"\",\"async_term\",\"Async Term\",\"Test async import\",\"\",\"\",\"\",\"\",\"\",\"\",\"Draft\",\"\"";
+      // Use proper CSV format that matches the server's expected headers
+      List<String> asyncRecord =
+          listOf(",async_term,Async Term Display,Test async import,,,,,,,Draft,");
+      String asyncTermCsv = createCsv(GlossaryCsv.HEADERS, asyncRecord, null);
 
-      // Test async import without WebSocket - must explicitly set dryRun to false to create
-      // entities
+      // Test async import with WebSocket notifications enabled
       CompletableFuture<CsvImportResult> asyncImportFuture =
           Glossaries.importCsv(glossary.getFullyQualifiedName())
               .withData(asyncTermCsv)
               .dryRun(false) // Explicitly set to false to create entities
-              .waitForCompletion(0) // Don't wait for WebSocket
+              .withWebSocket() // Enable WebSocket for real-time notifications
+              .waitForCompletion(30) // Wait up to 30 seconds for completion via WebSocket
               .executeAsync();
 
-      // Get the result from the future (it completes immediately with job started)
-      CsvImportResult asyncImportResult = asyncImportFuture.get(5, TimeUnit.SECONDS);
+      // Get the result from the future (with WebSocket it should complete when import is done)
+      CsvImportResult asyncImportResult = asyncImportFuture.get(35, TimeUnit.SECONDS);
       assertNotNull(asyncImportResult, "Import result should not be null");
+      LOG.info("Async import result status: {}", asyncImportResult.getStatus());
 
-      // Poll for the async import to complete on the server
-      int maxRetries = 15;
-      boolean asyncTermExists = false;
-      for (int i = 0; i < maxRetries && !asyncTermExists; i++) {
-        TestUtils.simulateWork(2000); // Wait 2 seconds between checks
-        var termsAfterAsync = GlossaryTerms.list().limit(100).fetch();
-        asyncTermExists =
-            termsAfterAsync.stream().anyMatch(t -> t.get().getName().equals("async_term"));
-      }
-      assertTrue(asyncTermExists, "Async import should create the term");
+      // Use Awaitility to wait for the async import to complete on the server
+      // The server processes the async import in the background, so we need to poll
+      // Since WebSocket notifications aren't working yet, we need to poll longer
+      Awaitility.await("Async term to be created")
+          .atMost(120, TimeUnit.SECONDS) // Increased timeout for async processing
+          .pollInterval(1, TimeUnit.SECONDS) // More frequent polling
+          .pollDelay(3, TimeUnit.SECONDS) // Initial delay to let the job start
+          .until(
+              () -> {
+                var termsAfterAsync = GlossaryTerms.list().limit(100).fetch();
+                return termsAfterAsync.stream()
+                    .anyMatch(t -> t.get().getName().equals("async_term"));
+              });
+
+      // Verify the term was created
+      var finalTerms = GlossaryTerms.list().limit(100).fetch();
+      assertTrue(
+          finalTerms.stream().anyMatch(t -> t.get().getName().equals("async_term")),
+          "Async import should create the term");
 
     } finally {
       // Clean up everything

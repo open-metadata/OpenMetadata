@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -179,20 +177,18 @@ class EntityServiceBaseTest {
 
   @Test
   void testList() {
-    ListResponse<Table> listResponse = new ListResponse<>();
-    List<Table> tables = Arrays.asList(new Table(), new Table());
-    listResponse.setData(tables);
-    // listResponse.setPaging(new Paging());
+    // Create JSON response string that matches what the API would return
+    String jsonResponse =
+        "{\"data\":["
+            + "{\"id\":\"550e8400-e29b-41d4-a716-446655440001\",\"name\":\"table1\",\"fullyQualifiedName\":\"service.database.schema.table1\"},"
+            + "{\"id\":\"550e8400-e29b-41d4-a716-446655440002\",\"name\":\"table2\",\"fullyQualifiedName\":\"service.database.schema.table2\"}"
+            + "],\"paging\":{}}";
 
     ArgumentCaptor<RequestOptions> paramsCaptor = ArgumentCaptor.forClass(RequestOptions.class);
 
-    when(mockHttpClient.execute(
-            eq(HttpMethod.GET),
-            eq("/v1/tables"),
-            isNull(),
-            eq(ListResponse.class),
-            paramsCaptor.capture()))
-        .thenReturn(listResponse);
+    when(mockHttpClient.executeForString(
+            eq(HttpMethod.GET), eq("/v1/tables"), isNull(), paramsCaptor.capture()))
+        .thenReturn(jsonResponse);
 
     ListResponse<Table> result = tableService.list();
 

@@ -311,85 +311,45 @@ public final class Databases {
 
   // ==================== CSV Exporter ====================
 
-  public static class CsvExporter {
-    private final OpenMetadataClient client;
+  public static class CsvExporter
+      extends org.openmetadata.sdk.fluent.common.CsvOperations.BaseCsvExporter {
     private final String databaseName;
-    private boolean async = false;
 
     CsvExporter(OpenMetadataClient client, String databaseName) {
-      this.client = client;
+      super(client, "database");
       this.databaseName = databaseName;
     }
 
-    public CsvExporter async() {
-      this.async = true;
-      return this;
-    }
-
-    public String execute() {
-      if (async) {
-        return client.databases().exportCsvAsync(databaseName);
-      }
+    @Override
+    protected String performSyncExport() {
       return client.databases().exportCsv(databaseName);
     }
 
-    public String toCsv() {
-      return execute();
+    @Override
+    protected String performAsyncExport() {
+      return client.databases().exportCsvAsync(databaseName);
     }
   }
 
   // ==================== CSV Importer ====================
 
-  public static class CsvImporter {
-    private final OpenMetadataClient client;
+  public static class CsvImporter
+      extends org.openmetadata.sdk.fluent.common.CsvOperations.BaseCsvImporter {
     private final String databaseName;
-    private String csvData;
-    private boolean dryRun = false;
-    private boolean async = false;
 
     CsvImporter(OpenMetadataClient client, String databaseName) {
-      this.client = client;
+      super(client, "database");
       this.databaseName = databaseName;
     }
 
-    public CsvImporter withData(String csvData) {
-      this.csvData = csvData;
-      return this;
-    }
-
-    public CsvImporter fromFile(String filePath) {
-      try {
-        this.csvData =
-            new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(filePath)));
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to read CSV file: " + filePath, e);
-      }
-      return this;
-    }
-
-    public CsvImporter dryRun() {
-      this.dryRun = true;
-      return this;
-    }
-
-    public CsvImporter async() {
-      this.async = true;
-      return this;
-    }
-
-    public String execute() {
-      if (csvData == null || csvData.isEmpty()) {
-        throw new IllegalStateException("CSV data not provided. Use withData() or fromFile()");
-      }
-
-      if (async) {
-        return client.databases().importCsvAsync(databaseName, csvData);
-      }
+    @Override
+    protected String performSyncImport() {
       return client.databases().importCsv(databaseName, csvData, dryRun);
     }
 
-    public String apply() {
-      return execute();
+    @Override
+    protected String performAsyncImport() {
+      return client.databases().importCsvAsync(databaseName, csvData, dryRun);
     }
   }
 }

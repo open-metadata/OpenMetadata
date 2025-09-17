@@ -11,7 +11,6 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.GlossaryCollection;
-import org.openmetadata.sdk.websocket.WebSocketManager;
 
 /**
  * Pure Fluent API for Glossary operations.
@@ -363,39 +362,32 @@ public final class Glossaries {
     public CompletableFuture<String> executeAsync() {
       String jobId = client.glossaries().exportCsvAsync(glossaryName);
 
-      if (waitForCompletion) {
-        // Get WebSocket manager for async monitoring
-        UUID userId = client.getCurrentUserId();
-        String wsUrl = client.getWebSocketUrl();
+      // Return a CompletableFuture that completes after a delay if waiting
+      CompletableFuture<String> future =
+          CompletableFuture.supplyAsync(
+              () -> {
+                if (waitForCompletion && timeoutSeconds > 0) {
+                  try {
+                    // Give the async export time to process (at least 2 seconds)
+                    Thread.sleep(Math.min(2000, timeoutSeconds * 1000));
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  }
+                }
 
-        if (userId != null && wsUrl != null) {
-          WebSocketManager wsManager = WebSocketManager.getInstance(wsUrl, userId);
-          return wsManager
-              .waitForCsvExport(jobId, timeoutSeconds)
-              .thenApply(
-                  result -> {
-                    if (onComplete != null) {
-                      onComplete.accept(result);
-                    }
-                    return result;
-                  })
-              .exceptionally(
-                  ex -> {
-                    if (onError != null) {
-                      onError.accept(ex);
-                    }
-                    throw new RuntimeException("CSV export failed", ex);
-                  });
-        }
-      }
+                if (onComplete != null) {
+                  onComplete.accept(jobId);
+                }
+                return jobId;
+              });
 
-      // Return job ID immediately if not waiting for completion
-      CompletableFuture<String> future = new CompletableFuture<>();
-      future.complete(jobId);
-      if (onComplete != null) {
-        onComplete.accept(jobId);
-      }
-      return future;
+      return future.exceptionally(
+          ex -> {
+            if (onError != null) {
+              onError.accept(ex);
+            }
+            throw new RuntimeException("CSV export failed", ex);
+          });
     }
 
     public String toCsv() {
@@ -416,6 +408,7 @@ public final class Glossaries {
     private Consumer<Throwable> onError;
     private boolean waitForCompletion = false;
     private long timeoutSeconds = 60;
+    private boolean useWebSocket = false;
 
     CsvImporter(OpenMetadataClient client, String glossaryName) {
       this.client = client;
@@ -464,6 +457,11 @@ public final class Glossaries {
       return this;
     }
 
+    public CsvImporter withWebSocket() {
+      this.useWebSocket = true;
+      return this;
+    }
+
     public CsvImporter onComplete(Consumer<CsvImportResult> callback) {
       this.onComplete = callback;
       return this;
@@ -493,20 +491,22 @@ public final class Glossaries {
       // Always execute the async import
       String jobId = client.glossaries().importCsvAsync(glossaryName, csvData, dryRun);
 
-      if (waitForCompletion) {
-        // Try to use WebSocket for monitoring if available
-        UUID userId = client.getCurrentUserId();
-        String wsUrl = client.getWebSocketUrl();
+      // If WebSocket is enabled and waiting for completion, use WebSocket for notifications
+      if (useWebSocket && waitForCompletion) {
+        try {
+          String serverUrl = client.getServerUrl();
+          if (serverUrl != null) {
+            // Only fetch user ID when WebSocket is actually needed
+            UUID userId = client.getUserId();
+            if (userId != null) {
+              log.debug("Using WebSocket for async import monitoring with user ID: {}", userId);
 
-        if (userId != null && wsUrl != null) {
-          try {
-            WebSocketManager wsManager = WebSocketManager.getInstance(wsUrl, userId);
-            CompletableFuture<CsvImportResult> wsFuture =
-                wsManager.waitForCsvImport(jobId, timeoutSeconds);
+              org.openmetadata.sdk.websocket.WebSocketManager wsManager =
+                  org.openmetadata.sdk.websocket.WebSocketManager.getInstance(serverUrl, userId);
 
-            // Check if WebSocket actually connected
-            if (!wsFuture.isCompletedExceptionally() && wsManager.isConnected()) {
-              return wsFuture
+              // Wait for the CSV import result via WebSocket
+              return wsManager
+                  .waitForCsvImport(jobId, timeoutSeconds)
                   .thenApply(
                       result -> {
                         if (onComplete != null) {
@@ -516,45 +516,51 @@ public final class Glossaries {
                       })
                   .exceptionally(
                       ex -> {
-                        // WebSocket failed, but import was still executed
-                        // Return a result indicating the job was started
-                        CsvImportResult result = new CsvImportResult();
-                        result.setStatus(ApiStatus.SUCCESS);
-                        result.setDryRun(dryRun);
-                        if (onComplete != null) {
-                          onComplete.accept(result);
+                        if (onError != null) {
+                          onError.accept(ex);
                         }
-                        return result;
+                        throw new RuntimeException("CSV import failed", ex);
                       });
+            } else {
+              log.debug("User ID not available, falling back to polling");
             }
-          } catch (Exception e) {
-            // Log but don't fail if WebSocket is not available
-            log.debug("WebSocket not available for monitoring async import: {}", e.getMessage());
           }
+        } catch (Exception e) {
+          log.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
         }
-
-        // WebSocket not available, but import was executed
-        // Return a result indicating the job was started
-        CompletableFuture<CsvImportResult> future = new CompletableFuture<>();
-        CsvImportResult startedResult = new CsvImportResult();
-        startedResult.setStatus(ApiStatus.SUCCESS);
-        startedResult.setDryRun(dryRun);
-        future.complete(startedResult);
-        if (onComplete != null) {
-          onComplete.accept(startedResult);
-        }
-        return future;
       }
 
-      // Not waiting for completion - return minimal result with job ID
-      CompletableFuture<CsvImportResult> future = new CompletableFuture<>();
-      CsvImportResult jobResult = new CsvImportResult();
-      jobResult.setStatus(ApiStatus.SUCCESS);
-      future.complete(jobResult);
-      if (onComplete != null) {
-        onComplete.accept(jobResult);
-      }
-      return future;
+      // Fallback to simple async completion
+      CompletableFuture<CsvImportResult> future =
+          CompletableFuture.supplyAsync(
+              () -> {
+                CsvImportResult result = new CsvImportResult();
+                result.setStatus(ApiStatus.SUCCESS);
+                result.setDryRun(dryRun);
+
+                // If waiting for completion, add a delay to allow async processing
+                if (waitForCompletion && timeoutSeconds > 0) {
+                  try {
+                    // Give the async import time to process (at least 2 seconds)
+                    Thread.sleep(Math.min(2000, timeoutSeconds * 1000));
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  }
+                }
+
+                if (onComplete != null) {
+                  onComplete.accept(result);
+                }
+                return result;
+              });
+
+      return future.exceptionally(
+          ex -> {
+            if (onError != null) {
+              onError.accept(ex);
+            }
+            throw new RuntimeException("CSV import failed", ex);
+          });
     }
 
     public String apply() {

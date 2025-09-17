@@ -20,7 +20,13 @@ public class WebSocketManager {
   private final Object connectionLock = new Object();
 
   private WebSocketManager(String serverUrl, UUID userId) {
-    this.serverUrl = serverUrl;
+    // Socket.IO needs the base server URL without /api path
+    // If serverUrl ends with /api, remove it
+    if (serverUrl.endsWith("/api")) {
+      this.serverUrl = serverUrl.substring(0, serverUrl.length() - 4);
+    } else {
+      this.serverUrl = serverUrl;
+    }
     this.userId = userId;
   }
 

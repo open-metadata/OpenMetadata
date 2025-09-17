@@ -52,6 +52,7 @@ public class WebSocketListener {
     options.reconnection = false;
     options.timeout = 10000;
 
+    // Connect to the default namespace "/"
     socket = IO.socket(serverUrl, options);
 
     // Setup event handlers
@@ -76,37 +77,63 @@ public class WebSocketListener {
     socket.on(
         Socket.EVENT_CONNECT,
         args -> {
-          log.info("WebSocket connected for user: {}", userId);
+          log.info(
+              "WebSocket connected successfully for user: {} to server: {}", userId, serverUrl);
           connected = true;
         });
 
     socket.on(
         Socket.EVENT_DISCONNECT,
         args -> {
-          log.info("WebSocket disconnected for user: {}", userId);
+          log.info(
+              "WebSocket disconnected for user: {} - reason: {}",
+              userId,
+              args.length > 0 ? args[0] : "unknown");
           connected = false;
         });
 
     socket.on(
         Socket.EVENT_CONNECT_ERROR,
         args -> {
-          log.error("WebSocket connection error: {}", args[0]);
+          String error = args.length > 0 ? args[0].toString() : "unknown error";
+          log.error(
+              "WebSocket connection error for user {} connecting to {}: {}",
+              userId,
+              serverUrl,
+              error);
+          // Log more details about the error
+          if (args[0] instanceof Exception) {
+            log.error("Connection error details:", (Exception) args[0]);
+          }
+        });
+
+    // Log any generic message events for debugging
+    socket.on(
+        "message",
+        args -> {
+          log.debug("Received message event: {}", args.length > 0 ? args[0] : "empty");
         });
 
     // CSV Export handler
     socket.on(CSV_EXPORT_CHANNEL, createJobHandler(CSV_EXPORT_CHANNEL));
+    log.debug("Registered handler for channel: {}", CSV_EXPORT_CHANNEL);
 
     // CSV Import handler
     socket.on(CSV_IMPORT_CHANNEL, createJobHandler(CSV_IMPORT_CHANNEL));
+    log.debug("Registered handler for channel: {}", CSV_IMPORT_CHANNEL);
 
     // Bulk Assets handler
     socket.on(BULK_ASSETS_CHANNEL, createJobHandler(BULK_ASSETS_CHANNEL));
+    log.debug("Registered handler for channel: {}", BULK_ASSETS_CHANNEL);
   }
 
   private Emitter.Listener createJobHandler(String channel) {
     return args -> {
       try {
-        JSONObject message = new JSONObject(args[0].toString());
+        String messageStr = args[0].toString();
+        log.debug("Received message on channel {}: {}", channel, messageStr);
+
+        JSONObject message = new JSONObject(messageStr);
         String jobId = message.getString("jobId");
         String status = message.getString("status");
 
@@ -124,16 +151,20 @@ public class WebSocketListener {
             if (message.has("result")) {
               result.setResult(message.get("result"));
             }
+            log.info("Job {} completed on channel {}", jobId, channel);
             future.complete(result);
             pendingJobs.remove(jobId);
           } else if ("FAILED".equals(status)) {
             String error = message.optString("error", "Operation failed");
             result.setError(error);
+            log.error("Job {} failed on channel {}: {}", jobId, channel, error);
             future.completeExceptionally(new Exception(error));
             pendingJobs.remove(jobId);
           } else if ("STARTED".equals(status)) {
-            log.info("Job {} started on channel {}", jobId, channel);
+            log.debug("Job {} started on channel {}", jobId, channel);
           }
+        } else {
+          log.debug("No pending future found for job {} on channel {}", jobId, channel);
         }
       } catch (Exception e) {
         log.error("Error handling WebSocket message on channel {}: {}", channel, e.getMessage(), e);

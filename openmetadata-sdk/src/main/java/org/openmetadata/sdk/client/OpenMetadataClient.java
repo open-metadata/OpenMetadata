@@ -1,9 +1,13 @@
 package org.openmetadata.sdk.client;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.util.UUID;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
 import org.openmetadata.sdk.services.bots.BotService;
@@ -53,6 +57,7 @@ import org.openmetadata.sdk.services.tests.TestSuiteService;
 public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
+  private UUID cachedUserId = null;
 
   // Data Assets
   private final TableService tables;
@@ -457,6 +462,48 @@ public class OpenMetadataClient {
       // Convert http(s)://host:port/api to ws(s)://host:port
       return serverUrl.replace("https://", "wss://").replace("http://", "ws://");
     }
+    return null;
+  }
+
+  /**
+   * Get the server URL.
+   */
+  public String getServerUrl() {
+    return config.getServerUrl();
+  }
+
+  /**
+   * Get the user ID of the logged-in user.
+   * This is fetched on-demand from the server and cached.
+   * Only called when WebSocket functionality is needed.
+   */
+  public UUID getUserId() {
+    if (cachedUserId != null) {
+      return cachedUserId;
+    }
+
+    try {
+      // Fetch logged-in user info from the server
+      String response =
+          httpClient.executeForString(
+              HttpMethod.GET,
+              "/users/loggedInUser",
+              null,
+              RequestOptions.builder().queryParam("fields", "profile").build());
+
+      // Parse the response to get the user ID
+      JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+
+      if (jsonResponse.has("id")) {
+        String userIdStr = jsonResponse.get("id").getAsString();
+        cachedUserId = UUID.fromString(userIdStr);
+        return cachedUserId;
+      }
+    } catch (Exception e) {
+      // Log but don't fail - WebSocket features will gracefully degrade
+      // Return null if we can't get the user ID
+    }
+
     return null;
   }
 }
