@@ -7,8 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -95,16 +93,21 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       // Use existing LdapAuthenticator logic
       JwtResponse jwtResponse = authenticator.loginUser(loginRequest);
 
-      // Store refresh token in session (server-side)
       HttpSession session = req.getSession(true);
-      session.setAttribute(SESSION_REFRESH_TOKEN, jwtResponse.getRefreshToken());
+      if (jwtResponse.getRefreshToken() != null) {
+        session.setAttribute(SESSION_REFRESH_TOKEN, jwtResponse.getRefreshToken());
+      }
       session.setAttribute(SESSION_USER_ID, loginRequest.getEmail());
 
-      // Redirect to auth callback with access token (unified pattern like SAML)
-      String redirectUri = req.getParameter("redirectUri");
-      String idToken = URLEncoder.encode(jwtResponse.getAccessToken(), StandardCharsets.UTF_8);
-      String callbackUrl = String.format("%s?id_token=%s", redirectUri, idToken);
-      resp.sendRedirect(callbackUrl);
+      JwtResponse responseToClient = new JwtResponse();
+      responseToClient.setAccessToken(jwtResponse.getAccessToken());
+      responseToClient.setTokenType(jwtResponse.getTokenType());
+      responseToClient.setExpiryDuration(jwtResponse.getExpiryDuration());
+      responseToClient.setRefreshToken(null);
+
+      resp.setStatus(HttpServletResponse.SC_OK);
+      resp.setContentType("application/json");
+      writeJsonResponse(resp, JsonUtils.pojoToJson(responseToClient));
 
     } catch (Exception e) {
       LOG.error("Error handling LDAP login", e);
