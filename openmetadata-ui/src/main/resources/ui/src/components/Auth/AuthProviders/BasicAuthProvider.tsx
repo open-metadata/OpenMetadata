@@ -15,7 +15,10 @@ import { AxiosError } from 'axios';
 import { createContext, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
+import {
+  HTTP_STATUS_CODE,
+  LOGIN_FAILED_ERROR,
+} from '../../../constants/Auth.constants';
 import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
@@ -26,16 +29,21 @@ import {
   logoutUser,
   resetPassword,
 } from '../../../rest/auth-API';
+import { getBase64EncodedString } from '../../../utils/CommonUtils';
 import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
 } from '../../../utils/ToastUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
+import { toLower } from 'lodash';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
   getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
@@ -74,35 +82,43 @@ export const BasicAuthContext = createContext<InitialContext>(initialContext);
 const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { handleSuccessfulLogout } = useAuthProvider();
+  const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
+    useAuthProvider();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      await basicAuthSignIn({
-        email,
-        password,
-      });
-    } catch (error) {
-      const err = error as Error;
+      try {
+        const response = await basicAuthSignIn({
+          email,
+          password: getBase64EncodedString(password),
+        });
 
-      // Check if it's a network error (CORS or connection issue)
-      if (
-        err.message === 'Failed to fetch' ||
-        err.message === 'Network Error'
-      ) {
-        // Try direct navigation as fallback
-        showErrorToast('Network error. Please check your connection.');
-      } else {
-        // Parse error message if it's JSON
-        try {
-          const errorObj = JSON.parse(err.message);
-          showErrorToast(
-            errorObj.error || errorObj.message || 'Authentication failed'
-          );
-        } catch {
-          showErrorToast(err.message || 'Authentication failed');
+        if (response.accessToken) {
+          await setRefreshToken(response.refreshToken);
+          await setOidcToken(response.accessToken);
+
+          handleSuccessfulLogin({
+            id_token: response.accessToken,
+            profile: {
+              email: toLower(email),
+              name: '',
+              picture: '',
+              sub: '',
+            },
+            scope: '',
+          });
         }
+
+        // reset web analytic session
+        resetWebAnalyticSession();
+      } catch (error) {
+        const err = error as AxiosError<{ code: number; message: string }>;
+
+        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
+        handleFailedLogin();
       }
+    } catch (err) {
+      showErrorToast(err as AxiosError, t('server.unauthorized-user'));
     }
   };
 

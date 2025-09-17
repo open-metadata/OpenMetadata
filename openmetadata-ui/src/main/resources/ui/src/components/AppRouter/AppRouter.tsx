@@ -22,7 +22,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
 import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import AuthCallback from '../../pages/SamlCallback';
+import SamlCallback from '../../pages/SamlCallback';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
@@ -105,9 +105,11 @@ const AppRouter = () => {
         }
         path={ROUTES.SIGNUP}
       />
-      {/* Unified auth callback for all authentication methods (Basic, OAuth, SAML) */}
-      <Route element={<AuthCallback />} path={ROUTES.SAML_CALLBACK} />
-      <Route element={<AuthCallback />} path={ROUTES.AUTH_CALLBACK} />
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in,
+       * the callbacks should be available. This ensures consistent behavior across different authentication scenarios.
+       */}
+      <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
+      <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
       {isAuthenticated ? (
         <Route element={<AppContainer />} path="*" />
       ) : (
