@@ -427,8 +427,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getIndexName(clusterAlias)),
+          "Failed to create aliases for index {} due to",
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }

@@ -365,10 +365,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
+      LOG.error("Failed to create aliases for {} due to", indexMapping.getAlias(clusterAlias), e);
     }
   }
 
