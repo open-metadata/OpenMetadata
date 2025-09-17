@@ -206,7 +206,7 @@ class RequestLatencyContextTest {
   void testRequestWithSearchOperations() {
     String endpoint = "/api/v1/search/query";
 
-    RequestLatencyContext.startRequest(endpoint);
+    RequestLatencyContext.startRequest(endpoint, "GET");
     simulateWork(10); // Reduce internal time to 10ms (was 20ms)
 
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
