@@ -1743,31 +1743,86 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void patch_TestCaseResultFailure(TestInfo test) throws HttpResponseException {
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    // Create a table owned by USER_TABLE_OWNER to test owner permissions
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("ownerAuthTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)))
+            .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase = createRequest(test);
+    createTestCase
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")))
+        .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    TestCase testCaseEntity = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
     CreateTestCaseResolutionStatus createTestCaseFailureStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
             .withSeverity(Severity.Severity2)
             .withTestCaseResolutionStatusDetails(null);
+
+    // Test 1: Admin can create incident status
     TestCaseResolutionStatus testCaseFailureStatus =
         createTestCaseFailureStatus(createTestCaseFailureStatus);
+
+    // Test 2: USER_TABLE_OWNER (owner with EDIT_TESTS via isOwner() policy) can patch
     String original = JsonUtils.pojoToJson(testCaseFailureStatus);
     String updated =
         JsonUtils.pojoToJson(
             testCaseFailureStatus
                 .withUpdatedAt(System.currentTimeMillis())
-                .withUpdatedBy(USER1_REF)
+                .withUpdatedBy(USER_TABLE_OWNER.getEntityReference())
                 .withSeverity(Severity.Severity1));
     JsonNode patch = TestUtils.getJsonPatch(original, updated);
     TestCaseResolutionStatus patched =
-        patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch);
+        patchTestCaseResultFailureStatus(
+            testCaseFailureStatus.getId(), patch, authHeaders(USER_TABLE_OWNER.getName()));
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
 
     // check our patch fields have been updated
     assertEquals(patched.getUpdatedAt(), stored.getUpdatedAt());
     assertEquals(patched.getUpdatedBy(), stored.getUpdatedBy());
-    assertEquals(patched.getSeverity(), stored.getSeverity());
+    assertEquals(Severity.Severity1, stored.getSeverity());
+
+    // Test 3: USER_NO_PERMISSIONS cannot patch (not owner, no EDIT_ALL)
+    String updatedForNoPerms =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_NO_PERMISSIONS.getEntityReference())
+                .withSeverity(Severity.Severity3));
+    JsonNode patchForNoPerms =
+        TestUtils.getJsonPatch(JsonUtils.pojoToJson(stored), updatedForNoPerms);
+    assertResponse(
+        () ->
+            patchTestCaseResultFailureStatus(
+                stored.getId(), patchForNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        "does not have");
+
+    // Test 4: CREATE_ALL_OPS_USER (with EDIT_ALL on TEST_CASE) can patch even if not owner
+    String updatedForAllOps =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
+                .withSeverity(Severity.Severity4));
+    JsonNode patchForAllOps =
+        TestUtils.getJsonPatch(JsonUtils.pojoToJson(stored), updatedForAllOps);
+    TestCaseResolutionStatus patchedByAllOps =
+        patchTestCaseResultFailureStatus(
+            stored.getId(), patchForAllOps, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertEquals(Severity.Severity4, patchedByAllOps.getSeverity());
   }
 
   @Test
@@ -2136,6 +2191,117 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       MessageParser.EntityLink.parse(t.getEntityLink());
                   return entityLink.getFieldName() == null; // should be empty for table test cases
                 }));
+  }
+
+  @Test
+  void test_ownerCanUpdateIncidentStatus(TestInfo test)
+      throws HttpResponseException, ParseException {
+    // Create a table owned by USER1
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("ownerTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)))
+            .withOwners(List.of(USER1_REF));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for the table
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")))
+        .withOwners(List.of(USER1_REF));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // USER1 (owner) should be able to create an incident status
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+
+    // This should succeed because USER1 is the owner
+    TestCaseResolutionStatus incident =
+        createTestCaseFailureStatus(createIncident, authHeaders(USER1_REF.getName()));
+    assertNotNull(incident);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, incident.getTestCaseResolutionStatusType());
+
+    // USER1 should also be able to update the incident status
+    String original = JsonUtils.pojoToJson(incident);
+    String updated =
+        JsonUtils.pojoToJson(
+            incident
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER1_REF)
+                .withSeverity(Severity.Severity1));
+    JsonNode patch = TestUtils.getJsonPatch(original, updated);
+    TestCaseResolutionStatus patched =
+        patchTestCaseResultFailureStatus(incident.getId(), patch, authHeaders(USER1_REF.getName()));
+    assertEquals(Severity.Severity1, patched.getSeverity());
+  }
+
+  @Test
+  void test_nonOwnerWithEditAllPermissionCanUpdateIncidentStatus(TestInfo test)
+      throws HttpResponseException, ParseException {
+    // Create a table owned by USER2
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("nonOwnerTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)))
+            .withOwners(List.of(USER2_REF));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for the table
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")))
+        .withOwners(List.of(USER2_REF));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Admin (with EDIT_ALL permission) should be able to create an incident status
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER2_REF));
+
+    // Admin has EDIT_ALL permission, so this should succeed
+    TestCaseResolutionStatus incident =
+        createTestCaseFailureStatus(createIncident, ADMIN_AUTH_HEADERS);
+    assertNotNull(incident);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, incident.getTestCaseResolutionStatusType());
   }
 
   @Test
@@ -3653,19 +3819,27 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private TestCaseResolutionStatus createTestCaseFailureStatus(
       CreateTestCaseResolutionStatus createTestCaseFailureStatus) throws HttpResponseException {
+    return createTestCaseFailureStatus(createTestCaseFailureStatus, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus createTestCaseFailureStatus(
+      CreateTestCaseResolutionStatus createTestCaseFailureStatus, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
     return TestUtils.post(
-        target,
-        createTestCaseFailureStatus,
-        TestCaseResolutionStatus.class,
-        200,
-        ADMIN_AUTH_HEADERS);
+        target, createTestCaseFailureStatus, TestCaseResolutionStatus.class, 200, authHeaders);
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
       UUID testCaseFailureStatusId, JsonNode patch) throws HttpResponseException {
+    return patchTestCaseResultFailureStatus(testCaseFailureStatusId, patch, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
+      UUID testCaseFailureStatusId, JsonNode patch, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
-    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, authHeaders);
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatus(UUID testCaseFailureStatusId)

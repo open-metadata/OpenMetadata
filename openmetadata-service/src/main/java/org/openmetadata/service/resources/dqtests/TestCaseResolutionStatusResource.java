@@ -256,17 +256,23 @@ public class TestCaseResolutionStatusResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCaseResolutionStatus createTestCaseResolutionStatus) {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    OperationContext entityOperationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
 
     List<AuthRequest> requests =
         List.of(
-            new AuthRequest(entityOperationContext, entityResourceContext),
-            new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+            new AuthRequest(
+                new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS),
+                entityResourceContext),
+            new AuthRequest(
+                new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL),
+                entityResourceContext),
+            new AuthRequest(
+                new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+                testCaseResourceContext),
+            new AuthRequest(
+                new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+                testCaseResourceContext));
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCaseResolutionStatus testCaseResolutionStatus =
@@ -305,10 +311,18 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+                testCaseResourceContext),
+            new AuthRequest(
+                new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+                testCaseResourceContext));
+
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
     return response.toResponse();
