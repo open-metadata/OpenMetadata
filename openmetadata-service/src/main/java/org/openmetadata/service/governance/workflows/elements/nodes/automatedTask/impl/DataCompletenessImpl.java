@@ -28,8 +28,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class DataCompletenessImpl implements JavaDelegate {
   private Expression fieldsToCheckExpr;
   private Expression qualityBandsExpr;
-  private Expression treatEmptyStringAsNullExpr;
-  private Expression treatEmptyArrayAsNullExpr;
   private Expression inputNamespaceMapExpr;
 
   @Override
@@ -50,11 +48,6 @@ public class DataCompletenessImpl implements JavaDelegate {
         band.setMinimumScore(((Number) bandMap.get("minimumScore")).doubleValue());
         qualityBands.add(band);
       }
-      boolean treatEmptyStringAsNull =
-          Boolean.parseBoolean(treatEmptyStringAsNullExpr.getValue(execution).toString());
-      boolean treatEmptyArrayAsNull =
-          Boolean.parseBoolean(treatEmptyArrayAsNullExpr.getValue(execution).toString());
-
       // Get the entity
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
@@ -66,13 +59,7 @@ public class DataCompletenessImpl implements JavaDelegate {
       Map<String, Object> entityMap = JsonUtils.getMap(entity);
 
       // Calculate completeness
-      DataCompletenessResult result =
-          calculateCompleteness(
-              entityMap,
-              fieldsToCheck,
-              qualityBands,
-              treatEmptyStringAsNull,
-              treatEmptyArrayAsNull);
+      DataCompletenessResult result = calculateCompleteness(entityMap, fieldsToCheck, qualityBands);
 
       // Set output variables
       varHandler.setNodeVariable("completenessScore", result.score);
@@ -104,11 +91,7 @@ public class DataCompletenessImpl implements JavaDelegate {
   }
 
   private DataCompletenessResult calculateCompleteness(
-      Map<String, Object> entityMap,
-      List<String> fieldsToCheck,
-      List<QualityBand> qualityBands,
-      boolean treatEmptyStringAsNull,
-      boolean treatEmptyArrayAsNull) {
+      Map<String, Object> entityMap, List<String> fieldsToCheck, List<QualityBand> qualityBands) {
 
     DataCompletenessResult result = new DataCompletenessResult();
     result.missingFields = new ArrayList<>();
@@ -118,9 +101,7 @@ public class DataCompletenessImpl implements JavaDelegate {
     int totalFieldsFilled = 0;
 
     for (String fieldPath : fieldsToCheck) {
-      FieldCompletenessInfo fieldInfo =
-          evaluateFieldCompleteness(
-              entityMap, fieldPath, treatEmptyStringAsNull, treatEmptyArrayAsNull);
+      FieldCompletenessInfo fieldInfo = evaluateFieldCompleteness(entityMap, fieldPath);
 
       totalFieldsToCheck += fieldInfo.totalCount;
       totalFieldsFilled += fieldInfo.filledCount;
@@ -161,10 +142,7 @@ public class DataCompletenessImpl implements JavaDelegate {
    * - "reviewers" - auto-detects it's an array and checks non-empty
    */
   private FieldCompletenessInfo evaluateFieldCompleteness(
-      Map<String, Object> entityMap,
-      String fieldPath,
-      boolean treatEmptyStringAsNull,
-      boolean treatEmptyArrayAsNull) {
+      Map<String, Object> entityMap, String fieldPath) {
 
     FieldCompletenessInfo info = new FieldCompletenessInfo();
 
@@ -182,7 +160,7 @@ public class DataCompletenessImpl implements JavaDelegate {
         if (arrayList.isEmpty()) {
           // Empty array - no items to check
           info.totalCount = 1;
-          info.filledCount = treatEmptyArrayAsNull ? 0 : 1;
+          info.filledCount = 0; // Empty arrays are considered missing
         } else {
           // Check the nested field in each array element
           String nestedPath = fieldPath.substring(parts[0].length() + 1);
@@ -191,7 +169,7 @@ public class DataCompletenessImpl implements JavaDelegate {
           for (Object item : arrayList) {
             if (item instanceof Map) {
               Object nestedValue = getNestedValue((Map<String, Object>) item, nestedPath);
-              if (isFieldFilled(nestedValue, treatEmptyStringAsNull, treatEmptyArrayAsNull)) {
+              if (isFieldFilled(nestedValue)) {
                 info.filledCount++;
               }
             }
@@ -204,10 +182,9 @@ public class DataCompletenessImpl implements JavaDelegate {
         // Smart detection for the nested value
         if (value instanceof List) {
           List<?> list = (List<?>) value;
-          info.filledCount = treatEmptyArrayAsNull ? (!list.isEmpty() ? 1 : 0) : 1;
+          info.filledCount = !list.isEmpty() ? 1 : 0; // Empty arrays are considered missing
         } else {
-          info.filledCount =
-              isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull) ? 1 : 0;
+          info.filledCount = isFieldFilled(value) ? 1 : 0;
         }
       }
     } else {
@@ -218,10 +195,9 @@ public class DataCompletenessImpl implements JavaDelegate {
       // Smart detection: if it's an array, check for non-empty
       if (value instanceof List) {
         List<?> list = (List<?>) value;
-        info.filledCount = treatEmptyArrayAsNull ? (!list.isEmpty() ? 1 : 0) : 1;
+        info.filledCount = !list.isEmpty() ? 1 : 0; // Empty arrays are considered missing
       } else {
-        info.filledCount =
-            isFieldFilled(value, treatEmptyStringAsNull, treatEmptyArrayAsNull) ? 1 : 0;
+        info.filledCount = isFieldFilled(value) ? 1 : 0;
       }
     }
 
@@ -254,8 +230,7 @@ public class DataCompletenessImpl implements JavaDelegate {
     return current;
   }
 
-  private boolean isFieldFilled(
-      Object value, boolean treatEmptyStringAsNull, boolean treatEmptyArrayAsNull) {
+  private boolean isFieldFilled(Object value) {
 
     if (value == null) {
       return false;
@@ -263,12 +238,12 @@ public class DataCompletenessImpl implements JavaDelegate {
 
     if (value instanceof String) {
       String str = (String) value;
-      return treatEmptyStringAsNull ? !str.trim().isEmpty() : true;
+      return !str.trim().isEmpty(); // Empty strings are considered missing
     }
 
     if (value instanceof List) {
       List<?> list = (List<?>) value;
-      return treatEmptyArrayAsNull ? !list.isEmpty() : true;
+      return !list.isEmpty(); // Empty arrays are considered missing
     }
 
     if (value instanceof Map) {

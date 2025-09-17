@@ -64,8 +64,6 @@ public class DataCompletenessTask implements NodeInterface {
 
     // Get configuration with defaults if null
     var config = nodeDefinition.getConfig();
-    Boolean treatEmptyStringAsNull = config.getTreatEmptyStringAsNull();
-    Boolean treatEmptyArrayAsNull = config.getTreatEmptyArrayAsNull();
 
     List<FieldExtension> fieldExtensions =
         List.of(
@@ -76,16 +74,6 @@ public class DataCompletenessTask implements NodeInterface {
             new FieldExtensionBuilder()
                 .fieldName("qualityBandsExpr")
                 .fieldValue(JsonUtils.pojoToJson(config.getQualityBands()))
-                .build(),
-            new FieldExtensionBuilder()
-                .fieldName("treatEmptyStringAsNullExpr")
-                .fieldValue(
-                    String.valueOf(treatEmptyStringAsNull != null ? treatEmptyStringAsNull : true))
-                .build(),
-            new FieldExtensionBuilder()
-                .fieldName("treatEmptyArrayAsNullExpr")
-                .fieldValue(
-                    String.valueOf(treatEmptyArrayAsNull != null ? treatEmptyArrayAsNull : true))
                 .build(),
             new FieldExtensionBuilder()
                 .fieldName("inputNamespaceMapExpr")

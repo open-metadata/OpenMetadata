@@ -82,18 +82,6 @@
           ],
           "minItems": 1
         },
-        "treatEmptyStringAsNull": {
-          "title": "Treat Empty String as Missing",
-          "description": "Consider empty strings ('') as missing values",
-          "type": "boolean",
-          "default": true
-        },
-        "treatEmptyArrayAsNull": {
-          "title": "Treat Empty Array as Missing",
-          "description": "Consider empty arrays ([]) as missing values",
-          "type": "boolean",
-          "default": true
-        }
       },
       "required": ["fieldsToCheck"],
       "additionalProperties": false

@@ -532,9 +532,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             ],
             "fieldsToCheck": [
               "columns.description"
-            ],
-            "treatEmptyArrayAsNull": true,
-            "treatEmptyStringAsNull": true
+            ]
           },
           "input": [
             "relatedEntity"
