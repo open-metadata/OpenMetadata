@@ -21,6 +21,11 @@
       "type": "string",
       "default": ""
     },
+    "script": {
+      "description": "Optional script to apply on the terms aggregation.",
+      "type": "string",
+      "default": ""
+    },
     "fieldValue": {
       "description": "Filter value for the aggregation include clause.",
       "type": "string",
