@@ -1029,9 +1029,7 @@ test.describe('Glossary tests', () => {
 
       await selectActiveGlossary(page, glossary2.data.displayName);
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
+      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
       // verify the term is moved to the destination glossary
       await page.getByTestId('expand-collapse-all-button').click();
       await termRes;
@@ -1244,9 +1242,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
+      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
       await page.getByTestId('expand-collapse-all-button').click();
       await termRes;
 
@@ -1440,9 +1436,7 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
+      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
       await page.getByTestId('expand-collapse-all-button').click();
       await termRes;
 
