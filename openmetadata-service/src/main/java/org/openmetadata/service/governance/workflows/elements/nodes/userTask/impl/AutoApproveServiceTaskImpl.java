@@ -24,9 +24,9 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
         "Auto-approving task in process instance {} due to no assignees/reviewers configured.",
         execution.getProcessInstanceId());
 
-    // Set the result variable to true (approved)
+    // Set the result variable to true (approved) in the proper namespace
     // This mimics what happens when a user approves the task
-    execution.setVariable("result", true);
+    varHandler.setNodeVariable("result", true);
 
     // Log for audit trail
     execution.setVariable("autoApproved", true);

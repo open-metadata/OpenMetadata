@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,8 @@ import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
+
+  private static final String USER_APPROVAL_TASK = "userApprovalTask";
 
   public WorkflowDefinitionRepository() {
     super(
@@ -409,7 +412,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   private void validateUserTasksForReviewerSupport(WorkflowDefinition workflowDefinition) {
     // Check if workflow has any user approval or change review tasks
     boolean hasUserApprovalTasks = false;
-    List<String> userTaskTypes = List.of("userApprovalTask", "changeReviewTask");
+    List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
 
     if (workflowDefinition.getNodes() != null) {
       for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
@@ -493,10 +496,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       Map<String, List<String>> reverseAdjacency,
       Map<String, WorkflowNodeDefinitionInterface> nodeMap) {
     Set<String> visited = new java.util.HashSet<>();
-    java.util.Queue<String> queue = new java.util.LinkedList<>();
+    Queue<String> queue = new java.util.LinkedList<>();
     queue.add(nodeId);
 
-    List<String> userTaskTypes = List.of("userApprovalTask", "changeReviewTask");
+    List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
 
     // BFS traversal backwards through the workflow
     while (!queue.isEmpty()) {
