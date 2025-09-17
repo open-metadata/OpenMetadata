@@ -125,7 +125,10 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   return (
     <Row>
       <Col span={24}>
-        <Typography className="array-field-label">
+        <Typography
+          className={`array-field-label ${
+            props.required ? 'required-field' : ''
+          }`}>
           {startCase(props.name)}
         </Typography>
       </Col>
