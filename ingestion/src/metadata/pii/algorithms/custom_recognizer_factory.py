@@ -14,20 +14,16 @@ Factory for creating Presidio recognizers from OpenMetadata recognizer configura
 import re
 from typing import Dict, List, Optional
 
-from presidio_analyzer import (
-    EntityRecognizer,
-    Pattern,
-    PatternRecognizer,
-    predefined_recognizers,
-)
+from presidio_analyzer import EntityRecognizer
+from presidio_analyzer import Pattern as PresidioPattern
+from presidio_analyzer import PatternRecognizer as PresidioPatternRecognizer
+from presidio_analyzer import predefined_recognizers
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
 from metadata.generated.schema.type.customRecognizer import CustomRecognizer
 from metadata.generated.schema.type.denyListRecognizer import DenyListRecognizer
-from metadata.generated.schema.type.patternRecognizer import (
-    PatternRecognizer as PatternRecognizerConfig,
-)
+from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
 from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.recognizer import Recognizer
 from metadata.utils.logger import pii_logger
@@ -55,7 +51,7 @@ class CustomRecognizerFactory:
         if not recognizer_config.enabled:
             return None
 
-        config = recognizer_config.recognizerConfig
+        config = recognizer_config.recognizerConfig.root
 
         if isinstance(config, PatternRecognizer):
             return CustomRecognizerFactory._create_pattern_recognizer(
@@ -83,25 +79,25 @@ class CustomRecognizerFactory:
 
     @staticmethod
     def _create_pattern_recognizer(
-        config: PatternRecognizerConfig,
+        config: PatternRecognizer,
         recognizer_config: Recognizer,
         tag_name: str,
-    ) -> PatternRecognizer:
+    ) -> PresidioPatternRecognizer:
         """Create a pattern-based recognizer."""
         patterns = []
         for pattern_config in config.patterns:
             patterns.append(
-                Pattern(
+                PresidioPattern(
                     name=pattern_config.name,
                     regex=pattern_config.regex,
                     score=pattern_config.score or 0.8,
                 )
             )
 
-        return PatternRecognizer(
+        return PresidioPatternRecognizer(
             supported_entity=config.supportedEntity.value,
             patterns=patterns,
-            name=recognizer_config.name,
+            name=str(recognizer_config.name),
             supported_language=recognizer_config.supportedLanguages[0]
             if recognizer_config.supportedLanguages
             else "en",
@@ -110,7 +106,7 @@ class CustomRecognizerFactory:
     @staticmethod
     def _create_deny_list_recognizer(
         config: DenyListRecognizer, recognizer_config: Recognizer, tag_name: str
-    ) -> PatternRecognizer:
+    ) -> PresidioPatternRecognizer:
         """Create a deny list recognizer using patterns."""
         patterns = []
         for value in config.denyList:
@@ -122,17 +118,17 @@ class CustomRecognizerFactory:
                 pattern_regex = f"(?i)\\b{escaped_value}\\b"
 
             patterns.append(
-                Pattern(
+                PresidioPattern(
                     name=f"deny_{value}",
                     regex=pattern_regex,
                     score=0.9,  # High confidence for exact matches
                 )
             )
 
-        return PatternRecognizer(
+        return PresidioPatternRecognizer(
             supported_entity=config.supportedEntity.value,
             patterns=patterns,
-            name=recognizer_config.name,
+            name=str(recognizer_config.name),
             supported_language=recognizer_config.supportedLanguages[0]
             if recognizer_config.supportedLanguages
             else "en",
@@ -141,7 +137,7 @@ class CustomRecognizerFactory:
     @staticmethod
     def _create_context_recognizer(
         config: ContextRecognizer, recognizer_config: Recognizer, tag_name: str
-    ) -> EntityRecognizer:
+    ) -> PresidioPatternRecognizer:
         """Create a context-aware recognizer."""
         # For context recognizers, we can use a pattern recognizer with context words
         # or implement a custom recognizer that uses NLP
@@ -152,7 +148,7 @@ class CustomRecognizerFactory:
             # Pattern to match words near context words
             pattern = f"(?i)(?:{context_word})\\s+\\w+|\\w+\\s+(?:{context_word})"
             context_patterns.append(
-                Pattern(
+                PresidioPattern(
                     name=f"context_{context_word}",
                     regex=pattern,
                     score=(config.minScore + config.maxScore) / 2
@@ -161,10 +157,10 @@ class CustomRecognizerFactory:
                 )
             )
 
-        return PatternRecognizer(
+        return PresidioPatternRecognizer(
             supported_entity=config.supportedEntity.value,
             patterns=context_patterns,
-            name=recognizer_config.name,
+            name=str(recognizer_config.name),
             supported_language=recognizer_config.supportedLanguages[0]
             if recognizer_config.supportedLanguages
             else "en",
@@ -194,7 +190,7 @@ class CustomRecognizerFactory:
         """Create a custom recognizer with user-defined logic."""
         try:
             return getattr(predefined_recognizers, config.name.value)
-        except AttributeError as err:
+        except AttributeError:
             logger.error(f"Recognizer {config.name} not found")
             return None
 
