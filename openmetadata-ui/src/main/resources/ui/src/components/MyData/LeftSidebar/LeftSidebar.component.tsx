@@ -83,7 +83,7 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
-  const { plugins } = useApplicationsProvider();
+  const { plugins = [] } = useApplicationsProvider();
 
   const pluginSidebarActions = useMemo(() => {
     return plugins
