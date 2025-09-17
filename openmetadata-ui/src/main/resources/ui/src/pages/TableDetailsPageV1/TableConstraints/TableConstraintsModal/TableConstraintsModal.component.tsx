@@ -78,7 +78,7 @@ const TableConstraintsModal = ({
         tableDetails?.service?.name ?? ''
       );
       const data = await searchQuery({
-        query: value ? `*${encodedValue}*` : '',
+        query: value,
         searchIndex: SearchIndex.TABLE,
         queryFilter: value
           ? {

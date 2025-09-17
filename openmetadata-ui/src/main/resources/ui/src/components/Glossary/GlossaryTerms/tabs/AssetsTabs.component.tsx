@@ -77,6 +77,7 @@ import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import { getQueryFilterForDataProduct } from '../../../../utils/DomainUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -201,23 +202,65 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return '';
+          return {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'domains.fullyQualifiedName': encodedFqn,
+                    },
+                  },
+                ],
+              },
+            },
+          };
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
+          return getQueryFilterForDataProduct(encodedFqn);
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${getEncodedFqn(
-            escapeESReservedCharacters(fqn)
-          )}")`;
+          return {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'owners.fullyQualifiedName': getEncodedFqn(
+                        escapeESReservedCharacters(fqn)
+                      ),
+                    },
+                  },
+                ],
+              },
+            },
+          };
 
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
-          return queryFilter ?? '';
+          return queryFilter ?? undefined;
+
+        case AssetsOfEntity.GLOSSARY:
+          return {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'tags.tagFQN': encodedFqn,
+                    },
+                  },
+                ],
+              },
+            },
+          };
+
+        case AssetsOfEntity.TAG:
+          return getTagAssetsQueryFilter(encodedFqn);
 
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, fqn, entityFqn]);
+    }, [type, entityFqn]);
 
     const fetchAssets = useCallback(
       async ({
@@ -227,18 +270,26 @@ const AssetsTabs = forwardRef(
       }: {
         index?: SearchIndex[];
         page?: number;
-        queryFilter?: Record<string, unknown>;
+        queryFilter?: QueryFilterInterface;
       }) => {
         try {
           setIsLoading(true);
+
+          // Merge queryParam (entity-specific filter) with queryFilter (quick filters)
+          // If no quickFilter, just use the entity filter (queryParam)
+          const finalQueryFilter = queryFilter
+            ? getCombinedQueryFilterObject(
+                queryParam as unknown as QueryFilterInterface,
+                queryFilter as QueryFilterInterface
+              )
+            : queryParam;
 
           const res = await searchQuery({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
-            filters: queryParam as string,
-            queryFilter: queryFilter,
+            queryFilter: finalQueryFilter as Record<string, unknown>,
           });
           const hits = res.hits.hits as SearchedDataProps['data'];
           handlePagingChange({ total: res.hits.total.value ?? 0 });
@@ -709,17 +760,12 @@ const AssetsTabs = forwardRef(
     ]);
 
     useEffect(() => {
-      const newFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface
-      );
-
       fetchAssets({
         index: [SearchIndex.ALL],
         page: currentPage,
-        queryFilter: newFilter,
+        queryFilter: quickFilterQuery,
       });
-    }, [currentPage, pageSize, searchValue, queryFilter, quickFilterQuery]);
+    }, [fetchAssets, currentPage, quickFilterQuery]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -762,18 +808,13 @@ const AssetsTabs = forwardRef(
         // Reset page to one and trigger fetchAssets
         handlePageChange(1);
 
-        const newFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface
-        );
-
-        // If current page is already 1 it won't trigger fetchAset from useEffect
+        // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
-            queryFilter: newFilter,
+            queryFilter: quickFilterQuery,
           });
       },
       closeSummaryPanel() {

@@ -46,7 +46,10 @@ import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import {
+  getQueryFilterForDataProduct,
+  getQueryFilterToIncludeDomain,
+} from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
@@ -186,22 +189,16 @@ const DataProductsDetailsPage = ({
   }, [dataProductPermission, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
-    if (dataProduct) {
+    const fqn = dataProduct?.fullyQualifiedName || dataProductFqn;
+    if (fqn) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
-        );
+        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(fqn));
+        const queryFilter = getQueryFilterForDataProduct(encodedFqn);
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: {
-            query: {
-              term: {
-                'dataProducts.fullyQualifiedName': encodedFqn,
-              },
-            },
-          },
+          queryFilter,
           searchIndex: SearchIndex.ALL,
         });
 
@@ -429,7 +426,9 @@ const DataProductsDetailsPage = ({
                     children: (
                       <AssetsTabs
                         assetCount={assetCount}
-                        entityFqn={dataProduct.fullyQualifiedName}
+                        entityFqn={
+                          dataProduct.fullyQualifiedName || dataProductFqn
+                        }
                         isSummaryPanelOpen={false}
                         permissions={dataProductPermission}
                         ref={assetTabRef}

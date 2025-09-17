@@ -176,6 +176,20 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
   },
 });
 
+export const getQueryFilterForDataProduct = (dataProductFqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            'dataProducts.fullyQualifiedName': dataProductFqn,
+          },
+        },
+      ],
+    },
+  },
+});
+
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
   <Space direction="vertical" size="middle">

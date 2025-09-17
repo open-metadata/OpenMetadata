@@ -61,6 +61,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import axiosClient from '../../../rest';
 import { getDomainList } from '../../../rest/domainAPI';
 import {
@@ -479,8 +480,15 @@ export const AuthProvider = ({
         }
 
         // Parse and update the query parameter
-        const queryParams = Qs.parse(config.url.split('?')[1]);
-        // Escape special characters for exact matching
+        const urlParams = config.url.includes('?')
+          ? Qs.parse(config.url.split('?')[1])
+          : {};
+        const queryParams = { ...urlParams, ...config.params };
+
+        if (config.url.includes('?')) {
+          config.url = config.url.split('?')[0];
+        }
+
         const domainStatement = escapeESReservedCharacters(activeDomain);
 
         // Create domain filter using term query for exact matching
@@ -490,28 +498,51 @@ export const AuthProvider = ({
           },
         };
 
-        // Move domain filter to proper queryFilter structure
-        if (queryParams.query_filter) {
-          // Merge with existing query_filter
-          const existingFilter = JSON.parse(queryParams.query_filter as string);
-          queryParams.query_filter = JSON.stringify({
-            query: {
-              bool: {
-                must: [existingFilter.query || existingFilter, domainFilter],
-              },
+        const createDomainFilter = () => ({
+          query: domainFilter,
+        });
+
+        const mergeWithDomainFilter = (
+          existingMust: QueryFilterInterface[]
+        ) => ({
+          query: {
+            bool: {
+              must: [...existingMust, domainFilter],
             },
-          });
+          },
+        });
+
+        if (queryParams.query_filter) {
+          try {
+            const existingFilter = JSON.parse(
+              queryParams.query_filter as string
+            );
+            const existingQuery = existingFilter.query || existingFilter;
+
+            if (
+              existingQuery?.bool?.must &&
+              Array.isArray(existingQuery.bool.must)
+            ) {
+              queryParams.query_filter = JSON.stringify(
+                mergeWithDomainFilter(existingQuery.bool.must)
+              );
+            } else if (existingQuery && typeof existingQuery === 'object') {
+              queryParams.query_filter = JSON.stringify(
+                mergeWithDomainFilter([existingQuery])
+              );
+            } else {
+              queryParams.query_filter = JSON.stringify(createDomainFilter());
+            }
+          } catch (error) {
+            queryParams.query_filter = JSON.stringify(createDomainFilter());
+          }
         } else {
-          // Create new query_filter with proper structure
-          queryParams.query_filter = JSON.stringify({
-            query: domainFilter,
-          });
+          queryParams.query_filter = JSON.stringify(createDomainFilter());
         }
 
-        // Don't clear the q parameter - let it contain search text only
-
-        // Update the URL with the modified query parameter
-        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
+        config.params = {
+          ...queryParams,
+        };
       } else {
         config.params = {
           ...config.params,

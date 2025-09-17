@@ -135,7 +135,7 @@ export const UserTab = ({
   const searchUsers = (text: string, currentPage: number) => {
     setIsLoading(true);
     searchQuery({
-      query: text ? `*${text}*` : '*',
+      query: text,
       pageNumber: currentPage,
       pageSize,
       queryFilter: {
