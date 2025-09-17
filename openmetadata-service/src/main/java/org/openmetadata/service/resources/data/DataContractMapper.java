@@ -27,7 +27,6 @@ public class DataContractMapper {
     EntityReference entity = create.getEntity();
 
     // Build basic fields
-    long currentTimeMillis = System.currentTimeMillis();
     DataContract dataContract =
         new DataContract()
             .withId(UUID.randomUUID())
@@ -49,9 +48,7 @@ public class DataContractMapper {
             .withSla(create.getSla())
             .withExtension(create.getExtension())
             .withUpdatedBy(user)
-            .withUpdatedAt(currentTimeMillis)
-            .withCreatedBy(user)
-            .withCreatedAt(currentTimeMillis);
+            .withUpdatedAt(System.currentTimeMillis());
 
     return dataContract;
   }
