@@ -119,7 +119,7 @@ const ContractSLA: React.FC<{
         <Typography.Text className="contract-card-header">
           {t('label.service-level-agreement')}
         </Typography.Text>
-        <Divider dashed />
+        <Divider className="contract-dash-separator" />
       </div>
 
       <div className="sla-item-container">

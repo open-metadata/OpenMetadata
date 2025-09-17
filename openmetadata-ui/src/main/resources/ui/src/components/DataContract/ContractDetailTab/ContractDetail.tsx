@@ -367,7 +367,7 @@ const ContractDetail: React.FC<{
               <Typography.Text className="contract-card-header">
                 {t('label.description')}
               </Typography.Text>
-              <Divider dashed />
+              <Divider className="contract-dash-separator" />
             </div>
 
             <RichTextEditorPreviewerV1
@@ -383,7 +383,7 @@ const ContractDetail: React.FC<{
                 <Typography.Text className="contract-card-header">
                   {t('label.terms-of-service')}
                 </Typography.Text>
-                <Divider dashed />
+                <Divider className="contract-dash-separator" />
               </div>
 
               <RichTextEditorPreviewerV1
@@ -406,7 +406,7 @@ const ContractDetail: React.FC<{
                 <Typography.Text className="contract-card-header">
                   {t('label.schema')}
                 </Typography.Text>
-                <Divider dashed />
+                <Divider className="contract-dash-separator" />
               </div>
 
               <ContractSchemaTable
@@ -426,7 +426,7 @@ const ContractDetail: React.FC<{
                 <Typography.Text className="contract-card-header">
                   {t('label.semantic-plural')}
                 </Typography.Text>
-                <Divider dashed />
+                <Divider className="contract-dash-separator" />
               </div>
 
               <ContractSemantics
@@ -447,7 +447,7 @@ const ContractDetail: React.FC<{
                 <Typography.Text className="contract-card-header">
                   {t('label.quality')}
                 </Typography.Text>
-                <Divider dashed />
+                <Divider className="contract-dash-separator" />
               </div>
 
               <ContractQualityCard
@@ -467,7 +467,7 @@ const ContractDetail: React.FC<{
                 <Typography.Text className="contract-card-header">
                   {t('label.execution-history')}
                 </Typography.Text>
-                <Divider dashed />
+                <Divider className="contract-dash-separator" />
               </div>
 
               <ContractExecutionChart contract={contract} />
