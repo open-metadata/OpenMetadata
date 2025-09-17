@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.events;
 
+import static jakarta.ws.rs.client.Entity.entity;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
@@ -27,8 +28,10 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -43,6 +46,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ProviderType;
@@ -52,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class NotificationTemplateResourceTest
@@ -198,12 +204,12 @@ public class NotificationTemplateResourceTest
     return template;
   }
 
-  private Response resetTemplate(UUID id, Map<String, String> authHeaders) {
+  public final Response resetTemplate(UUID id, Map<String, String> authHeaders) {
     WebTarget target = getResource(id).path("reset");
     return SecurityUtil.addHeaders(target, authHeaders).put(null);
   }
 
-  private Response resetTemplateByName(String fqn, Map<String, String> authHeaders) {
+  public final Response resetTemplateByName(String fqn, Map<String, String> authHeaders) {
     WebTarget target = getResourceByName(fqn).path("reset");
     return SecurityUtil.addHeaders(target, authHeaders).put(null);
   }
@@ -219,6 +225,18 @@ public class NotificationTemplateResourceTest
     } catch (HttpResponseException e) {
       return null;
     }
+  }
+
+  public final NotificationTemplateValidationResponse validateTemplate(
+      NotificationTemplateValidationRequest request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/validate");
+    return TestUtils.post(
+        target,
+        request,
+        NotificationTemplateValidationResponse.class,
+        OK.getStatusCode(),
+        authHeaders);
   }
 
   @Test
@@ -239,8 +257,10 @@ public class NotificationTemplateResourceTest
     CreateNotificationTemplate create =
         createRequest(getEntityName(test)).withTemplateBody("{{#if entity.name}} Missing end if");
 
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid template syntax");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid template: Template body: Template validation failed");
   }
 
   @Test
@@ -298,7 +318,7 @@ public class NotificationTemplateResourceTest
         createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
     String invalidTemplateBody = "{{#each items}} Missing end each";
-    assertResponse(
+    assertResponseContains(
         () -> {
           String json =
               String.format(
@@ -307,7 +327,7 @@ public class NotificationTemplateResourceTest
           patchEntity(template.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
         },
         BAD_REQUEST,
-        "Invalid template syntax");
+        "Invalid template: Template body: Template validation failed");
   }
 
   @Test
@@ -733,5 +753,89 @@ public class NotificationTemplateResourceTest
     // Attempt to reset non-existent template
     Response resetResponse = resetTemplateByName("non-existent-template", ADMIN_AUTH_HEADERS);
     assertEquals(NOT_FOUND.getStatusCode(), resetResponse.getStatus());
+  }
+
+  @Test
+  void test_validateTemplate_200_validTemplateWithCustomHelpers() throws HttpResponseException {
+    // Test complex template with custom helpers that should validate successfully
+    String complexTemplate =
+        "{{#if entity.owner}}"
+            + "<p>Owner: {{entity.owner.name}}</p>"
+            + "{{else}}"
+            + "<p>No owner assigned</p>"
+            + "{{/if}}"
+            + "{{#each entity.tags as |tag|}}"
+            + "<span class='tag'>{{tag.tagFQN}}</span>"
+            + "{{/each}}"
+            + "{{joinList entity.columns 'name' ', '}}"
+            + "{{formatDate entity.updatedAt 'yyyy-MM-dd'}}";
+
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody(complexTemplate)
+            .withTemplateSubject(
+                "Entity {{entity.name}} Update - {{formatDate entity.updatedAt 'yyyy-MM-dd'}}");
+
+    NotificationTemplateValidationResponse validationResponse =
+        validateTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(validationResponse.getTemplateBody());
+    assertTrue(validationResponse.getTemplateBody().getPassed());
+    assertNotNull(validationResponse.getTemplateSubject());
+    assertTrue(validationResponse.getTemplateSubject().getPassed());
+  }
+
+  @Test
+  void test_validateTemplate_200_invalidSyntax() throws HttpResponseException {
+    // Test invalid template syntax - should return 200 with validation errors
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{#if entity.name}} Missing end if tag")
+            .withTemplateSubject("{{#each items}} Missing end each");
+
+    NotificationTemplateValidationResponse validationResponse =
+        validateTemplate(request, ADMIN_AUTH_HEADERS);
+
+    // Template body should fail validation
+    assertNotNull(validationResponse.getTemplateBody());
+    assertFalse(validationResponse.getTemplateBody().getPassed());
+    assertNotNull(validationResponse.getTemplateBody().getError());
+    assertTrue(
+        validationResponse.getTemplateBody().getError().contains("Template validation failed"));
+
+    // Template subject should also fail validation
+    assertNotNull(validationResponse.getTemplateSubject());
+    assertFalse(validationResponse.getTemplateSubject().getPassed());
+    assertNotNull(validationResponse.getTemplateSubject().getError());
+    assertTrue(
+        validationResponse.getTemplateSubject().getError().contains("Template validation failed"));
+  }
+
+  @Test
+  void test_validateTemplate_401_unauthorized() {
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{entity.name}} template")
+            .withTemplateSubject("Valid Subject");
+
+    // Use empty headers (no authorization) - should fail with 401 Unauthorized
+    WebTarget target = getCollection().path("/validate");
+    Response response = target.request().post(entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(401, response.getStatus());
+  }
+
+  @Test
+  void test_validateTemplate_403_forbidden() {
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{entity.name}} template")
+            .withTemplateSubject("Valid Subject");
+
+    // Use TEST_AUTH_HEADERS which typically has limited permissions
+    WebTarget target = getCollection().path("/validate");
+    Response response =
+        SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
+            .post(entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
   }
 }

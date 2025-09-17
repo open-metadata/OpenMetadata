@@ -13,28 +13,32 @@
 
 package org.openmetadata.service.jdbi3;
 
-import com.github.jknack.handlebars.Handlebars;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
+import org.openmetadata.service.template.NotificationTemplateProcessor;
+import org.openmetadata.service.template.handlebars.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.SeedDataPathResolver;
-import org.openmetadata.service.util.handlebars.HandlebarsFactory;
 
 @Slf4j
 public class NotificationTemplateRepository extends EntityRepository<NotificationTemplate> {
 
   static final String PATCH_FIELDS = "templateBody,templateSubject";
   static final String UPDATE_FIELDS = "templateBody,templateSubject";
+
+  private final NotificationTemplateProcessor templateProcessor;
 
   public NotificationTemplateRepository() {
     super(
@@ -44,6 +48,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
         Entity.getCollectionDAO().notificationTemplateDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+
+    // Initialize template processor
+    this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
   }
 
   @Override
@@ -54,8 +61,29 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
   @Override
   public void prepare(NotificationTemplate entity, boolean update) {
+    // Validate template if body is present
     if (entity.getTemplateBody() != null) {
-      validateTemplateBody(entity.getTemplateBody());
+      NotificationTemplateValidationRequest request = new NotificationTemplateValidationRequest();
+      request.setTemplateBody(entity.getTemplateBody());
+      request.setTemplateSubject(entity.getTemplateSubject());
+
+      NotificationTemplateValidationResponse response = templateProcessor.validate(request);
+
+      // Check for validation errors
+      StringBuilder errors = new StringBuilder();
+      if (response.getTemplateBody() != null && !response.getTemplateBody().getPassed()) {
+        errors.append("Template body: ").append(response.getTemplateBody().getError());
+      }
+      if (response.getTemplateSubject() != null && !response.getTemplateSubject().getPassed()) {
+        if (errors.length() > 0) {
+          errors.append("; ");
+        }
+        errors.append("Template subject: ").append(response.getTemplateSubject().getError());
+      }
+
+      if (errors.length() > 0) {
+        throw new IllegalArgumentException("Invalid template: " + errors);
+      }
     }
   }
 
@@ -158,13 +186,16 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     }
   }
 
-  private void validateTemplateBody(String templateBody) {
-    try {
-      Handlebars handlebars = HandlebarsFactory.create();
-      handlebars.compileInline(templateBody);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid template syntax");
-    }
+  /**
+   * Validates a template without saving it.
+   * Called by the REST endpoint for validation.
+   *
+   * @param request The validation request
+   * @return The validation response
+   */
+  public NotificationTemplateValidationResponse validate(
+      NotificationTemplateValidationRequest request) {
+    return templateProcessor.validate(request);
   }
 
   private String calculateTemplateChecksum(NotificationTemplate template) {

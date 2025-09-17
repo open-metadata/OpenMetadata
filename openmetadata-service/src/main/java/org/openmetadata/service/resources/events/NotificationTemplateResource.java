@@ -47,6 +47,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -61,6 +63,8 @@ import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
@@ -604,5 +608,51 @@ public class NotificationTemplateResource
 
     repository.resetToDefault(fqn);
     return Response.ok().build();
+  }
+
+  @POST
+  @Path("/validate")
+  @Operation(
+      operationId = "validateNotificationTemplate",
+      summary = "Validate a notification template",
+      description =
+          "Validates the syntax and structure of a notification template without saving it. "
+              + "Requires CREATE or EDIT_ALL permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(implementation = NotificationTemplateValidationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - CREATE or EDIT_ALL permission required")
+      })
+  public Response validateTemplate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid NotificationTemplateValidationRequest request) {
+
+    // Create authorization requests for CREATE or EDIT_ALL permissions
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.CREATE), getResourceContext()),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+                getResourceContext()));
+
+    // Use ANY logic - user needs either CREATE or EDIT_ALL permission
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    // Delegate to repository for validation
+    NotificationTemplateValidationResponse response = repository.validate(request);
+
+    return Response.ok(response).build();
   }
 }
