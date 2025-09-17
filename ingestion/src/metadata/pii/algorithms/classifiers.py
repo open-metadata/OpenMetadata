@@ -27,8 +27,15 @@ from typing import (
     final,
 )
 
-from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer import (
+    AnalyzerEngine,
+    EntityRecognizer,
+    RecognizerRegistry,
+    RecognizerResult,
+)
+from presidio_analyzer.nlp_engine import NlpEngine
 
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
@@ -44,10 +51,14 @@ from metadata.pii.algorithms.presidio_patches import (
     url_patcher,
 )
 from metadata.pii.algorithms.presidio_utils import (
+    TagRecognizers,
     build_analyzer_engine,
+    get_recognizers_for_tag,
+    load_nlp_engine,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
+from metadata.pii.constants import SUPPORTED_LANG
 
 T = TypeVar("T", bound=Hashable)
 
@@ -176,5 +187,115 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
         for tag in results:
             if counts[tag] > 0:
                 results[tag] /= counts[tag]
+
+        return results
+
+
+@final
+class TagClassifier(ColumnClassifier[str]):
+    """
+    Heuristic PII Column Classifier
+    """
+
+    def __init__(
+        self,
+        *,
+        available_tags: list[Tag],
+        column_name_contribution: float = 0.5,
+        score_cutoff: float = 0.1,
+        relative_cardinality_cutoff: float = 0.01,
+        nlp_engine: Optional[NlpEngine] = None,
+    ):
+        set_presidio_logger_level()
+
+        self._available_tags = available_tags
+        self._tags_to_recognizers: dict[str, TagRecognizers] = {
+            tag.fullyQualifiedName: get_recognizers_for_tag(tag)
+            for tag in self._available_tags
+        }
+        self._nlp_engine = nlp_engine or load_nlp_engine()
+
+        self._column_name_contribution = column_name_contribution
+        self._score_cutoff = score_cutoff
+        self._relative_cardinality_cutoff = relative_cardinality_cutoff
+
+    def content_recognizers_for(self, tag: Tag) -> list[EntityRecognizer]:
+        return self._tags_to_recognizers[tag.fullyQualifiedName]["content_recognizers"]
+
+    def column_recognizers_for(self, tag: Tag) -> list[EntityRecognizer]:
+        return self._tags_to_recognizers[tag.fullyQualifiedName]["column_recognizers"]
+
+    def build_analyzer_with(
+        self, recognizers: list[EntityRecognizer]
+    ) -> AnalyzerEngine:
+        recognizer_registry = RecognizerRegistry(recognizers=recognizers)
+        return AnalyzerEngine(
+            registry=recognizer_registry,
+            nlp_engine=self._nlp_engine,
+            supported_languages=[SUPPORTED_LANG],
+        )
+
+    def analyze_content(
+        self, column_name: Optional[str], values: Sequence[str], tag: Tag
+    ) -> float:
+        context = split_column_name(column_name) if column_name else None
+        analyzer = self.build_analyzer_with(self.content_recognizers_for(tag))
+
+        results: list[RecognizerResult] = []
+        for value in values:
+            results.extend(
+                analyzer.analyze(value, language=SUPPORTED_LANG, context=context)
+            )
+
+        if not results:
+            return 0.0
+
+        score = sum(r.score for r in results) / len(results)
+        return max(0.0, score)
+
+    def analyze_column(self, column_name: str, tag: Tag) -> float:
+        analyzer = self.build_analyzer_with(self.column_recognizers_for(tag))
+        results = analyzer.analyze(column_name, language=SUPPORTED_LANG)
+
+        if not results:
+            return 0.0
+
+        score = sum(r.score for r in results) / len(results)
+        return max(0.0, score)
+
+    def predict_scores(
+        self,
+        sample_data: Sequence[Any],
+        column_name: Optional[str] = None,
+        column_data_type: Optional[DataType] = None,
+    ) -> Mapping[str, float]:
+        str_values = preprocess_values(sample_data)
+
+        if not str_values:
+            return {}
+
+        # Relative cardinality test
+        unique_values = set(str_values)
+        if len(unique_values) / len(str_values) < self._relative_cardinality_cutoff:
+            return {}
+
+        results: dict[str, float] = defaultdict(float)
+        for tag in self._available_tags:
+            content_score = self.analyze_content(
+                column_name=column_name,
+                values=str_values,
+                tag=tag,
+            )
+            column_score = 0.0
+            if column_name is not None:
+                column_score = self.analyze_column(
+                    column_name=column_name,
+                    tag=tag,
+                )
+                column_score *= max(column_score, self._column_name_contribution)
+
+            total_score = content_score + column_score
+            if total_score > self._score_cutoff:
+                results[tag.fullyQualifiedName] = content_score + column_score
 
         return results
