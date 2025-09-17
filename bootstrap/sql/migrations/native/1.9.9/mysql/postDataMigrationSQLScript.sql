@@ -1,13 +1,13 @@
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_pdts_entityFQNHash ON profiler_data_time_series(entityFQNHash);
-CREATE INDEX IF NOT EXISTS idx_pdts_extension ON profiler_data_time_series(extension);
-CREATE INDEX IF NOT EXISTS idx_te_fqnHash ON table_entity(fqnHash);
+CREATE INDEX idx_pdts_entityFQNHash ON profiler_data_time_series(entityFQNHash);
+CREATE INDEX idx_pdts_extension ON profiler_data_time_series(extension);
+CREATE INDEX idx_te_fqnHash ON table_entity(fqnHash);
 
 -- Add prefix index for LIKE queries (service.database.schema.table = 4 MD5 hashes + 3 dots = 132 chars)
-CREATE INDEX IF NOT EXISTS idx_pdts_entityFQNHash_prefix ON profiler_data_time_series(entityFQNHash(132));
+CREATE INDEX idx_pdts_entityFQNHash_prefix ON profiler_data_time_series(entityFQNHash(132));
 
 -- Add composite index for better join performance
-CREATE INDEX IF NOT EXISTS idx_pdts_composite ON profiler_data_time_series(extension, entityFQNHash);
+CREATE INDEX idx_pdts_composite ON profiler_data_time_series(extension, entityFQNHash);
 
 -- Analyze tables for query optimizer (MySQL 8.0+)
 ANALYZE TABLE profiler_data_time_series;
@@ -86,11 +86,11 @@ WHERE pdts.extension = 'table.columnProfile';
 DROP TEMPORARY TABLE IF EXISTS column_to_table_mapping;
 
 -- Drop temporary indexes after migration
-DROP INDEX IF EXISTS idx_pdts_entityFQNHash ON profiler_data_time_series;
-DROP INDEX IF EXISTS idx_pdts_entityFQNHash_prefix ON profiler_data_time_series;
-DROP INDEX IF EXISTS idx_pdts_extension ON profiler_data_time_series;
-DROP INDEX IF EXISTS idx_te_fqnHash ON table_entity;
-DROP INDEX IF EXISTS idx_pdts_composite ON profiler_data_time_series;
+DROP INDEX idx_pdts_entityFQNHash ON profiler_data_time_series;
+DROP INDEX idx_pdts_entityFQNHash_prefix ON profiler_data_time_series;
+DROP INDEX idx_pdts_extension ON profiler_data_time_series;
+DROP INDEX idx_te_fqnHash ON table_entity;
+DROP INDEX idx_pdts_composite ON profiler_data_time_series;
 
 -- Analyze tables after migration for updated statistics
 ANALYZE TABLE profiler_data_time_series;
