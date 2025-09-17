@@ -55,7 +55,7 @@ describe('GlobalSettingsUtils', () => {
 
     it('should return DATABASE for EntityType.DATABASE', () => {
       expect(getSettingOptionByEntityType(EntityType.DATABASE)).toBe(
-        GlobalSettingOptions.DATABASE
+        GlobalSettingOptions.DATABASES
       );
     });
 
@@ -170,7 +170,7 @@ describe('GlobalSettingsUtils', () => {
         },
         {
           entity: EntityType.DATABASE,
-          option: GlobalSettingOptions.DATABASE,
+          option: GlobalSettingOptions.DATABASES,
         },
         {
           entity: EntityType.DATABASE_SCHEMA,
