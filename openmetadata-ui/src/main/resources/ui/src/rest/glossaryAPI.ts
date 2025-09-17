@@ -356,6 +356,26 @@ export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
 };
 
+export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit: 100000,
+    },
+  });
+
+  return data;
+};
+
 export const getFirstLevelGlossaryTermsPaginated = async (
   parentFQN: string,
   pageSize = 50,
