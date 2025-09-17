@@ -17,8 +17,8 @@ import { swTokenStorage } from './SwTokenStorage';
 const mockSendMessageToServiceWorker = jest.fn();
 
 jest.mock('./SwMessenger', () => ({
-  sendMessageToServiceWorker: (...args: any[]) =>
-    mockSendMessageToServiceWorker(...args),
+  sendMessageToServiceWorker: (message: unknown) =>
+    mockSendMessageToServiceWorker(message),
 }));
 
 describe('SwTokenStorage', () => {
