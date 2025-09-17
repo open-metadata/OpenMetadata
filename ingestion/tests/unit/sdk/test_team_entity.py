@@ -9,7 +9,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.entity.teams.team import Team as TeamEntity
 from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.team import Team
+from metadata.sdk.entities.teams import Teams
 
 
 class TestTeamEntity(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_team
 
         # Act
-        result = Team.create(create_request)
+        result = Teams.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.team_id)
@@ -65,7 +65,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id)
+        result = Teams.retrieve(self.team_id)
 
         # Assert
         self.assertEqual(str(result.id), self.team_id)
@@ -100,7 +100,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id, fields=fields)
+        result = Teams.retrieve(self.team_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.users)
@@ -122,7 +122,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_team
 
         # Act
-        result = Team.retrieve_by_name(self.team_fqn)
+        result = Teams.retrieve_by_name(self.team_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.team_fqn)
@@ -141,7 +141,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = team_to_update
 
         # Act
-        result = Team.update(self.team_id, team_to_update)
+        result = Teams.update(team_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated Data Engineering team")
@@ -162,7 +162,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_team
 
         # Act
-        result = Team.patch(self.team_id, json_patch)
+        result = Teams.patch(self.team_id, json_patch)
 
         # Assert
         self.assertEqual(result.userCount, 2)
@@ -173,7 +173,7 @@ class TestTeamEntity(unittest.TestCase):
     def test_delete_team(self):
         """Test deleting a team"""
         # Act
-        Team.delete(self.team_id, recursive=False, hard_delete=False)
+        Teams.delete(self.team_id, recursive=False, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -207,7 +207,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id, fields=["parents", "children"])
+        result = Teams.retrieve(self.team_id, fields=["parents", "children"])
 
         # Assert
         self.assertIsNotNone(result.parents)
@@ -236,7 +236,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id, fields=["defaultRoles"])
+        result = Teams.retrieve(self.team_id, fields=["defaultRoles"])
 
         # Assert
         self.assertIsNotNone(result.defaultRoles)
@@ -264,7 +264,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id, fields=["owns"])
+        result = Teams.retrieve(self.team_id, fields=["owns"])
 
         # Assert
         self.assertIsNotNone(result.owns)
@@ -288,11 +288,11 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Team.list(fields=["users", "owns", "defaultRoles"])
+        result = Teams.list(fields=["users", "owns", "defaultRoles"])
 
         # Assert
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].name, "team1")
+        self.assertEqual(len(result.entities), 3)
+        self.assertEqual(result.entities[0].name, "team1")
         self.mock_ometa.list_entities.assert_called_once()
 
     def test_team_with_profile(self):
@@ -309,7 +309,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_team
 
         # Act
-        result = Team.retrieve(self.team_id, fields=["profile"])
+        result = Teams.retrieve(self.team_id, fields=["profile"])
 
         # Assert
         self.assertIsNotNone(result.profile)

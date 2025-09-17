@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Metric as MetricEntity
 from metadata.generated.schema.entity.data.metric import MetricGranularity, MetricType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.metric import Metric
+from metadata.sdk.entities.metrics import Metrics
 
 
 class TestMetricEntity(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_metric
 
-        result = Metric.create(create_request)
+        result = Metrics.create(create_request)
 
         self.assertEqual(str(result.id), self.metric_id)
         self.assertEqual(result.name, "revenue_metric")
@@ -58,7 +58,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_metric
 
-        result = Metric.retrieve(self.metric_id)
+        result = Metrics.retrieve(self.metric_id)
 
         self.assertEqual(str(result.id), self.metric_id)
         self.assertIsNotNone(result.metricExpression)
@@ -89,7 +89,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_metric
 
-        result = Metric.retrieve(self.metric_id, fields=fields)
+        result = Metrics.retrieve(self.metric_id, fields=fields)
 
         self.assertIsNotNone(result.owner)
         self.assertEqual(result.owner.name, "analytics-team")
@@ -104,7 +104,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_metric
 
-        result = Metric.retrieve_by_name(self.metric_fqn)
+        result = Metrics.retrieve_by_name(self.metric_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.metric_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -120,7 +120,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = metric_to_update
 
-        result = Metric.update(self.metric_id, metric_to_update)
+        result = Metrics.update(metric_to_update)
 
         self.assertEqual(result.description, "Updated revenue metric")
         self.assertIsNotNone(result.metricExpression)
@@ -141,7 +141,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_metric
 
-        result = Metric.patch(self.metric_id, json_patch)
+        result = Metrics.patch(self.metric_id, json_patch)
 
         self.assertEqual(result.metricType, MetricType.COUNT)
         self.assertEqual(result.granularity, MetricGranularity.WEEK)
@@ -151,7 +151,7 @@ class TestMetricEntity(unittest.TestCase):
 
     def test_delete_metric(self):
         """Test deleting a metric"""
-        Metric.delete(self.metric_id, recursive=False, hard_delete=False)
+        Metrics.delete(self.metric_id, recursive=False, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=MetricEntity,
@@ -175,7 +175,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Metric.list(limit=10)
+        result = Metrics.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "metric1")
@@ -268,7 +268,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = updated_metric
 
-        result = Metric.patch(self.metric_id, expected_patch)
+        result = Metrics.patch(self.metric_id, expected_patch)
 
         self.assertEqual(result.metricType, MetricType.SUM)
         self.mock_ometa.patch.assert_called_once_with(
@@ -280,7 +280,7 @@ class TestMetricEntity(unittest.TestCase):
         csv_data = "id,name,type,formula\n123,revenue,Percentage,SUM(revenue)"
         self.mock_ometa.export_csv.return_value = csv_data
 
-        result = Metric.export_csv("metric_export")
+        result = Metrics.export_csv("metric_export")
 
         self.assertEqual(result, csv_data)
         self.mock_ometa.export_csv.assert_called_once_with(
@@ -293,7 +293,7 @@ class TestMetricEntity(unittest.TestCase):
         import_status = "Successfully imported 1 metric"
         self.mock_ometa.import_csv.return_value = import_status
 
-        result = Metric.import_csv(csv_data, dry_run=False)
+        result = Metrics.import_csv(csv_data, dry_run=False)
 
         self.assertEqual(result, import_status)
         self.mock_ometa.import_csv.assert_called_once_with(
@@ -310,7 +310,7 @@ class TestMetricEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_metric
 
-        result = Metric.retrieve(self.metric_id, fields=["dimensions"])
+        result = Metrics.retrieve(self.metric_id, fields=["dimensions"])
 
         self.assertIsNotNone(result.dimensions)
         self.assertEqual(len(result.dimensions), 3)
@@ -322,7 +322,7 @@ class TestMetricEntity(unittest.TestCase):
         self.mock_ometa.patch.side_effect = ValueError("Invalid metric type")
 
         with self.assertRaises(ValueError) as context:
-            Metric.patch(self.metric_id, invalid_patch)
+            Metrics.patch(self.metric_id, invalid_patch)
 
         self.assertIn("Invalid metric type", str(context.exception))
 

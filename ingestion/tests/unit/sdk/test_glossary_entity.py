@@ -15,8 +15,8 @@ from metadata.generated.schema.entity.data.glossaryTerm import (
 )
 from metadata.generated.schema.entity.data.glossaryTerm import TermReference
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.glossary import Glossary
-from metadata.sdk.entities.glossary_term import GlossaryTerm
+from metadata.sdk.entities.glossaries import Glossaries
+from metadata.sdk.entities.glossaryterms import GlossaryTerms
 
 
 class TestGlossaryEntity(unittest.TestCase):
@@ -50,7 +50,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_glossary
 
         # Act
-        result = Glossary.create(create_request)
+        result = Glossaries.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.glossary_id)
@@ -69,7 +69,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_glossary
 
         # Act
-        result = Glossary.retrieve(self.glossary_id)
+        result = Glossaries.retrieve(self.glossary_id)
 
         # Assert
         self.assertEqual(str(result.id), self.glossary_id)
@@ -89,7 +89,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_glossary
 
         # Act
-        result = Glossary.retrieve_by_name(self.glossary_fqn)
+        result = Glossaries.retrieve_by_name(self.glossary_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.glossary_fqn)
@@ -108,7 +108,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = glossary_to_update
 
         # Act
-        result = Glossary.update(self.glossary_id, glossary_to_update)
+        result = Glossaries.update(glossary_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated business glossary")
@@ -132,7 +132,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_glossary
 
         # Act
-        result = Glossary.patch(self.glossary_id, json_patch)
+        result = Glossaries.patch(self.glossary_id, json_patch)
 
         # Assert
         self.mock_ometa.patch.assert_called_once_with(
@@ -142,7 +142,7 @@ class TestGlossaryEntity(unittest.TestCase):
     def test_delete_glossary(self):
         """Test deleting a glossary"""
         # Act
-        Glossary.delete(self.glossary_id, recursive=True, hard_delete=False)
+        Glossaries.delete(self.glossary_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -166,11 +166,11 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Glossary.list()
+        result = Glossaries.list()
 
         # Assert
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].name, "glossary1")
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(result.entities[0].name, "glossary1")
         self.mock_ometa.list_entities.assert_called_once()
 
 
@@ -206,7 +206,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_term
 
         # Act
-        result = GlossaryTerm.create(create_request)
+        result = GlossaryTerms.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.term_id)
@@ -224,7 +224,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_term
 
         # Act
-        result = GlossaryTerm.retrieve(self.term_id)
+        result = GlossaryTerms.retrieve(self.term_id)
 
         # Assert
         self.assertEqual(str(result.id), self.term_id)
@@ -244,7 +244,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_term
 
         # Act
-        result = GlossaryTerm.retrieve(self.term_id)
+        result = GlossaryTerms.retrieve(self.term_id)
 
         # Assert
         self.assertIsNotNone(result.synonyms)
@@ -269,7 +269,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_term
 
         # Act
-        result = GlossaryTerm.retrieve(self.term_id, fields=["relatedTerms"])
+        result = GlossaryTerms.retrieve(self.term_id, fields=["relatedTerms"])
 
         # Assert
         self.assertIsNotNone(result.relatedTerms)
@@ -298,7 +298,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_term
 
         # Act
-        result = GlossaryTerm.retrieve(self.term_id, fields=["parent", "children"])
+        result = GlossaryTerms.retrieve(self.term_id, fields=["parent", "children"])
 
         # Assert
         self.assertIsNotNone(result.parent)
@@ -320,7 +320,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_term
 
         # Act
-        result = GlossaryTerm.patch(self.term_id, json_patch)
+        result = GlossaryTerms.patch(self.term_id, json_patch)
 
         # Assert
         self.mock_ometa.patch.assert_called_once_with(
@@ -330,7 +330,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
     def test_delete_glossary_term(self):
         """Test deleting a glossary term"""
         # Act
-        GlossaryTerm.delete(self.term_id, recursive=False, hard_delete=True)
+        GlossaryTerms.delete(self.term_id, recursive=False, hard_delete=True)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(

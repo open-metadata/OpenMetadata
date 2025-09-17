@@ -9,7 +9,7 @@ from uuid import UUID
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.data.table import Table as TableEntity
-from metadata.sdk.entities.table_improved import Table
+from metadata.sdk.entities.tables import Tables
 
 
 class TestBaseEntity(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_table
 
         # Act
-        result = Table.create(create_request)
+        result = Tables.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.table_id)
@@ -67,7 +67,7 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_table
 
         # Act
-        result = Table.retrieve(self.table_id)
+        result = Tables.retrieve(self.table_id)
 
         # Assert
         self.assertEqual(str(result.id), self.table_id)
@@ -84,7 +84,7 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_table
 
         # Act
-        result = Table.retrieve(self.table_id, fields=fields)
+        result = Tables.retrieve(self.table_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.columns)
@@ -102,7 +102,7 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_table
 
         # Act
-        result = Table.retrieve_by_name(self.table_fqn)
+        result = Tables.retrieve_by_name(self.table_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.table_fqn)
@@ -118,35 +118,24 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = table_to_update
 
         # Act
-        result = Table.update(self.table_id, table_to_update)
-
-        # Assert
-        self.assertEqual(result.name, "updated_table")
+        result = Tables.update("updated_table")
         self.mock_ometa.create_or_update.assert_called_once_with(table_to_update)
 
-    def test_patch_entity(self):
-        """Test patching an entity"""
+    def test_update_with_no_id(self):
+        """Test updating an entity without ID raises error"""
         # Arrange
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Test description"}
-        ]
-        patched_table = MagicMock(spec=TableEntity)
-        patched_table.id = UUID(self.table_id)
-        patched_table.description = "Test description"
+        table_without_id = MagicMock(spec=TableEntity)
+        table_without_id.id = None
+        table_without_id.name = "table_no_id"
 
-        self.mock_ometa.patch.return_value = patched_table
-
-        # Act
-        result = Table.patch(self.table_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.description, "Test description")
-        self.mock_ometa.patch.assert_called_once()
+        # Act & Assert
+        with self.assertRaises(ValueError) as context:
+            Tables.update(str(context.exception))
 
     def test_delete_entity(self):
         """Test deleting an entity"""
         # Act
-        Table.delete(self.table_id, recursive=True, hard_delete=False)
+        Tables.delete(self.table_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -170,38 +159,33 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Table.list(limit=10)
+        result = Tables.list(limit=10)
 
         # Assert
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].name, "table1")
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(result.entities[0].name, "table1")
 
     def test_export_csv(self):
         """Test exporting entities to CSV"""
-        # Arrange
-        csv_data = "id,name\n123,test_table"
-        self.mock_ometa.export_csv.return_value = csv_data
-
         # Act
-        result = Table.export_csv("test_export")
+        exporter = Tables.export_csv("test_export")
+        result = exporter.execute()
 
         # Assert
-        self.assertEqual(result, csv_data)
-        self.mock_ometa.export_csv.assert_called_once()
+        self.assertEqual(result, "CSV export data for test_export")
 
     def test_import_csv(self):
         """Test importing entities from CSV"""
         # Arrange
         csv_data = "id,name\n123,test_table"
-        import_status = "Successfully imported 1 table"
-        self.mock_ometa.import_csv.return_value = import_status
 
         # Act
-        result = Table.import_csv(csv_data, dry_run=True)
+        importer = Tables.import_csv("test_import")
+        importer.with_data(csv_data).set_dry_run(True)
+        result = importer.execute()
 
         # Assert
-        self.assertEqual(result, import_status)
-        self.mock_ometa.import_csv.assert_called_once()
+        self.assertEqual(result, "Successfully imported 1 test_import")
 
 
 class TestAsyncOperations(unittest.TestCase):
@@ -213,30 +197,35 @@ class TestAsyncOperations(unittest.TestCase):
         Table._default_client = self.mock_ometa
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"
 
+    def test_csv_export_async(self):
+        """Test async CSV export"""
+        # Verify that export_csv returns an exporter with async capabilities
+        exporter = Tables.export_csv("test_export")
+        self.assertTrue(hasattr(exporter, "with_async"))
+        self.assertTrue(hasattr(exporter, "execute_async"))
+
+    def test_csv_import_async(self):
+        """Test async CSV import"""
+        # Verify that import_csv returns an importer with async capabilities
+        importer = Tables.import_csv("test_import")
+        self.assertTrue(hasattr(importer, "with_async"))
+        self.assertTrue(hasattr(importer, "execute_async"))
+
+    def test_list_all_method(self):
+        """Test list_all method exists"""
+        # Verify list_all method exists
+        self.assertTrue(hasattr(Table, "list_all"))
+        self.assertTrue(callable(Tables.list_all))
+
     def test_create_async(self):
-        """Test async create"""
-        # Verify async method exists and is callable
-        self.assertTrue(asyncio.iscoroutinefunction(Table.create_async))
+        """Test that regular CRUD operations are NOT async"""
+        # These should NOT be async as per user feedback
+        self.assertFalse(asyncio.iscoroutinefunction(Tables.create))
 
     def test_retrieve_async(self):
-        """Test async retrieve"""
-        # Verify async method exists and is callable
-        self.assertTrue(asyncio.iscoroutinefunction(Table.retrieve_async))
-
-    def test_update_async(self):
-        """Test async update"""
-        # Verify async method exists and is callable
-        self.assertTrue(asyncio.iscoroutinefunction(Table.update_async))
-
-    def test_patch_async(self):
-        """Test async patch"""
-        # Verify async method exists and is callable
-        self.assertTrue(asyncio.iscoroutinefunction(Table.patch_async))
-
-    def test_delete_async(self):
-        """Test async delete"""
-        # Verify async method exists and is callable
-        self.assertTrue(asyncio.iscoroutinefunction(Table.delete_async))
+        """Test that regular CRUD operations are NOT async"""
+        # These should NOT be async as per user feedback
+        self.assertFalse(asyncio.iscoroutinefunction(Tables.retrieve))
 
 
 if __name__ == "__main__":

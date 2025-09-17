@@ -51,10 +51,10 @@ class TestImprovedTableEntity(unittest.TestCase):
         mock_ometa.create_or_update.return_value = expected_table
 
         # Import the improved entity
-        from metadata.sdk.entities.table import Table
+        from metadata.sdk.entities.tables import Tables
 
         # Act
-        result = Table.create(create_request)
+        result = Tables.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "test_table")
@@ -77,10 +77,10 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         mock_ometa.get_by_id.return_value = expected_table
 
-        from metadata.sdk.entities.table import Table
+        from metadata.sdk.entities.tables import Tables
 
         # Act
-        result = Table.retrieve(table_id)
+        result = Tables.retrieve(table_id)
 
         # Assert
         self.assertEqual(str(result.id), table_id)
@@ -106,10 +106,10 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         mock_ometa.patch.return_value = patched_table
 
-        from metadata.sdk.entities.table import Table
+        from metadata.sdk.entities.tables import Tables
 
         # Act
-        result = Table.patch(table_id, json_patch)
+        result = Tables.patch(table_id, json_patch)
 
         # Assert
         self.assertEqual(result.description, "Patched description")
@@ -126,10 +126,10 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         table_id = "550e8400-e29b-41d4-a716-446655440000"
 
-        from metadata.sdk.entities.table import Table
+        from metadata.sdk.entities.tables import Tables
 
         # Act
-        Table.delete(table_id, recursive=True, hard_delete=False)
+        Tables.delete(table_id, recursive=True, hard_delete=False)
 
         # Assert
         mock_ometa.delete.assert_called_once_with(
@@ -151,10 +151,10 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         mock_ometa.list_entities.return_value = mock_response
 
-        from metadata.sdk.entities.table import Table
+        from metadata.sdk.entities.tables import Tables
 
         # Act
-        result = Table.list(limit=10)
+        result = Tables.list(limit=10)
 
         # Assert
         self.assertEqual(len(result), 2)
@@ -181,10 +181,10 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_database
 
-        from metadata.sdk.entities.database import Database
+        from metadata.sdk.entities.databases import Databases
 
         # Act
-        result = Database.create(create_request)
+        result = Databases.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "analytics")
@@ -205,10 +205,10 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         mock_ometa.get_by_name.return_value = expected_database
 
-        from metadata.sdk.entities.database import Database
+        from metadata.sdk.entities.databases import Databases
 
         # Act
-        result = Database.retrieve_by_name(fqn)
+        result = Databases.retrieve_by_name(fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, fqn)
@@ -229,10 +229,10 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = database_to_update
 
-        from metadata.sdk.entities.database import Database
+        from metadata.sdk.entities.databases import Databases
 
         # Act
-        result = Database.update(database_id, database_to_update)
+        result = Databases.update(database_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated database")
@@ -263,10 +263,10 @@ class TestImprovedDashboardEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_dashboard
 
-        from metadata.sdk.entities.dashboard import Dashboard
+        from metadata.sdk.entities.dashboards import Dashboards
 
         # Act
-        result = Dashboard.create(create_request)
+        result = Dashboards.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "sales-dashboard")
@@ -290,10 +290,10 @@ class TestImprovedDashboardEntity(unittest.TestCase):
 
         mock_ometa.patch.return_value = patched_dashboard
 
-        from metadata.sdk.entities.dashboard import Dashboard
+        from metadata.sdk.entities.dashboards import Dashboards
 
         # Act
-        result = Dashboard.patch(dashboard_id, json_patch)
+        result = Dashboards.patch(dashboard_id, json_patch)
 
         # Assert
         mock_ometa.patch.assert_called_once()
@@ -319,10 +319,10 @@ class TestImprovedPipelineEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_pipeline
 
-        from metadata.sdk.entities.pipeline import Pipeline
+        from metadata.sdk.entities.pipelines import Pipelines
 
         # Act
-        result = Pipeline.create(create_request)
+        result = Pipelines.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "etl-daily")
@@ -346,10 +346,10 @@ class TestImprovedPipelineEntity(unittest.TestCase):
 
         mock_ometa.get_by_id.return_value = expected_pipeline
 
-        from metadata.sdk.entities.pipeline import Pipeline
+        from metadata.sdk.entities.pipelines import Pipelines
 
         # Act
-        result = Pipeline.retrieve(pipeline_id, fields=["tasks"])
+        result = Pipelines.retrieve(pipeline_id, fields=["tasks"])
 
         # Assert
         self.assertEqual(len(result.tasks), 2)
@@ -378,10 +378,10 @@ class TestImprovedTeamEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_team
 
-        from metadata.sdk.entities.team import Team
+        from metadata.sdk.entities.teams import Teams
 
         # Act
-        result = Team.create(create_request)
+        result = Teams.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "data-engineering")
@@ -405,10 +405,10 @@ class TestImprovedTeamEntity(unittest.TestCase):
 
         mock_ometa.patch.return_value = patched_team
 
-        from metadata.sdk.entities.team import Team
+        from metadata.sdk.entities.teams import Teams
 
         # Act
-        result = Team.patch(team_id, json_patch)
+        result = Teams.patch(team_id, json_patch)
 
         # Assert
         self.assertEqual(result.userCount, 2)
@@ -436,10 +436,10 @@ class TestImprovedUserEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_user
 
-        from metadata.sdk.entities.user_improved import User
+        from metadata.sdk.entities.users import Users
 
         # Act
-        result = User.create(create_request)
+        result = Users.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "john.doe")
@@ -455,10 +455,10 @@ class TestImprovedUserEntity(unittest.TestCase):
 
         user_id = "250e8400-e29b-41d4-a716-446655440000"
 
-        from metadata.sdk.entities.user_improved import User
+        from metadata.sdk.entities.users import Users
 
         # Act
-        User.delete(user_id, hard_delete=True)
+        Users.delete(user_id, hard_delete=True)
 
         # Assert
         mock_ometa.delete.assert_called_once_with(

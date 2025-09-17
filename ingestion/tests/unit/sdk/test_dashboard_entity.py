@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.entity.data.dashboard import Dashboard as DashboardEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails
-from metadata.sdk.entities.dashboard import Dashboard
+from metadata.sdk.entities.dashboards import Dashboards
 
 
 class TestDashboardEntity(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.create(create_request)
+        result = Dashboards.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.dashboard_id)
@@ -64,7 +64,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve(self.dashboard_id)
+        result = Dashboards.retrieve(self.dashboard_id)
 
         # Assert
         self.assertEqual(str(result.id), self.dashboard_id)
@@ -98,7 +98,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve(self.dashboard_id, fields=fields)
+        result = Dashboards.retrieve(self.dashboard_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.charts)
@@ -119,7 +119,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve_by_name(self.dashboard_fqn)
+        result = Dashboards.retrieve_by_name(self.dashboard_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.dashboard_fqn)
@@ -138,7 +138,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = dashboard_to_update
 
         # Act
-        result = Dashboard.update(self.dashboard_id, dashboard_to_update)
+        result = Dashboards.update(dashboard_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated sales dashboard")
@@ -163,7 +163,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_dashboard
 
         # Act
-        result = Dashboard.patch(self.dashboard_id, json_patch)
+        result = Dashboards.patch(self.dashboard_id, json_patch)
 
         # Assert
         self.assertEqual(result.displayName, "Executive Sales Dashboard")
@@ -174,7 +174,7 @@ class TestDashboardEntity(unittest.TestCase):
     def test_delete_dashboard(self):
         """Test deleting a dashboard"""
         # Act
-        Dashboard.delete(self.dashboard_id, recursive=False, hard_delete=True)
+        Dashboards.delete(self.dashboard_id, recursive=False, hard_delete=True)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -200,7 +200,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve(self.dashboard_id, fields=["usageDetails"])
+        result = Dashboards.retrieve(self.dashboard_id, fields=["usageDetails"])
 
         # Assert
         self.assertIsNotNone(result.usageDetails)
@@ -223,7 +223,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve(self.dashboard_id, fields=["owner"])
+        result = Dashboards.retrieve(self.dashboard_id, fields=["owner"])
 
         # Assert
         self.assertIsNotNone(result.owner)
@@ -246,7 +246,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_dashboard
 
         # Act
-        result = Dashboard.retrieve(self.dashboard_id, fields=["dataModels"])
+        result = Dashboards.retrieve(self.dashboard_id, fields=["dataModels"])
 
         # Assert
         self.assertIsNotNone(result.dataModels)
@@ -265,7 +265,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Dashboard.list(limit=20, fields=["owner", "charts"])
+        result = Dashboards.list(limit=20, fields=["owner", "charts"])
 
         # Assert
         self.assertEqual(len(result), 2)
@@ -283,7 +283,7 @@ class TestDashboardEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(ValueError) as context:
-            Dashboard.create(create_request)
+            Dashboards.create(create_request)
 
         self.assertIn("Invalid URL format", str(context.exception))
 

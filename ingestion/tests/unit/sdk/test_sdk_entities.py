@@ -1,7 +1,6 @@
 """
 Unit tests for SDK entity operations
 """
-import asyncio
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -11,8 +10,8 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.entity.teams.user import User as UserEntity
-from metadata.sdk.entities.table_improved import Table
-from metadata.sdk.entities.user_improved import User
+from metadata.sdk.entities.tables import Tables
+from metadata.sdk.entities.users import Users
 
 
 class TestSDKEntities(unittest.TestCase):
@@ -52,7 +51,7 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = mock_table
 
         # Act
-        result = Table.create(create_request)
+        result = Tables.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "test_table")
@@ -68,7 +67,7 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = mock_table
 
         # Act
-        result = Table.retrieve("table-id", fields=["owners", "tags"])
+        result = Tables.retrieve("table-id", fields=["owners", "tags"])
 
         # Assert
         self.assertEqual(result.name, "test_table")
@@ -88,7 +87,7 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = mock_table
 
         # Act
-        result = Table.retrieve_by_name("service.database.schema.test_table")
+        result = Tables.retrieve_by_name("service.database.schema.test_table")
 
         # Assert
         self.assertEqual(
@@ -99,7 +98,7 @@ class TestSDKEntities(unittest.TestCase):
     def test_table_delete(self):
         """Test deleting a table"""
         # Act
-        Table.delete("table-id", recursive=True, hard_delete=False)
+        Tables.delete("table-id", recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -120,19 +119,22 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Table.list(limit=25)
+        result = Tables.list(limit=25)
 
         # Assert
-        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result.entities), 2)
         self.mock_ometa.list_entities.assert_called_once()
 
     def test_table_async_operations(self):
-        """Test async operations exist"""
-        # Verify async methods exist
-        self.assertTrue(asyncio.iscoroutinefunction(Table.create_async))
-        self.assertTrue(asyncio.iscoroutinefunction(Table.retrieve_async))
-        self.assertTrue(asyncio.iscoroutinefunction(Table.update_async))
-        self.assertTrue(asyncio.iscoroutinefunction(Table.delete_async))
+        """Test async CSV operations exist"""
+        # Verify that CSV operations support async
+        exporter = Tables.export_csv("test_export")
+        self.assertTrue(hasattr(exporter, "with_async"))
+        self.assertTrue(hasattr(exporter, "execute_async"))
+
+        importer = Tables.import_csv("test_import")
+        self.assertTrue(hasattr(importer, "with_async"))
+        self.assertTrue(hasattr(importer, "execute_async"))
 
     def test_user_create(self):
         """Test creating a user"""
@@ -150,7 +152,7 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = mock_user
 
         # Act
-        result = User.create(create_request)
+        result = Users.create(create_request)
 
         # Assert
         self.assertEqual(result.name, "john.doe")
@@ -167,7 +169,7 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = mock_user
 
         # Act
-        result = User.retrieve("user-id")
+        result = Users.retrieve("user-id")
 
         # Assert
         self.assertEqual(result.name, "john.doe")
@@ -176,7 +178,7 @@ class TestSDKEntities(unittest.TestCase):
     def test_user_delete(self):
         """Test deleting a user"""
         # Act
-        User.delete("user-id", hard_delete=True)
+        Users.delete("user-id", hard_delete=True)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(

@@ -12,7 +12,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchema as DatabaseSchemaEntity,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.database_schema import DatabaseSchema
+from metadata.sdk.entities.databaseschemas import DatabaseSchemas
 
 
 class TestDatabaseSchemaEntity(unittest.TestCase):
@@ -46,7 +46,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.create(create_request)
+        result = DatabaseSchemas.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.schema_id)
@@ -65,7 +65,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.retrieve(self.schema_id)
+        result = DatabaseSchemas.retrieve(self.schema_id)
 
         # Assert
         self.assertEqual(str(result.id), self.schema_id)
@@ -95,7 +95,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.retrieve(self.schema_id, fields=fields)
+        result = DatabaseSchemas.retrieve(self.schema_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.tables)
@@ -116,7 +116,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.retrieve_by_name(self.schema_fqn)
+        result = DatabaseSchemas.retrieve_by_name(self.schema_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.schema_fqn)
@@ -135,7 +135,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = schema_to_update
 
         # Act
-        result = DatabaseSchema.update(self.schema_id, schema_to_update)
+        result = DatabaseSchemas.update(schema_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated public schema")
@@ -155,7 +155,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_schema
 
         # Act
-        result = DatabaseSchema.patch(self.schema_id, json_patch)
+        result = DatabaseSchemas.patch(self.schema_id, json_patch)
 
         # Assert
         self.mock_ometa.patch.assert_called_once_with(
@@ -165,7 +165,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
     def test_delete_database_schema(self):
         """Test deleting a database schema"""
         # Act
-        DatabaseSchema.delete(self.schema_id, recursive=True, hard_delete=False)
+        DatabaseSchemas.delete(self.schema_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -192,7 +192,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.retrieve(self.schema_id, fields=["database"])
+        result = DatabaseSchemas.retrieve(self.schema_id, fields=["database"])
 
         # Assert
         self.assertIsNotNone(result.database)
@@ -214,12 +214,12 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = DatabaseSchema.list(limit=10)
+        result = DatabaseSchemas.list(limit=10)
 
         # Assert
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].name, "public")
-        self.assertEqual(result[1].name, "staging")
+        self.assertEqual(len(result.entities), 3)
+        self.assertEqual(result.entities[0].name, "public")
+        self.assertEqual(result.entities[1].name, "staging")
         self.mock_ometa.list_entities.assert_called_once()
 
     def test_schema_retention_policy(self):
@@ -232,7 +232,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_schema
 
         # Act
-        result = DatabaseSchema.retrieve(self.schema_id)
+        result = DatabaseSchemas.retrieve(self.schema_id)
 
         # Assert
         self.assertIsNotNone(result.retentionPeriod)
@@ -245,7 +245,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(Exception) as context:
-            DatabaseSchema.retrieve("non-existent-id")
+            DatabaseSchemas.retrieve("non-existent-id")
 
         self.assertIn("DatabaseSchema not found", str(context.exception))
 

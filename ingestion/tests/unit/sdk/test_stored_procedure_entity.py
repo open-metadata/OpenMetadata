@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure as StoredProcedureEntity,
 )
-from metadata.sdk.entities.storedprocedure import StoredProcedure
+from metadata.sdk.entities.storedprocedures import StoredProcedures
 
 
 class TestStoredProcedureEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = StoredProcedure.create(create_request)
+        result = StoredProcedures.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_stored_procedure")
@@ -52,7 +52,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = StoredProcedure.retrieve(self.entity_id)
+        result = StoredProcedures.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = StoredProcedure.retrieve_by_name(self.entity_fqn)
+        result = StoredProcedures.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = StoredProcedure.update(self.entity_id, entity_to_update)
+        result = StoredProcedures.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = StoredProcedure.patch(self.entity_id, json_patch)
+        result = StoredProcedures.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -110,7 +110,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
     def test_delete_stored_procedure(self):
         """Test deleting a stored procedure"""
-        StoredProcedure.delete(self.entity_id, recursive=True, hard_delete=False)
+        StoredProcedures.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=StoredProcedureEntity,
@@ -131,7 +131,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = StoredProcedure.list(limit=10)
+        result = StoredProcedures.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

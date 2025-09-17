@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.entity.domains.domain import Domain as DomainEntity
-from metadata.sdk.entities.domain import Domain
+from metadata.sdk.entities.domains import Domains
 
 
 class TestDomainEntity(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = Domain.create(create_request)
+        result = Domains.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_domain")
@@ -48,7 +48,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = Domain.retrieve(self.entity_id)
+        result = Domains.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -62,7 +62,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = Domain.retrieve_by_name(self.entity_fqn)
+        result = Domains.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -77,7 +77,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = Domain.update(self.entity_id, entity_to_update)
+        result = Domains.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -95,7 +95,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = Domain.patch(self.entity_id, json_patch)
+        result = Domains.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -104,7 +104,7 @@ class TestDomainEntity(unittest.TestCase):
 
     def test_delete_domain(self):
         """Test deleting a domain"""
-        Domain.delete(self.entity_id, recursive=True, hard_delete=False)
+        Domains.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=DomainEntity,
@@ -125,7 +125,7 @@ class TestDomainEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Domain.list(limit=10)
+        result = Domains.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

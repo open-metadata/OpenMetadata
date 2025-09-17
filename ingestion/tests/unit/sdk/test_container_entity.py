@@ -12,7 +12,7 @@ from metadata.generated.schema.entity.data.container import (
     FileFormat,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.container import Container
+from metadata.sdk.entities.containers import Containers
 
 
 class TestContainerEntity(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_container
 
         # Act
-        result = Container.create(create_request)
+        result = Containers.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.container_id)
@@ -69,7 +69,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_container
 
         # Act
-        result = Container.retrieve(self.container_id)
+        result = Containers.retrieve(self.container_id)
 
         # Assert
         self.assertEqual(str(result.id), self.container_id)
@@ -103,7 +103,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_container
 
         # Act
-        result = Container.retrieve(self.container_id, fields=fields)
+        result = Containers.retrieve(self.container_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.children)
@@ -124,7 +124,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_container
 
         # Act
-        result = Container.retrieve_by_name(self.container_fqn)
+        result = Containers.retrieve_by_name(self.container_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.container_fqn)
@@ -143,7 +143,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = container_to_update
 
         # Act
-        result = Container.update(self.container_id, container_to_update)
+        result = Containers.update(container_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated analytics bucket")
@@ -164,7 +164,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_container
 
         # Act
-        result = Container.patch(self.container_id, json_patch)
+        result = Containers.patch(self.container_id, json_patch)
 
         # Assert
         self.assertEqual(result.description, "Patched container")
@@ -175,7 +175,7 @@ class TestContainerEntity(unittest.TestCase):
     def test_delete_container(self):
         """Test deleting a container"""
         # Act
-        Container.delete(self.container_id, recursive=True, hard_delete=False)
+        Containers.delete(self.container_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -198,7 +198,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_container
 
         # Act
-        result = Container.retrieve(self.container_id, fields=["dataModel"])
+        result = Containers.retrieve(self.container_id, fields=["dataModel"])
 
         # Assert
         self.assertIsNotNone(result.dataModel)
@@ -220,7 +220,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_container
 
         # Act
-        result = Container.retrieve(self.container_id, fields=["parent"])
+        result = Containers.retrieve(self.container_id, fields=["parent"])
 
         # Assert
         self.assertIsNotNone(result.parent)
@@ -242,7 +242,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_container
 
         # Act
-        result = Container.create(create_request)
+        result = Containers.create(create_request)
 
         # Assert
         self.assertEqual(result.prefix, "/data/year=2024/month=01/")
@@ -263,11 +263,11 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Container.list(limit=25, after="cursor456")
+        result = Containers.list(limit=25, after="cursor456")
 
         # Assert
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].name, "bucket1")
+        self.assertEqual(len(result.entities), 3)
+        self.assertEqual(result.entities[0].name, "bucket1")
         self.mock_ometa.list_entities.assert_called_once()
 
     def test_container_size_and_objects(self):
@@ -281,7 +281,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_container
 
         # Act
-        result = Container.retrieve(self.container_id)
+        result = Containers.retrieve(self.container_id)
 
         # Assert
         self.assertEqual(result.size, 1073741824)
@@ -294,7 +294,7 @@ class TestContainerEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(Exception) as context:
-            Container.retrieve("non-existent-id")
+            Containers.retrieve("non-existent-id")
 
         self.assertIn("Container not found", str(context.exception))
 

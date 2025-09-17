@@ -11,7 +11,7 @@ from metadata.generated.schema.api.classification.createClassification import (
 from metadata.generated.schema.entity.classification.classification import (
     Classification as ClassificationEntity,
 )
-from metadata.sdk.entities.classification import Classification
+from metadata.sdk.entities.classifications import Classifications
 
 
 class TestClassificationEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = Classification.create(create_request)
+        result = Classifications.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_classification")
@@ -52,7 +52,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = Classification.retrieve(self.entity_id)
+        result = Classifications.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = Classification.retrieve_by_name(self.entity_fqn)
+        result = Classifications.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = Classification.update(self.entity_id, entity_to_update)
+        result = Classifications.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = Classification.patch(self.entity_id, json_patch)
+        result = Classifications.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -108,7 +108,7 @@ class TestClassificationEntity(unittest.TestCase):
 
     def test_delete_classification(self):
         """Test deleting a classification"""
-        Classification.delete(self.entity_id, recursive=True, hard_delete=False)
+        Classifications.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=ClassificationEntity,
@@ -129,7 +129,7 @@ class TestClassificationEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Classification.list(limit=10)
+        result = Classifications.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

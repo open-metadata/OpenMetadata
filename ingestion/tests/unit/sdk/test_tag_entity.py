@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag as TagEntity
-from metadata.sdk.entities.tag import Tag
+from metadata.sdk.entities.tags import Tags
 
 
 class TestTagEntity(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = Tag.create(create_request)
+        result = Tags.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_tag")
@@ -48,7 +48,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = Tag.retrieve(self.entity_id)
+        result = Tags.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -62,7 +62,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = Tag.retrieve_by_name(self.entity_fqn)
+        result = Tags.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -77,7 +77,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = Tag.update(self.entity_id, entity_to_update)
+        result = Tags.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -95,7 +95,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = Tag.patch(self.entity_id, json_patch)
+        result = Tags.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -104,7 +104,7 @@ class TestTagEntity(unittest.TestCase):
 
     def test_delete_tag(self):
         """Test deleting a tag"""
-        Tag.delete(self.entity_id, recursive=True, hard_delete=False)
+        Tags.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=TagEntity,
@@ -125,7 +125,7 @@ class TestTagEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Tag.list(limit=10)
+        result = Tags.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

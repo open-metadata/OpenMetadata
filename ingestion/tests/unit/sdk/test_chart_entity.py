@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.entity.data.chart import Chart as ChartEntity
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.chart import Chart
+from metadata.sdk.entities.charts import Charts
 
 
 class TestChartEntity(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_chart
 
-        result = Chart.create(create_request)
+        result = Charts.create(create_request)
 
         self.assertEqual(str(result.id), self.chart_id)
         self.assertEqual(result.name, "revenue_chart")
@@ -57,7 +57,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_chart
 
-        result = Chart.retrieve(self.chart_id)
+        result = Charts.retrieve(self.chart_id)
 
         self.assertEqual(str(result.id), self.chart_id)
         self.assertEqual(result.name, "revenue_chart")
@@ -87,7 +87,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_chart
 
-        result = Chart.retrieve(self.chart_id, fields=fields)
+        result = Charts.retrieve(self.chart_id, fields=fields)
 
         self.assertIsNotNone(result.owner)
         self.assertEqual(result.owner.name, "analyst")
@@ -104,7 +104,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_chart
 
-        result = Chart.retrieve_by_name(self.chart_fqn)
+        result = Charts.retrieve_by_name(self.chart_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.chart_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -119,7 +119,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = chart_to_update
 
-        result = Chart.update(self.chart_id, chart_to_update)
+        result = Charts.update(chart_to_update)
 
         self.assertEqual(result.description, "Updated revenue chart")
         self.assertEqual(str(chart_to_update.id), self.chart_id)
@@ -140,7 +140,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_chart
 
-        result = Chart.patch(self.chart_id, json_patch)
+        result = Charts.patch(self.chart_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.assertEqual(result.chartType, ChartType.Bar)
@@ -150,7 +150,7 @@ class TestChartEntity(unittest.TestCase):
 
     def test_delete_chart(self):
         """Test deleting a chart"""
-        Chart.delete(self.chart_id, recursive=False, hard_delete=False)
+        Charts.delete(self.chart_id, recursive=False, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=ChartEntity,
@@ -161,7 +161,7 @@ class TestChartEntity(unittest.TestCase):
 
     def test_delete_chart_hard(self):
         """Test hard deleting a chart"""
-        Chart.delete(self.chart_id, recursive=True, hard_delete=True)
+        Charts.delete(self.chart_id, recursive=True, hard_delete=True)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=ChartEntity,
@@ -185,7 +185,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Chart.list(limit=10)
+        result = Charts.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "chart1")
@@ -278,7 +278,7 @@ class TestChartEntity(unittest.TestCase):
         csv_data = "id,name,type,service\n123,chart1,Line,service1"
         self.mock_ometa.export_csv.return_value = csv_data
 
-        result = Chart.export_csv("chart_export")
+        result = Charts.export_csv("chart_export")
 
         self.assertEqual(result, csv_data)
         self.mock_ometa.export_csv.assert_called_once_with(
@@ -291,7 +291,7 @@ class TestChartEntity(unittest.TestCase):
         import_status = "Successfully imported 1 chart"
         self.mock_ometa.import_csv.return_value = import_status
 
-        result = Chart.import_csv(csv_data, dry_run=True)
+        result = Charts.import_csv(csv_data, dry_run=True)
 
         self.assertEqual(result, import_status)
         self.mock_ometa.import_csv.assert_called_once_with(
@@ -312,7 +312,7 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_chart
 
-        result = Chart.retrieve(self.chart_id, fields=["dashboard"])
+        result = Charts.retrieve(self.chart_id, fields=["dashboard"])
 
         self.assertIsNotNone(result.dashboard)
         self.assertEqual(result.dashboard.name, "sales_dashboard")
@@ -322,7 +322,7 @@ class TestChartEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.side_effect = Exception("Chart not found")
 
         with self.assertRaises(Exception) as context:
-            Chart.retrieve("non-existent-id")
+            Charts.retrieve("non-existent-id")
 
         self.assertIn("Chart not found", str(context.exception))
 
@@ -332,7 +332,7 @@ class TestChartEntity(unittest.TestCase):
         self.mock_ometa.patch.side_effect = ValueError("Invalid patch operation")
 
         with self.assertRaises(ValueError) as context:
-            Chart.patch(self.chart_id, invalid_patch)
+            Charts.patch(self.chart_id, invalid_patch)
 
         self.assertIn("Invalid patch operation", str(context.exception))
 

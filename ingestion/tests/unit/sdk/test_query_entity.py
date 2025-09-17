@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.query import Query as QueryEntity
-from metadata.sdk.entities.query import Query
+from metadata.sdk.entities.queries import Queries
 
 
 class TestQueryEntity(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = Query.create(create_request)
+        result = Queries.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_query")
@@ -48,7 +48,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = Query.retrieve(self.entity_id)
+        result = Queries.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -62,7 +62,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = Query.retrieve_by_name(self.entity_fqn)
+        result = Queries.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -77,7 +77,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = Query.update(self.entity_id, entity_to_update)
+        result = Queries.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -95,7 +95,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = Query.patch(self.entity_id, json_patch)
+        result = Queries.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -104,7 +104,7 @@ class TestQueryEntity(unittest.TestCase):
 
     def test_delete_query(self):
         """Test deleting a query"""
-        Query.delete(self.entity_id, recursive=True, hard_delete=False)
+        Queries.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=QueryEntity,
@@ -125,7 +125,7 @@ class TestQueryEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = Query.list(limit=10)
+        result = Queries.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

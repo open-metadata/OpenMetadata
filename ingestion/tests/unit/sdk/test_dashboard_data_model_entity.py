@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel as DashboardDataModelEntity,
 )
-from metadata.sdk.entities.dashboarddatamodel import DashboardDataModel
+from metadata.sdk.entities.dashboarddatamodels import DashboardDataModels
 
 
 class TestDashboardDataModelEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = DashboardDataModel.create(create_request)
+        result = DashboardDataModels.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_dashboard_data_model")
@@ -52,7 +52,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = DashboardDataModel.retrieve(self.entity_id)
+        result = DashboardDataModels.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = DashboardDataModel.retrieve_by_name(self.entity_fqn)
+        result = DashboardDataModels.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = DashboardDataModel.update(self.entity_id, entity_to_update)
+        result = DashboardDataModels.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = DashboardDataModel.patch(self.entity_id, json_patch)
+        result = DashboardDataModels.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -110,7 +110,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
     def test_delete_dashboard_data_model(self):
         """Test deleting a dashboard data model"""
-        DashboardDataModel.delete(self.entity_id, recursive=True, hard_delete=False)
+        DashboardDataModels.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=DashboardDataModelEntity,
@@ -131,7 +131,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = DashboardDataModel.list(limit=10)
+        result = DashboardDataModels.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createSearchIndex import (
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex as SearchIndexEntity,
 )
-from metadata.sdk.entities.searchindex import SearchIndex
+from metadata.sdk.entities.searchindexes import SearchIndexes
 
 
 class TestSearchIndexEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = SearchIndex.create(create_request)
+        result = SearchIndexes.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_search_index")
@@ -52,7 +52,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = SearchIndex.retrieve(self.entity_id)
+        result = SearchIndexes.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = SearchIndex.retrieve_by_name(self.entity_fqn)
+        result = SearchIndexes.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = SearchIndex.update(self.entity_id, entity_to_update)
+        result = SearchIndexes.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = SearchIndex.patch(self.entity_id, json_patch)
+        result = SearchIndexes.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -108,7 +108,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
     def test_delete_search_index(self):
         """Test deleting a search index"""
-        SearchIndex.delete(self.entity_id, recursive=True, hard_delete=False)
+        SearchIndexes.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=SearchIndexEntity,
@@ -129,7 +129,7 @@ class TestSearchIndexEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = SearchIndex.list(limit=10)
+        result = SearchIndexes.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

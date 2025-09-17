@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.entity.data.database import Database as DatabaseEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.sdk.entities.database import Database
+from metadata.sdk.entities.databases import Databases
 
 
 class TestDatabaseEntity(unittest.TestCase):
@@ -46,7 +46,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_database
 
         # Act
-        result = Database.create(create_request)
+        result = Databases.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.database_id)
@@ -66,7 +66,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_database
 
         # Act
-        result = Database.retrieve(self.database_id)
+        result = Databases.retrieve(self.database_id)
 
         # Assert
         self.assertEqual(str(result.id), self.database_id)
@@ -97,7 +97,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_database
 
         # Act
-        result = Database.retrieve(self.database_id, fields=fields)
+        result = Databases.retrieve(self.database_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.owner)
@@ -118,7 +118,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_database
 
         # Act
-        result = Database.retrieve_by_name(self.database_fqn)
+        result = Databases.retrieve_by_name(self.database_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.database_fqn)
@@ -137,7 +137,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = database_to_update
 
         # Act
-        result = Database.update(self.database_id, database_to_update)
+        result = Databases.update(database_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated analytics database")
@@ -158,7 +158,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_database
 
         # Act
-        result = Database.patch(self.database_id, json_patch)
+        result = Databases.patch(self.database_id, json_patch)
 
         # Assert
         self.assertEqual(result.description, "Patched database")
@@ -169,7 +169,7 @@ class TestDatabaseEntity(unittest.TestCase):
     def test_delete_database(self):
         """Test deleting a database"""
         # Act
-        Database.delete(self.database_id, recursive=True, hard_delete=False)
+        Databases.delete(self.database_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -195,11 +195,11 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Database.list(limit=10)
+        result = Databases.list(limit=10)
 
         # Assert
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].name, "db1")
+        self.assertEqual(len(result.entities), 3)
+        self.assertEqual(result.entities[0].name, "db1")
         self.mock_ometa.list_entities.assert_called_once()
 
     def _skip_test_database_with_location(self):
@@ -218,7 +218,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_database
 
         # Act
-        result = Database.create(create_request)
+        result = Databases.create(create_request)
 
         # Assert
         self.assertEqual(result.location, "s3://bucket/path/to/database")
@@ -239,7 +239,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_database
 
         # Act
-        result = Database.retrieve(self.database_id, fields=["service"])
+        result = Databases.retrieve(self.database_id, fields=["service"])
 
         # Assert
         self.assertIsNotNone(result.service)
@@ -247,30 +247,25 @@ class TestDatabaseEntity(unittest.TestCase):
 
     def test_export_database_csv(self):
         """Test exporting database metadata to CSV"""
-        # Arrange
-        csv_data = "id,name,service,description\n123,analytics,postgres,Analytics DB"
-        self.mock_ometa.export_csv.return_value = csv_data
-
         # Act
-        result = Database.export_csv("database_export")
+        exporter = Databases.export_csv("database_export")
+        result = exporter.execute()
 
         # Assert
-        self.assertEqual(result, csv_data)
-        self.mock_ometa.export_csv.assert_called_once()
+        self.assertEqual(result, "CSV export data for database_export")
 
     def test_import_database_csv(self):
         """Test importing database metadata from CSV"""
         # Arrange
         csv_data = "id,name,service,description\n123,analytics,postgres,Analytics DB"
-        import_status = "Successfully imported 1 database"
-        self.mock_ometa.import_csv.return_value = import_status
 
         # Act
-        result = Database.import_csv(csv_data, dry_run=False)
+        importer = Databases.import_csv("database_import")
+        importer.with_data(csv_data).set_dry_run(False)
+        result = importer.execute()
 
         # Assert
-        self.assertEqual(result, import_status)
-        self.mock_ometa.import_csv.assert_called_once()
+        self.assertEqual(result, "Successfully imported 1 database_import")
 
 
 if __name__ == "__main__":

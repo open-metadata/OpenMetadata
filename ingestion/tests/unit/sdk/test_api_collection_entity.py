@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createAPICollection import (
 from metadata.generated.schema.entity.data.apiCollection import (
     APICollection as APICollectionEntity,
 )
-from metadata.sdk.entities.apicollection import APICollection
+from metadata.sdk.entities.apicollections import APICollections
 
 
 class TestAPICollectionEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = APICollection.create(create_request)
+        result = APICollections.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_api_collection")
@@ -52,7 +52,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = APICollection.retrieve(self.entity_id)
+        result = APICollections.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = APICollection.retrieve_by_name(self.entity_fqn)
+        result = APICollections.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = APICollection.update(self.entity_id, entity_to_update)
+        result = APICollections.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = APICollection.patch(self.entity_id, json_patch)
+        result = APICollections.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -108,7 +108,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
     def test_delete_api_collection(self):
         """Test deleting a api collection"""
-        APICollection.delete(self.entity_id, recursive=True, hard_delete=False)
+        APICollections.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=APICollectionEntity,
@@ -129,7 +129,7 @@ class TestAPICollectionEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = APICollection.list(limit=10)
+        result = APICollections.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")

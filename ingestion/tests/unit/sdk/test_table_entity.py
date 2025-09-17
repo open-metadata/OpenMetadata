@@ -11,7 +11,7 @@ from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.entity.data.table import TableConstraint, TableType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.sdk.entities.table import Table
+from metadata.sdk.entities.tables import Tables
 
 
 class TestTableEntity(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_table
 
         # Act
-        result = Table.create(create_request)
+        result = Tables.create(create_request)
 
         # Assert
         self.assertEqual(result.id, expected_table.id)
@@ -86,7 +86,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_table
 
         # Act
-        result = Table.retrieve(self.table_id)
+        result = Tables.retrieve(self.table_id)
 
         # Assert
         self.assertEqual(result.id, expected_table.id)
@@ -123,7 +123,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_table
 
         # Act
-        result = Table.retrieve(self.table_id, fields=fields)
+        result = Tables.retrieve(self.table_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.owner)
@@ -146,7 +146,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_table
 
         # Act
-        result = Table.retrieve_by_name(self.table_fqn)
+        result = Tables.retrieve_by_name(self.table_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.table_fqn)
@@ -166,7 +166,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = table_to_update
 
         # Act
-        result = Table.update(self.table_id, table_to_update)
+        result = Tables.update(table_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated description")
@@ -195,7 +195,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_table
 
         # Act
-        result = Table.patch(self.table_id, json_patch)
+        result = Tables.patch(self.table_id, json_patch)
 
         # Assert
         self.assertEqual(result.description, "Patched description")
@@ -206,7 +206,7 @@ class TestTableEntity(unittest.TestCase):
     def test_delete_table(self):
         """Test deleting a table"""
         # Act
-        Table.delete(self.table_id, recursive=True, hard_delete=False)
+        Tables.delete(self.table_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -219,7 +219,7 @@ class TestTableEntity(unittest.TestCase):
     def test_delete_table_hard(self):
         """Test hard deleting a table"""
         # Act
-        Table.delete(self.table_id, recursive=False, hard_delete=True)
+        Tables.delete(self.table_id, recursive=False, hard_delete=True)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -253,7 +253,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_table
 
         # Act
-        result = Table.create(create_request)
+        result = Tables.create(create_request)
 
         # Assert
         self.assertEqual(len(result.tableConstraints), 2)
@@ -281,7 +281,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_table
 
         # Act
-        result = Table.retrieve(self.table_id, fields=["joins"])
+        result = Tables.retrieve(self.table_id, fields=["joins"])
 
         # Assert
         self.assertIsNotNone(result.joins)
@@ -294,7 +294,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.export_csv.return_value = csv_data
 
         # Act
-        result = Table.export_csv("table_export")
+        result = Tables.export_csv("table_export")
 
         # Assert
         self.assertEqual(result, csv_data)
@@ -310,7 +310,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.import_csv.return_value = import_status
 
         # Act
-        result = Table.import_csv(csv_data, dry_run=True)
+        result = Tables.import_csv(csv_data, dry_run=True)
 
         # Assert
         self.assertEqual(result, import_status)
@@ -325,7 +325,7 @@ class TestTableEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(Exception) as context:
-            Table.retrieve("non-existent-id")
+            Tables.retrieve("non-existent-id")
 
         self.assertIn("Table not found", str(context.exception))
 
@@ -337,7 +337,7 @@ class TestTableEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(ValueError) as context:
-            Table.patch(self.table_id, invalid_patch)
+            Tables.patch(self.table_id, invalid_patch)
 
         self.assertIn("Invalid patch operation", str(context.exception))
 

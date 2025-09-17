@@ -14,7 +14,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.pipeline import Pipeline
+from metadata.sdk.entities.pipelines import Pipelines
 
 
 class TestPipelineEntity(unittest.TestCase):
@@ -51,7 +51,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.create(create_request)
+        result = Pipelines.create(create_request)
 
         # Assert
         self.assertEqual(str(result.id), self.pipeline_id)
@@ -70,7 +70,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.retrieve(self.pipeline_id)
+        result = Pipelines.retrieve(self.pipeline_id)
 
         # Assert
         self.assertEqual(str(result.id), self.pipeline_id)
@@ -105,7 +105,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.retrieve(self.pipeline_id, fields=fields)
+        result = Pipelines.retrieve(self.pipeline_id, fields=fields)
 
         # Assert
         self.assertIsNotNone(result.tasks)
@@ -127,7 +127,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.get_by_name.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.retrieve_by_name(self.pipeline_fqn)
+        result = Pipelines.retrieve_by_name(self.pipeline_fqn)
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.pipeline_fqn)
@@ -146,7 +146,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = pipeline_to_update
 
         # Act
-        result = Pipeline.update(self.pipeline_id, pipeline_to_update)
+        result = Pipelines.update(pipeline_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated ETL pipeline")
@@ -166,7 +166,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.patch.return_value = patched_pipeline
 
         # Act
-        result = Pipeline.patch(self.pipeline_id, json_patch)
+        result = Pipelines.patch(self.pipeline_id, json_patch)
 
         # Assert
         self.mock_ometa.patch.assert_called_once_with(
@@ -176,7 +176,7 @@ class TestPipelineEntity(unittest.TestCase):
     def test_delete_pipeline(self):
         """Test deleting a pipeline"""
         # Act
-        Pipeline.delete(self.pipeline_id, recursive=True, hard_delete=False)
+        Pipelines.delete(self.pipeline_id, recursive=True, hard_delete=False)
 
         # Assert
         self.mock_ometa.delete.assert_called_once_with(
@@ -202,7 +202,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.retrieve(self.pipeline_id, fields=["pipelineStatus"])
+        result = Pipelines.retrieve(self.pipeline_id, fields=["pipelineStatus"])
 
         # Assert
         self.assertIsNotNone(result.pipelineStatus)
@@ -231,7 +231,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.retrieve(self.pipeline_id, fields=["lineage"])
+        result = Pipelines.retrieve(self.pipeline_id, fields=["lineage"])
 
         # Assert
         self.assertIsNotNone(result.upstream)
@@ -252,7 +252,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = Pipeline.list(limit=20, after="cursor123")
+        result = Pipelines.list(limit=20, after="cursor123")
 
         # Assert
         self.assertEqual(len(result), 3)
@@ -276,7 +276,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa.create_or_update.return_value = expected_pipeline
 
         # Act
-        result = Pipeline.create(create_request)
+        result = Pipelines.create(create_request)
 
         # Assert
         self.assertEqual(result.scheduleInterval, "0 0 * * *")
@@ -288,7 +288,7 @@ class TestPipelineEntity(unittest.TestCase):
 
         # Act & Assert
         with self.assertRaises(Exception) as context:
-            Pipeline.retrieve("non-existent-id")
+            Pipelines.retrieve("non-existent-id")
 
         self.assertIn("Pipeline not found", str(context.exception))
 

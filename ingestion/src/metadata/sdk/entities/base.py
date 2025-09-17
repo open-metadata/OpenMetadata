@@ -1,19 +1,32 @@
 """
 Base entity class with common CRUD operations for all entities.
 This provides a clean API that avoids conflicts with Pydantic models.
+Enhanced with improved list operations, CSV import/export with async and WebSocket support.
 """
-import asyncio
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, Generic, List, Optional, Type, TypeVar, Union
+from uuid import UUID
 
 from pydantic import BaseModel
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
 from metadata.sdk.client import OpenMetadata
+from metadata.sdk.entities.csv_operations import BaseCsvExporter, BaseCsvImporter
 
 # Type variables for generic entity types
 TEntity = TypeVar("TEntity", bound=BaseModel)
 TCreateRequest = TypeVar("TCreateRequest", bound=BaseModel)
+
+
+@dataclass
+class ListResponse:
+    """Response wrapper for list operations with pagination"""
+
+    entities: List[TEntity]
+    total: Optional[int] = None
+    after: Optional[str] = None
+    before: Optional[str] = None
 
 
 class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
@@ -92,36 +105,46 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         return client.get_by_name(entity=cls.entity_type(), fqn=fqn, fields=fields)
 
     @classmethod
-    def update(cls, entity_id: str, entity: TEntity) -> TEntity:
+    def update(cls, entity: TEntity) -> TEntity:
         """
-        Update an entity (PUT operation).
+        Update an entity (uses PATCH internally for efficiency).
 
         Args:
-            entity_id: Entity UUID
-            entity: Updated entity object
+            entity: Modified entity object with ID
 
         Returns:
             Updated entity
+
+        Note: This method automatically generates a PATCH request
+              by comparing the entity with its current state
         """
+        if not hasattr(entity, 'id') or not entity.id:
+            raise ValueError("Entity must have an ID for update")
+
         client = cls._get_client()
-        entity.id = entity_id
-        return client.create_or_update(entity)
 
-    @classmethod
-    def patch(cls, entity_id: str, json_patch: List[Dict[str, Any]]) -> TEntity:
-        """
-        Apply JSON patch to an entity (PATCH operation).
+        # Get entity ID as string
+        entity_id = str(entity.id.root) if hasattr(entity.id, 'root') else str(entity.id)
 
-        Args:
-            entity_id: Entity UUID
-            json_patch: JSON patch operations
+        # Following Java SDK pattern:
+        # 1. Get the current entity state from the server
+        # 2. Use the ometa patch method which generates JSON Patch internally
 
-        Returns:
-            Patched entity
-        """
-        client = cls._get_client()
+        # Fetch current state of the entity
+        current = client.get_by_id(
+            entity=cls.entity_type(),
+            entity_id=entity_id
+            # Don't specify fields to avoid getting computed fields
+        )
+
+        # The ometa.patch method generates JSON Patch by comparing source and destination
+        # source = current state (from server)
+        # destination = desired state (modified entity)
         return client.patch(
-            entity=cls.entity_type(), entity_id=entity_id, json_patch=json_patch
+            entity=cls.entity_type(),
+            source=current,  # Current state from server
+            destination=entity,  # Desired state with changes
+            skip_on_failure=False  # Raise errors for debugging
         )
 
     @classmethod
@@ -151,7 +174,8 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         after: Optional[str] = None,
         before: Optional[str] = None,
         limit: int = 10,
-    ) -> List[TEntity]:
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> ListResponse:
         """
         List entities with pagination.
 
@@ -160,18 +184,61 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             after: Pagination cursor for next page
             before: Pagination cursor for previous page
             limit: Number of entities to return
+            filters: Optional filters to apply
 
         Returns:
-            List of entities
+            ListResponse with entities and pagination info
         """
         client = cls._get_client()
-        return client.list_entities(
+        response = client.list_entities(
             entity=cls.entity_type(),
             fields=fields,
             after=after,
             before=before,
             limit=limit,
-        ).entities
+        )
+
+        return ListResponse(
+            entities=response.entities,
+            total=getattr(response, "total", None),
+            after=getattr(response, "after", None),
+            before=getattr(response, "before", None),
+        )
+
+    @classmethod
+    def list_all(
+        cls,
+        fields: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        batch_size: int = 100,
+    ) -> List[TEntity]:
+        """
+        List all entities, automatically handling pagination.
+
+        Args:
+            fields: Optional list of fields to include
+            filters: Optional filters to apply
+            batch_size: Number of entities per batch
+
+        Returns:
+            Complete list of all entities
+        """
+        all_entities = []
+        after = None
+
+        while True:
+            response = cls.list(
+                fields=fields, after=after, limit=batch_size, filters=filters
+            )
+
+            all_entities.extend(response.entities)
+
+            if not response.after or len(response.entities) < batch_size:
+                break
+
+            after = response.after
+
+        return all_entities
 
     @classmethod
     def search(
@@ -199,79 +266,95 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         return []
 
     @classmethod
-    def export_csv(cls, name: str) -> str:
+    def export_csv(cls, name: str) -> BaseCsvExporter:
         """
-        Export entity metadata to CSV.
+        Create a CSV exporter for this entity.
 
         Args:
-            name: Export name
+            name: Entity name for export
 
         Returns:
-            CSV data as string
+            CsvExporter instance for fluent configuration
         """
-        client = cls._get_client()
-        return client.export_csv(entity=cls.entity_type(), name=name)
+        entity_type = cls.entity_type()
+
+        class EntityCsvExporter(BaseCsvExporter):
+            """CSV exporter with entity-specific operations"""
+
+            def perform_sync_export(self) -> str:
+                """Perform synchronous CSV export"""
+                client = cls._get_client()
+                return client.export_csv(entity=entity_type, name=name)
+
+            def perform_async_export(self) -> str:
+                """Perform asynchronous CSV export"""
+                client = cls._get_client()
+                return client.export_csv_async(entity=entity_type, name=name)
+
+        return EntityCsvExporter(cls._get_client(), name)
 
     @classmethod
-    def import_csv(cls, csv_data: str, dry_run: bool = False) -> str:
+    def import_csv(cls, name: str) -> BaseCsvImporter:
         """
-        Import entity metadata from CSV.
+        Create a CSV importer for this entity.
 
         Args:
-            csv_data: CSV data as string
-            dry_run: Perform dry run without actual import
+            name: Entity name for import
 
         Returns:
-            Import status
+            CsvImporter instance for fluent configuration
         """
-        client = cls._get_client()
-        return client.import_csv(
-            entity=cls.entity_type(), csv_data=csv_data, dry_run=dry_run
-        )
+        entity_type = cls.entity_type()
 
-    # Async methods using asyncio
-    @classmethod
-    async def create_async(cls, request: Union[TCreateRequest, TEntity]) -> TEntity:
-        """Async create an entity"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.create, request)
+        class EntityCsvImporter(BaseCsvImporter):
+            """CSV importer with entity-specific operations"""
 
-    @classmethod
-    async def retrieve_async(
-        cls, entity_id: str, fields: Optional[List[str]] = None
-    ) -> TEntity:
-        """Async retrieve an entity"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.retrieve, entity_id, fields)
+            def perform_sync_import(self) -> Dict:
+                """Perform synchronous CSV import"""
+                client = cls._get_client()
+                return client.import_csv(
+                    entity=entity_type,
+                    name=name,
+                    csv_data=self.csv_data,
+                    dry_run=self.dry_run
+                )
 
-    @classmethod
-    async def retrieve_by_name_async(
-        cls, fqn: str, fields: Optional[List[str]] = None
-    ) -> TEntity:
-        """Async retrieve an entity by name"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.retrieve_by_name, fqn, fields)
+            def perform_async_import(self) -> str:
+                """Perform asynchronous CSV import"""
+                client = cls._get_client()
+                return client.import_csv_async(
+                    entity=entity_type,
+                    name=name,
+                    csv_data=self.csv_data,
+                    dry_run=self.dry_run
+                )
 
-    @classmethod
-    async def update_async(cls, entity_id: str, entity: TEntity) -> TEntity:
-        """Async update an entity"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.update, entity_id, entity)
+        return EntityCsvImporter(cls._get_client(), name)
 
     @classmethod
-    async def patch_async(
-        cls, entity_id: str, json_patch: List[Dict[str, Any]]
-    ) -> TEntity:
-        """Async patch an entity"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.patch, entity_id, json_patch)
+    def update_custom_properties(cls, entity_id: Union[str, UUID]) -> "CustomPropertyUpdater":
+        """
+        Update custom properties on an entity by ID.
+
+        Args:
+            entity_id: The entity UUID
+
+        Returns:
+            CustomPropertyUpdater instance for fluent configuration
+        """
+        from metadata.sdk.entities.custom_properties import CustomProperties
+        return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
 
     @classmethod
-    async def delete_async(
-        cls, entity_id: str, recursive: bool = False, hard_delete: bool = False
-    ) -> None:
-        """Async delete an entity"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, cls.delete, entity_id, recursive, hard_delete
-        )
+    def update_custom_properties_by_name(cls, entity_name: str) -> "CustomPropertyUpdater":
+        """
+        Update custom properties on an entity by name/FQN.
+
+        Args:
+            entity_name: The entity name or FQN
+
+        Returns:
+            CustomPropertyUpdater instance for fluent configuration
+        """
+        from metadata.sdk.entities.custom_properties import CustomProperties
+        return CustomProperties.update_by_name(cls.entity_type(), entity_name, cls._get_client())

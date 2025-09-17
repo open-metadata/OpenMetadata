@@ -11,7 +11,7 @@ from metadata.generated.schema.api.domains.createDataProduct import (
 from metadata.generated.schema.entity.domains.dataProduct import (
     DataProduct as DataProductEntity,
 )
-from metadata.sdk.entities.dataproduct import DataProduct
+from metadata.sdk.entities.dataproducts import DataProducts
 
 
 class TestDataProductEntity(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = expected_entity
 
-        result = DataProduct.create(create_request)
+        result = DataProducts.create(create_request)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.assertEqual(result.name, "test_data_product")
@@ -52,7 +52,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_id.return_value = expected_entity
 
-        result = DataProduct.retrieve(self.entity_id)
+        result = DataProducts.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
         self.mock_ometa.get_by_id.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.get_by_name.return_value = expected_entity
 
-        result = DataProduct.retrieve_by_name(self.entity_fqn)
+        result = DataProducts.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
         self.mock_ometa.get_by_name.assert_called_once_with(
@@ -81,7 +81,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.create_or_update.return_value = entity_to_update
 
-        result = DataProduct.update(self.entity_id, entity_to_update)
+        result = DataProducts.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
         self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
@@ -99,7 +99,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.patch.return_value = patched_entity
 
-        result = DataProduct.patch(self.entity_id, json_patch)
+        result = DataProducts.patch(self.entity_id, json_patch)
 
         self.assertEqual(result.description, "Patched description")
         self.mock_ometa.patch.assert_called_once_with(
@@ -108,7 +108,7 @@ class TestDataProductEntity(unittest.TestCase):
 
     def test_delete_data_product(self):
         """Test deleting a data product"""
-        DataProduct.delete(self.entity_id, recursive=True, hard_delete=False)
+        DataProducts.delete(self.entity_id, recursive=True, hard_delete=False)
 
         self.mock_ometa.delete.assert_called_once_with(
             entity=DataProductEntity,
@@ -129,7 +129,7 @@ class TestDataProductEntity(unittest.TestCase):
 
         self.mock_ometa.list_entities.return_value = mock_response
 
-        result = DataProduct.list(limit=10)
+        result = DataProducts.list(limit=10)
 
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].name, "entity1")
