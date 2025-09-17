@@ -53,7 +53,32 @@ FROM table_entity te
 WHERE pdts.entityFQNHash = te.fqnHash
   AND pdts.extension = 'table.systemProfile';
 
--- Migrate column profiles (uses LIKE for nested columns)
+-- Migrate column profiles using temporary mapping table for better performance
+-- Use UNLOGGED table for memory-like performance (no WAL writes)
+CREATE UNLOGGED TABLE IF NOT EXISTS column_to_table_mapping (
+    column_hash VARCHAR(768) PRIMARY KEY,
+    table_hash VARCHAR(768)
+);
+CREATE INDEX idx_ctm_table_hash ON column_to_table_mapping(table_hash);
+
+-- Optimize for in-memory operations
+ALTER TABLE column_to_table_mapping SET (autovacuum_enabled = false);
+SET LOCAL temp_buffers = '256MB';  -- Increase temp buffer size
+SET LOCAL work_mem = '256MB';      -- Already set above but ensuring it's set
+
+-- Populate mapping by extracting table hash (first 4 dot-separated parts)
+INSERT INTO column_to_table_mapping (column_hash, table_hash)
+SELECT DISTINCT
+    pdts.entityFQNHash as column_hash,
+    SPLIT_PART(pdts.entityFQNHash, '.', 1) || '.' ||
+    SPLIT_PART(pdts.entityFQNHash, '.', 2) || '.' ||
+    SPLIT_PART(pdts.entityFQNHash, '.', 3) || '.' ||
+    SPLIT_PART(pdts.entityFQNHash, '.', 4) as table_hash
+FROM profiler_data_time_series pdts
+WHERE pdts.extension = 'table.columnProfile'
+  AND ARRAY_LENGTH(STRING_TO_ARRAY(pdts.entityFQNHash, '.'), 1) >= 5;
+
+-- Update column profiles using the mapping (much faster than LIKE)
 UPDATE profiler_data_time_series pdts
 SET json = jsonb_build_object(
     'id', gen_random_uuid(),
@@ -67,9 +92,16 @@ SET json = jsonb_build_object(
     'profileData', pdts.json,
     'profileType', 'column'
 )
-FROM table_entity te
-WHERE pdts.entityFQNHash LIKE CONCAT(te.fqnHash, '.%')
+FROM column_to_table_mapping ctm
+INNER JOIN table_entity te ON ctm.table_hash = te.fqnHash
+WHERE pdts.entityFQNHash = ctm.column_hash
   AND pdts.extension = 'table.columnProfile';
+
+-- Clean up temporary table
+DROP TABLE IF EXISTS column_to_table_mapping;
+
+-- Reset temp buffers
+RESET temp_buffers;
 
 -- Drop temporary indexes after migration
 DROP INDEX IF EXISTS idx_pdts_entityFQNHash;

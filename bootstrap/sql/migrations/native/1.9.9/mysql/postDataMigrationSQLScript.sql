@@ -47,9 +47,27 @@ SET pdts.json = JSON_OBJECT(
 )
 WHERE pdts.extension = 'table.systemProfile';
 
--- Migrate column profiles (uses LIKE for nested columns)
+-- Migrate column profiles using temporary mapping table for better performance
+-- Create temporary mapping table to extract table hash from column hash
+CREATE TEMPORARY TABLE IF NOT EXISTS column_to_table_mapping (
+    column_hash VARCHAR(768) PRIMARY KEY,
+    table_hash VARCHAR(768),
+    INDEX idx_table_hash (table_hash)
+) ENGINE=MEMORY;
+
+-- Populate mapping by extracting table hash (everything before the last dot)
+INSERT INTO column_to_table_mapping (column_hash, table_hash)
+SELECT DISTINCT
+    pdts.entityFQNHash as column_hash,
+    SUBSTRING_INDEX(pdts.entityFQNHash, '.', 4) as table_hash
+FROM profiler_data_time_series pdts
+WHERE pdts.extension = 'table.columnProfile'
+  AND CHAR_LENGTH(pdts.entityFQNHash) - CHAR_LENGTH(REPLACE(pdts.entityFQNHash, '.', '')) >= 4;
+
+-- Update column profiles using the mapping (much faster than LIKE)
 UPDATE profiler_data_time_series pdts
-INNER JOIN table_entity te ON pdts.entityFQNHash LIKE CONCAT(te.fqnHash, '.%')
+INNER JOIN column_to_table_mapping ctm ON pdts.entityFQNHash = ctm.column_hash
+INNER JOIN table_entity te ON ctm.table_hash = te.fqnHash
 SET pdts.json = JSON_OBJECT(
     'id', UUID(),
     'entityReference', JSON_OBJECT(
@@ -63,6 +81,9 @@ SET pdts.json = JSON_OBJECT(
     'profileType', 'column'
 )
 WHERE pdts.extension = 'table.columnProfile';
+
+-- Clean up temporary table
+DROP TEMPORARY TABLE IF EXISTS column_to_table_mapping;
 
 -- Drop temporary indexes after migration
 DROP INDEX IF EXISTS idx_pdts_entityFQNHash ON profiler_data_time_series;
