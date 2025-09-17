@@ -189,6 +189,9 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.apiCollections:
         return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.charts:
+        return PAGE_HEADERS.CHARTS_CUSTOM_ATTRIBUTES;
+
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
