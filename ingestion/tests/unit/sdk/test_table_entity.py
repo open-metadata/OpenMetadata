@@ -22,7 +22,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Table._default_client = self.mock_ometa
+        Tables._default_client = self.mock_ometa
 
         # Test data
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"
@@ -163,7 +163,17 @@ class TestTableEntity(unittest.TestCase):
         table_to_update.description = "Updated description"
         table_to_update.columns = self.columns
 
-        self.mock_ometa.create_or_update.return_value = table_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(table_to_update))
+        current_entity.id = (
+            table_to_update.id
+            if hasattr(table_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = table_to_update
 
         # Act
         result = Tables.update(table_to_update)
@@ -171,7 +181,10 @@ class TestTableEntity(unittest.TestCase):
         # Assert
         self.assertEqual(result.description, "Updated description")
         self.assertEqual(str(table_to_update.id), self.table_id)
-        self.mock_ometa.create_or_update.assert_called_once_with(table_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_table(self):
         """Test patching a table (PATCH operation)"""
@@ -294,7 +307,8 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.export_csv.return_value = csv_data
 
         # Act
-        result = Tables.export_csv("table_export")
+        exporter = result = Tables.export_csv("table_export")
+        result = exporter.execute()
 
         # Assert
         self.assertEqual(result, csv_data)
@@ -303,19 +317,26 @@ class TestTableEntity(unittest.TestCase):
         )
 
     def test_import_table_csv(self):
+        # Mock CSV import
+        self.mock_ometa.import_csv.return_value = {
+            "created": 1,
+            "updated": 0,
+            "errors": [],
+        }
         """Test importing table metadata from CSV"""
         # Arrange
-        csv_data = "id,name,description,columns\n123,test_table,Test,3"
-        import_status = "Successfully imported 1 table"
-        self.mock_ometa.import_csv.return_value = import_status
+        csv_data = "id,name\n123,test_table"
 
         # Act
-        result = Tables.import_csv(csv_data, dry_run=True)
+        importer = Tables.import_csv("table_import")
+        importer.csv_data = csv_data
+        importer.dry_run = False
+        result = importer.execute()
 
         # Assert
-        self.assertEqual(result, import_status)
+        self.assertEqual(result["created"], 1)
         self.mock_ometa.import_csv.assert_called_once_with(
-            entity=TableEntity, csv_data=csv_data, dry_run=True
+            entity=TableEntity, name="table_import", csv_data=csv_data, dry_run=False
         )
 
     def test_error_handling_not_found(self):

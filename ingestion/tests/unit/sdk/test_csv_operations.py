@@ -1,3 +1,8 @@
+import unittest
+from unittest.mock import MagicMock
+
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
+
 """
 Simple test for CSV operations to verify the implementation.
 Tests the CSVMixin functionality directly.
@@ -9,10 +14,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     AuthProvider,
     OpenMetadataConnection,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class TestCsvMixinOperations:
+class TestCsvMixinOperations(unittest.TestCase):
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_client = MagicMock()
+        self.csv_mixin = CSVMixin()
+        self.csv_mixin.client = self.mock_client
+
     """Test CSV mixin operations."""
 
     def test_csv_mixin_export(self):
@@ -26,15 +36,20 @@ class TestCsvMixinOperations:
         config = OpenMetadataConnection(
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
-        om = OpenMetadata(config=config)
-        om.client = mock_client
+        # Use mocked client directly
+        # Already set in setUp
+
+        # Mock the get method on the CSVMixin's client
+        self.mock_client.get.return_value = mock_response
 
         # Test export
-        result = om.export_csv(Glossary, "test_glossary")
+        result = self.csv_mixin.export_csv(Glossary, "test_glossary")
 
         # Verify
         assert result == mock_response
-        mock_client.get.assert_called_once_with("glossaries/name/test_glossary/export")
+        self.mock_client.get.assert_called_once_with(
+            "glossaries/name/test_glossary/export"
+        )
 
     def test_csv_mixin_export_async(self):
         """Test async CSV export method."""
@@ -47,15 +62,18 @@ class TestCsvMixinOperations:
         config = OpenMetadataConnection(
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
-        om = OpenMetadata(config=config)
-        om.client = mock_client
+        # Use mocked client directly
+        # Already set in setUp
+
+        # Mock the get method
+        self.mock_client.get.return_value = {"jobId": "export-job-123"}
 
         # Test async export
-        result = om.export_csv_async(Glossary, "test_glossary")
+        result = self.csv_mixin.export_csv_async(Glossary, "test_glossary")
 
         # Verify
         assert result == "export-job-123"
-        mock_client.get.assert_called_once_with(
+        self.mock_client.get.assert_called_once_with(
             "glossaries/name/test_glossary/exportAsync"
         )
 
@@ -64,22 +82,24 @@ class TestCsvMixinOperations:
         # Create mock client
         mock_client = Mock()
         mock_response = {"created": 5, "updated": 2}
-        mock_client.put.return_value = mock_response
+        self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
-        om = OpenMetadata(config=config)
-        om.client = mock_client
+        # Use mocked client directly
+        # Already set in setUp
 
         # Test import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = om.import_csv(Glossary, "test_glossary", csv_data, dry_run=False)
+        result = self.csv_mixin.import_csv(
+            Glossary, "test_glossary", csv_data, dry_run=False
+        )
 
         # Verify
         assert result == mock_response
-        mock_client.put.assert_called_once_with(
+        self.mock_client.put.assert_called_once_with(
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
@@ -91,22 +111,24 @@ class TestCsvMixinOperations:
         # Create mock client
         mock_client = Mock()
         mock_response = {"wouldCreate": 5, "wouldUpdate": 2}
-        mock_client.put.return_value = mock_response
+        self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
-        om = OpenMetadata(config=config)
-        om.client = mock_client
+        # Use mocked client directly
+        # Already set in setUp
 
         # Test import with dry run
         csv_data = "parent,name,description\n,term1,Test term"
-        result = om.import_csv(Glossary, "test_glossary", csv_data, dry_run=True)
+        result = self.csv_mixin.import_csv(
+            Glossary, "test_glossary", csv_data, dry_run=True
+        )
 
         # Verify
         assert result == mock_response
-        mock_client.put.assert_called_once_with(
+        self.mock_client.put.assert_called_once_with(
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
@@ -118,22 +140,24 @@ class TestCsvMixinOperations:
         # Create mock client
         mock_client = Mock()
         mock_response = {"jobId": "import-job-456"}
-        mock_client.put.return_value = mock_response
+        self.mock_client.put.return_value = mock_response
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
             hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
-        om = OpenMetadata(config=config)
-        om.client = mock_client
+        # Use mocked client directly
+        # Already set in setUp
 
         # Test async import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = om.import_csv_async(Glossary, "test_glossary", csv_data, dry_run=False)
+        result = self.csv_mixin.import_csv_async(
+            Glossary, "test_glossary", csv_data, dry_run=False
+        )
 
         # Verify
         assert result == "import-job-456"
-        mock_client.put.assert_called_once_with(
+        self.mock_client.put.assert_called_once_with(
             path="glossaries/name/test_glossary/importAsync",
             data=csv_data,
             headers={"Content-Type": "text/plain"},

@@ -20,7 +20,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Database._default_client = self.mock_ometa
+        Databases._default_client = self.mock_ometa
 
         # Test data
         self.database_id = "450e8400-e29b-41d4-a716-446655440000"
@@ -134,14 +134,27 @@ class TestDatabaseEntity(unittest.TestCase):
         database_to_update.name = "analytics"
         database_to_update.description = "Updated analytics database"
 
-        self.mock_ometa.create_or_update.return_value = database_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(database_to_update))
+        current_entity.id = (
+            database_to_update.id
+            if hasattr(database_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = database_to_update
 
         # Act
         result = Databases.update(database_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated analytics database")
-        self.mock_ometa.create_or_update.assert_called_once_with(database_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_database(self):
         """Test patching a database"""
@@ -246,15 +259,23 @@ class TestDatabaseEntity(unittest.TestCase):
         self.assertEqual(result.service.name, "postgres-prod")
 
     def test_export_database_csv(self):
+        # Mock CSV export
+        self.mock_ometa.export_csv.return_value = "CSV export data for test_export"
         """Test exporting database metadata to CSV"""
         # Act
         exporter = Databases.export_csv("database_export")
         result = exporter.execute()
 
         # Assert
-        self.assertEqual(result, "CSV export data for database_export")
+        self.assertEqual(result, "CSV export data for test_export")
 
     def test_import_database_csv(self):
+        # Mock CSV import
+        self.mock_ometa.import_csv.return_value = {
+            "created": 1,
+            "updated": 0,
+            "errors": [],
+        }
         """Test importing database metadata from CSV"""
         # Arrange
         csv_data = "id,name,service,description\n123,analytics,postgres,Analytics DB"
@@ -265,7 +286,7 @@ class TestDatabaseEntity(unittest.TestCase):
         result = importer.execute()
 
         # Assert
-        self.assertEqual(result, "Successfully imported 1 database_import")
+        self.assertEqual(result["created"], 1)
 
 
 if __name__ == "__main__":

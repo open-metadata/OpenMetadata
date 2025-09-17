@@ -20,7 +20,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Dashboard._default_client = self.mock_ometa
+        Dashboards._default_client = self.mock_ometa
 
         # Test data
         self.dashboard_id = "750e8400-e29b-41d4-a716-446655440000"
@@ -135,14 +135,27 @@ class TestDashboardEntity(unittest.TestCase):
         dashboard_to_update.name = "sales-dashboard"
         dashboard_to_update.description = "Updated sales dashboard"
 
-        self.mock_ometa.create_or_update.return_value = dashboard_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(dashboard_to_update))
+        current_entity.id = (
+            dashboard_to_update.id
+            if hasattr(dashboard_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = dashboard_to_update
 
         # Act
         result = Dashboards.update(dashboard_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated sales dashboard")
-        self.mock_ometa.create_or_update.assert_called_once_with(dashboard_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_dashboard(self):
         """Test patching a dashboard"""
@@ -268,8 +281,8 @@ class TestDashboardEntity(unittest.TestCase):
         result = Dashboards.list(limit=20, fields=["owner", "charts"])
 
         # Assert
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].name, "dashboard1")
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(result.entities[0].name, "dashboard1")
         self.mock_ometa.list_entities.assert_called_once()
 
     def _skip_test_error_handling_invalid_url(self):

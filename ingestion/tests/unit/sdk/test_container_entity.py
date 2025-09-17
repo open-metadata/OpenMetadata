@@ -23,7 +23,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Container._default_client = self.mock_ometa
+        Containers._default_client = self.mock_ometa
 
         # Test data
         self.container_id = "650e8400-e29b-41d4-a716-446655440000"
@@ -140,14 +140,27 @@ class TestContainerEntity(unittest.TestCase):
         container_to_update.name = "analytics-bucket"
         container_to_update.description = "Updated analytics bucket"
 
-        self.mock_ometa.create_or_update.return_value = container_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(container_to_update))
+        current_entity.id = (
+            container_to_update.id
+            if hasattr(container_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = container_to_update
 
         # Act
         result = Containers.update(container_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated analytics bucket")
-        self.mock_ometa.create_or_update.assert_called_once_with(container_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_container(self):
         """Test patching a container"""

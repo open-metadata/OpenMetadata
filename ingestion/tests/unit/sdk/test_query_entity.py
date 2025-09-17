@@ -16,7 +16,7 @@ class TestQueryEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Query._default_client = self.mock_ometa
+        Queries._default_client = self.mock_ometa
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.query.test_query"
@@ -75,12 +75,25 @@ class TestQueryEntity(unittest.TestCase):
         entity_to_update.id = UUID(self.entity_id)
         entity_to_update.description = "Updated description"
 
-        self.mock_ometa.create_or_update.return_value = entity_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(entity_to_update))
+        current_entity.id = (
+            entity_to_update.id
+            if hasattr(entity_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = entity_to_update
 
         result = Queries.update(entity_to_update)
 
         self.assertEqual(result.description, "Updated description")
-        self.mock_ometa.create_or_update.assert_called_once_with(entity_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_query(self):
         """Test patching a query"""
@@ -113,7 +126,7 @@ class TestQueryEntity(unittest.TestCase):
             hard_delete=False,
         )
 
-    def test_list_querys(self):
+    def test_list_queries(self):
         """Test listing querys"""
         mock_entity1 = MagicMock(spec=QueryEntity)
         mock_entity1.name = "entity1"
@@ -127,8 +140,8 @@ class TestQueryEntity(unittest.TestCase):
 
         result = Queries.list(limit=10)
 
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].name, "entity1")
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(result.entities[0].name, "entity1")
         self.mock_ometa.list_entities.assert_called_once()
 
 

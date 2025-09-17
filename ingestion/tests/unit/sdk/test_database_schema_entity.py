@@ -23,7 +23,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        DatabaseSchema._default_client = self.mock_ometa
+        DatabaseSchemas._default_client = self.mock_ometa
 
         # Test data
         self.schema_id = "850e8400-e29b-41d4-a716-446655440000"
@@ -132,14 +132,27 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         schema_to_update.name = "public"
         schema_to_update.description = "Updated public schema"
 
-        self.mock_ometa.create_or_update.return_value = schema_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(schema_to_update))
+        current_entity.id = (
+            schema_to_update.id
+            if hasattr(schema_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = schema_to_update
 
         # Act
         result = DatabaseSchemas.update(schema_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated public schema")
-        self.mock_ometa.create_or_update.assert_called_once_with(schema_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_database_schema(self):
         """Test patching a database schema"""

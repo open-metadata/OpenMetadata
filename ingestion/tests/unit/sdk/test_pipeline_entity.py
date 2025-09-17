@@ -25,7 +25,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Pipeline._default_client = self.mock_ometa
+        Pipelines._default_client = self.mock_ometa
 
         # Test data
         self.pipeline_id = "450e8400-e29b-41d4-a716-446655440000"
@@ -143,14 +143,27 @@ class TestPipelineEntity(unittest.TestCase):
         pipeline_to_update.name = "etl-daily-sales"
         pipeline_to_update.description = "Updated ETL pipeline"
 
-        self.mock_ometa.create_or_update.return_value = pipeline_to_update
+        # Mock the get_by_id to return the current state
+        current_entity = MagicMock(spec=type(pipeline_to_update))
+        current_entity.id = (
+            pipeline_to_update.id
+            if hasattr(pipeline_to_update, "id")
+            else UUID(self.entity_id)
+        )
+        self.mock_ometa.get_by_id.return_value = current_entity
+
+        # Mock the patch to return the updated entity
+        self.mock_ometa.patch.return_value = pipeline_to_update
 
         # Act
         result = Pipelines.update(pipeline_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated ETL pipeline")
-        self.mock_ometa.create_or_update.assert_called_once_with(pipeline_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_pipeline(self):
         """Test patching a pipeline"""
@@ -255,8 +268,8 @@ class TestPipelineEntity(unittest.TestCase):
         result = Pipelines.list(limit=20, after="cursor123")
 
         # Assert
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result[0].name, "pipeline1")
+        self.assertEqual(len(result.entities), 3)
+        self.assertEqual(result.entities[0].name, "pipeline1")
         self.mock_ometa.list_entities.assert_called_once()
 
     def test_pipeline_with_schedule(self):

@@ -150,6 +150,23 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         )
 
     @classmethod
+    def patch(cls, entity_id: str, json_patch: List[Dict[str, Any]]) -> TEntity:
+        """
+        Apply JSON Patch operations to an entity.
+
+        Args:
+            entity_id: Entity UUID
+            json_patch: List of JSON Patch operations
+
+        Returns:
+            Patched entity
+        """
+        client = cls._get_client()
+        return client.patch(
+            entity=cls.entity_type(), entity_id=entity_id, json_patch=json_patch
+        )
+
+    @classmethod
     def delete(
         cls, entity_id: str, recursive: bool = False, hard_delete: bool = False
     ) -> None:

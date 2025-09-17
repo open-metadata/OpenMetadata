@@ -27,7 +27,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Glossary._default_client = self.mock_ometa
+        Glossaries._default_client = self.mock_ometa
 
         # Test data
         self.glossary_id = "150e8400-e29b-41d4-a716-446655440000"
@@ -105,14 +105,23 @@ class TestGlossaryEntity(unittest.TestCase):
         glossary_to_update.name = "BusinessGlossary"
         glossary_to_update.description = "Updated business glossary"
 
-        self.mock_ometa.create_or_update.return_value = glossary_to_update
+        # Mock the get_by_id to return the current state
+        current_glossary = MagicMock(spec=GlossaryEntity)
+        current_glossary.id = UUID(self.glossary_id)
+        self.mock_ometa.get_by_id.return_value = current_glossary
+
+        # Mock the patch to return the updated glossary
+        self.mock_ometa.patch.return_value = glossary_to_update
 
         # Act
         result = Glossaries.update(glossary_to_update)
 
         # Assert
         self.assertEqual(result.description, "Updated business glossary")
-        self.mock_ometa.create_or_update.assert_called_once_with(glossary_to_update)
+        # Verify get_by_id was called to fetch current state
+        self.mock_ometa.get_by_id.assert_called_once()
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_patch_glossary(self):
         """Test patching a glossary"""
@@ -182,7 +191,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        GlossaryTerm._default_client = self.mock_ometa
+        GlossaryTerms._default_client = self.mock_ometa
 
         # Test data
         self.term_id = "250e8400-e29b-41d4-a716-446655440000"

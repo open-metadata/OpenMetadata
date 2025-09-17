@@ -23,8 +23,8 @@ class TestSDKEntities(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default clients
-        Table._default_client = self.mock_ometa
-        User._default_client = self.mock_ometa
+        Tables._default_client = self.mock_ometa
+        Users._default_client = self.mock_ometa
 
         # Test data
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"

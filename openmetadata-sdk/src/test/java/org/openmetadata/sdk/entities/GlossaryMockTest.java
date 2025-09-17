@@ -15,6 +15,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
@@ -124,7 +125,7 @@ public class GlossaryMockTest {
     GlossaryTerm expectedTerm = new GlossaryTerm();
     expectedTerm.setId(UUID.fromString(termId));
     expectedTerm.setName("revenue");
-    expectedTerm.setStatus(GlossaryTerm.Status.APPROVED);
+    expectedTerm.setEntityStatus(EntityStatus.APPROVED);
 
     when(mockGlossaryTermService.get(termId)).thenReturn(expectedTerm);
 
@@ -135,7 +136,7 @@ public class GlossaryMockTest {
     assertNotNull(result);
     assertEquals(termId, result.getId().toString());
     assertEquals("revenue", result.getName());
-    assertEquals(GlossaryTerm.Status.APPROVED, result.getStatus());
+    assertEquals(EntityStatus.APPROVED, result.getEntityStatus());
     verify(mockGlossaryTermService).get(termId);
   }
 
@@ -209,13 +210,13 @@ public class GlossaryMockTest {
     termToUpdate.setId(UUID.randomUUID());
     termToUpdate.setName("churn-rate");
     termToUpdate.setDescription("Updated definition of customer churn rate");
-    termToUpdate.setStatus(GlossaryTerm.Status.APPROVED);
+    termToUpdate.setEntityStatus(EntityStatus.APPROVED);
 
     GlossaryTerm expectedTerm = new GlossaryTerm();
     expectedTerm.setId(termToUpdate.getId());
     expectedTerm.setName(termToUpdate.getName());
     expectedTerm.setDescription(termToUpdate.getDescription());
-    expectedTerm.setStatus(termToUpdate.getStatus());
+    expectedTerm.setEntityStatus(termToUpdate.getEntityStatus());
 
     when(mockGlossaryTermService.update(termToUpdate.getId().toString(), termToUpdate))
         .thenReturn(expectedTerm);
@@ -228,7 +229,7 @@ public class GlossaryMockTest {
     // Assert
     assertNotNull(result);
     assertEquals("Updated definition of customer churn rate", result.getDescription());
-    assertEquals(GlossaryTerm.Status.APPROVED, result.getStatus());
+    assertEquals(EntityStatus.APPROVED, result.getEntityStatus());
     verify(mockGlossaryTermService).update(termToUpdate.getId().toString(), termToUpdate);
   }
 

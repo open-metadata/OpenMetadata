@@ -108,7 +108,10 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         # Create modified version with new tag
         modified_table = table.model_copy(deep=True)
         new_tag = TagLabel(
-            tagFQN=tag_fqn, source=TagSource.Classification, labelType=LabelType.Manual
+            tagFQN=tag_fqn,
+            source=TagSource.Classification,
+            labelType=LabelType.Manual,
+            state=State.Confirmed,  # Add required state field
         )
 
         if modified_table.tags is None:

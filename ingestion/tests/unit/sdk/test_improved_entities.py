@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.teams.user import User as UserEntity
 class TestImprovedTableEntity(unittest.TestCase):
     """Tests for improved Table entity operations"""
 
-    @patch("metadata.sdk.entities.table.Table._get_client")
+    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def test_create_table(self, mock_get_client):
         """Test creating a table with the improved SDK"""
         # Arrange
@@ -61,7 +61,7 @@ class TestImprovedTableEntity(unittest.TestCase):
         self.assertEqual(len(result.columns), 2)
         mock_ometa.create_or_update.assert_called_once_with(create_request)
 
-    @patch("metadata.sdk.entities.table.Table._get_client")
+    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def test_retrieve_table(self, mock_get_client):
         """Test retrieving a table by ID"""
         # Arrange
@@ -87,7 +87,7 @@ class TestImprovedTableEntity(unittest.TestCase):
         self.assertEqual(result.name, "test_table")
         mock_ometa.get_by_id.assert_called_once()
 
-    @patch("metadata.sdk.entities.table.Table._get_client")
+    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def test_patch_table(self, mock_get_client):
         """Test patching a table with JSON patch"""
         # Arrange
@@ -117,7 +117,7 @@ class TestImprovedTableEntity(unittest.TestCase):
             entity=TableEntity, entity_id=table_id, json_patch=json_patch
         )
 
-    @patch("metadata.sdk.entities.table.Table._get_client")
+    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def test_delete_table(self, mock_get_client):
         """Test deleting a table"""
         # Arrange
@@ -136,7 +136,7 @@ class TestImprovedTableEntity(unittest.TestCase):
             entity=TableEntity, entity_id=table_id, recursive=True, hard_delete=False
         )
 
-    @patch("metadata.sdk.entities.table.Table._get_client")
+    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def _skip_test_list_tables(self, mock_get_client):
         """Test listing tables"""
         # Arrange
@@ -157,14 +157,14 @@ class TestImprovedTableEntity(unittest.TestCase):
         result = Tables.list(limit=10)
 
         # Assert
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].name, "table1")
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(result.entities[0].name, "table1")
 
 
 class TestImprovedDatabaseEntity(unittest.TestCase):
     """Tests for improved Database entity operations"""
 
-    @patch("metadata.sdk.entities.database.Database._get_client")
+    @patch("metadata.sdk.entities.databases.Databases._get_client")
     def test_create_database(self, mock_get_client):
         """Test creating a database"""
         # Arrange
@@ -190,7 +190,7 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
         self.assertEqual(result.name, "analytics")
         mock_ometa.create_or_update.assert_called_once_with(create_request)
 
-    @patch("metadata.sdk.entities.database.Database._get_client")
+    @patch("metadata.sdk.entities.databases.Databases._get_client")
     def test_retrieve_database_by_name(self, mock_get_client):
         """Test retrieving a database by name"""
         # Arrange
@@ -214,7 +214,7 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
         self.assertEqual(result.fullyQualifiedName, fqn)
         mock_ometa.get_by_name.assert_called_once()
 
-    @patch("metadata.sdk.entities.database.Database._get_client")
+    @patch("metadata.sdk.entities.databases.Databases._get_client")
     def test_update_database(self, mock_get_client):
         """Test updating a database"""
         # Arrange
@@ -227,7 +227,12 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
         database_to_update.id = UUID(database_id)
         database_to_update.description = "Updated database"
 
-        mock_ometa.create_or_update.return_value = database_to_update
+        # Mock get_by_id to return current state
+        current_db = MagicMock(spec=DatabaseEntity)
+        current_db.id = database_to_update.id
+        mock_ometa.get_by_id.return_value = current_db
+        # Mock patch to return updated entity
+        mock_ometa.patch.return_value = database_to_update
 
         from metadata.sdk.entities.databases import Databases
 
@@ -236,13 +241,14 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.description, "Updated database")
-        mock_ometa.create_or_update.assert_called_once()
+        mock_ometa.get_by_id.assert_called_once()
+        mock_ometa.patch.assert_called_once()
 
 
 class TestImprovedDashboardEntity(unittest.TestCase):
     """Tests for improved Dashboard entity operations"""
 
-    @patch("metadata.sdk.entities.dashboard.Dashboard._get_client")
+    @patch("metadata.sdk.entities.dashboards.Dashboards._get_client")
     def _skip_test_create_dashboard(self, mock_get_client):
         """Test creating a dashboard"""
         # Arrange
@@ -273,7 +279,7 @@ class TestImprovedDashboardEntity(unittest.TestCase):
         self.assertEqual(result.displayName, "Sales Dashboard")
         mock_ometa.create_or_update.assert_called_once()
 
-    @patch("metadata.sdk.entities.dashboard.Dashboard._get_client")
+    @patch("metadata.sdk.entities.dashboards.Dashboards._get_client")
     def test_patch_dashboard(self, mock_get_client):
         """Test patching a dashboard"""
         # Arrange
@@ -302,7 +308,7 @@ class TestImprovedDashboardEntity(unittest.TestCase):
 class TestImprovedPipelineEntity(unittest.TestCase):
     """Tests for improved Pipeline entity operations"""
 
-    @patch("metadata.sdk.entities.pipeline.Pipeline._get_client")
+    @patch("metadata.sdk.entities.pipelines.Pipelines._get_client")
     def test_create_pipeline(self, mock_get_client):
         """Test creating a pipeline"""
         # Arrange
@@ -328,7 +334,7 @@ class TestImprovedPipelineEntity(unittest.TestCase):
         self.assertEqual(result.name, "etl-daily")
         mock_ometa.create_or_update.assert_called_once()
 
-    @patch("metadata.sdk.entities.pipeline.Pipeline._get_client")
+    @patch("metadata.sdk.entities.pipelines.Pipelines._get_client")
     def test_retrieve_pipeline_with_tasks(self, mock_get_client):
         """Test retrieving pipeline with tasks"""
         # Arrange
@@ -359,7 +365,7 @@ class TestImprovedPipelineEntity(unittest.TestCase):
 class TestImprovedTeamEntity(unittest.TestCase):
     """Tests for improved Team entity operations"""
 
-    @patch("metadata.sdk.entities.team.Team._get_client")
+    @patch("metadata.sdk.entities.teams.Teams._get_client")
     def test_create_team(self, mock_get_client):
         """Test creating a team"""
         # Arrange
@@ -387,7 +393,7 @@ class TestImprovedTeamEntity(unittest.TestCase):
         self.assertEqual(result.name, "data-engineering")
         mock_ometa.create_or_update.assert_called_once()
 
-    @patch("metadata.sdk.entities.team.Team._get_client")
+    @patch("metadata.sdk.entities.teams.Teams._get_client")
     def test_patch_team_add_users(self, mock_get_client):
         """Test patching team to add users"""
         # Arrange
@@ -418,7 +424,7 @@ class TestImprovedTeamEntity(unittest.TestCase):
 class TestImprovedUserEntity(unittest.TestCase):
     """Tests for improved User entity operations"""
 
-    @patch("metadata.sdk.entities.user_improved.User._get_client")
+    @patch("metadata.sdk.entities.users.Users._get_client")
     def test_create_user(self, mock_get_client):
         """Test creating a user"""
         # Arrange
@@ -446,7 +452,7 @@ class TestImprovedUserEntity(unittest.TestCase):
         self.assertEqual(result.email, "john.doe@company.com")
         mock_ometa.create_or_update.assert_called_once()
 
-    @patch("metadata.sdk.entities.user_improved.User._get_client")
+    @patch("metadata.sdk.entities.users.Users._get_client")
     def test_delete_user(self, mock_get_client):
         """Test deleting a user"""
         # Arrange
