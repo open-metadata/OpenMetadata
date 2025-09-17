@@ -15,6 +15,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -56,7 +57,7 @@ const ContractQualityCard: React.FC<{
       const response = await getListTestCaseBySearch({
         testSuiteId: contract?.testSuite?.id,
         ...DEFAULT_SORT_ORDER,
-        limit: 5,
+        limit: ES_MAX_PAGE_SIZE,
       });
       setTestCaseResult(response.data);
     } catch {
@@ -71,17 +72,17 @@ const ContractQualityCard: React.FC<{
   };
 
   const { showTestCaseSummaryChart, segmentWidths } = useMemo(() => {
-    const total = testCaseSummary?.total || 0;
-    const success = testCaseSummary?.success || 0;
-    const failed = testCaseSummary?.failed || 0;
-    const aborted = testCaseSummary?.aborted || 0;
+    const total = testCaseSummary?.total ?? 0;
+    const success = testCaseSummary?.success ?? 0;
+    const failed = testCaseSummary?.failed ?? 0;
+    const aborted = testCaseSummary?.aborted ?? 0;
 
     const successPercent = (success / total) * 100;
     const failedPercent = (failed / total) * 100;
     const abortedPercent = (aborted / total) * 100;
 
     return {
-      showTestCaseSummaryChart: Boolean(total ?? success ?? failed ?? aborted),
+      showTestCaseSummaryChart: Boolean(total),
       segmentWidths: {
         successPercent,
         failedPercent,
