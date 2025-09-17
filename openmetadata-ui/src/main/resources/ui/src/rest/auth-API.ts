@@ -69,11 +69,11 @@ export const confirmRegistration = async (token: string) => {
   return response.data;
 };
 
-export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
+export const getAccessTokenOnExpiry = async () => {
   const response = await axiosClient.post<
-    TokenRefreshRequest,
+    void,
     AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/refresh`, payload);
+  >(`auth/refresh`);
 
   return response.data;
 };

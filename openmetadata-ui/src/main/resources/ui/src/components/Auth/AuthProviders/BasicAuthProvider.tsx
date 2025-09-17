@@ -94,7 +94,9 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         });
 
         if (response.accessToken) {
-          await setRefreshToken(response.refreshToken);
+          if (response.refreshToken) {
+            await setRefreshToken(response.refreshToken);
+          }
           await setOidcToken(response.accessToken);
 
           handleSuccessfulLogin({
