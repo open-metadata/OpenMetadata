@@ -148,7 +148,7 @@ export class WorksheetClass extends EntityClass {
     };
   }
 
-  async patchAsset({
+  async patch({
     apiContext,
     patchData,
   }: {

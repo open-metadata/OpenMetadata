@@ -1205,6 +1205,7 @@
     "pipeline-state": "İş Akışı Durumu",
     "pipeline-type": "İş Akışı Türü",
     "platform": "Platform",
+    "platform-service-client-unavailable": "Platform Servis İstemcisi Kullanılamıyor",
     "platform-type-lineage": "{{platformType}} Veri Soyu",
     "play": "Oynat",
     "please-enter-value": "Lütfen {{name}} değeri girin",
@@ -1573,6 +1574,7 @@
     "support": "Destek",
     "support-url": "Destek URL'si",
     "supported-language-plural": "Desteklenen Diller",
+    "switch-persona": "Persona Değiştir",
     "sync-alert-offset": "Senkronizasyon Uyarısı Ofseti",
     "synonym-lowercase-plural": "eş anlamlılar",
     "synonym-plural": "Eş Anlamlılar",
@@ -2465,6 +2467,7 @@
     "team-moved-success": "Takım başarıyla taşındı!",
     "team-no-asset": "Takımınızın herhangi bir varlığı yok.",
     "test-case-insight-description": "Yapılandırılmış test doğrulamalarına dayalı olarak veri setinizin sağlığının merkezi görünümüne erişin.",
+    "test-case-name-validation": "Ad çift iki nokta (::), tırnak işareti (\") veya büyüktür simgesi (>) içeremez.",
     "test-case-schedule-description": "Veri kalitesi testleri istenen sıklıkta çalışacak şekilde zamanlanabilir. Saat dilimi UTC'dir.",
     "test-connection-cannot-be-triggered": "Bağlantı testi tetiklenemez.",
     "test-connection-taking-too-long": {

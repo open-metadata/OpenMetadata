@@ -114,6 +114,7 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -160,7 +161,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "1.8.0",
+            version = "1.9.8",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -339,6 +340,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+
+    // Register User Metrics Servlet
+    registerUserMetricsServlet(environment);
   }
 
   protected void registerMCPServer(
@@ -426,6 +430,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       refreshHolder.setName("auth_refresh");
       environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
     }
+  }
+
+  private void registerUserMetricsServlet(Environment environment) {
+    ServletHolder userMetricsHolder = new ServletHolder(new UserMetricsServlet());
+    userMetricsHolder.setName("user_metrics");
+    environment.getAdminContext().addServlet(userMetricsHolder, "/user-metrics");
+    LOG.info("Registered UserMetricsServlet on admin port at /user-metrics");
   }
 
   public static boolean isHttps(OpenMetadataApplicationConfig configuration) {

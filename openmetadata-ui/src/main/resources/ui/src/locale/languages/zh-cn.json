@@ -1205,6 +1205,7 @@
     "pipeline-state": "工作流状态",
     "pipeline-type": "工作流类型",
     "platform": "平台",
+    "platform-service-client-unavailable": "平台服务客户端不可用",
     "platform-type-lineage": "{{platformType}} 血缘关系",
     "play": "Play",
     "please-enter-value": "请输入{{name}}值",
@@ -1573,6 +1574,7 @@
     "support": "支持",
     "support-url": "支持 URL",
     "supported-language-plural": "支持的语言",
+    "switch-persona": "切换角色",
     "sync-alert-offset": "同步警报",
     "synonym-lowercase-plural": "同义词",
     "synonym-plural": "同义词",
@@ -2465,6 +2467,7 @@
     "team-moved-success": "团队移动成功",
     "team-no-asset": "您的团队没有任何资产",
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
+    "test-case-name-validation": "名称不能包含双冒号(::)、引号(\")或大于符号(>)。",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
     "test-connection-taking-too-long": {
