@@ -30,7 +30,6 @@ import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/Te
 export interface TableProfilerProps {
   permissions: OperationPermission;
   table?: Table;
-  testCaseSummary?: TestSummary;
 }
 
 export interface TableProfilerProviderProps extends TableProfilerProps {

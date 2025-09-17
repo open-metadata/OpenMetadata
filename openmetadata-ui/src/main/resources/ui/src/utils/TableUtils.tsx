@@ -766,7 +766,6 @@ export const getTableDetailPageBaseTabs = ({
   viewQueriesPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -881,11 +880,7 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <TableProfiler
-          permissions={tablePermissions}
-          table={tableDetails}
-          testCaseSummary={testCaseSummary}
-        />
+        <TableProfiler permissions={tablePermissions} table={tableDetails} />
       ),
     },
     {
