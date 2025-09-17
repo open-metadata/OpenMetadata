@@ -55,7 +55,7 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     case EntityType.CONTAINER:
       return GlobalSettingOptions.CONTAINERS;
     case EntityType.DATABASE:
-      return GlobalSettingOptions.DATABASE;
+      return GlobalSettingOptions.DATABASES;
     case EntityType.DATABASE_SCHEMA:
       return GlobalSettingOptions.DATABASE_SCHEMA;
     case EntityType.GLOSSARY_TERM:
