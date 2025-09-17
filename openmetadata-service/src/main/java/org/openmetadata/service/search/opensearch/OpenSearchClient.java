@@ -140,7 +140,6 @@ import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
@@ -149,7 +148,6 @@ import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
-import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
@@ -164,12 +162,14 @@ import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
-import os.org.opensearch.client.indices.PutMappingRequest;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
+import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
+import os.org.opensearch.client.opensearch.indices.DeleteIndexResponse;
 import os.org.opensearch.client.opensearch.indices.IndexSettings;
+import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
 import os.org.opensearch.client.transport.endpoints.BooleanResponse;
@@ -436,32 +436,47 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
-      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
-      request.source(JsonUtils.getMap(readProperties));
-      AcknowledgedResponse putMappingResponse =
-          client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
+      String indexName = indexMapping.getIndexName(clusterAlias);
+
+      PutMappingRequest request =
+          PutMappingRequest.of(
+              builder -> {
+                builder.index(indexName);
+                if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+                  try {
+                    // Parse the mapping content to get the mappings section
+                    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+                    JsonNode mappingsNode = rootNode.get("mappings");
+
+                    if (mappingsNode != null && !mappingsNode.isNull()) {
+                      // Parse the mappings JSON into TypeMapping
+                      TypeMapping typeMapping = parseTypeMapping(mappingsNode);
+                      builder.properties(typeMapping.properties());
+                    }
+                  } catch (Exception e) {
+                    LOG.warn("Failed to parse mapping content, skipping mapping update", e);
+                  }
+                }
+                return builder;
+              });
+
+      newClient.indices().putMapping(request);
+      LOG.info("Successfully updated mapping for index: {}", indexName);
     } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Open Search index %s", indexMapping.getIndexName(clusterAlias)));
+      LOG.error("Failed to Update Open Search index {}", indexMapping.getIndexName(clusterAlias));
     }
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
-      AcknowledgedResponse deleteIndexResponse =
-          client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Deleted {}",
-          indexMapping.getIndexName(clusterAlias),
-          deleteIndexResponse.isAcknowledged());
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      DeleteIndexRequest request = DeleteIndexRequest.of(b -> b.index(indexName));
+      DeleteIndexResponse response = newClient.indices().delete(request);
+      LOG.debug("{} Deleted: {}", indexName, response.acknowledged());
     } catch (Exception e) {
-      LOG.error("Failed to delete Open Search indexes due to", e);
+      LOG.error(
+          "Failed to delete OpenSearch index: {}", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 

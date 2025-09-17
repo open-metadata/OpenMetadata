@@ -23,6 +23,9 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
+import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -31,7 +34,6 @@ import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
@@ -40,7 +42,6 @@ import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.index.IndexRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
-import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
@@ -52,7 +53,6 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.DeleteDataStreamRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
-import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.ParsingException;
@@ -372,32 +372,41 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
-      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
-      request.source(JsonUtils.getMap(readProperties));
-      AcknowledgedResponse putMappingResponse =
-          client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
+      String indexName = indexMapping.getIndexName(clusterAlias);
+
+      PutMappingRequest request =
+          PutMappingRequest.of(
+              builder -> {
+                builder.index(indexName);
+                if (indexMappingContent != null) {
+                  builder.withJson(new StringReader(indexMappingContent));
+                }
+                return builder;
+              });
+
+      newClient.indices().putMapping(request);
+      LOG.info("Successfully updated mapping for index: {}", indexName);
+
     } catch (Exception e) {
       LOG.warn(
-          String.format(
-              "Failed to Update Elastic Search index %s", indexMapping.getIndexName(clusterAlias)));
+          "Failed to update Elasticsearch index {} due to",
+          indexMapping.getIndexName(clusterAlias),
+          e);
     }
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
-      AcknowledgedResponse deleteIndexResponse =
-          client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Deleted {}",
-          indexMapping.getIndexName(clusterAlias),
-          deleteIndexResponse.isAcknowledged());
+      String indexName = indexMapping.getIndexName(clusterAlias);
+
+      DeleteIndexRequest request = DeleteIndexRequest.of(b -> b.index(indexName));
+      DeleteIndexResponse response = newClient.indices().delete(request);
+
+      LOG.debug("{} Deleted: {}", indexName, response.acknowledged());
     } catch (Exception e) {
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
+      LOG.error(
+          "Failed to delete Elasticsearch index: {}", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
