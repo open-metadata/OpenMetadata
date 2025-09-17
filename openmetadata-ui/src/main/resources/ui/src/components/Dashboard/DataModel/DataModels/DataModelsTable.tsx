@@ -14,12 +14,14 @@
 import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
@@ -30,12 +32,14 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
@@ -58,6 +62,7 @@ const DataModelTable = ({
 }: DataModelTableProps) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
+  const navigate = useNavigate();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
   const {
     currentPage,
@@ -69,6 +74,15 @@ const DataModelTable = ({
     showPagination,
   } = usePaging();
   const [isLoading, setIsLoading] = useState(true);
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.dataModel as string | undefined;
+  }, [location.search]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
@@ -149,6 +163,51 @@ const DataModelTable = ({
     [fqn, pageSize, showDeleted]
   );
 
+  const searchDataModel = async (
+    searchValue: string,
+    pageNumber = INITIAL_PAGING_VALUE
+  ) => {
+    setIsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [{ term: { 'service.fullyQualifiedName': fqn } }],
+            },
+          },
+        },
+        searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+      });
+      const data = response.hits.hits.map((schema) => schema._source);
+      const total = response.hits.total.value;
+      setDataModels(data);
+      handlePagingChange({ total });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onDataModelSearch = (value: string) => {
+    navigate({
+      search: QueryString.stringify({
+        dataModel: isEmpty(value) ? undefined : value,
+      }),
+    });
+    if (value) {
+      searchDataModel(value);
+    } else {
+      fetchDashboardsDataModel();
+    }
+  };
+
   const handleDataModelPageChange: NextPreviousProps['pagingHandler'] = ({
     cursorType,
     currentPage,
@@ -204,6 +263,14 @@ const DataModelTable = ({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
+      searchProps={{
+        placeholder: t('label.search-for-type', {
+          type: t('label.data-model'),
+        }),
+        value: searchValue,
+        typingInterval: 500,
+        onSearch: onDataModelSearch,
+      }}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
