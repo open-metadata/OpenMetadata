@@ -298,6 +298,8 @@ test.describe('Data Contracts', () => {
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
 
+      await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
+
       await addOwner({
         page,
         owner: 'admin',
@@ -1715,6 +1717,23 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Validate Security and SLA Details', async () => {
+      // Validate on Contract Detail Page
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      await expect(
+        page.getByText('Freshness: Data must be updated within the last 10 day')
+      ).toBeVisible();
+      await expect(
+        page.getByText(
+          'Completeness: Data availability is scheduled for 12:15 each day'
+        )
+      ).toBeVisible();
+      await expect(
+        page.getByText('Latency: Query response must be under 20 hour')
+      ).toBeVisible();
+      await expect(
+        page.getByText('Retention: Data should be retained for 30 week')
+      ).toBeVisible();
+
       await page.getByTestId('manage-contract-actions').click();
 
       await page.waitForSelector('.contract-action-dropdown', {
@@ -1734,6 +1753,25 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Validate the updated values Security and SLA Details',
       async () => {
+        // Validate the updated data on Contract Detail Page
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        await expect(
+          page.getByText(
+            'Freshness: Data must be updated within the last 50 hour'
+          )
+        ).toBeVisible();
+        await expect(
+          page.getByText(
+            'Completeness: Data availability is scheduled for 05:34 each day'
+          )
+        ).toBeVisible();
+        await expect(
+          page.getByText('Latency: Query response must be under 60 minute')
+        ).toBeVisible();
+        await expect(
+          page.getByText('Retention: Data should be retained for 70 year')
+        ).toBeVisible();
+
         await page.getByTestId('manage-contract-actions').click();
 
         await page.waitForSelector('.contract-action-dropdown', {

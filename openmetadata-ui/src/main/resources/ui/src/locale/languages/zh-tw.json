@@ -1894,7 +1894,7 @@
     "closed-this-task": "已關閉此任務",
     "collaborate-with-other-user": "與其他使用者協作。",
     "collate-ai-widget-description": "Collate AI 為服務產生的資料概觀。<0>了解更多。</0>",
-    "completeness-sla-description": "<0>{{label}}</0>：資料可用性每日安排為 <0>{{data}}</0>。",
+    "completeness-sla-description": "<0>{{label}}</0>：資料可用性每日安排為 <0>{{data}}</0>",
     "compute-row-count-helper-text": "計算測試案例的通過和失敗資料列計數。",
     "confidence-percentage-message": "設定 NLP 模型在推斷欄位是否包含 PII 資料時要使用的信賴等級。",
     "configure-a-service-description": "輸入唯一的服務名稱。該名稱在服務類別中必須是唯一的。例如，在資料庫服務中，MySQL 和 Snowflake 不能有相同的服務名稱（例如 customer_data）。但是，不同的服務類別（儀表板、管線）可以有相同的服務名稱。服務名稱中不支援空格。支援 - _ 等字元。另外，請新增描述。",

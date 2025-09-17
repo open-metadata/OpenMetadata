@@ -1894,7 +1894,7 @@
     "closed-this-task": "このタスクはクローズされました",
     "collaborate-with-other-user": "他のユーザーとコラボレーションできます。",
     "collate-ai-widget-description": "Collate AI によって生成されたデータの概要。<0>詳細を見る。</0>",
-    "completeness-sla-description": "<0>{{label}}</0>: Data availability is scheduled for <0>{{data}}</0> each day.",
+    "completeness-sla-description": "<0>{{label}}</0>: Data availability is scheduled for <0>{{data}}</0> each day",
     "compute-row-count-helper-text": "テストケースの合格および不合格の行数を計算します。",
     "confidence-percentage-message": "列が PII データを含むかどうかを NLP モデルが推測する際の信頼度を設定してください。",
     "configure-a-service-description": "一意なサービス名を入力してください。同一カテゴリ内ではサービス名の重複はできません（例：MySQL と Snowflake の両方で 'customer_data' は使えません）。ただし異なるカテゴリ間では同じサービス名が使用可能です。サービス名にスペースは使えません。「-」や「_」は使用可能です。説明も入力してください。",

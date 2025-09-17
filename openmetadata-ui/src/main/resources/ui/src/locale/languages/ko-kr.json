@@ -1894,7 +1894,7 @@
     "closed-this-task": "이 작업을 종료했습니다",
     "collaborate-with-other-user": "다른 사용자와 협업하기 위해",
     "collate-ai-widget-description": "해당 서비스에서 Collate AI가 생성한 데이터 개요입니다. <0>자세히 보기</0>",
-    "completeness-sla-description": "<0>{{label}}</0>: 데이터 가용성은 매일 <0>{{data}}</0> 로 예정되어 있습니다.",
+    "completeness-sla-description": "<0>{{label}}</0>: 데이터 가용성은 매일 <0>{{data}}</0> 로 예정되어 있습니다",
     "compute-row-count-helper-text": "테스트 케이스에 대한 통과 및 실패 행 수를 계산합니다.",
     "confidence-percentage-message": "열이 PII 데이터를 포함하는지 여부를 추론할 때 NLP 모델이 사용할 신뢰 수준을 설정합니다.",
     "configure-a-service-description": "고유한 서비스 이름을 입력하세요. 이름은 서비스 카테고리 내에서 고유해야 합니다. 예를 들어, 데이터베이스 서비스 중에서 MySQL과 Snowflake는 동일한 서비스 이름(예: customer_data)을 가질 수 없습니다. 그러나 다른 서비스 카테고리(대시보드, 파이프라인)는 동일한 서비스 이름을 가질 수 있습니다. 서비스 이름에는 공백이 지원되지 않습니다. - _와 같은 문자는 지원됩니다. 또한 설명을 추가하세요.",

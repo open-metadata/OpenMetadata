@@ -1894,7 +1894,7 @@
     "closed-this-task": "cerró esta tarea",
     "collaborate-with-other-user": "para colaborar con otros usuarios.",
     "collate-ai-widget-description": "Resumen de los datos generados por Collate AI para el servicio. <0>saber más.</0>",
-    "completeness-sla-description": "<0>{{label}}</0>: La disponibilidad de los datos está programada para <0>{{data}}</0> cada día.",
+    "completeness-sla-description": "<0>{{label}}</0>: La disponibilidad de los datos está programada para <0>{{data}}</0> cada día",
     "compute-row-count-helper-text": "Calcula el recuento de filas pasadas y fallidas para el caso de prueba.",
     "confidence-percentage-message": "Establece el nivel de confianza para el modelo de NLP a utilizar al inferir si una columna contiene o no datos PII.",
     "configure-a-service-description": "Ingresa un nombre de servicio único. El nombre debe ser único en toda la categoría de servicios. Por ejemplo, entre los servicios de bases de datos, tanto MySQL como Snowflake no pueden tener el mismo nombre de servicio (por ejemplo, customer_data). Sin embargo, diferentes categorías de servicios (como dashboard, pipeline) pueden tener el mismo nombre de servicio. Los espacios no están permitidos en el nombre del servicio. Los caracteres como - _ son permitidos. Además, añade una descripción.",

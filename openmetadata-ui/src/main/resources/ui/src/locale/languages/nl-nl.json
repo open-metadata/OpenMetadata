@@ -1894,7 +1894,7 @@
     "closed-this-task": "heeft deze taak gesloten",
     "collaborate-with-other-user": "om samen te werken met andere gebruikers.",
     "collate-ai-widget-description": "Overzicht van de data gegenereerd door de Collate AI voor de service. <0>meer informatie.</0>",
-    "completeness-sla-description": "<0>{{label}}</0>: Gegevensbeschikbaarheid is gepland voor <0>{{data}}</0> elke dag.",
+    "completeness-sla-description": "<0>{{label}}</0>: Gegevensbeschikbaarheid is gepland voor <0>{{data}}</0> elke dag",
     "compute-row-count-helper-text": "Bereken het aantal geslaagde en mislukte rijen voor de testcase.",
     "confidence-percentage-message": "Stel het betrouwbaarheidsniveau in voor het NLP-model om te gebruiken bij het afleiden of een kolom PII-data bevat of niet.",
     "configure-a-service-description": "Voer een unieke servicenaam in. De naam moet uniek zijn binnen de categorie services. Bijvoorbeeld, binnen databaseservices kunnen zowel MySQL als Snowflake niet dezelfde servicenaam hebben (Bijv. klantdata). Verschillende servicecategorieën (dashboard, pipeline) kunnen echter dezelfde servicenaam hebben. Spaties worden niet ondersteund in de servicenaam. Karakters zoals - _ worden ondersteund. Voeg ook een beschrijving toe.",

@@ -111,7 +111,10 @@ const ContractSLA: React.FC<{
   }
 
   return (
-    <Col className="contract-card-items" span={24}>
+    <Col
+      className="contract-card-items"
+      data-testid="contract-sla-card"
+      span={24}>
       <div className="contract-card-header-container">
         <Typography.Text className="contract-card-header">
           {t('label.service-level-agreement')}

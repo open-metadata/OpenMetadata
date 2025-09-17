@@ -1894,7 +1894,7 @@
     "closed-this-task": "bu görevi kapattı",
     "collaborate-with-other-user": "diğer kullanıcılarla işbirliği yapmak için.",
     "collate-ai-widget-description": "Collate AI tarafından servis için oluşturulan verilere genel bakış. <0>daha fazla bilgi edinin.</0>",
-    "completeness-sla-description": "<0>{{label}}</0>: Veri kullanılabilirliği her gün <0>{{data}}</0> için planlanmıştır.",
+    "completeness-sla-description": "<0>{{label}}</0>: Veri kullanılabilirliği her gün <0>{{data}}</0> için planlanmıştır",
     "compute-row-count-helper-text": "Test senaryosu için geçen ve başarısız olan satır sayısını hesaplayın.",
     "confidence-percentage-message": "Bir sütunun KVT verisi içerip içermediğini çıkarırken NLP modelinin kullanacağı güven düzeyini ayarlayın.",
     "configure-a-service-description": "Benzersiz bir servis adı girin. Ad, servisler kategorisinde benzersiz olmalıdır. Örneğin, veritabanı servisleri arasında hem MySQL hem de Snowflake aynı servis adına (ör. müşteri_verileri) sahip olamaz. Ancak, farklı servis kategorileri (kontrol paneli, iş akışı) aynı servis adına sahip olabilir. Servis adında boşluk desteklenmez. - _ gibi karakterler desteklenir. Ayrıca bir açıklama ekleyin.",
