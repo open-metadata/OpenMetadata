@@ -97,6 +97,12 @@
       <artifactId>jakarta.el-api</artifactId>
       <version>5.0.1</version>
     </dependency>
+    <!-- OpenMetadata Search Module -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-search</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <!-- Hibernate Validator -->
     <dependency>
       <groupId>org.hibernate.validator</groupId>
