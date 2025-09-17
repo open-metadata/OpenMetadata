@@ -22,16 +22,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
-import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
-import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
-import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
-import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
-import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
-import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.endpoints.BooleanResponse;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
@@ -105,7 +96,6 @@ import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -227,6 +217,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   private final ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
+  private final ElasticSearchIndexManager indexManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -258,6 +249,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
+    indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     nlqService = null;
   }
 
@@ -294,127 +286,32 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public boolean indexExists(String indexName) {
-    try {
-      ElasticsearchIndicesClient indicesClient = newClient.indices();
-      ExistsRequest request = ExistsRequest.of(e -> e.index(indexName));
-      BooleanResponse response = indicesClient.exists(request);
-      LOG.info("index {} exist: {}", getIndexName(indexName), response.value());
-      return response.value();
-    } catch (IOException e) {
-      LOG.error("Failed to check if index {} exists", indexName, e);
-      return false;
-    }
+    return indexManager.indexExists(indexName);
   }
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (isNewClientAvailable) {
-      try {
-        String indexName = indexMapping.getIndexName(clusterAlias);
-
-        CreateIndexRequest request =
-            CreateIndexRequest.of(
-                builder -> {
-                  builder.index(indexName);
-                  if (indexMappingContent != null) {
-                    builder.withJson(new StringReader(indexMappingContent));
-                  }
-                  return builder;
-                });
-
-        newClient.indices().create(request);
-
-        LOG.info("Successfully created index: {}", indexName);
-        createAliases(indexMapping);
-
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
-      }
-    } else {
-      LOG.error(
-          "Failed to create Elasticsearch index: client is not properly configured. Check your OpenMetadata configuration.");
-    }
+    indexManager.createIndex(indexMapping, indexMappingContent);
   }
 
   @Override
   public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-
-      // Build the request
-      UpdateAliasesRequest request =
-          UpdateAliasesRequest.of(
-              u -> {
-                for (String alias : aliasNames) {
-                  u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
-                }
-                return u;
-              });
-
-      UpdateAliasesResponse response = newClient.indices().updateAliases(request);
-
-      if (response.acknowledged()) {
-        LOG.info("Aliases {} added to index {}", Arrays.toString(aliasNames), indexName);
-      } else {
-        LOG.warn("Alias update for index {} was not acknowledged", indexName);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to create alias for {} due to", indexMapping.getAlias(clusterAlias), e);
-    }
+    indexManager.addIndexAlias(indexMapping, aliasNames);
   }
 
   @Override
   public void createAliases(IndexMapping indexMapping) {
-    try {
-      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
-      aliases.add(indexMapping.getAlias(clusterAlias));
-      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
-    } catch (Exception e) {
-      LOG.error("Failed to create aliases for {} due to", indexMapping.getAlias(clusterAlias), e);
-    }
+    indexManager.createAliases(indexMapping);
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-
-      PutMappingRequest request =
-          PutMappingRequest.of(
-              builder -> {
-                builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
-                }
-                return builder;
-              });
-
-      newClient.indices().putMapping(request);
-      LOG.info("Successfully updated mapping for index: {}", indexName);
-
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to update Elasticsearch index {} due to",
-          indexMapping.getIndexName(clusterAlias),
-          e);
-    }
+    indexManager.updateIndex(indexMapping, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-
-      DeleteIndexRequest request = DeleteIndexRequest.of(b -> b.index(indexName));
-      DeleteIndexResponse response = newClient.indices().delete(request);
-
-      LOG.debug("{} Deleted: {}", indexName, response.acknowledged());
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete Elasticsearch index: {}", indexMapping.getIndexName(clusterAlias), e);
-    }
+    indexManager.deleteIndex(indexMapping);
   }
 
   @Override
