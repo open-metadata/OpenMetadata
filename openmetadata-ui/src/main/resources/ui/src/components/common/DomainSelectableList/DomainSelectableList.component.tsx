@@ -46,8 +46,7 @@ export const DomainListItemRenderer = (props: EntityReference) => {
           <Typography.Text
             ellipsis
             className="m-l-xss text-xs"
-            type="secondary"
-          >
+            type="secondary">
             {fqn}
           </Typography.Text>
         )}
@@ -96,7 +95,13 @@ const DomainSelectableList = ({
       if (multiple) {
         await onUpdate(domains);
       } else {
-        await onUpdate(domains[0]);
+        // Handle empty selection case for single domain
+        if (domains.length > 0) {
+          await onUpdate(domains[0]);
+        } else {
+          // Pass undefined for empty selection in single domain mode
+          await onUpdate(undefined as any);
+        }
       }
 
       setPopupVisible(false);
@@ -139,8 +144,7 @@ const DomainSelectableList = ({
             setPopupVisible(visible);
           }
         }}
-        {...popoverProps}
-      >
+        {...popoverProps}>
         {children ??
           (!isVersionView && (
             <EditIconButton
@@ -175,8 +179,7 @@ const DomainSelectableList = ({
       <Button
         className="remove-button-default-styling flex-center"
         disabled={disabled}
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()}>
         {popoverContent}
       </Button>
     );

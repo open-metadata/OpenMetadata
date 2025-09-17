@@ -28,4 +28,5 @@ export type DataAssetSummaryPanelProps = {
   isDomainVisible?: boolean;
   isLineageView?: boolean;
   onOwnerUpdate?: (updatedOwners: any[]) => void;
+  onDomainUpdate?: (updatedDomains: any[]) => void;
 };

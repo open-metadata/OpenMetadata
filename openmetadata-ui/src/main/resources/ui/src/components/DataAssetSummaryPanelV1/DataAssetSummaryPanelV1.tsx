@@ -26,7 +26,6 @@ import {
 } from '../../utils/EntityUtils';
 
 import { AxiosError } from 'axios';
-import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
@@ -61,13 +60,11 @@ export const DataAssetSummaryPanelV1 = ({
   dataAsset,
   entityType,
   isLoading = false,
-  tags,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
-  isLineageView = false,
   onOwnerUpdate,
+  onDomainUpdate,
 }: DataAssetSummaryPanelProps) => {
-  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
@@ -79,7 +76,7 @@ export const DataAssetSummaryPanelV1 = ({
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [, setTestCases] = useState<TestCase[]>([]);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
     success: 0,
     failed: 0,
@@ -92,7 +89,7 @@ export const DataAssetSummaryPanelV1 = ({
     [dataAsset, additionalInfo, entityType]
   );
 
-  const entityDetails = useMemo(() => {
+  useMemo(() => {
     return getEntityChildDetails(
       entityType,
       entityType === EntityType.DASHBOARD
@@ -263,7 +260,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <DescriptionSection
               description={dataAsset.description}
-              onDescriptionUpdate={async (newDescription: string) => {
+              onDescriptionUpdate={async () => {
                 // Handle description update
                 // TODO: Implement actual API call to update description
                 // Example: await updateEntityDescription(dataAsset.id, newDescription);
@@ -318,6 +315,10 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={
                 entityPermissions?.EditAll || entityPermissions?.EditTags
               }
+              key={`domains-${dataAsset.id}-${
+                (dataAsset.domains as EntityReference[])?.length || 0
+              }`}
+              onDomainUpdate={onDomainUpdate}
             />
             <TagsSection tags={dataAsset.tags} />
           </>

@@ -11,6 +11,22 @@
  *  limitations under the License.
  */
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 .domains-section {
   border-bottom: dotted;
   border-bottom-width: thin;
@@ -132,6 +148,30 @@
     .no-data-placeholder {
       color: #8c8c8c;
       font-style: italic;
+    }
+
+    .domains-loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      min-height: 60px;
+
+      .domains-loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+          color: #8c8c8c;
+          font-size: 12px;
+        }
+      }
     }
 
     // Ensure popover appears below the selector
