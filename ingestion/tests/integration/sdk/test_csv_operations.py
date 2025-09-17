@@ -2,7 +2,6 @@
 Integration tests for CSV import/export operations in the SDK.
 Tests both sync and async operations with glossary entities.
 """
-import asyncio
 import time
 import uuid
 from typing import Optional
@@ -12,10 +11,11 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
-from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
+from metadata.generated.schema.api.data.createGlossaryTerm import (
+    CreateGlossaryTermRequest,
+)
 from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.type.basic import Markdown, EntityName
+from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.entities.glossary import Glossaries
 from metadata.sdk.entities.glossary_term import GlossaryTerms
@@ -46,9 +46,7 @@ def client(openmetadata_container):
         config={
             "hostPort": f"http://localhost:{port}",
             "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "test-token"
-            }
+            "securityConfig": {"jwtToken": "test-token"},
         }
     )
 
@@ -72,7 +70,9 @@ class TestCsvOperations:
         # Clean up created entities
         if self.glossary:
             try:
-                Glossaries.delete(str(self.glossary.id.root), recursive=True, hard_delete=True)
+                Glossaries.delete(
+                    str(self.glossary.id.root), recursive=True, hard_delete=True
+                )
             except Exception:
                 pass  # Entity might already be deleted
 
@@ -93,7 +93,7 @@ class TestCsvOperations:
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for CSV export")
+                description=Markdown("Test glossary for CSV export"),
             )
         )
 
@@ -104,7 +104,7 @@ class TestCsvOperations:
                     glossary=str(self.glossary.fullyQualifiedName.root),
                     name=EntityName(f"term_{i}"),
                     description=Markdown(f"Test term {i} description"),
-                    displayName=f"Term {i}"
+                    displayName=f"Term {i}",
                 )
             )
             self.terms.append(term)
@@ -131,7 +131,7 @@ class TestCsvOperations:
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for async CSV export")
+                description=Markdown("Test glossary for async CSV export"),
             )
         )
 
@@ -140,7 +140,7 @@ class TestCsvOperations:
             CreateGlossaryTermRequest(
                 glossary=str(self.glossary.fullyQualifiedName.root),
                 name=EntityName("async_term"),
-                description=Markdown("Test async term")
+                description=Markdown("Test async term"),
             )
         )
         self.terms.append(term)
@@ -167,7 +167,7 @@ class TestCsvOperations:
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for CSV import")
+                description=Markdown("Test glossary for CSV import"),
             )
         )
 
@@ -178,13 +178,20 @@ class TestCsvOperations:
 import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
 
         # Import CSV data with dry run first
-        dry_run_result = Glossaries.import_csv(test_glossary_name).withData(csv_data).dryRun().execute()
+        dry_run_result = (
+            Glossaries.import_csv(test_glossary_name)
+            .withData(csv_data)
+            .dryRun()
+            .execute()
+        )
 
         # Verify dry run doesn't create entities
         assert dry_run_result is not None
 
         # Now do actual import
-        import_result = Glossaries.import_csv(test_glossary_name).withData(csv_data).execute()
+        import_result = (
+            Glossaries.import_csv(test_glossary_name).withData(csv_data).execute()
+        )
 
         # Verify import result
         assert import_result is not None
@@ -207,7 +214,7 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for async CSV import")
+                description=Markdown("Test glossary for async CSV import"),
             )
         )
 
@@ -216,7 +223,12 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
 ,async_import_term,Async Imported Term,Term imported asynchronously,,,,"""
 
         # Import CSV data asynchronously
-        job_id = Glossaries.import_csv(test_glossary_name).withData(csv_data).async_().execute()
+        job_id = (
+            Glossaries.import_csv(test_glossary_name)
+            .withData(csv_data)
+            .async_()
+            .execute()
+        )
 
         # Verify job ID returned
         assert job_id is not None
@@ -236,7 +248,7 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
         source_glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(f"{test_glossary_name}_source"),
-                description=Markdown("Source glossary")
+                description=Markdown("Source glossary"),
             )
         )
         self.glossary = source_glossary
@@ -248,7 +260,7 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
                     glossary=str(source_glossary.fullyQualifiedName.root),
                     name=EntityName(f"roundtrip_term_{i}"),
                     description=Markdown(f"Roundtrip term {i}"),
-                    displayName=f"Roundtrip Term {i}"
+                    displayName=f"Roundtrip Term {i}",
                 )
             )
             self.terms.append(term)
@@ -263,12 +275,16 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
         target_glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(f"{test_glossary_name}_target"),
-                description=Markdown("Target glossary")
+                description=Markdown("Target glossary"),
             )
         )
 
         # Import to target glossary
-        import_result = Glossaries.import_csv(f"{test_glossary_name}_target").withData(csv_data).execute()
+        import_result = (
+            Glossaries.import_csv(f"{test_glossary_name}_target")
+            .withData(csv_data)
+            .execute()
+        )
         assert import_result is not None
 
         # Verify terms exist in target glossary
@@ -281,7 +297,9 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
 
         # Clean up target glossary
         try:
-            Glossaries.delete(str(target_glossary.id.root), recursive=True, hard_delete=True)
+            Glossaries.delete(
+                str(target_glossary.id.root), recursive=True, hard_delete=True
+            )
         except Exception:
             pass
 
@@ -297,14 +315,16 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
 
         # Try to import to non-existent glossary
         with pytest.raises(Exception):
-            csv_data = "parent,name,displayName,description\n,test,Test,Test description"
+            csv_data = (
+                "parent,name,displayName,description\n,test,Test,Test description"
+            )
             Glossaries.import_csv("non_existent_glossary").withData(csv_data).execute()
 
         # Try to import invalid CSV data
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for error handling")
+                description=Markdown("Test glossary for error handling"),
             )
         )
 
@@ -323,7 +343,7 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
         self.glossary = Glossaries.create(
             CreateGlossaryRequest(
                 name=EntityName(test_glossary_name),
-                description=Markdown("Test glossary for async futures")
+                description=Markdown("Test glossary for async futures"),
             )
         )
 
@@ -353,7 +373,12 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
         csv_data = "parent,name,displayName,description\n,future_term,Future Term,Term for future test"
 
         # Start async import
-        import_job_id = Glossaries.import_csv(test_glossary_name).withData(csv_data).async_().execute()
+        import_job_id = (
+            Glossaries.import_csv(test_glossary_name)
+            .withData(csv_data)
+            .async_()
+            .execute()
+        )
 
         # Simulate callback
         on_import_complete(import_job_id)
@@ -362,7 +387,7 @@ import_term1,import_subterm,Imported Subterm,Subterm under term1,,,,"""
 
 @pytest.mark.skipif(
     not pytest.config.getoption("--run-integration", default=False),
-    reason="Integration tests require --run-integration flag"
+    reason="Integration tests require --run-integration flag",
 )
 class TestCsvOperationsWithRealServer:
     """
@@ -380,7 +405,7 @@ class TestCsvOperationsWithRealServer:
                 "authProvider": "openmetadata",
                 "securityConfig": {
                     "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."
-                }
+                },
             }
         )
         OpenMetadata.set_default_client(self.client)
@@ -396,7 +421,7 @@ class TestCsvOperationsWithRealServer:
             glossary = Glossaries.create(
                 CreateGlossaryRequest(
                     name=EntityName(glossary_name),
-                    description=Markdown("Real server test glossary")
+                    description=Markdown("Real server test glossary"),
                 )
             )
 
@@ -407,7 +432,7 @@ class TestCsvOperationsWithRealServer:
                     CreateGlossaryTermRequest(
                         glossary=str(glossary.fullyQualifiedName.root),
                         name=EntityName(f"real_term_{i}"),
-                        description=Markdown(f"Real term {i}")
+                        description=Markdown(f"Real term {i}"),
                     )
                 )
                 terms.append(term)
@@ -420,14 +445,15 @@ class TestCsvOperationsWithRealServer:
 
             # Import with modification
             modified_csv = csv_data.replace("Real term 0", "Modified real term 0")
-            import_result = Glossaries.import_csv(glossary_name).withData(modified_csv).execute()
+            import_result = (
+                Glossaries.import_csv(glossary_name).withData(modified_csv).execute()
+            )
             assert import_result is not None
 
             # Verify modification
             updated_terms = GlossaryTerms.list_all()
             modified_term = next(
-                (t for t in updated_terms if "real_term_0" in str(t.name.root)),
-                None
+                (t for t in updated_terms if "real_term_0" in str(t.name.root)), None
             )
             if modified_term and modified_term.description:
                 assert "Modified" in str(modified_term.description.root)
@@ -435,6 +461,8 @@ class TestCsvOperationsWithRealServer:
         finally:
             # Cleanup
             try:
-                Glossaries.delete(str(glossary.id.root), recursive=True, hard_delete=True)
+                Glossaries.delete(
+                    str(glossary.id.root), recursive=True, hard_delete=True
+                )
             except Exception:
                 pass

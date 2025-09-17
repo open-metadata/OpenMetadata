@@ -5,11 +5,12 @@ import logging
 from typing import Any, Dict, Optional, Type, TypeVar, Union
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,10 @@ class CustomPropertyUpdater:
 
             # Find the entity class that matches our type
             for subclass in BaseEntity.__subclasses__():
-                if hasattr(subclass, "entity_type") and subclass.entity_type() == self.entity_type:
+                if (
+                    hasattr(subclass, "entity_type")
+                    and subclass.entity_type() == self.entity_type
+                ):
                     return subclass._get_client()
         except Exception as e:
             logger.debug(f"Could not get client from BaseEntity: {e}")
@@ -154,15 +158,11 @@ class CustomPropertyUpdater:
         # Fetch the current entity with extension field
         if self.is_fqn:
             entity = client.get_by_name(
-                entity=self.entity_type,
-                fqn=self.identifier,
-                fields=["extension"]
+                entity=self.entity_type, fqn=self.identifier, fields=["extension"]
             )
         else:
             entity = client.get_by_id(
-                entity=self.entity_type,
-                entity_id=self.identifier,
-                fields=["extension"]
+                entity=self.entity_type, entity_id=self.identifier, fields=["extension"]
             )
 
         if not entity:
@@ -173,7 +173,9 @@ class CustomPropertyUpdater:
         if hasattr(entity, "extension") and entity.extension:
             # Handle wrapped EntityExtension type
             if isinstance(entity.extension, basic.EntityExtension):
-                current_extension = entity.extension.root if hasattr(entity.extension, "root") else {}
+                current_extension = (
+                    entity.extension.root if hasattr(entity.extension, "root") else {}
+                )
             elif isinstance(entity.extension, dict):
                 current_extension = entity.extension.copy()
 
@@ -200,9 +202,7 @@ class CustomPropertyUpdater:
 
         # Update the entity using patch
         updated_entity = client.patch(
-            entity=self.entity_type,
-            source=entity,
-            destination=entity_copy
+            entity=self.entity_type, source=entity, destination=entity_copy
         )
 
         return updated_entity
@@ -232,7 +232,7 @@ class CustomProperties:
     def update(
         entity_type: Type[T],
         entity_id: Union[str, UUID],
-        client: Optional[OpenMetadata] = None
+        client: Optional[OpenMetadata] = None,
     ) -> CustomPropertyUpdater:
         """
         Create a custom property updater for an entity by ID.
@@ -249,9 +249,7 @@ class CustomProperties:
 
     @staticmethod
     def update_by_name(
-        entity_type: Type[T],
-        entity_name: str,
-        client: Optional[OpenMetadata] = None
+        entity_type: Type[T], entity_name: str, client: Optional[OpenMetadata] = None
     ) -> CustomPropertyUpdater:
         """
         Create a custom property updater for an entity by name/FQN.
@@ -272,12 +270,16 @@ class TableCustomProperties:
     """Convenience methods for Table custom properties."""
 
     @staticmethod
-    def update(table_id: Union[str, UUID], client: Optional[OpenMetadata] = None) -> CustomPropertyUpdater:
+    def update(
+        table_id: Union[str, UUID], client: Optional[OpenMetadata] = None
+    ) -> CustomPropertyUpdater:
         """Update custom properties on a table by ID."""
         return CustomProperties.update(Table, table_id, client)
 
     @staticmethod
-    def update_by_name(table_fqn: str, client: Optional[OpenMetadata] = None) -> CustomPropertyUpdater:
+    def update_by_name(
+        table_fqn: str, client: Optional[OpenMetadata] = None
+    ) -> CustomPropertyUpdater:
         """Update custom properties on a table by FQN."""
         return CustomProperties.update_by_name(Table, table_fqn, client)
 
@@ -286,11 +288,15 @@ class GlossaryCustomProperties:
     """Convenience methods for Glossary custom properties."""
 
     @staticmethod
-    def update(glossary_id: Union[str, UUID], client: Optional[OpenMetadata] = None) -> CustomPropertyUpdater:
+    def update(
+        glossary_id: Union[str, UUID], client: Optional[OpenMetadata] = None
+    ) -> CustomPropertyUpdater:
         """Update custom properties on a glossary by ID."""
         return CustomProperties.update(Glossary, glossary_id, client)
 
     @staticmethod
-    def update_by_name(glossary_name: str, client: Optional[OpenMetadata] = None) -> CustomPropertyUpdater:
+    def update_by_name(
+        glossary_name: str, client: Optional[OpenMetadata] = None
+    ) -> CustomPropertyUpdater:
         """Update custom properties on a glossary by name."""
         return CustomProperties.update_by_name(Glossary, glossary_name, client)

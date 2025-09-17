@@ -118,13 +118,15 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         Note: This method automatically generates a PATCH request
               by comparing the entity with its current state
         """
-        if not hasattr(entity, 'id') or not entity.id:
+        if not hasattr(entity, "id") or not entity.id:
             raise ValueError("Entity must have an ID for update")
 
         client = cls._get_client()
 
         # Get entity ID as string
-        entity_id = str(entity.id.root) if hasattr(entity.id, 'root') else str(entity.id)
+        entity_id = (
+            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)
+        )
 
         # Following Java SDK pattern:
         # 1. Get the current entity state from the server
@@ -144,7 +146,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             entity=cls.entity_type(),
             source=current,  # Current state from server
             destination=entity,  # Desired state with changes
-            skip_on_failure=False  # Raise errors for debugging
+            skip_on_failure=False,  # Raise errors for debugging
         )
 
     @classmethod
@@ -316,7 +318,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
                     entity=entity_type,
                     name=name,
                     csv_data=self.csv_data,
-                    dry_run=self.dry_run
+                    dry_run=self.dry_run,
                 )
 
             def perform_async_import(self) -> str:
@@ -326,13 +328,15 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
                     entity=entity_type,
                     name=name,
                     csv_data=self.csv_data,
-                    dry_run=self.dry_run
+                    dry_run=self.dry_run,
                 )
 
         return EntityCsvImporter(cls._get_client(), name)
 
     @classmethod
-    def update_custom_properties(cls, entity_id: Union[str, UUID]) -> "CustomPropertyUpdater":
+    def update_custom_properties(
+        cls, entity_id: Union[str, UUID]
+    ) -> "CustomPropertyUpdater":
         """
         Update custom properties on an entity by ID.
 
@@ -343,10 +347,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             CustomPropertyUpdater instance for fluent configuration
         """
         from metadata.sdk.entities.custom_properties import CustomProperties
+
         return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
 
     @classmethod
-    def update_custom_properties_by_name(cls, entity_name: str) -> "CustomPropertyUpdater":
+    def update_custom_properties_by_name(
+        cls, entity_name: str
+    ) -> "CustomPropertyUpdater":
         """
         Update custom properties on an entity by name/FQN.
 
@@ -357,4 +364,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             CustomPropertyUpdater instance for fluent configuration
         """
         from metadata.sdk.entities.custom_properties import CustomProperties
-        return CustomProperties.update_by_name(cls.entity_type(), entity_name, cls._get_client())
+
+        return CustomProperties.update_by_name(
+            cls.entity_type(), entity_name, cls._get_client()
+        )

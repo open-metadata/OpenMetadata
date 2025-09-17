@@ -2,15 +2,12 @@
 Simple test for CSV operations to verify the implementation.
 Tests the CSVMixin functionality directly.
 """
-import json
-from unittest.mock import Mock, MagicMock
-
-import pytest
+from unittest.mock import Mock
 
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    AuthProvider,
     OpenMetadataConnection,
-    AuthProvider
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -27,8 +24,7 @@ class TestCsvMixinOperations:
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
-            hostPort="http://test",
-            authProvider=AuthProvider.openmetadata
+            hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         om = OpenMetadata(config=config)
         om.client = mock_client
@@ -49,8 +45,7 @@ class TestCsvMixinOperations:
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
-            hostPort="http://test",
-            authProvider=AuthProvider.openmetadata
+            hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         om = OpenMetadata(config=config)
         om.client = mock_client
@@ -60,7 +55,9 @@ class TestCsvMixinOperations:
 
         # Verify
         assert result == "export-job-123"
-        mock_client.get.assert_called_once_with("glossaries/name/test_glossary/exportAsync")
+        mock_client.get.assert_called_once_with(
+            "glossaries/name/test_glossary/exportAsync"
+        )
 
     def test_csv_mixin_import(self):
         """Test CSV import method."""
@@ -71,8 +68,7 @@ class TestCsvMixinOperations:
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
-            hostPort="http://test",
-            authProvider=AuthProvider.openmetadata
+            hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         om = OpenMetadata(config=config)
         om.client = mock_client
@@ -87,7 +83,7 @@ class TestCsvMixinOperations:
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={}
+            params={},
         )
 
     def test_csv_mixin_import_dry_run(self):
@@ -99,8 +95,7 @@ class TestCsvMixinOperations:
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
-            hostPort="http://test",
-            authProvider=AuthProvider.openmetadata
+            hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         om = OpenMetadata(config=config)
         om.client = mock_client
@@ -115,7 +110,7 @@ class TestCsvMixinOperations:
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={"dryRun": "true"}
+            params={"dryRun": "true"},
         )
 
     def test_csv_mixin_import_async(self):
@@ -127,8 +122,7 @@ class TestCsvMixinOperations:
 
         # Create OpenMetadata instance with mock client
         config = OpenMetadataConnection(
-            hostPort="http://test",
-            authProvider=AuthProvider.openmetadata
+            hostPort="http://test", authProvider=AuthProvider.openmetadata
         )
         om = OpenMetadata(config=config)
         om.client = mock_client
@@ -143,7 +137,7 @@ class TestCsvMixinOperations:
             path="glossaries/name/test_glossary/importAsync",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={}
+            params={},
         )
 
     def test_base_entity_csv_export_integration(self):
@@ -168,8 +162,7 @@ class TestCsvMixinOperations:
         # Verify
         assert csv_data == "csv,export,data"
         mock_ometa.export_csv.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary"
+            entity=Glossary, name="test_glossary"
         )
 
     def test_base_entity_csv_import_integration(self):
@@ -196,8 +189,5 @@ class TestCsvMixinOperations:
         # Verify
         assert result == {"created": 3}
         mock_ometa.import_csv.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary",
-            csv_data=csv_data,
-            dry_run=False
+            entity=Glossary, name="test_glossary", csv_data=csv_data, dry_run=False
         )

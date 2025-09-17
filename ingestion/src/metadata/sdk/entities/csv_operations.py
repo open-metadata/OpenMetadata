@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 # Simple status enum for CSV operations
 class ApiStatus(Enum):
     """API operation status"""
+
     SUCCESS = "success"
     STARTED = "started"
     FAILED = "failed"
+
 
 # Type variable for entity types
 TEntity = TypeVar("TEntity", bound=BaseModel)

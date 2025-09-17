@@ -1,19 +1,17 @@
 """
 Unit tests for custom property operations in SDK.
 """
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from uuid import UUID
 
-import pytest
-
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.sdk.entities.custom_properties import (
     CustomProperties,
     CustomPropertyUpdater,
-    TableCustomProperties,
     GlossaryCustomProperties,
+    TableCustomProperties,
 )
 
 
@@ -47,7 +45,7 @@ class TestCustomPropertyUpdater:
         updater.clear_all()
         assert updater.clear_all_flag is True
 
-    @patch('metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client')
+    @patch("metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client")
     def test_execute_with_new_properties(self, mock_get_client):
         """Test executing update with new properties."""
         # Setup mock client
@@ -71,14 +69,12 @@ class TestCustomPropertyUpdater:
 
         # Verify
         mock_client.get_by_id.assert_called_once_with(
-            entity=Table,
-            entity_id="test-id",
-            fields=["extension"]
+            entity=Table, entity_id="test-id", fields=["extension"]
         )
         mock_client.patch.assert_called_once()
         assert result == updated_table
 
-    @patch('metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client')
+    @patch("metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client")
     def test_execute_with_existing_extension(self, mock_get_client):
         """Test updating entity with existing extension."""
         # Setup mock client
@@ -87,7 +83,9 @@ class TestCustomPropertyUpdater:
 
         # Setup mock entity with existing extension
         mock_table = Mock(spec=Table)
-        existing_extension = basic.EntityExtension(root={"existingKey": "existingValue"})
+        existing_extension = basic.EntityExtension(
+            root={"existingKey": "existingValue"}
+        )
         mock_table.extension = existing_extension
         mock_table_copy = Mock(spec=Table)
         mock_table.model_copy = Mock(return_value=mock_table_copy)
@@ -107,10 +105,10 @@ class TestCustomPropertyUpdater:
         args = mock_client.patch.call_args
         assert args[1]["destination"].extension.root == {
             "existingKey": "existingValue",
-            "newKey": "newValue"
+            "newKey": "newValue",
         }
 
-    @patch('metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client')
+    @patch("metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client")
     def test_execute_clear_all(self, mock_get_client):
         """Test clearing all custom properties."""
         # Setup mock client
@@ -119,7 +117,9 @@ class TestCustomPropertyUpdater:
 
         # Setup mock entity with existing extension
         mock_table = Mock(spec=Table)
-        existing_extension = basic.EntityExtension(root={"key1": "value1", "key2": "value2"})
+        existing_extension = basic.EntityExtension(
+            root={"key1": "value1", "key2": "value2"}
+        )
         mock_table.extension = existing_extension
         mock_table_copy = Mock(spec=Table)
         mock_table_copy.extension = None
@@ -140,7 +140,7 @@ class TestCustomPropertyUpdater:
         args = mock_client.patch.call_args
         assert args[1]["destination"].extension is None
 
-    @patch('metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client')
+    @patch("metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client")
     def test_execute_by_fqn(self, mock_get_client):
         """Test updating entity by FQN."""
         # Setup mock client
@@ -158,15 +158,15 @@ class TestCustomPropertyUpdater:
         mock_client.patch.return_value = updated_table
 
         # Execute update by FQN
-        updater = CustomPropertyUpdater(Table, "service.database.schema.table", is_fqn=True)
+        updater = CustomPropertyUpdater(
+            Table, "service.database.schema.table", is_fqn=True
+        )
         updater.with_property("key", "value")
         result = updater.execute()
 
         # Verify get_by_name was called
         mock_client.get_by_name.assert_called_once_with(
-            entity=Table,
-            fqn="service.database.schema.table",
-            fields=["extension"]
+            entity=Table, fqn="service.database.schema.table", fields=["extension"]
         )
 
 
@@ -189,7 +189,9 @@ class TestCustomProperties:
 
     def test_update_by_name(self):
         """Test creating updater by name/FQN."""
-        updater = CustomProperties.update_by_name(Table, "service.database.schema.table")
+        updater = CustomProperties.update_by_name(
+            Table, "service.database.schema.table"
+        )
         assert isinstance(updater, CustomPropertyUpdater)
         assert updater.entity_type == Table
         assert updater.identifier == "service.database.schema.table"
@@ -237,7 +239,7 @@ class TestGlossaryCustomProperties:
 class TestIntegrationWithBaseEntity:
     """Test integration with BaseEntity class."""
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_update_custom_properties_from_base_entity(self, mock_get_client):
         """Test using custom properties through BaseEntity."""
         from metadata.sdk.entities.tables import Tables
@@ -261,7 +263,7 @@ class TestIntegrationWithBaseEntity:
         result = updater.with_property("key", "value").execute()
         assert result == mock_table
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_update_custom_properties_by_name_from_base_entity(self, mock_get_client):
         """Test using custom properties by name through BaseEntity."""
         from metadata.sdk.entities.tables import Tables
@@ -278,7 +280,9 @@ class TestIntegrationWithBaseEntity:
         mock_client.patch.return_value = mock_table
 
         # Use BaseEntity method
-        updater = Tables.update_custom_properties_by_name("service.database.schema.table")
+        updater = Tables.update_custom_properties_by_name(
+            "service.database.schema.table"
+        )
         assert isinstance(updater, CustomPropertyUpdater)
 
         # Execute update
@@ -289,7 +293,7 @@ class TestIntegrationWithBaseEntity:
 class TestFluentChaining:
     """Test fluent API chaining."""
 
-    @patch('metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client')
+    @patch("metadata.sdk.entities.custom_properties.CustomPropertyUpdater._get_client")
     def test_fluent_chaining(self, mock_get_client):
         """Test chaining multiple operations."""
         # Setup mock client

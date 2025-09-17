@@ -2,21 +2,18 @@
 Basic integration tests for CSV import/export operations.
 These tests can run without testcontainers by using a mock or existing server.
 """
-import json
 import uuid
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
-from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
-from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.type.basic import Markdown, EntityName, Uuid
+from metadata.generated.schema.type.basic import EntityName, Markdown, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.sdk.entities.csv_operations import CsvExporter, CsvImporter
 from metadata.sdk.entities.glossary import Glossaries
 from metadata.sdk.entities.glossary_term import GlossaryTerms
-from metadata.sdk.entities.csv_operations import CsvExporter, CsvImporter
 
 
 class TestCsvOperationsBasic:
@@ -41,10 +38,7 @@ class TestCsvOperationsBasic:
 
         # Test fluent configuration
         configured_exporter = (
-            exporter
-            .async_mode()
-            .with_websocket()
-            .wait_for_completion(timeout=120)
+            exporter.async_mode().with_websocket().wait_for_completion(timeout=120)
         )
 
         assert configured_exporter.async_mode
@@ -64,12 +58,7 @@ class TestCsvOperationsBasic:
 
         # Test fluent configuration with data
         csv_data = "parent,name,description\n,term1,Test term"
-        configured_importer = (
-            importer
-            .with_data(csv_data)
-            .dry_run()
-            .async_mode()
-        )
+        configured_importer = importer.with_data(csv_data).dry_run().async_mode()
 
         assert configured_importer.csv_data == csv_data
         assert configured_importer.dry_run
@@ -165,10 +154,7 @@ class TestCsvOperationsBasic:
         # Verify dry run parameter passed
         assert result == dry_run_result
         self.mock_ometa.import_csv.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary",
-            csv_data=csv_data,
-            dry_run=True
+            entity=Glossary, name="test_glossary", csv_data=csv_data, dry_run=True
         )
 
     def test_csv_operations_with_glossary_terms(self):
@@ -187,16 +173,16 @@ class TestCsvOperationsBasic:
             name=EntityName("test_term"),
             fullyQualifiedName="glossary.test_term",
             glossary={"id": "glossary-id", "type": "glossary"},
-            description=Markdown("Test term description")
+            description=Markdown("Test term description"),
         )
 
         # Test that GlossaryTerms has the same base methods
-        assert hasattr(GlossaryTerms, 'create')
-        assert hasattr(GlossaryTerms, 'retrieve')
-        assert hasattr(GlossaryTerms, 'update')
-        assert hasattr(GlossaryTerms, 'delete')
-        assert hasattr(GlossaryTerms, 'list')
-        assert hasattr(GlossaryTerms, 'list_all')
+        assert hasattr(GlossaryTerms, "create")
+        assert hasattr(GlossaryTerms, "retrieve")
+        assert hasattr(GlossaryTerms, "update")
+        assert hasattr(GlossaryTerms, "delete")
+        assert hasattr(GlossaryTerms, "list")
+        assert hasattr(GlossaryTerms, "list_all")
 
     def test_csv_export_with_callback(self):
         """Test CSV export with completion callback."""
@@ -215,9 +201,7 @@ class TestCsvOperationsBasic:
 
         # Execute with callback
         exporter = (
-            Glossaries.export_csv("test_glossary")
-            .async_mode()
-            .on_complete(on_complete)
+            Glossaries.export_csv("test_glossary").async_mode().on_complete(on_complete)
         )
 
         job_id = exporter.execute()
@@ -233,9 +217,8 @@ class TestCsvOperationsBasic:
         """Test CSV import error handling."""
         # Setup mock to raise an error
         from metadata.ingestion.ometa.client import APIError
-        self.mock_ometa.import_csv = Mock(
-            side_effect=APIError("Invalid CSV format")
-        )
+
+        self.mock_ometa.import_csv = Mock(side_effect=APIError("Invalid CSV format"))
         Glossaries.set_default_client(self.mock_client)
 
         # Test error is propagated
@@ -258,13 +241,13 @@ class TestCsvOperationsBasic:
 
         # Test export_csv returns correct exporter
         exporter = TestEntity.export_csv("test_name")
-        assert hasattr(exporter, 'perform_sync_export')
+        assert hasattr(exporter, "perform_sync_export")
 
         # Execute export
         csv_data = exporter.execute()
         assert csv_data == "base,entity,csv"
 
-    @patch('metadata.sdk.entities.csv_operations.asyncio')
+    @patch("metadata.sdk.entities.csv_operations.asyncio")
     def test_async_execution_with_future(self, mock_asyncio):
         """Test async execution returns future-like result."""
         # Setup mock
@@ -272,11 +255,7 @@ class TestCsvOperationsBasic:
         Glossaries.set_default_client(self.mock_client)
 
         # Execute async
-        future = (
-            Glossaries.export_csv("test_glossary")
-            .async_mode()
-            .execute_async()
-        )
+        future = Glossaries.export_csv("test_glossary").async_mode().execute_async()
 
         # Verify future-like behavior
         assert future is not None
@@ -284,7 +263,7 @@ class TestCsvOperationsBasic:
 
     def test_csv_import_from_file_mock(self):
         """Test CSV import from file with mocked file reading."""
-        with patch('builtins.open', create_function=True) as mock_open:
+        with patch("builtins.open", create_function=True) as mock_open:
             mock_open.return_value.__enter__.return_value.read.return_value = (
                 "parent,name,description\n,file_term,From file"
             )
@@ -297,9 +276,14 @@ class TestCsvOperationsBasic:
             importer = Glossaries.import_csv("test_glossary")
 
             # Mock file reading for from_file
-            with patch('pathlib.Path.read_text', return_value="parent,name,description\n,file_term,From file"):
+            with patch(
+                "pathlib.Path.read_text",
+                return_value="parent,name,description\n,file_term,From file",
+            ):
                 importer.from_file("/path/to/file.csv")
-                assert importer.csv_data == "parent,name,description\n,file_term,From file"
+                assert (
+                    importer.csv_data == "parent,name,description\n,file_term,From file"
+                )
 
     def test_websocket_configuration(self):
         """Test WebSocket configuration for async operations."""

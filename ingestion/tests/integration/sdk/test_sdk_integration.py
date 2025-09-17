@@ -25,8 +25,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -38,14 +37,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import Markdown
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.entities import (
     Databases,
     DatabaseSchemas,
-    Glossaries,
     GlossaryTerms,
     Tables,
     Teams,
@@ -279,8 +274,12 @@ class TestSDKIntegration:
             # Note: This lists ALL glossary terms in the system, not just ours
             all_terms = GlossaryTerms.list_all(batch_size=100)
             term_ids = [t.id for t in all_terms]
-            assert term1.id in term_ids, f"term1 {term1.id} not found in {len(term_ids)} terms"
-            assert term2.id in term_ids, f"term2 {term2.id} not found in {len(term_ids)} terms"
+            assert (
+                term1.id in term_ids
+            ), f"term1 {term1.id} not found in {len(term_ids)} terms"
+            assert (
+                term2.id in term_ids
+            ), f"term2 {term2.id} not found in {len(term_ids)} terms"
 
             # Retrieve by name
             fqn1 = f"{test_glossary.fullyQualifiedName.root}.{term1_name}"

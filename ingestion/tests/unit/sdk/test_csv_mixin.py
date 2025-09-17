@@ -13,7 +13,7 @@ from metadata.generated.schema.entity.teams.user import User
 class TestCsvMixin:
     """Test CSV mixin methods."""
 
-    @patch('metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint')
+    @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_export_csv(self, mock_get_endpoint):
         """Test export_csv method."""
         from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -35,7 +35,7 @@ class TestCsvMixin:
         mock_client.get.assert_called_once_with("glossaries/name/test_glossary/export")
         mock_get_endpoint.assert_called_once_with(Glossary)
 
-    @patch('metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint')
+    @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_export_csv_async(self, mock_get_endpoint):
         """Test export_csv_async method."""
         from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -54,9 +54,11 @@ class TestCsvMixin:
 
         # Verify
         assert result == "job-123"
-        mock_client.get.assert_called_once_with("glossaries/name/test_glossary/exportAsync")
+        mock_client.get.assert_called_once_with(
+            "glossaries/name/test_glossary/exportAsync"
+        )
 
-    @patch('metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint')
+    @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_import_csv(self, mock_get_endpoint):
         """Test import_csv method."""
         from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -80,10 +82,10 @@ class TestCsvMixin:
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={}
+            params={},
         )
 
-    @patch('metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint')
+    @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_import_csv_dry_run(self, mock_get_endpoint):
         """Test import_csv with dry_run=True."""
         from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -107,10 +109,10 @@ class TestCsvMixin:
             path="glossaries/name/test_glossary/import",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={"dryRun": "true"}
+            params={"dryRun": "true"},
         )
 
-    @patch('metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint')
+    @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_import_csv_async(self, mock_get_endpoint):
         """Test import_csv_async method."""
         from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -126,7 +128,9 @@ class TestCsvMixin:
 
         # Test async import
         csv_data = "parent,name,description\n,term1,Test term"
-        result = mixin.import_csv_async(Glossary, "test_glossary", csv_data, dry_run=False)
+        result = mixin.import_csv_async(
+            Glossary, "test_glossary", csv_data, dry_run=False
+        )
 
         # Verify
         assert result == "import-job-456"
@@ -134,7 +138,7 @@ class TestCsvMixin:
             path="glossaries/name/test_glossary/importAsync",
             data=csv_data,
             headers={"Content-Type": "text/plain"},
-            params={}
+            params={},
         )
 
     def test_get_csv_endpoint_glossary(self):
@@ -163,8 +167,8 @@ class TestCsvMixin:
 
     def test_get_csv_endpoint_unsupported(self):
         """Test _get_csv_endpoint for unsupported entity type."""
-        from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
         from metadata.generated.schema.entity.data.table import Table
+        from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 
         mixin = CSVMixin()
 
@@ -175,7 +179,7 @@ class TestCsvMixin:
 class TestBaseEntityCsvIntegration:
     """Test BaseEntity CSV operations integration."""
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_export_csv_integration(self, mock_get_client):
         """Test BaseEntity.export_csv integration."""
         from metadata.sdk.entities.base import BaseEntity
@@ -198,11 +202,10 @@ class TestBaseEntityCsvIntegration:
         # Verify
         assert result == "exported,csv,data"
         mock_ometa.export_csv.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary"
+            entity=Glossary, name="test_glossary"
         )
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_import_csv_integration(self, mock_get_client):
         """Test BaseEntity.import_csv integration."""
         from metadata.sdk.entities.base import BaseEntity
@@ -228,13 +231,10 @@ class TestBaseEntityCsvIntegration:
         # Verify
         assert result == {"created": 10}
         mock_ometa.import_csv.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary",
-            csv_data=csv_data,
-            dry_run=False
+            entity=Glossary, name="test_glossary", csv_data=csv_data, dry_run=False
         )
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_async_export_integration(self, mock_get_client):
         """Test BaseEntity async export integration."""
         from metadata.sdk.entities.base import BaseEntity
@@ -257,11 +257,10 @@ class TestBaseEntityCsvIntegration:
         # Verify
         assert result == "export-job-789"
         mock_ometa.export_csv_async.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary"
+            entity=Glossary, name="test_glossary"
         )
 
-    @patch('metadata.sdk.entities.base.BaseEntity._get_client')
+    @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_async_import_integration(self, mock_get_client):
         """Test BaseEntity async import integration."""
         from metadata.sdk.entities.base import BaseEntity
@@ -287,8 +286,5 @@ class TestBaseEntityCsvIntegration:
         # Verify
         assert result == "import-job-999"
         mock_ometa.import_csv_async.assert_called_once_with(
-            entity=Glossary,
-            name="test_glossary",
-            csv_data=csv_data,
-            dry_run=False
+            entity=Glossary, name="test_glossary", csv_data=csv_data, dry_run=False
         )

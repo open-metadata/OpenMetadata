@@ -95,7 +95,11 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         Returns:
             Updated table
         """
-        from metadata.generated.schema.type.tagLabel import TagLabel, TagSource, LabelType
+        from metadata.generated.schema.type.tagLabel import (
+            LabelType,
+            TagLabel,
+            TagSource,
+        )
 
         client = cls._get_client()
         # Get current table
@@ -104,9 +108,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         # Create modified version with new tag
         modified_table = table.model_copy(deep=True)
         new_tag = TagLabel(
-            tagFQN=tag_fqn,
-            source=TagSource.Classification,
-            labelType=LabelType.Manual
+            tagFQN=tag_fqn, source=TagSource.Classification, labelType=LabelType.Manual
         )
 
         if modified_table.tags is None:
@@ -140,7 +142,11 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         # Find and update the column
         column_found = False
         for col in modified_table.columns:
-            if str(col.name.root) if hasattr(col.name, 'root') else col.name == column_name:
+            if (
+                str(col.name.root)
+                if hasattr(col.name, "root")
+                else col.name == column_name
+            ):
                 col.description = description
                 column_found = True
                 break

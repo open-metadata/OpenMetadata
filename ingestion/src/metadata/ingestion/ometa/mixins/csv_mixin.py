@@ -1,15 +1,13 @@
 """
 CSV import/export mixin for OpenMetadata client.
 """
-import json
 import logging
-from typing import Dict, Optional, Type, TypeVar
+from typing import Dict, Type, TypeVar
 
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import APIError
-from metadata.utils.logger import ometa_logger
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +64,13 @@ class CSVMixin:
                 return response.get("jobId", "")
             return str(response)
         except APIError as err:
-            logger.error(f"Failed to start async CSV export for {entity.__name__} '{name}': {err}")
+            logger.error(
+                f"Failed to start async CSV export for {entity.__name__} '{name}': {err}"
+            )
             raise
 
     def import_csv(
-        self,
-        entity: Type[T],
-        name: str,
-        csv_data: str,
-        dry_run: bool = False
+        self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False
     ) -> Dict:
         """
         Import entity data from CSV format.
@@ -100,7 +96,7 @@ class CSVMixin:
                 path=path,
                 data=csv_data,
                 headers={"Content-Type": "text/plain"},
-                params=params
+                params=params,
             )
 
             return response
@@ -109,11 +105,7 @@ class CSVMixin:
             raise
 
     def import_csv_async(
-        self,
-        entity: Type[T],
-        name: str,
-        csv_data: str,
-        dry_run: bool = False
+        self, entity: Type[T], name: str, csv_data: str, dry_run: bool = False
     ) -> str:
         """
         Import entity data from CSV format asynchronously.
@@ -137,7 +129,7 @@ class CSVMixin:
                 path=path,
                 data=csv_data,
                 headers={"Content-Type": "text/plain"},
-                params=params
+                params=params,
             )
 
             # The async endpoint returns a job ID
@@ -145,7 +137,9 @@ class CSVMixin:
                 return response.get("jobId", "")
             return str(response)
         except APIError as err:
-            logger.error(f"Failed to start async CSV import for {entity.__name__} '{name}': {err}")
+            logger.error(
+                f"Failed to start async CSV import for {entity.__name__} '{name}': {err}"
+            )
             raise
 
     def _get_csv_endpoint(self, entity: Type[T]) -> str:
@@ -168,6 +162,8 @@ class CSVMixin:
 
         endpoint = entity_endpoints.get(entity)
         if not endpoint:
-            raise ValueError(f"CSV operations not supported for entity type {entity.__name__}")
+            raise ValueError(
+                f"CSV operations not supported for entity type {entity.__name__}"
+            )
 
         return endpoint
