@@ -12,24 +12,50 @@
       "enum": ["Automator"],
       "default": "Automator"
     },
-    "resource": {
-      "description": "Entities selected to run the automation.",
+    "resourceFilter": {
+      "description": "Filter configuration for a specific entity type.",
       "type": "object",
       "properties": {
         "type": {
-          "description": "Type of the entity. E.g., 'table', 'chart',...",
+          "description": "Type of the entity. E.g., 'table', 'chart', 'dashboard', etc.",
+          "type": "string"
+        },
+        "queryFilter": {
+          "description": "Query filter to be passed to ES for this specific entity type. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+          "type": "string"
+        },
+        "filterJsonTree": {
+          "description": "Filter JSON tree to be used for rendering the filters in the UI for this specific entity type. This comes from Immutable Tree type of react-awesome-query-builder.",
+          "type": "string"
+        }
+      },
+      "required": ["type"]
+    },
+    "resource": {
+      "description": "Entities selected to run the automation with optional per-type filters.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Types of entities to include. When filters are specified, this is derived from the filters.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "queryFilter": {
-          "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+          "description": "Global query filter applied to all entity types (deprecated, use filters instead).",
           "type": "string"
         },
         "filterJsonTree": {
-          "description": "Filter JSON tree to be used for rendering the filters in the UI. This comes from Immutable Tree type of react-awesome-query-builder.",
+          "description": "Global filter JSON tree (deprecated, use filters instead).",
           "type": "string"
+        },
+        "filters": {
+          "description": "Per-entity-type filter configurations. Each filter specifies the entity type and its specific query filters.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/resourceFilter"
+          }
         }
       }
     },
