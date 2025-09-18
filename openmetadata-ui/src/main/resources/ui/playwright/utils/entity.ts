@@ -478,7 +478,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('Tier')).toContainText('No Tier');
+  await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
 export const assignCertification = async (
@@ -509,9 +509,7 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('certification-label')).toContainText(
-    'No Certification'
-  );
+  await expect(page.getByTestId('certification-label')).toContainText('--');
 };
 
 export const updateDescription = async (
