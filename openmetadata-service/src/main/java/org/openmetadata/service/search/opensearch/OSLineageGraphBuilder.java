@@ -791,6 +791,18 @@ public class OSLineageGraphBuilder {
     }
   }
 
+  private static class EntityData {
+    final String fqn;
+    final int depth;
+    final Map<String, Object> document;
+
+    EntityData(String fqn, int depth, Map<String, Object> document) {
+      this.fqn = fqn;
+      this.depth = depth;
+      this.document = document;
+    }
+  }
+
   private void getEntitiesAtSpecificDepthWithPagination(
       SearchLineageResult result, EntityCountLineageRequest request) throws IOException {
     int startingOffset = request.getDirection().equals(LineageDirection.UPSTREAM) ? 0 : 1;
@@ -799,7 +811,10 @@ public class OSLineageGraphBuilder {
         Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn());
     Set<String> visitedFqns = new HashSet<>();
     visitedFqns.add(request.getFqn());
-    // Traverse to the target depth
+
+    List<EntityData> allEntitiesUpToDepth = new ArrayList<>();
+
+    // Traverse up to the target depth and collect all entities
     for (int depth = startingOffset; depth <= targetDepth; depth++) {
       if (currentLevel.isEmpty()) break;
       visitedFqns.addAll(currentLevel.values());
@@ -808,10 +823,6 @@ public class OSLineageGraphBuilder {
           buildDirectionToFqnSet(
               getLineageDirection(request.getDirection(), false), currentLevel.keySet());
 
-      // Apply pagination only at the target depth
-      int searchFrom = (depth == targetDepth) ? request.getFrom() : 0;
-      int searchSize = (depth == targetDepth) ? request.getSize() : 10000;
-
       SearchRequest searchRequest =
           getSearchRequest(
               request.getDirection(),
@@ -819,26 +830,23 @@ public class OSLineageGraphBuilder {
               request.getQueryFilter(),
               GRAPH_AGGREGATION,
               directionKeyAndValues,
-              searchFrom,
-              searchSize,
+              0,
+              10000,
               request.getIncludeDeleted(),
               request.getIncludeSourceFields().stream().toList(),
               SOURCE_FIELDS_TO_EXCLUDE);
 
       SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
       Map<String, String> nextLevel = new HashMap<>();
+
       for (SearchHit hit : searchResponse.getHits().getHits()) {
         Map<String, Object> esDoc = hit.getSourceAsMap();
         if (!esDoc.isEmpty()) {
           String entityFqn = esDoc.get(FQN_FIELD).toString();
 
-          // Only add to result if we're at the target depth
-          if (depth == targetDepth) {
-            result
-                .getNodes()
-                .put(
-                    entityFqn, getNodeInformationWithCleanedEntity(esDoc, null, null, targetDepth));
-            addLineageEdges(result, esDoc, request);
+          // Add entities from depth 1 up to targetDepth
+          if (depth >= 1 && depth <= targetDepth) {
+            allEntitiesUpToDepth.add(new EntityData(entityFqn, depth, esDoc));
           }
 
           if (request.getDirection().equals(LineageDirection.DOWNSTREAM)) {
@@ -858,6 +866,26 @@ public class OSLineageGraphBuilder {
       }
 
       currentLevel = nextLevel;
+    }
+
+    // Apply pagination to all collected entities
+    List<EntityData> paginatedEntities =
+        paginateList(allEntitiesUpToDepth, request.getFrom(), request.getSize());
+
+    // Add paginated entities to result
+    for (EntityData entityData : paginatedEntities) {
+      int entityDepth = entityData.depth;
+      if (request.getDirection() == LineageDirection.UPSTREAM) {
+        entityDepth = -entityDepth;
+      }
+
+      result
+          .getNodes()
+          .put(
+              entityData.fqn,
+              getNodeInformationWithCleanedEntity(entityData.document, null, null, entityDepth));
+
+      addLineageEdges(result, entityData.document, request);
     }
   }
 
