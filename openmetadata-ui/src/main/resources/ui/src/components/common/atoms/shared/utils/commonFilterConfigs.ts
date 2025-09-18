@@ -27,11 +27,11 @@ export const COMMON_FILTER_FIELDS: Record<string, FilterField> = {
   },
   tags: {
     key: 'tags',
-    aggregationField: 'tags.tagFQN',
+    aggregationField: 'classificationTags',
   },
   glossary: {
     key: 'glossary',
-    aggregationField: 'tags.tagFQN',
+    aggregationField: 'glossaryTags',
   },
   domainTypes: {
     key: 'domainTypes',

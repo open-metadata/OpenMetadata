@@ -266,8 +266,6 @@ export const buttonTheme = (
           outlineOffset: '2px',
         },
 
-        ...createIconButtonColorVariant('secondary', colors),
-
         ...createIconButtonSizeVariant('medium'),
       },
 

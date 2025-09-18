@@ -30,8 +30,8 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
   const queryConfig = useMemo(
     () => ({
       owner: 'owners.displayName.keyword',
-      tags: 'tags.tagFQN',
-      glossary: 'tags.tagFQN',
+      tags: 'classificationTags',
+      glossary: 'glossaryTags',
       expert: 'experts.displayName.keyword',
     }),
     []

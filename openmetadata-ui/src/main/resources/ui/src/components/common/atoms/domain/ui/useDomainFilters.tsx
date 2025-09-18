@@ -33,8 +33,8 @@ export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
   const queryConfig = useMemo(
     () => ({
       owner: 'owners.displayName.keyword',
-      tags: 'tags.tagFQN',
-      glossary: 'tags.tagFQN',
+      tags: 'classificationTags',
+      glossary: 'glossaryTags',
       domainType: 'domainType',
     }),
     []

@@ -19,10 +19,7 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  CreateDataProduct,
-  TagSource,
-} from '../../../generated/api/domains/createDataProduct';
+import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
   DomainType,
@@ -49,6 +46,7 @@ const AddDomainForm = ({
   onSubmit,
   formRef,
   type,
+  parentDomain,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm(formRef);
@@ -100,7 +98,7 @@ const AddDomainForm = ({
       required: false,
       label: t('label.tag-plural'),
       id: 'root/tags',
-      type: FieldTypes.TAG_SUGGESTION,
+      type: FieldTypes.TAG_SUGGESTION_MUI,
       props: {
         selectProps: {
           'data-testid': 'tags-container',
@@ -112,15 +110,8 @@ const AddDomainForm = ({
       required: false,
       label: t('label.glossary-term-plural'),
       id: 'root/glossaryTerms',
-      type: FieldTypes.TAG_SUGGESTION,
+      type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
       props: {
-        selectProps: {
-          'data-testid': 'glossary-terms-container',
-        },
-        open: false,
-        hasNoActionButtons: true,
-        isTreeSelect: true,
-        tagType: TagSource.Glossary,
         placeholder: t('label.select-field', {
           field: t('label.glossary-term-plural'),
         }),
@@ -171,6 +162,36 @@ const AddDomainForm = ({
     };
 
     formFields.push(domainTypeField);
+  }
+
+  // Add domain selection field for Data Products ONLY when NOT in domain context
+  if (type === DomainFormType.DATA_PRODUCT && !parentDomain) {
+    const domainField: FieldProp = {
+      name: 'domains',
+      required: true,
+      label: t('label.domain'),
+      id: 'root/domains',
+      type: FieldTypes.DOMAIN_SELECT,
+      props: {
+        'data-testid': 'domain-select',
+        hasPermission: true,
+        children: (
+          <Button
+            data-testid="select-domain"
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            size="small"
+            type="primary"
+          />
+        ),
+      },
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      formItemProps: {
+        valuePropName: 'selectedDomain',
+        trigger: 'onUpdate',
+      },
+    };
+
+    formFields.push(domainField);
   }
 
   const ownerField: FieldProp = {
@@ -240,21 +261,33 @@ const AddDomainForm = ({
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
   const handleFormSubmit: FormProps['onFinish'] = (formData) => {
-    const updatedData = omit(formData, 'color', 'iconURL', 'glossaryTerms');
+    const updatedData = omit(
+      formData,
+      'color',
+      'iconURL',
+      'glossaryTerms',
+      'domains'
+    );
     const style = {
       color: formData.color,
       iconURL: formData.iconURL,
     };
 
-    const data = {
+    // Build the data object
+    const data: any = {
       ...updatedData,
       style,
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
-    } as CreateDomain | CreateDataProduct;
+    };
 
-    onSubmit(data);
+    // Add domains as array if present
+    if (formData.domains) {
+      data.domains = [formData.domains.fullyQualifiedName];
+    }
+
+    onSubmit(data as CreateDomain | CreateDataProduct);
   };
 
   return (
