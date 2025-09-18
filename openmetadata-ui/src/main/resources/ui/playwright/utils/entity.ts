@@ -1942,9 +1942,18 @@ export const checkExploreSearchFilter = async (
       ? encodeURIComponent(escapedValue)
       : rawFilterValue;
 
-  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
+  const queryRes = page.waitForResponse((response) => {
+    const url = response.url();
 
-  const queryRes = page.waitForResponse(querySearchURL);
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=dataAsset') &&
+      url.includes('should') &&
+      url.includes(filterKey) &&
+      url.includes(filterValueForSearchURL)
+    );
+  });
+
   await page.click('[data-testid="update-btn"]');
   await queryRes;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
