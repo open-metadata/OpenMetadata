@@ -12,9 +12,21 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-.contract-header-container {
+.contract-card-container {
   .ant-card-head {
     border-bottom: none;
+
+    .contract-header-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .contract-status-img {
+        width: 90px;
+        height: 90px;
+      }
+    }
 
     .contract-title {
       display: block;
@@ -140,6 +152,7 @@
 }
 
 .contract-detail-container {
+  padding-left: 16px;
   width: 95%;
 
   .contract-dash-separator {

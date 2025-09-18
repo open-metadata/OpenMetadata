@@ -20,6 +20,7 @@ import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { SemanticsRule } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 
 const ContractSemantics: React.FC<{
@@ -47,7 +48,7 @@ const ContractSemantics: React.FC<{
 
   return (
     <Row className="contract-semantic-component-container" gutter={[20, 0]}>
-      <Col span={12}>
+      <Col span={18}>
         <div className="rule-item-container">
           {semantics.map((item) => (
             <div className="rule-item" key={item.rule}>
@@ -62,14 +63,18 @@ const ContractSemantics: React.FC<{
                   {item.name}
                 </Typography.Text>
                 <Typography.Text className="rule-description">
-                  {item.description}
+                  <RichTextEditorPreviewerNew
+                    enableSeeMoreVariant
+                    markdown={item.description}
+                    maxLineLength="3"
+                  />
                 </Typography.Text>
               </div>
             </div>
           ))}
         </div>
       </Col>
-      <Col className="d-flex justify-end" span={12}>
+      <Col className="d-flex justify-end" span={6}>
         {contractStatus && (
           <div className="contract-status-container">
             <Typography.Text>{`${t('label.entity-status', {

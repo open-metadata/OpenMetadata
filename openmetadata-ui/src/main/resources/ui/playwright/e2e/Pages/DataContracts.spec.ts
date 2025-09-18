@@ -171,6 +171,14 @@ test.describe('Data Contracts', () => {
       await expect(page.getByTestId('user-tag')).toBeVisible();
     });
 
+    await test.step('Fill the Terms of Service Detail', async () => {
+      await page.getByRole('button', { name: 'Terms of Service' }).click();
+      await page.fill(
+        '.om-block-editor .has-focus',
+        DATA_CONTRACT_DETAILS.termsOfService
+      );
+    });
+
     await test.step('Fill Contract Schema form', async () => {
       await page.getByRole('button', { name: 'Schema' }).click();
 
@@ -298,6 +306,7 @@ test.describe('Data Contracts', () => {
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
 
+      await expect(page.getByText('Terms of Service')).toBeVisible();
       await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
 
       await addOwner({
@@ -334,7 +343,7 @@ test.describe('Data Contracts', () => {
       });
 
       await expect(
-        page.getByTestId('contract-status-card-item-semantic-status')
+        page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Passed');
     });
 
@@ -593,18 +602,17 @@ test.describe('Data Contracts', () => {
       ).toBeVisible();
 
       // Move to Schema Tab
-      await page.getByRole('button', { name: 'Schema' }).click();
+      await page.getByRole('tab', { name: 'Schema' }).click();
 
-      // TODO: will enable this once nested column is fixed
-      //   await page.waitForSelector('[data-testid="loader"]', {
-      //     state: 'detached',
-      //   });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-      //   await page.getByRole('checkbox', { name: 'Select all' }).click();
+      await page.getByRole('checkbox', { name: 'Select all' }).click();
 
-      //   await expect(
-      //     page.getByRole('checkbox', { name: 'Select all' })
-      //   ).not.toBeChecked();
+      await expect(
+        page.getByRole('checkbox', { name: 'Select all' })
+      ).not.toBeChecked();
 
       // Move to Semantic Tab
       await page.getByRole('button', { name: 'Semantics' }).click();
@@ -643,8 +651,7 @@ test.describe('Data Contracts', () => {
         )
       ).toContainText(DATA_CONTRACT_DETAILS.description2);
 
-      // TODO: will enable this once nested column is fixed
-      //   await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
+      await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
 
     await test.step('Delete contract', async () => {

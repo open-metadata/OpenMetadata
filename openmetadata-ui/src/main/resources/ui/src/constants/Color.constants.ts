@@ -19,6 +19,7 @@ export const GREEN_3 = '#48ca9e';
 export const GREEN_4 = '#039855';
 export const GREEN_3_OPACITY = '#48ca9e30';
 export const YELLOW_2 = '#ffbe0e';
+export const YELLOW_3 = '#f79009';
 export const RED_1 = '#F04438';
 export const RED_3 = '#f24822';
 export const RED_3_OPACITY = '#FF7C501A';

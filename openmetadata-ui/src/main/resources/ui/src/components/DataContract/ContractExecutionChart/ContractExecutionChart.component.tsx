@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
@@ -21,13 +22,14 @@ import {
   CartesianGrid,
   Rectangle,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
 } from 'recharts';
 import {
   GREEN_4,
   GREY_100,
   RED_3,
-  YELLOW_2,
+  YELLOW_3,
 } from '../../../constants/Color.constants';
 import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/DataContract.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
@@ -45,6 +47,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../common/Loader/Loader';
 import './contract-execution-chart.less';
+import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.component';
 
 const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   const { t } = useTranslation();
@@ -100,6 +103,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
           item.contractExecutionStatus === ContractExecutionStatus.Aborted
             ? 1
             : 0,
+        data: item,
       };
     });
 
@@ -121,55 +125,64 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
 
   return (
     <div className="contract-execution-chart-container">
+      <div className="contract-execution-data-picker">
+        <DatePickerMenu
+          showSelectedCustomRange
+          defaultDateRange={pick(defaultRange, ['key', 'title'])}
+          handleDateRangeChange={handleDateRangeChange}
+        />
+      </div>
       {isLoading ? (
         <Loader />
       ) : (
-        <>
-          <DatePickerMenu
-            showSelectedCustomRange
-            defaultDateRange={pick(defaultRange, ['key', 'title'])}
-            handleDateRangeChange={handleDateRangeChange}
-          />
-
-          <ResponsiveContainer height="100%" width="100%">
-            <BarChart data={processedChartData}>
-              <CartesianGrid
-                stroke={GREY_100}
-                strokeDasharray="0"
-                vertical={false}
-              />
-              <XAxis
-                axisLine={false}
-                dataKey="name"
-                domain={['min', 'max']}
-                tickFormatter={formatMonth}
-                tickMargin={10}
-                ticks={executionMonthThicks}
-              />
-              <Bar
-                activeBar={<Rectangle fill={GREEN_4} stroke={GREEN_4} />}
-                dataKey="success"
-                fill={GREEN_4}
-                name={t('label.success')}
-                {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-              />
-              <Bar
-                activeBar={<Rectangle fill={RED_3} stroke={RED_3} />}
-                dataKey="failed"
-                fill={RED_3}
-                name={t('label.failed')}
-                {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-              />
-              <Bar
-                activeBar={<Rectangle fill={YELLOW_2} stroke={YELLOW_2} />}
-                dataKey="aborted"
-                fill={YELLOW_2}
-                name={t('label.aborted')}
-                {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </>
+        <ResponsiveContainer
+          className={classNames('contract-execution-chart', {
+            'contract-execution-chart-less-width':
+              contractExecutionResultList.length <= 8,
+          })}>
+          <BarChart data={processedChartData}>
+            <CartesianGrid
+              stroke={GREY_100}
+              strokeDasharray="0"
+              vertical={false}
+            />
+            <Tooltip
+              content={<ContractExecutionChartTooltip />}
+              //   offset={tooltipOffset}
+              position={{ y: 100 }}
+              wrapperStyle={{ pointerEvents: 'auto' }}
+            />
+            <XAxis
+              axisLine={false}
+              dataKey="name"
+              domain={['min', 'max']}
+              tickFormatter={formatMonth}
+              tickMargin={10}
+              ticks={executionMonthThicks}
+            />
+            <Bar
+              activeBar={<Rectangle fill={GREEN_4} stroke={GREEN_4} />}
+              dataKey="success"
+              fill={GREEN_4}
+              name={t('label.success')}
+              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
+            />
+            <Bar
+              activeBar={<Rectangle fill={RED_3} stroke={RED_3} />}
+              dataKey="failed"
+              fill={RED_3}
+              name={t('label.failed')}
+              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
+            />
+            <Bar
+              activeBar={<Rectangle fill={YELLOW_3} stroke={YELLOW_3} />}
+              dataKey="aborted"
+              fill={YELLOW_3}
+              name={t('label.aborted')}
+              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
+            />
+          </BarChart>
+        </ResponsiveContainer>
       )}
     </div>
   );

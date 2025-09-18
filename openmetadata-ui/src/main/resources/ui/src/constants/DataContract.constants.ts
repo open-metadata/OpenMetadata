@@ -28,6 +28,7 @@ export enum DataContractTabMode {
 
 export enum EDataContractTab {
   CONTRACT_DETAIL,
+  TERMS_OF_SERVICE,
   SCHEMA,
   SEMANTICS,
   SECURITY,

@@ -27,6 +27,7 @@ import { isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import approvedIcon from '../../../assets/img/approved.png';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
@@ -47,6 +48,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
   downloadContractYamlFile,
   getConstraintStatus,
@@ -57,7 +59,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
@@ -221,94 +223,107 @@ const ContractDetail: React.FC<{
     }
 
     return (
-      <Row align="middle" justify="space-between">
-        <Col span={20}>
-          <Typography.Text
-            className="contract-title"
-            data-testid="contract-title">
-            {getEntityName(contract)}
-          </Typography.Text>
-        </Col>
-        <Col className="d-flex justify-end" span={4}>
-          <div className="contract-action-container">
-            <ContractViewSwitchTab
-              handleModeChange={handleModeChange}
-              mode={mode}
-            />
-
-            <Dropdown
-              destroyPopupOnHide
-              menu={{
-                items: contractActionsItems,
-                onClick: handleContractAction,
-              }}
-              overlayClassName="contract-action-dropdown"
-              overlayStyle={{ width: 150 }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Button
-                className="contract-action-button"
-                data-testid="manage-contract-actions"
-                icon={<Icon component={SettingIcon} />}
-                title={t('label.contract')}
-                type="text"
+      <div className="contract-header-container">
+        <img
+          alt={t('label.approved-entity', {
+            entity: t('label.contract'),
+          })}
+          className="contract-status-img"
+          src={approvedIcon}
+        />
+        <Row
+          align="middle"
+          className="w-full"
+          gutter={[0, 4]}
+          justify="space-between">
+          <Col span={20}>
+            <Typography.Text
+              className="contract-title"
+              data-testid="contract-title">
+              {getEntityName(contract)}
+            </Typography.Text>
+          </Col>
+          <Col className="d-flex justify-end" span={4}>
+            <div className="contract-action-container">
+              <ContractViewSwitchTab
+                handleModeChange={handleModeChange}
+                mode={mode}
               />
-            </Dropdown>
-          </div>
-        </Col>
-        <Col className="d-flex items-center gap-2" span={24}>
-          <div className="d-flex items-center">
-            <Typography.Text
-              className="contract-sub-header-title"
-              data-testid="contract-version-label">
-              {`${t('label.version')} : `}
-            </Typography.Text>
 
-            <StatusBadgeV2
-              className="contract-version-badge"
-              label={String(contract.version)}
-              status={StatusType.Version}
-            />
-          </div>
+              <Dropdown
+                destroyPopupOnHide
+                menu={{
+                  items: contractActionsItems,
+                  onClick: handleContractAction,
+                }}
+                overlayClassName="contract-action-dropdown"
+                overlayStyle={{ width: 150 }}
+                placement="bottomRight"
+                trigger={['click']}>
+                <Button
+                  className="contract-action-button"
+                  data-testid="manage-contract-actions"
+                  icon={<Icon component={SettingIcon} />}
+                  title={t('label.contract')}
+                  type="text"
+                />
+              </Dropdown>
+            </div>
+          </Col>
+          <Col className="d-flex items-center gap-2" span={24}>
+            <div className="d-flex items-center">
+              <Typography.Text
+                className="contract-sub-header-title"
+                data-testid="contract-version-label">
+                {`${t('label.version')} : `}
+              </Typography.Text>
 
-          <Divider className="self-center vertical-divider" type="vertical" />
+              <StatusBadgeV2
+                className="contract-version-badge"
+                label={String(contract.version)}
+                status={StatusType.Version}
+              />
+            </div>
 
-          <div className="d-flex items-center">
-            <Typography.Text
-              className="contract-sub-header-title"
-              data-testid="contract-status-label">
-              {`${t('label.status')} : `}
-            </Typography.Text>
+            <Divider className="self-center vertical-divider" type="vertical" />
 
-            <StatusBadgeV2
-              className="contract-success-badge"
-              externalIcon={FlagIcon}
-              label={contract.entityStatus ?? t('label.approved')}
-              status={StatusType.Success}
-            />
-          </div>
+            <div className="d-flex items-center">
+              <Typography.Text
+                className="contract-sub-header-title"
+                data-testid="contract-status-label">
+                {`${t('label.status')} : `}
+              </Typography.Text>
 
-          <Divider className="self-center vertical-divider" type="vertical" />
+              <StatusBadgeV2
+                className="contract-success-badge"
+                externalIcon={FlagIcon}
+                label={contract.entityStatus ?? t('label.approved')}
+                status={StatusType.Success}
+              />
+            </div>
 
-          <div
-            className="d-flex items-center"
-            data-testid="contract-owner-card">
-            <Typography.Text
-              className="contract-sub-header-title"
-              data-testid="contract-status-label">
-              {`${t('label.owner-plural')} : `}
-            </Typography.Text>
+            <Divider className="self-center vertical-divider" type="vertical" />
 
-            <OwnerLabel
-              avatarSize={24}
-              isCompactView={false}
-              maxVisibleOwners={5}
-              owners={contract.owners}
-              showLabel={false}
-            />
-          </div>
-        </Col>
-      </Row>
+            <div
+              className="d-flex items-center"
+              data-testid="contract-owner-card">
+              <Typography.Text
+                className="contract-sub-header-title"
+                data-testid="contract-status-label">
+                {`${t('label.owner-plural')} : `}
+              </Typography.Text>
+
+              <OwnerLabel
+                avatarSize={24}
+                isCompactView={false}
+                maxVisibleOwners={5}
+                owners={contract.owners}
+                showLabel={false}
+              />
+            </div>
+          </Col>
+        </Row>
+      </div>
     );
   }, [contract, mode, handleRunNow, handleModeChange, validateLoading]);
 
@@ -343,7 +358,7 @@ const ContractDetail: React.FC<{
 
   return (
     <Card
-      className="contract-header-container"
+      className="contract-card-container"
       style={{ marginBottom: 16 }}
       title={renderDataContractHeader}>
       {mode === DataContractMode.YAML ? (
@@ -370,14 +385,15 @@ const ContractDetail: React.FC<{
               <Divider className="contract-dash-separator" />
             </div>
 
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={contract.description ?? ''}
+              maxLineLength="3"
             />
           </Col>
 
           {/* Terms of Use Component */}
-          {!isEmpty(contract.termsOfUse) && (
+          {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
             <Col className="contract-card-items" span={24}>
               <div className="contract-card-header-container">
                 <Typography.Text className="contract-card-header">
@@ -386,9 +402,10 @@ const ContractDetail: React.FC<{
                 <Divider className="contract-dash-separator" />
               </div>
 
-              <RichTextEditorPreviewerV1
+              <RichTextEditorPreviewerNew
                 enableSeeMoreVariant
                 markdown={contract.termsOfUse ?? ''}
+                maxLineLength="3"
               />
             </Col>
           )}
