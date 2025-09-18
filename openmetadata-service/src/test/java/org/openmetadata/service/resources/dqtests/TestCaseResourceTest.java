@@ -4313,7 +4313,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         results.getData().stream()
             .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase.getFullyQualifiedName())),
         "Test case should be found after table follower update");
+  }
 
+  @Test
   void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
     // Create a test case with APPROVED status by default
     CreateTestCase createTestCase = createRequest(getEntityName(test));

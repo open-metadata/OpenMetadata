@@ -366,13 +366,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Inherit from the table/column
     EntityInterface tableOrColumn =
         Entity.getEntity(
-            EntityLink.parse(testCase.getEntityLink()), "owners,domains,tags,columns,followers", ALL);
+            EntityLink.parse(testCase.getEntityLink()),
+            "owners,domains,tags,columns,followers",
+            ALL);
     if (tableOrColumn != null) {
       inheritOwners(testCase, fields, tableOrColumn);
       inheritDomains(testCase, fields, tableOrColumn);
       if (tableOrColumn instanceof Table) {
         inheritTags(testCase, fields, (Table) tableOrColumn);
-        inheritFollowers(testCase, fields, table);
+        inheritFollowers(testCase, fields, (Table) tableOrColumn);
       }
     }
 
