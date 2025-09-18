@@ -45,7 +45,7 @@ SET pdts.json = JSON_OBJECT(
     'profileData', pdts.json,
     'profileType', 'system'
 )
-WHERE pdts.extension = 'table.systemProfile';*/
+WHERE pdts.extension = 'table.systemProfile';
 
 -- Migrate column profiles using temporary mapping table for better performance
 -- Create temporary mapping table to extract table hash from column hash
