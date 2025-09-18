@@ -269,7 +269,7 @@ describe('DataAssetsHeader component', () => {
   it('should not render the Tier data if not  present', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
-    expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
+    expect(screen.getByTestId('Tier')).toContainHTML('--');
   });
 
   it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {
@@ -389,9 +389,7 @@ describe('DataAssetsHeader component', () => {
     // Test without certification when serviceCategory is undefined
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(screen.getByTestId('certification-label')).toContainHTML(
-      'label.no-entity'
-    );
+    expect(screen.getByTestId('certification-label')).toContainHTML('--');
 
     // Reset the mock to original value
     useRequiredParamsMock.mockReturnValue({
