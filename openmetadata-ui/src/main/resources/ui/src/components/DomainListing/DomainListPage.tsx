@@ -12,9 +12,18 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { useForm } from 'antd/lib/form/Form';
+import { AxiosError } from 'axios';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ERROR_MESSAGE } from '../../constants/constants';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { addDomains } from '../../rest/domainAPI';
+import { getIsErrorMatch } from '../../utils/CommonUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
+import { useFormDrawerWithRef } from '../common/atoms/drawer';
 import { useFilterConfig } from '../common/atoms/filters/useFilterConfig';
 import { useFilterDropdowns } from '../common/atoms/filters/useFilterDropdowns';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
@@ -26,11 +35,66 @@ import { usePaginationControls } from '../common/atoms/pagination/usePaginationC
 import { DOMAIN_FILTER_CONFIGS } from '../common/atoms/shared/utils/commonFilterConfigs';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
+import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
+import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = () => {
   const domainListing = useDomainListingData();
   const theme = useTheme();
+  const { t } = useTranslation();
+  const [form] = useForm();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (formData: any) => {
+    setIsLoading(true);
+    try {
+      await addDomains(formData);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.domain'),
+        })
+      );
+
+      domainListing.refetch();
+    } catch (error) {
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.domain'),
+              entityPlural: 'domains',
+              name: formData.name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: t('label.domain').toLowerCase(),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const { formDrawer, openDrawer } = useFormDrawerWithRef({
+    title: t('label.add-entity', { entity: t('label.domain') }),
+    anchor: 'right',
+    width: 750,
+    form: (
+      <AddDomainForm
+        isFormInDialog
+        formRef={form}
+        loading={isLoading}
+        type={DomainFormType.DOMAIN}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={handleSubmit}
+      />
+    ),
+    formRef: form,
+    onSubmit: handleSubmit,
+    loading: isLoading,
+  });
 
   const { dropdownConfigs } = useFilterConfig({
     filterConfigs: DOMAIN_FILTER_CONFIGS,
@@ -51,7 +115,7 @@ const DomainListPage = () => {
     descriptionMessageKey: 'message.domain-description',
     createPermission: true,
     addButtonLabelKey: 'label.add-domain',
-    onAddClick: domainListing.actionHandlers.onAddClick,
+    onAddClick: openDrawer,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -132,6 +196,7 @@ const DomainListPage = () => {
         {paginationControls}
       </TableContainer>
       {deleteModal}
+      {formDrawer}
     </>
   );
 };

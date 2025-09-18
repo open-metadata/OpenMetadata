@@ -344,6 +344,17 @@ export const formTheme = (colors: any) => ({
       },
     },
   },
+  MuiAutocomplete: {
+    styleOverrides: {
+      paper: {
+        boxShadow:
+          '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
+        border: `1px solid rgba(0, 0, 0, 0.08)`,
+        borderRadius: '8px',
+        marginTop: '4px',
+      },
+    },
+  },
   MuiCheckbox: {
     defaultProps: {
       disableRipple: true,

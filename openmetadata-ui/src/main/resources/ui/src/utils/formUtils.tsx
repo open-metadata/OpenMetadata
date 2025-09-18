@@ -40,6 +40,10 @@ import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
+import MUISelect from '../components/common/MUISelect/MUISelect';
+import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
+import MUITextField from '../components/common/MUITextField/MUITextField';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -83,7 +87,6 @@ export const getField = (field: FieldProp) => {
     newLook = false,
   } = field;
 
-  let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
   // Check if required rule is already present to avoid rule duplication
@@ -103,6 +106,13 @@ export const getField = (field: FieldProp) => {
     ];
   }
 
+  const formProps: FormItemProps = {
+    id: id,
+    name: name,
+    rules: fieldRules,
+    ...formItemProps,
+  };
+
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
@@ -110,6 +120,27 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
+    case FieldTypes.TEXT_MUI: {
+      const { error, ...muiProps } = props;
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITextField
+            error={Boolean(error)}
+            helperText={helperText}
+            id={id}
+            label={label}
+            placeholder={placeholder}
+            required={isRequired}
+            {...muiProps}
+          />
+        </Form.Item>
+      );
+    }
 
     case FieldTypes.PASSWORD:
       fieldElement = (
@@ -143,24 +174,37 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = <Switch {...props} id={id} />;
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        valuePropName: 'checked',
-      };
+      formProps.valuePropName = 'checked';
 
       break;
     case FieldTypes.CHECK_BOX:
       fieldElement = <Checkbox {...props} id={id} />;
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        valuePropName: 'checked',
-      };
+      formProps.valuePropName = 'checked';
 
       break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
       break;
+
+    case FieldTypes.SELECT_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUISelect
+            {...props}
+            helperText={helperText}
+            id={id}
+            label={label}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
     case FieldTypes.SLIDER_INPUT:
       fieldElement = (
         <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
@@ -171,11 +215,8 @@ export const getField = (field: FieldProp) => {
       fieldElement = (
         <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
       );
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        trigger: 'onTextChange',
-        initialValue: props?.initialValue ?? '',
-      };
+      formProps.trigger = 'onTextChange';
+      formProps.initialValue = props?.initialValue ?? '';
 
       break;
     case FieldTypes.TAG_SUGGESTION:
@@ -184,6 +225,40 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
+    case FieldTypes.TAG_SUGGESTION_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITagSuggestion
+            {...(props as unknown as TagSuggestionProps)}
+            label={label}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUIGlossaryTagSuggestion
+            {...(props as unknown as TagSuggestionProps)}
+            label={label}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
 
     case FieldTypes.TREE_ASYNC_SELECT_LIST:
       fieldElement = (
@@ -258,15 +333,6 @@ export const getField = (field: FieldProp) => {
     default:
       break;
   }
-
-  const formProps = {
-    id: id,
-    key: id,
-    name: name,
-    rules: fieldRules,
-    ...internalFormItemProps,
-    ...formItemProps,
-  };
 
   const labelValue = (
     <FormItemLabel

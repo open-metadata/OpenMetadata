@@ -127,6 +127,7 @@ export interface ListingData<T> {
   handleFilterChange: (key: string, values: string[]) => void;
   handlePageChange: (page: number) => void;
   searchFilterOptions: (key: string, term: string) => void;
+  refetch: () => void;
 }
 
 export interface TableViewConfig<T> {

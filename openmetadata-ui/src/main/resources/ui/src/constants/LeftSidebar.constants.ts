@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Cube01 as DataProductIcon } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
@@ -113,7 +114,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.DATA_PRODUCT,
         title: 'label.data-product',
         redirect_url: ROUTES.DATA_PRODUCT,
-        icon: DomainsIcon,
+        icon: DataProductIcon,
         dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
       },
     ],

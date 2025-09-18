@@ -12,8 +12,8 @@
  */
 
 import { Box, Chip } from '@mui/material';
-import { Tag01 } from '@untitledui/icons';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { TagChip } from '../TagChip';
 
 interface TagsCellProps {
   tags: Array<{ id?: string; name?: string; tagFQN?: string }>;
@@ -90,11 +90,11 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
             width: '100%',
           }}>
           {tags.map((tag, index) => (
-            <Chip
+            <TagChip
               className="measure-chip"
-              icon={<Tag01 size={chipSize === 'small' ? 12 : 14} />}
               key={`measure-${tag.id || index}`}
-              label={tag.name || tag.tagFQN}
+              label={tag.name || tag.tagFQN || ''}
+              showEllipsis={false}
               size={chipSize}
               sx={{
                 flexShrink: 0,
@@ -102,7 +102,6 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
                   whiteSpace: 'nowrap',
                 },
               }}
-              variant="blueGray"
             />
           ))}
         </Box>
@@ -114,27 +113,17 @@ const TagsCell = ({ tags, chipSize = 'small' }: TagsCellProps) => {
             const isSingleTag = visibleCount === 1;
 
             return (
-              <Chip
-                icon={<Tag01 size={chipSize === 'small' ? 12 : 14} />}
+              <TagChip
                 key={tag.id || `${tag.tagFQN}-${index}`}
-                label={tag.name || tag.tagFQN}
+                label={tag.name || tag.tagFQN || ''}
+                maxWidth={
+                  isSingleTag && hiddenCount > 0
+                    ? 'calc(100% - 70px)'
+                    : isSingleTag
+                    ? '100%'
+                    : '200px'
+                }
                 size={chipSize}
-                sx={{
-                  maxWidth:
-                    isSingleTag && hiddenCount > 0
-                      ? 'calc(100% - 70px)'
-                      : isSingleTag
-                      ? '100%'
-                      : '200px',
-                  minWidth: 0,
-                  '& .MuiChip-label': {
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    display: 'block',
-                  },
-                }}
-                variant="blueGray"
               />
             );
           })}
