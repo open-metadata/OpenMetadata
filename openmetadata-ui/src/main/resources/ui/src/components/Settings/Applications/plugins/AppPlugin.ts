@@ -23,7 +23,7 @@ export interface LeftSidebarItemExample extends LeftSidebarItem {
 /**
  * Enum defining where plugin routes should be mounted in the app hierarchy
  */
-export enum PluginPosition {
+export enum RoutePosition {
   /**
    * Routes are mounted inside AuthenticatedAppRouter (default)
    * These routes have access to AppContainer layout with navbar and sidebar
@@ -40,13 +40,13 @@ export enum PluginPosition {
 /**
  * Extended RouteProps with position for plugin routes
  */
-export interface PluginRouteProps extends RouteProps {
+export type PluginRouteProps = RouteProps & {
   /**
    * Where this route should be mounted in the app hierarchy
-   * @default PluginPosition.AUTHENTICATED_ROUTE
+   * @default RoutePosition.AUTHENTICATED_ROUTE
    */
-  position?: PluginPosition;
-}
+  position?: RoutePosition;
+};
 
 /**
  * Interface defining the structure and capabilities of an application plugin.

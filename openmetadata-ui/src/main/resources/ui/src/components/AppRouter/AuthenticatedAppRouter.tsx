@@ -29,7 +29,7 @@ import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { PluginPosition } from '../Settings/Applications/plugins/AppPlugin';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -291,7 +291,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       return routes.filter(
         (route) =>
           !route.position ||
-          route.position === PluginPosition.AUTHENTICATED_ROUTE
+          route.position === RoutePosition.AUTHENTICATED_ROUTE
       );
     });
   }, [plugins]);

@@ -28,7 +28,7 @@ import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { PluginPosition } from '../Settings/Applications/plugins/AppPlugin';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 
 const AppRouter = () => {
   const location = useCustomLocation();
@@ -120,7 +120,7 @@ const AppRouter = () => {
           const routes = plugin.getRoutes?.() || [];
           // Filter routes with APP position
           const appRoutes = routes.filter(
-            (route) => route.position === PluginPosition.APP
+            (route) => route.position === RoutePosition.APP
           );
 
           return appRoutes.map((route, idx) => (
