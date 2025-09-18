@@ -89,6 +89,47 @@
           "description": "When true, reviewers can provide suggestions for changes. This is typically enabled for entity updates where reviewers can propose modifications.",
           "type": "boolean",
           "default": false
+        },
+        "structuredDiff": {
+          "description": "Structured diff object containing field changes in a format suitable for UI rendering. This complements oldValue/newValue with a more structured representation.",
+          "type": "object",
+          "properties": {
+            "fieldsAdded": {
+              "description": "List of fields that were added",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string", "description": "Field name"},
+                  "newValue": {"description": "The new value of the field"}
+                }
+              }
+            },
+            "fieldsUpdated": {
+              "description": "List of fields that were updated",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string", "description": "Field name"},
+                  "oldValue": {"description": "The old value of the field"},
+                  "newValue": {"description": "The new value of the field"}
+                }
+              }
+            },
+            "fieldsDeleted": {
+              "description": "List of fields that were deleted",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string", "description": "Field name"},
+                  "oldValue": {"description": "The old value of the field"}
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": ["id", "assignees", "type"],

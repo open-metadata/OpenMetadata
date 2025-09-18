@@ -578,34 +578,47 @@ public class TagRepository extends EntityRepository<Tag> {
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
-
-      // Check if this is a simple approval/rejection or contains edited content
-      String newValue = resolveTask.getNewValue();
       boolean isApproved = false;
-      boolean hasEditedContent = false;
 
-      // Check if it's a simple approval/rejection
-      if (newValue.equalsIgnoreCase("approved")
-          || newValue.equalsIgnoreCase("entityStatus: approved")) {
-        isApproved = true;
-        hasEditedContent = false;
-      } else if (newValue.equalsIgnoreCase("rejected")
-          || newValue.equalsIgnoreCase("entityStatus: rejected")) {
-        isApproved = false;
-        hasEditedContent = false;
-      } else {
-        // Treat as edited content that implies approval
-        isApproved = true;
-        hasEditedContent = true;
+      // Check for new structured fieldUpdates format first
+      if (resolveTask.getFieldUpdates() != null
+          && !resolveTask.getFieldUpdates().getAdditionalProperties().isEmpty()) {
+        // Use structured format
+        isApproved = !"reject".equals(resolveTask.getResolution());
+
+        if (isApproved) {
+          // Apply field updates using the helper method
+          applyFieldUpdates(
+              tag, Entity.TAG, user, resolveTask.getFieldUpdates().getAdditionalProperties());
+        }
+      } else if (resolveTask.getNewValue() != null) {
+        // Fall back to old string-based format for backward compatibility
+        String newValue = resolveTask.getNewValue();
+        boolean hasEditedContent = false;
+
+        // Check if it's a simple approval/rejection
+        if (newValue.equalsIgnoreCase("approved")
+            || newValue.equalsIgnoreCase("entityStatus: approved")) {
+          isApproved = true;
+          hasEditedContent = false;
+        } else if (newValue.equalsIgnoreCase("rejected")
+            || newValue.equalsIgnoreCase("entityStatus: rejected")) {
+          isApproved = false;
+          hasEditedContent = false;
+        } else {
+          // Treat as edited content that implies approval
+          isApproved = true;
+          hasEditedContent = true;
+        }
+
+        // If user provided edited content, apply it to the entity
+        if (hasEditedContent && isApproved) {
+          applyEditedChanges(tag, newValue, threadContext.getThread().getTask(), user);
+        }
       }
 
       variables.put(RESULT_VARIABLE, isApproved);
       variables.put(UPDATED_BY_VARIABLE, user);
-
-      // If user provided edited content, apply it to the entity
-      if (hasEditedContent && isApproved) {
-        applyEditedChanges(tag, newValue, threadContext.getThread().getTask(), user);
-      }
 
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.resolveTask(

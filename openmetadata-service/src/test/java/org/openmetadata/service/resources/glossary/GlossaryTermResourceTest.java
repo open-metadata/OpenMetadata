@@ -89,6 +89,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.FieldUpdates;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -2716,11 +2717,15 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Thread updateTask = threads.getData().getFirst();
     int updateTaskId = updateTask.getTask().getId();
 
-    // Reviewer suggests changes and approves with modifications
+    // Reviewer suggests changes and approves with modifications using new structured format
     String suggestedDescription = "Multi Approver Term Updated By Reviewer [Don't update Further]";
-    String resolveValue =
-        String.format("Description: <p>%s</p>\nstatus: approved", suggestedDescription);
-    ResolveTask resolveWithSuggestion = new ResolveTask().withNewValue(resolveValue);
+    FieldUpdates fieldUpdates = new FieldUpdates();
+    fieldUpdates.withAdditionalProperty("description", "<p>" + suggestedDescription + "</p>");
+    fieldUpdates.withAdditionalProperty("status", "approved");
+    ResolveTask resolveWithSuggestion =
+        new ResolveTask()
+            .withFieldUpdates(fieldUpdates)
+            .withResolution(ResolveTask.Resolution.APPROVE);
     taskTest.resolveTask(updateTaskId, resolveWithSuggestion, authHeaders(reviewer.getName()));
 
     java.lang.Thread.sleep(2000);

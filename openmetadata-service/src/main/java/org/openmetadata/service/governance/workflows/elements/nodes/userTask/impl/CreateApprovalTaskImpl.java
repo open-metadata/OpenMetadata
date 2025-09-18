@@ -6,7 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +22,12 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.FieldsAdded;
+import org.openmetadata.schema.type.FieldsDeleted;
+import org.openmetadata.schema.type.FieldsUpdated;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.StructuredDiff;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
@@ -133,47 +137,72 @@ public class CreateApprovalTaskImpl implements TaskListener {
         new MessageParser.EntityLink(
             Entity.getEntityTypeFromObject(entity), entity.getFullyQualifiedName());
 
-    Thread thread;
+    Thread thread = null;
+    boolean existingTaskFound = false;
 
     try {
       // Check for any existing open approval tasks
       thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      // If there's a Task already opened, we resolve the Flowable task before creating a new
-      // UserTask in the new WorkflowInstance
-      WorkflowHandler.getInstance()
-          .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+      existingTaskFound = true;
+      LOG.info(
+          "Found existing approval task for entity: {}, updating it with new changes",
+          entity.getFullyQualifiedName());
     } catch (EntityNotFoundException ex) {
-      // No conflict, proceed with creating the new task
+      // No existing task found - we'll create a new one
+      LOG.debug(
+          "No existing approval task found for entity: {}, creating new one",
+          entity.getFullyQualifiedName());
+    }
 
-      // Build the task message and details
-      String taskMessage;
-      TaskDetails taskDetails =
-          new TaskDetails()
-              .withAssignees(FeedMapper.formatAssignees(assignees))
-              .withType(TaskType.RequestApproval)
-              .withStatus(TaskStatus.Open)
-              .withSupportsSuggestions(supportsSuggestions);
+    // Build the task message and details
+    String taskMessage;
+    TaskDetails taskDetails =
+        new TaskDetails()
+            .withAssignees(FeedMapper.formatAssignees(assignees))
+            .withType(TaskType.RequestApproval)
+            .withStatus(TaskStatus.Open)
+            .withSupportsSuggestions(supportsSuggestions);
 
-      // Check if we have changes to show (for updates)
-      if (entity.getChangeDescription() != null
-          && hasRelevantChanges(entity.getChangeDescription())) {
-        // Build detailed change message
-        taskMessage = buildDetailedChangeMessage(entity, supportsSuggestions);
+    // Check if we have changes to show (for updates)
+    if (entity.getChangeDescription() != null
+        && hasRelevantChanges(entity.getChangeDescription())) {
+      // Build detailed change message
+      taskMessage = buildDetailedChangeMessage(entity, supportsSuggestions);
 
-        // Add diff information
-        taskDetails
-            .withOldValue(buildOldValueSummary(entity))
-            .withNewValue(buildNewValueSummary(entity))
-            .withSuggestion(generateContextAwareSuggestion(entity));
-      } else {
-        // Simple approval message for new entities or entities without changes
-        taskMessage =
-            "Approval required for "
-                + entity.getEntityReference().getType()
-                + ": "
-                + entity.getFullyQualifiedName();
-      }
+      // Add structured diff information only - no more ugly string formats
+      taskDetails.withStructuredDiff(buildStructuredDiff(entity));
+    } else {
+      // Simple approval message for new entities or entities without changes
+      taskMessage =
+          "Approval required for "
+              + entity.getEntityReference().getType()
+              + ": "
+              + entity.getFullyQualifiedName();
+    }
 
+    if (existingTaskFound && thread != null) {
+      // Update the existing thread with new task details
+      thread.setMessage(taskMessage);
+      thread.setTask(taskDetails);
+      thread.setUpdatedBy(entity.getUpdatedBy());
+      thread.setUpdatedAt(System.currentTimeMillis());
+
+      // Update the thread in the repository using internal DAO
+      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+
+      // Add a system post to indicate the task was updated
+      Post updateNotification =
+          new Post()
+              .withId(UUID.randomUUID())
+              .withMessage("Task updated with new changes by " + entity.getUpdatedBy())
+              .withFrom(entity.getUpdatedBy())
+              .withPostTs(System.currentTimeMillis());
+      feedRepository.addPostToThread(thread.getId(), updateNotification, entity.getUpdatedBy());
+
+      // Send WebSocket Notification for update
+      WebsocketNotificationHandler.handleTaskNotification(thread);
+    } else {
+      // Create a new thread
       thread =
           new Thread()
               .withId(UUID.randomUUID())
@@ -187,9 +216,10 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withUpdatedAt(System.currentTimeMillis());
       feedRepository.create(thread);
 
-      // Send WebSocket Notification
+      // Send WebSocket Notification for new task
       WebsocketNotificationHandler.handleTaskNotification(thread);
     }
+
     return thread;
   }
 
@@ -215,254 +245,65 @@ public class CreateApprovalTaskImpl implements TaskListener {
 
   private String buildDetailedChangeMessage(EntityInterface entity, boolean supportsSuggestions) {
     StringBuilder message = new StringBuilder();
-    message.append("Approval Required for Entity Changes\n\n");
+    message.append("Approval Required\n\n");
     message.append("Entity: ").append(entity.getFullyQualifiedName()).append("\n");
     message.append("Type: ").append(entity.getEntityReference().getType()).append("\n");
-
-    if (entity.getVersion() != null) {
-      message.append("Version: ").append(String.format("%.1f", entity.getVersion())).append("\n");
-    }
 
     if (entity.getUpdatedBy() != null) {
       message.append("Updated By: ").append(entity.getUpdatedBy()).append("\n");
     }
 
-    message.append("\n");
-
     ChangeDescription changeDescription = entity.getChangeDescription();
     if (changeDescription != null) {
-      message.append("Changes Made:\n\n");
-
-      // Fields Added (excluding workflow-controlled)
-      List<FieldChange> addedFields =
+      // Count changes (excluding workflow-controlled fields)
+      int fieldsAdded =
           changeDescription.getFieldsAdded() != null
-              ? changeDescription.getFieldsAdded().stream()
-                  .filter(field -> !isWorkflowControlledField(field.getName()))
-                  .toList()
-              : List.of();
+              ? (int)
+                  changeDescription.getFieldsAdded().stream()
+                      .filter(field -> !isWorkflowControlledField(field.getName()))
+                      .count()
+              : 0;
 
-      if (!addedFields.isEmpty()) {
-        message.append("Fields Added:\n");
-        for (FieldChange field : addedFields) {
-          message.append("  - ").append(formatFieldName(field.getName())).append(": ");
-          message.append(formatFieldValue(field.getNewValue(), field.getName())).append("\n");
-        }
-        message.append("\n");
-      }
-
-      // Fields Updated (excluding workflow-controlled)
-      List<FieldChange> updatedFields =
+      int fieldsUpdated =
           changeDescription.getFieldsUpdated() != null
-              ? changeDescription.getFieldsUpdated().stream()
-                  .filter(field -> !isWorkflowControlledField(field.getName()))
-                  .toList()
-              : List.of();
+              ? (int)
+                  changeDescription.getFieldsUpdated().stream()
+                      .filter(field -> !isWorkflowControlledField(field.getName()))
+                      .count()
+              : 0;
 
-      if (!updatedFields.isEmpty()) {
-        message.append("Fields Updated:\n");
-        for (FieldChange field : updatedFields) {
-          message.append("  - ").append(formatFieldName(field.getName())).append(":\n");
-          message
-              .append("    Previous: ")
-              .append(formatFieldValue(field.getOldValue(), field.getName()))
-              .append("\n");
-          message
-              .append("    New: ")
-              .append(formatFieldValue(field.getNewValue(), field.getName()))
-              .append("\n");
-        }
-        message.append("\n");
-      }
-
-      // Fields Deleted (excluding workflow-controlled)
-      List<FieldChange> deletedFields =
+      int fieldsDeleted =
           changeDescription.getFieldsDeleted() != null
-              ? changeDescription.getFieldsDeleted().stream()
-                  .filter(field -> !isWorkflowControlledField(field.getName()))
-                  .toList()
-              : List.of();
+              ? (int)
+                  changeDescription.getFieldsDeleted().stream()
+                      .filter(field -> !isWorkflowControlledField(field.getName()))
+                      .count()
+              : 0;
 
-      if (!deletedFields.isEmpty()) {
-        message.append("Fields Removed:\n");
-        for (FieldChange field : deletedFields) {
-          message.append("  - ").append(formatFieldName(field.getName())).append(": ");
-          message.append(formatFieldValue(field.getOldValue(), field.getName())).append("\n");
+      if (fieldsAdded > 0 || fieldsUpdated > 0 || fieldsDeleted > 0) {
+        message.append("\nChanges: ");
+        List<String> changes = new ArrayList<>();
+
+        if (fieldsAdded > 0) {
+          changes.add(fieldsAdded + " field" + (fieldsAdded > 1 ? "s" : "") + " added");
         }
-        message.append("\n");
+        if (fieldsUpdated > 0) {
+          changes.add(fieldsUpdated + " field" + (fieldsUpdated > 1 ? "s" : "") + " updated");
+        }
+        if (fieldsDeleted > 0) {
+          changes.add(fieldsDeleted + " field" + (fieldsDeleted > 1 ? "s" : "") + " removed");
+        }
+
+        message.append(String.join(", ", changes));
       }
     }
 
-    message.append("\nPlease review the changes and provide your approval or rejection.\n");
+    message.append("\n\nPlease review and provide your approval or rejection.");
     if (supportsSuggestions) {
-      message.append("You may also add comments with suggestions or feedback.");
+      message.append("\nYou may also add comments or suggestions.");
     }
 
     return message.toString();
-  }
-
-  private String formatFieldName(String fieldName) {
-    // Convert camelCase to human-readable format
-    if (fieldName == null) return "Unknown Field";
-
-    // Handle nested field paths
-    if (fieldName.contains(".")) {
-      String[] parts = fieldName.split("\\.");
-      StringBuilder formatted = new StringBuilder();
-      for (int i = 0; i < parts.length; i++) {
-        if (i > 0) formatted.append(" > ");
-        formatted.append(camelCaseToHumanReadable(parts[i]));
-      }
-      return formatted.toString();
-    }
-
-    return camelCaseToHumanReadable(fieldName);
-  }
-
-  private String camelCaseToHumanReadable(String camelCase) {
-    if (camelCase == null || camelCase.isEmpty()) return camelCase;
-
-    StringBuilder result = new StringBuilder();
-    result.append(Character.toUpperCase(camelCase.charAt(0)));
-
-    for (int i = 1; i < camelCase.length(); i++) {
-      char ch = camelCase.charAt(i);
-      if (Character.isUpperCase(ch)) {
-        result.append(" ");
-      }
-      result.append(ch);
-    }
-
-    return result.toString();
-  }
-
-  private String formatFieldValue(Object value, String fieldName) {
-    if (value == null) {
-      return "(empty)";
-    }
-
-    // Handle different types of values based on field name
-    if (fieldName != null) {
-      if (fieldName.toLowerCase().contains("description")) {
-        return formatDescription(value);
-      } else if (fieldName.toLowerCase().contains("tag")) {
-        return formatTags(value);
-      } else if (fieldName.toLowerCase().contains("owner")) {
-        return formatOwner(value);
-      } else if (fieldName.toLowerCase().contains("tier")) {
-        return formatTier(value);
-      }
-    }
-
-    // Handle collections
-    if (value instanceof List) {
-      return formatList((List<?>) value);
-    } else if (value instanceof Map) {
-      return formatMap((Map<?, ?>) value);
-    } else if (value instanceof String) {
-      String strValue = (String) value;
-      if (strValue.isEmpty()) {
-        return "(empty)";
-      }
-      // Truncate very long values for readability
-      if (strValue.length() > 500) {
-        return strValue.substring(0, 497) + "...";
-      }
-      return strValue;
-    }
-
-    return String.valueOf(value);
-  }
-
-  private String formatDescription(Object value) {
-    if (value == null) return "(no description)";
-    String desc = value.toString();
-    if (desc.length() > 200) {
-      return desc.substring(0, 197) + "...";
-    }
-    return desc;
-  }
-
-  private String formatTags(Object value) {
-    if (value instanceof List) {
-      List<?> tags = (List<?>) value;
-      if (tags.isEmpty()) return "(no tags)";
-      StringBuilder result = new StringBuilder();
-      for (int i = 0; i < Math.min(5, tags.size()); i++) {
-        if (i > 0) result.append(", ");
-        result.append(tags.get(i));
-      }
-      if (tags.size() > 5) {
-        result.append(" and ").append(tags.size() - 5).append(" more");
-      }
-      return result.toString();
-    }
-    return String.valueOf(value);
-  }
-
-  private String formatOwner(Object value) {
-    if (value instanceof Map) {
-      Map<?, ?> owner = (Map<?, ?>) value;
-      Object name = owner.get("name");
-      Object type = owner.get("type");
-      if (name != null) {
-        return name.toString() + (type != null ? " (" + type + ")" : "");
-      }
-    }
-    return String.valueOf(value);
-  }
-
-  private String formatTier(Object value) {
-    if (value instanceof Map) {
-      Map<?, ?> tier = (Map<?, ?>) value;
-      Object name = tier.get("name");
-      if (name != null) {
-        return name.toString();
-      }
-    }
-    return String.valueOf(value);
-  }
-
-  private String formatList(List<?> list) {
-    if (list.isEmpty()) return "[]";
-
-    StringBuilder result = new StringBuilder("[");
-    for (int i = 0; i < Math.min(3, list.size()); i++) {
-      if (i > 0) result.append(", ");
-      Object item = list.get(i);
-      if (item instanceof Map) {
-        Map<?, ?> map = (Map<?, ?>) item;
-        Object name = map.get("name");
-        if (name != null) {
-          result.append(name);
-        } else {
-          result.append("{...}");
-        }
-      } else {
-        result.append(item);
-      }
-    }
-    if (list.size() > 3) {
-      result.append(", ... (").append(list.size()).append(" total)");
-    }
-    result.append("]");
-    return result.toString();
-  }
-
-  private String formatMap(Map<?, ?> map) {
-    if (map.isEmpty()) return "{}";
-
-    // Try to extract meaningful information from the map
-    Object name = map.get("name");
-    Object displayName = map.get("displayName");
-    Object type = map.get("type");
-
-    if (displayName != null) {
-      return displayName.toString();
-    } else if (name != null) {
-      return name.toString() + (type != null ? " (" + type + ")" : "");
-    } else {
-      return "{" + map.size() + " fields}";
-    }
   }
 
   // Fields that are controlled by the workflow and should be excluded from change tracking
@@ -474,153 +315,73 @@ public class CreateApprovalTaskImpl implements TaskListener {
     return WORKFLOW_CONTROLLED_FIELDS.stream().anyMatch(lowerFieldName::contains);
   }
 
-  private String buildOldValueSummary(EntityInterface entity) {
+  private StructuredDiff buildStructuredDiff(EntityInterface entity) {
     ChangeDescription changeDescription = entity.getChangeDescription();
     if (changeDescription == null) {
-      return "";
+      return null;
     }
 
-    StringBuilder oldValue = new StringBuilder();
+    StructuredDiff diff = new StructuredDiff();
 
-    // Add updated field's old values (excluding workflow-controlled fields)
-    if (changeDescription.getFieldsUpdated() != null) {
-      for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        if (isWorkflowControlledField(field.getName())) {
-          continue; // Skip workflow-controlled fields
-        }
-        if (oldValue.length() > 0) {
-          oldValue.append("\n");
-        }
-        oldValue.append(formatFieldName(field.getName())).append(": ");
-        oldValue.append(formatFieldValue(field.getOldValue(), field.getName()));
-      }
-    }
-
-    // Add deleted fields (excluding workflow-controlled fields)
-    if (changeDescription.getFieldsDeleted() != null) {
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
-        if (isWorkflowControlledField(field.getName())) {
-          continue; // Skip workflow-controlled fields
-        }
-        if (oldValue.length() > 0) {
-          oldValue.append("\n");
-        }
-        oldValue.append(formatFieldName(field.getName())).append(": ");
-        oldValue.append(formatFieldValue(field.getOldValue(), field.getName()));
-      }
-    }
-
-    return oldValue.toString();
-  }
-
-  private String buildNewValueSummary(EntityInterface entity) {
-    ChangeDescription changeDescription = entity.getChangeDescription();
-    if (changeDescription == null) {
-      return "";
-    }
-
-    StringBuilder newValue = new StringBuilder();
-
-    // Add updated field's new values (excluding workflow-controlled fields)
-    if (changeDescription.getFieldsUpdated() != null) {
-      for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        if (isWorkflowControlledField(field.getName())) {
-          continue; // Skip workflow-controlled fields
-        }
-        if (newValue.length() > 0) {
-          newValue.append("\n");
-        }
-        newValue.append(formatFieldName(field.getName())).append(": ");
-        newValue.append(formatFieldValue(field.getNewValue(), field.getName()));
-      }
-    }
-
-    // Add added fields (excluding workflow-controlled fields)
+    // Process added fields
     if (changeDescription.getFieldsAdded() != null) {
+      List<FieldsAdded> addedList = new ArrayList<>();
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (isWorkflowControlledField(field.getName())) {
-          continue; // Skip workflow-controlled fields
+          continue;
         }
-        if (newValue.length() > 0) {
-          newValue.append("\n");
+        FieldsAdded added = new FieldsAdded();
+        added.setName(field.getName());
+        added.setNewValue(field.getNewValue());
+        addedList.add(added);
+      }
+      if (!addedList.isEmpty()) {
+        diff.setFieldsAdded(addedList);
+      }
+    }
+
+    // Process updated fields
+    if (changeDescription.getFieldsUpdated() != null) {
+      List<FieldsUpdated> updatedList = new ArrayList<>();
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue;
         }
-        newValue.append(formatFieldName(field.getName())).append(": ");
-        newValue.append(formatFieldValue(field.getNewValue(), field.getName()));
+        FieldsUpdated updated = new FieldsUpdated();
+        updated.setName(field.getName());
+        updated.setOldValue(field.getOldValue());
+        updated.setNewValue(field.getNewValue());
+        updatedList.add(updated);
+      }
+      if (!updatedList.isEmpty()) {
+        diff.setFieldsUpdated(updatedList);
       }
     }
 
-    return newValue.toString();
-  }
-
-  private String generateContextAwareSuggestion(EntityInterface entity) {
-    ChangeDescription changeDescription = entity.getChangeDescription();
-
-    if (changeDescription == null) {
-      return JsonUtils.pojoToJson(
-          Map.of(
-              "action", "review",
-              "message", "Please review the entity and provide your approval."));
+    // Process deleted fields
+    if (changeDescription.getFieldsDeleted() != null) {
+      List<FieldsDeleted> deletedList = new ArrayList<>();
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (isWorkflowControlledField(field.getName())) {
+          continue;
+        }
+        FieldsDeleted deleted = new FieldsDeleted();
+        deleted.setName(field.getName());
+        deleted.setOldValue(field.getOldValue());
+        deletedList.add(deleted);
+      }
+      if (!deletedList.isEmpty()) {
+        diff.setFieldsDeleted(deletedList);
+      }
     }
 
-    // Count changes (excluding workflow-controlled fields)
-    int fieldsAdded =
-        changeDescription.getFieldsAdded() != null
-            ? (int)
-                changeDescription.getFieldsAdded().stream()
-                    .filter(field -> !isWorkflowControlledField(field.getName()))
-                    .count()
-            : 0;
-    int fieldsUpdated =
-        changeDescription.getFieldsUpdated() != null
-            ? (int)
-                changeDescription.getFieldsUpdated().stream()
-                    .filter(field -> !isWorkflowControlledField(field.getName()))
-                    .count()
-            : 0;
-    int fieldsDeleted =
-        changeDescription.getFieldsDeleted() != null
-            ? (int)
-                changeDescription.getFieldsDeleted().stream()
-                    .filter(field -> !isWorkflowControlledField(field.getName()))
-                    .count()
-            : 0;
-    int totalChanges = fieldsAdded + fieldsUpdated + fieldsDeleted;
-
-    // Build simple suggestion
-    Map<String, Object> suggestion = new HashMap<>();
-    String message;
-
-    if (totalChanges == 0) {
-      message = "Please review the entity and provide your approval.";
-    } else {
-      // Build a simple summary of changes
-      List<String> changeSummary = new ArrayList<>();
-      if (fieldsUpdated > 0) {
-        changeSummary.add(fieldsUpdated + " field" + (fieldsUpdated > 1 ? "s" : "") + " updated");
-      }
-      if (fieldsAdded > 0) {
-        changeSummary.add(fieldsAdded + " field" + (fieldsAdded > 1 ? "s" : "") + " added");
-      }
-      if (fieldsDeleted > 0) {
-        changeSummary.add(fieldsDeleted + " field" + (fieldsDeleted > 1 ? "s" : "") + " removed");
-      }
-
-      message =
-          "Review " + String.join(", ", changeSummary) + " and provide your approval or feedback.";
+    // Return null if no changes to avoid empty object
+    if ((diff.getFieldsAdded() == null || diff.getFieldsAdded().isEmpty())
+        && (diff.getFieldsUpdated() == null || diff.getFieldsUpdated().isEmpty())
+        && (diff.getFieldsDeleted() == null || diff.getFieldsDeleted().isEmpty())) {
+      return null;
     }
 
-    suggestion.put("action", "review_changes");
-    suggestion.put("message", message);
-
-    // Add simple metadata
-    if (totalChanges > 0) {
-      Map<String, Integer> changeStats = new HashMap<>();
-      if (fieldsAdded > 0) changeStats.put("added", fieldsAdded);
-      if (fieldsUpdated > 0) changeStats.put("updated", fieldsUpdated);
-      if (fieldsDeleted > 0) changeStats.put("deleted", fieldsDeleted);
-      suggestion.put("changeSummary", changeStats);
-    }
-
-    return JsonUtils.pojoToJson(suggestion);
+    return diff;
   }
 }
