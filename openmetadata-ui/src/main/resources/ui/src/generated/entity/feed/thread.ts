@@ -558,7 +558,6 @@ export enum ThreadTaskStatus {
  * Type of a task.
  */
 export enum TaskType {
-    ChangeReview = "ChangeReview",
     Generic = "Generic",
     RequestApproval = "RequestApproval",
     RequestDescription = "RequestDescription",
