@@ -49,6 +49,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -98,7 +99,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -479,8 +479,7 @@ public class LineageRepository {
     return Pair.of(pipelineRef.getType(), pipelineMap);
   }
 
-  private String validateLineageDetails(
-      EntityReference from, EntityReference to, LineageDetails details) {
+  String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
     if (details == null) {
       return null;
     }
@@ -489,19 +488,31 @@ public class LineageRepository {
     Set<String> toColumns = getChildrenNames(to);
 
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
+      List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
       for (ColumnLineage columnLineage : columnsLineage) {
-        for (String fromColumn : columnLineage.getFromColumns()) {
-          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
-            throw new IllegalArgumentException(
-                CatalogExceptionMessage.invalidFieldName("column", fromColumn));
-          }
-        }
         if (!toColumns.contains(
             columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidFieldName("column", columnLineage.getToColumn()));
+          LOG.debug("Invalid toColumn: " + columnLineage.getToColumn());
+          continue;
+        }
+        List<String> filteredFromColumns = new ArrayList<>();
+        boolean updateFromColumns = false;
+        for (String fromColumn : columnLineage.getFromColumns()) {
+          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
+            LOG.debug("Invalid fromColumn: " + fromColumn);
+            updateFromColumns = true;
+            continue;
+          }
+          filteredFromColumns.add(fromColumn);
+        }
+        if (updateFromColumns) {
+          columnLineage.setFromColumns(filteredFromColumns);
+        }
+        if (!filteredFromColumns.isEmpty()) {
+          filteredColumnLineage.add(columnLineage);
         }
       }
+      details.setColumnsLineage(filteredColumnLineage);
     }
     return JsonUtils.pojoToJson(details);
   }
@@ -1185,7 +1196,8 @@ public class LineageRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-        new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
+        new ImmutablePair<>(
+            REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
 
   private EntityLineage getLineage(

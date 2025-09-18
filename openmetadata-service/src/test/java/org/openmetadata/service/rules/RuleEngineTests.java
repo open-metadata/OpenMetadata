@@ -34,7 +34,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.ContractStatus;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -215,6 +215,9 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     // Enable it for the test
     glossaryRule.setEnabled(true);
 
+    // Enable the rule for testing
+    glossaryRule.withEnabled(true);
+
     // No glossary terms, should pass
     RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false);
 
@@ -281,7 +284,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName() + "_validate", table)
-            .withStatus(ContractStatus.Active)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()
@@ -340,7 +343,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     CreateDataContract createContractForTable =
         dataContractResourceTest
             .createDataContractRequest(test.getDisplayName(), tableWithContract)
-            .withStatus(ContractStatus.Active)
+            .withEntityStatus(EntityStatus.APPROVED)
             .withSemantics(
                 List.of(
                     new SemanticsRule()
@@ -474,6 +477,108 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     table.withTags(List.of(TIER1_TAG_LABEL));
     RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContainsOperator(TestInfo test) {
+    Table table = getMockTable(test);
+
+    // Test case 1: Empty tags - rule should fail (no tags to check)
+    table.withTags(List.of());
+    SemanticsRule containsRule =
+        new SemanticsRule()
+            .withName("Tag FQN must be in allowed list")
+            .withDescription("Validates that tagFQN is contained in the allowed list")
+            .withRule(
+                "{\"and\":[{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier3\",\"Tier.Tier2\"]]}]}]}");
+
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(containsRule), false, false));
+
+    // Test case 2: Tags with matching FQN - rule should pass
+    TagLabel allowedTag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(allowedTag));
+    RuleEngine.getInstance().evaluate(table, List.of(containsRule), false, false);
+
+    // Test case 3: Tags with non-matching FQN - rule should fail
+    TagLabel disallowedTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(disallowedTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(containsRule), false, false));
+
+    // Test case 4: Multiple tags with at least one matching FQN - rule should pass
+    table.withTags(List.of(disallowedTag, allowedTag));
+    RuleEngine.getInstance().evaluate(table, List.of(containsRule), false, false);
+
+    // Test case 5: Multiple allowed tags - rule should pass
+    TagLabel anotherAllowedTag =
+        new TagLabel().withTagFQN("Tier.Tier3").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(allowedTag, anotherAllowedTag));
+    RuleEngine.getInstance().evaluate(table, List.of(containsRule), false, false);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContainsOperatorEdgeCases(TestInfo test) {
+    Table table = getMockTable(test);
+
+    // Test case 1: Rule with single allowed value
+    SemanticsRule singleValueRule =
+        new SemanticsRule()
+            .withName("Tag FQN must be specific value")
+            .withDescription("Validates that tagFQN equals specific value using contains")
+            .withRule(
+                "{\"and\":[{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\"]]}]}]}");
+
+    TagLabel exactMatch =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(exactMatch));
+    RuleEngine.getInstance().evaluate(table, List.of(singleValueRule), false, false);
+
+    TagLabel noMatch =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(noMatch));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(singleValueRule), false, false));
+
+    // Test case 2: Mixed tag sources (Glossary and Classification)
+    SemanticsRule mixedSourceRule =
+        new SemanticsRule()
+            .withName("Allow mixed tag sources")
+            .withDescription("Validates that either glossary or classification tags are allowed")
+            .withRule(
+                "{\"and\":[{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Glossary.Term1\",\"Tier.Tier1\"]]}]}]}");
+
+    TagLabel glossaryTag =
+        new TagLabel().withTagFQN("Glossary.Term1").withSource(TagLabel.TagSource.GLOSSARY);
+    TagLabel classificationTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Test with glossary tag
+    table.withTags(List.of(glossaryTag));
+    RuleEngine.getInstance().evaluate(table, List.of(mixedSourceRule), false, false);
+
+    // Test with classification tag
+    table.withTags(List.of(classificationTag));
+    RuleEngine.getInstance().evaluate(table, List.of(mixedSourceRule), false, false);
+
+    // Test with both
+    table.withTags(List.of(glossaryTag, classificationTag));
+    RuleEngine.getInstance().evaluate(table, List.of(mixedSourceRule), false, false);
+
+    // Test with neither allowed
+    TagLabel disallowedTag =
+        new TagLabel().withTagFQN("NotAllowed.Tag").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(disallowedTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(mixedSourceRule), false, false));
   }
 
   /**

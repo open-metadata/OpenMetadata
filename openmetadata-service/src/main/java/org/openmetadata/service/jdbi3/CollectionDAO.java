@@ -116,6 +116,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -296,6 +297,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
+
+  @CreateSqlObject
+  NotificationTemplateDAO notificationTemplateDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -1464,7 +1468,7 @@ public interface CollectionDAO {
             + "AND fromEntity = :fromEntityType  "
             + "AND deleted = FALSE")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<CollectionDAO.EntityRelationshipObject> findFromBatch(
+    List<EntityRelationshipObject> findFromBatch(
         @BindList("toIds") List<String> toIds,
         @Bind("relation") int relation,
         @Bind("fromEntityType") String fromEntityType);
@@ -2971,6 +2975,23 @@ public interface CollectionDAO {
         @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
+  interface NotificationTemplateDAO extends EntityDAO<NotificationTemplate> {
+    @Override
+    default String getTableName() {
+      return "notification_template_entity";
+    }
+
+    @Override
+    default Class<NotificationTemplate> getEntityClass() {
+      return NotificationTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface ChartDAO extends EntityDAO<Chart> {
     @Override
     default String getTableName() {
@@ -3069,6 +3090,26 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = POSTGRES)
+    List<String> getDistinctCustomUnitsOfMeasurement();
   }
 
   interface MlModelDAO extends EntityDAO<MlModel> {
@@ -3201,6 +3242,21 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    // Search glossary terms by both name and displayName using LIKE queries
+    // The displayName column is a generated column added in migration 1.9.3
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
+            + "AND fqnHash LIKE :parentHash "
+            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
+            + "ORDER BY name "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> searchGlossaryTerms(
+        @Bind("parentHash") String parentHash,
+        @Bind("searchTerm") String searchTerm,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -6179,6 +6235,33 @@ public interface CollectionDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
+    }
+
+    @SqlQuery(
+        "SELECT json FROM <table> <cond> "
+            + "AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listEntityProfileAtTimestamp(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    default List<String> listEntityProfileData(ListFilter filter, Long startTs, Long endTs) {
+      return listEntityProfileAtTimestamp(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), startTs, endTs);
+    }
+
+    @SqlUpdate("DELETE FROM <table> <cond> AND timestamp = :timestamp")
+    void deleteEntityProfileData(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("timestamp") Long timestamp);
+
+    default void deleteEntityProfileData(ListFilter filter, Long timestamp) {
+      deleteEntityProfileData(
+          getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
   }
 

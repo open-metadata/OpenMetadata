@@ -32,5 +32,6 @@ export interface WidgetCommonProps {
   widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
   handleLayoutUpdate?: (layout: Layout[]) => void;
+  handleSaveLayout?: (layout: WidgetConfig[]) => Promise<void>;
   currentLayout?: Array<WidgetConfig>;
 }

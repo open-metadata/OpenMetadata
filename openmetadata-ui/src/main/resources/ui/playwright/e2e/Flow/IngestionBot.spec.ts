@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
-import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
   addServicesToDomain,
@@ -24,27 +23,23 @@ import {
 } from '../../utils/domain';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
+import { setToken } from '../../utils/tokenStorage';
 
 const test = base.extend<{
   page: Page;
   ingestionBotPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const adminUser = new AdminClass();
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+    const { afterAction, page } = await performAdminLogin(browser);
+
+    await use(page);
+    await afterAction();
   },
   ingestionBotPage: async ({ browser }, use) => {
-    const admin = new AdminClass();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
     const page = await browser.newPage();
-
-    // login with admin user
-    await admin.login(page);
-    await page.waitForURL('**/my-data');
-
-    const { apiContext } = await getApiContext(page);
+    await page.goto('/');
 
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
@@ -53,17 +48,16 @@ const test = base.extend<{
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
 
-    await page.evaluate((token) => {
-      // Set a new value for a key in localStorage
-      localStorage.setItem(
-        'om-session',
-        JSON.stringify({ oidcIdToken: token })
-      );
-    }, tokenData.config.JWTToken);
+    await setToken(page, tokenData.config.JWTToken);
+    await redirectToHomePage(page);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('loader', { state: 'hidden' });
 
-    // await afterAction();
+    await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
+
     await use(page);
     await page.close();
+    await afterAction();
   },
 });
 
@@ -113,12 +107,20 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAsset1);
 
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAsset2);
     });
@@ -161,6 +163,10 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain1.data);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
@@ -169,6 +175,10 @@ test.describe('Ingestion Bot ', () => {
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
       await selectDomain(page, domain2.data);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,

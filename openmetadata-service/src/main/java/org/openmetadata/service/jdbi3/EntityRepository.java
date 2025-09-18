@@ -36,6 +36,7 @@ import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -47,7 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.findEntityByNameOrNull;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
@@ -158,6 +159,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -284,6 +286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
+  @Getter protected final boolean supportsEntityStatus;
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -406,6 +409,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
+    this.supportsEntityStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
+    if (supportsEntityStatus) {
+      this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+      this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
+    }
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -562,6 +570,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
+  }
+
+  /**
+   * Set default status for entities that support status field.
+   * All entities use EntityStatus.APPROVED as the default.
+   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   */
+  protected void setDefaultStatus(T entity, boolean update) {
+    if (!supportsEntityStatus) {
+      return;
+    }
+    // Skip if status is already set
+    if (entity.getEntityStatus() != null) {
+      return;
+    }
+    // Set default status to APPROVED
+    entity.setEntityStatus(EntityStatus.APPROVED);
   }
 
   /**
@@ -1123,6 +1148,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
+    setDefaultStatus(entity, update);
     // Domain is already validated
   }
 
@@ -1160,6 +1186,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
+    if (fields.contains(FIELD_ENTITY_STATUS)) {
+      if (entity.getEntityStatus() == null) {
+        entity.setEntityStatus(EntityStatus.APPROVED);
+      }
+    }
+
     setFields(entity, fields);
     return entity;
   }
@@ -2578,6 +2610,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       T original = find(id, DELETED);
       setFieldsInternal(original, putFields);
+      setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -3627,10 +3660,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
-      this.updatingUser =
+      User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
+              : findEntityByNameOrNull(USER, updated.getUpdatedBy(), ALL);
+      if (updatingUser == null) {
+        // user not found, create a new user with name
+        // This is to handle the case where the user is not found in the system. maybe deleted
+        updatingUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
+      }
+      this.updatingUser = updatingUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
     }
@@ -3818,6 +3857,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -3843,6 +3883,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
+        updateEntityStatus();
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -3899,6 +3940,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
+    private void updateEntityStatus() {
+      if (supportsEntityStatus) {
+        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+      }
+    }
+
     private void updateOwners() {
       List<EntityReference> origOwners = getEntityReferences(original.getOwners());
       List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
@@ -3916,7 +3963,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
         updated.setOwners(updatedOwners);
       } else {
-        updated.setOwners(origOwners); // Restore original owner
+        updated.setOwners(original.getOwners()); // Restore original owner
       }
     }
 
@@ -5376,7 +5423,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
-    return batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DATA_PRODUCT);
+    return batchFetchToIdsOneToMany(entities, Relationship.HAS, Entity.DATA_PRODUCT);
   }
 
   private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
@@ -5674,6 +5721,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
         record -> {
           var entityId = UUID.fromString(record.getFromId());
           var relatedRef = idReferenceMap.get(record.getToId());
+          if (relatedRef != null) {
+            resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
+          }
+        });
+
+    return resultMap;
+  }
+
+  protected Map<UUID, List<EntityReference>> batchFetchToIdsOneToMany(
+      List<T> entities, Relationship relationship, String fromEntityType) {
+    var resultMap = new HashMap<UUID, List<EntityReference>>();
+    if (entities == null || entities.isEmpty()) {
+      return resultMap;
+    }
+
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), relationship.ordinal(), fromEntityType, ALL);
+
+    var idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                fromEntityType,
+                records.stream().map(e -> UUID.fromString(e.getFromId())).distinct().toList(),
+                ALL)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    records.forEach(
+        record -> {
+          var entityId = UUID.fromString(record.getToId());
+          var relatedRef = idReferenceMap.get(record.getFromId());
           if (relatedRef != null) {
             resultMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(relatedRef);
           }
