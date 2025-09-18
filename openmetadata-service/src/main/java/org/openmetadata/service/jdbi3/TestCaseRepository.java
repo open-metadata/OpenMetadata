@@ -363,10 +363,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns", ALL);
+    Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns,followers", ALL);
     inheritOwners(testCase, fields, table);
     inheritDomains(testCase, fields, table);
     inheritTags(testCase, fields, table);
+    inheritFollowers(testCase, fields, table);
   }
 
   private void inheritTags(TestCase testCase, Fields fields, Table table) {
