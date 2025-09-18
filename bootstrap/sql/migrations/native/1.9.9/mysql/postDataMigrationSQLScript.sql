@@ -49,7 +49,9 @@ WHERE pdts.extension = 'table.systemProfile';
 
 -- Migrate column profiles using the most reliable approach
 -- Step 1: Add a temporary column to store the table hash
-ALTER TABLE profiler_data_time_series ADD COLUMN IF NOT EXISTS temp_table_hash VARCHAR(768);
+-- Note: This might fail if column already exists from a previous interrupted migration
+-- In that case, the migration can continue safely
+ALTER TABLE profiler_data_time_series ADD COLUMN temp_table_hash VARCHAR(768);
 
 -- Step 2: Extract and store the table hash for column profiles
 UPDATE profiler_data_time_series
