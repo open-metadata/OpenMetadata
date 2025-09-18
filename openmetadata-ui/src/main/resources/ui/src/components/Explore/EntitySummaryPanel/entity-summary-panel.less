@@ -23,6 +23,7 @@
     text-decoration: none;
     font-size: 13px;
     font-weight: 700;
+    color: #20293a;
     text-transform: uppercase;
     &:hover {
       text-decoration: none;
@@ -35,20 +36,23 @@
     &:active {
       text-decoration: none;
     }
+    .text-highlighter {
+      color: #20293a;
+      background-color: #f9fafc;
+    }
   }
-  // .summary-panel-container {
-  //   flex: 1;
-  //   // padding:16px;
-
-  //   .entity-summary-panel-tab-content {
-  //     height: 100%;
-  //     display: flex;
-  //     justify-content: center;
-  //     align-items: center;
-  //   }
-  // }
 }
-
+.entity-type-badge {
+  border-radius: 6px;
+  padding: 2px 8px;
+  border: 1px solid #e3e8f0;
+  background-color: #ffffff;
+}
+.entity-type-badge-text {
+  color: #21263c;
+  font-size: 13px;
+  font-weight: 500;
+}
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
@@ -164,6 +168,17 @@
   background-color: #f9fafc;
   border-top-right-radius: 10px;
   border-top-left-radius: 10px;
+
+  .entity-title-link {
+    flex: 1;
+    min-width: 0;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-decoration: none;
+    color: inherit;
+  }
 }
 
 .custom-properties-list {

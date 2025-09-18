@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { get } from 'lodash';
+import { get, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -45,7 +45,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
@@ -504,15 +503,6 @@ export default function EntitySummaryPanel({
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
   );
-  const entityIcon = useMemo(() => {
-    return (
-      <span className="w-6 h-4 m-r-xs d-inline-flex text-xl align-middle entity-icon">
-        {searchClassBase.getEntityIcon(
-          get(entityDetails, 'details.entityType') ?? ''
-        )}
-      </span>
-    );
-  }, [entityDetails]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {
     setActiveTab(tab);
@@ -709,25 +699,27 @@ export default function EntitySummaryPanel({
     <div className="entity-summary-panel-container">
       {viewPermission && (
         <div className="title-container">
-          <Link
-            className="entity-title-link"
-            data-testid="entity-link"
-            target={searchClassBase.getSearchEntityLinkTarget(
-              entityDetails.details
-            )}
-            to={entityLink}>
-            <Typography.Text>
-              {entityIcon}
-              {stringToHTML(
-                searchClassBase.getEntityName(entityDetails.details)
-              )}
+          <Tooltip
+            mouseEnterDelay={0.5}
+            placement="topLeft"
+            title={entityDetails.details.name}
+            trigger="hover">
+            <Typography.Text
+              className="entity-title-link"
+              data-testid="entity-link">
+              {entityDetails.details.name}
             </Typography.Text>
-          </Link>
+          </Tooltip>
+          <div className="entity-type-badge">
+            <Typography.Text className="entity-type-badge-text">
+              {startCase(entityDetails.details.entityType)}
+            </Typography.Text>
+          </div>
           <div className="p-r-md">
             <Button
               className="entity-redirect-button"
               icon={<IconExternalLinkOutlined />}
-              size="small"
+              size="middle"
               type="text"
               onClick={() => {
                 const target = searchClassBase.getSearchEntityLinkTarget(
