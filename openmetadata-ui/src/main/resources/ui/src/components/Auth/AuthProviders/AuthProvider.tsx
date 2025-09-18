@@ -26,7 +26,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isNil, isNumber } from 'lodash';
+import { isEmpty, isNil, isNumber } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import Qs from 'qs';
 import {
@@ -61,7 +61,6 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import axiosClient from '../../../rest';
 import { getDomainList } from '../../../rest/domainAPI';
 import {
@@ -480,69 +479,18 @@ export const AuthProvider = ({
         }
 
         // Parse and update the query parameter
-        const urlParams = config.url.includes('?')
-          ? Qs.parse(config.url.split('?')[1])
-          : {};
-        const queryParams = { ...urlParams, ...config.params };
+        const queryParams = Qs.parse(config.url.split('?')[1]);
+        // adding quotes for exact matching
+        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
+          activeDomain
+        )}")`;
+        queryParams.q = queryParams.q ?? '';
+        queryParams.q += isEmpty(queryParams.q)
+          ? domainStatement
+          : ` AND ${domainStatement}`;
 
-        if (config.url.includes('?')) {
-          config.url = config.url.split('?')[0];
-        }
-
-        const domainStatement = escapeESReservedCharacters(activeDomain);
-
-        // Create domain filter using term query for exact matching
-        const domainFilter = {
-          term: {
-            'domains.fullyQualifiedName': domainStatement,
-          },
-        };
-
-        const createDomainFilter = () => ({
-          query: domainFilter,
-        });
-
-        const mergeWithDomainFilter = (
-          existingMust: QueryFilterInterface[]
-        ) => ({
-          query: {
-            bool: {
-              must: [...existingMust, domainFilter],
-            },
-          },
-        });
-
-        if (queryParams.query_filter) {
-          try {
-            const existingFilter = JSON.parse(
-              queryParams.query_filter as string
-            );
-            const existingQuery = existingFilter.query || existingFilter;
-
-            if (
-              existingQuery?.bool?.must &&
-              Array.isArray(existingQuery.bool.must)
-            ) {
-              queryParams.query_filter = JSON.stringify(
-                mergeWithDomainFilter(existingQuery.bool.must)
-              );
-            } else if (existingQuery && typeof existingQuery === 'object') {
-              queryParams.query_filter = JSON.stringify(
-                mergeWithDomainFilter([existingQuery])
-              );
-            } else {
-              queryParams.query_filter = JSON.stringify(createDomainFilter());
-            }
-          } catch (error) {
-            queryParams.query_filter = JSON.stringify(createDomainFilter());
-          }
-        } else {
-          queryParams.query_filter = JSON.stringify(createDomainFilter());
-        }
-
-        config.params = {
-          ...queryParams,
-        };
+        // Update the URL with the modified query parameter
+        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
       } else {
         config.params = {
           ...config.params,

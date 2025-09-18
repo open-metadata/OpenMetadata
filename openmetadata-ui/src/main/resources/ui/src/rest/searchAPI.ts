@@ -176,55 +176,14 @@ export const rawSearchQuery = <
 
   const queryWithSlash = getQueryWithSlash(query || '');
 
-  // Build structured queryFilter to handle filters properly
-  let structuredQueryFilter = queryFilter;
+  const apiQuery =
+    query && query !== '**'
+      ? filters
+        ? `${queryWithSlash} AND `
+        : queryWithSlash
+      : '';
 
-  // If filters is provided (for backward compatibility with simple field:value filters)
-  // Combine it with the existing queryFilter
-  if (filters) {
-    // Check if filters contains AND or OR operators (which shouldn't happen in new code)
-    if (filters.includes(' AND ') || filters.includes(' OR ')) {
-      // For backward compatibility, handle complex filters with AND/OR using query_string
-      const filterQuery = {
-        query_string: {
-          query: filters,
-          default_field: '*',
-        },
-      };
-
-      structuredQueryFilter = queryFilter
-        ? {
-            query: {
-              bool: {
-                must: [queryFilter.query || queryFilter, filterQuery],
-              },
-            },
-          }
-        : { query: filterQuery };
-    } else if (filters.includes(':')) {
-      // Simple field:value filters (backward compatibility)
-      const filterQuery = {
-        query_string: {
-          query: filters,
-          default_field: '*',
-        },
-      };
-
-      structuredQueryFilter = queryFilter
-        ? {
-            query: {
-              bool: {
-                must: [queryFilter.query || queryFilter, filterQuery],
-              },
-            },
-          }
-        : { query: filterQuery };
-    }
-  }
-
-  // The q parameter should only contain the search text, no filters
-  const apiQuery = query && query !== '**' ? queryWithSlash : '';
-  const apiUrl = `/search/query?q=${apiQuery}`;
+  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
   return APIClient.get<
     SearchResponse<
@@ -237,7 +196,7 @@ export const rawSearchQuery = <
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
       deleted: includeDeleted,
-      query_filter: JSON.stringify(structuredQueryFilter),
+      query_filter: JSON.stringify(queryFilter),
       post_filter: JSON.stringify(postFilter),
       sort_field: sortField,
       sort_order: sortOrder,
