@@ -44,3 +44,12 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
     INDEX idx_notification_template_name (name),
     INDEX idx_notification_template_provider (provider)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Performance optimization for tag_usage prefix queries
+-- Add generated column for case-insensitive searches
+ALTER TABLE tag_usage
+ADD COLUMN targetfqnhash_lower VARCHAR(768)
+GENERATED ALWAYS AS (LOWER(targetFQNHash)) STORED;
+
+-- Create index for efficient prefix searches
+CREATE INDEX idx_tag_usage_targetfqnhash_lower ON tag_usage(targetfqnhash_lower);

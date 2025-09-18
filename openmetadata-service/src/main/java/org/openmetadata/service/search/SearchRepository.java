@@ -486,7 +486,9 @@ public class SearchRepository {
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
       }
-      searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
+      // Use async update for better performance
+      searchClient.updateEntityAsync(
+          indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
       propagateInheritedFieldsToChildren(
           entityType, entityId, changeDescription, indexMapping, entity);
       propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);

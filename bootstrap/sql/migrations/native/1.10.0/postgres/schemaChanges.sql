@@ -47,3 +47,10 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
 
 CREATE INDEX IF NOT EXISTS idx_notification_template_name ON notification_template_entity(name);
 CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_template_entity(provider);
+
+-- Performance optimization for tag_usage prefix queries
+ALTER TABLE tag_usage
+ADD COLUMN IF NOT EXISTS targetfqnhash_lower text GENERATED ALWAYS AS (lower(targetFQNHash)) STORED;
+
+-- Create index for efficient prefix searches
+CREATE INDEX IF NOT EXISTS idx_tag_usage_targetfqnhash_lower ON tag_usage(targetfqnhash_lower);
