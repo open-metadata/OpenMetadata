@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v198;
+package org.openmetadata.service.migration.utils.v199;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -34,7 +34,7 @@ public class MigrationUtil {
       LOG.info("Successfully completed user activity columns migration");
     } catch (Exception ex) {
       LOG.error("Error running user activity columns migration", ex);
-      throw new RuntimeException("Migration v198 failed", ex);
+      throw new RuntimeException("Migration v199 failed", ex);
     }
   }
 
