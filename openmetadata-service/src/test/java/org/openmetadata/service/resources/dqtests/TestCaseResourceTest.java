@@ -1742,7 +1742,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void patch_TestCaseResultFailure(TestInfo test) throws HttpResponseException {
+  void patch_TestCaseResultFailure(TestInfo test) throws IOException {
     // Create a table owned by USER_TABLE_OWNER to test owner permissions
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
@@ -2195,7 +2195,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void test_ownerCanUpdateIncidentStatus(TestInfo test)
-      throws HttpResponseException, ParseException {
+          throws IOException, ParseException {
     // Create a table owned by USER1
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
@@ -2257,7 +2257,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void test_nonOwnerWithEditAllPermissionCanUpdateIncidentStatus(TestInfo test)
-      throws HttpResponseException, ParseException {
+          throws IOException, ParseException {
     // Create a table owned by USER2
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
