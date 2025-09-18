@@ -1,0 +1,567 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.search.opensearch;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHost;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.OpenMetadataApplicationTest;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
+import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
+import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@Slf4j
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class OpenSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTest {
+
+  private OpenSearchIndexManager indexManager;
+  private OpenSearchClient client;
+  private String testIndexPrefix;
+  private IndexMapping testIndexMapping;
+
+  private static final String TEST_CLUSTER_ALIAS = "test_cluster";
+  private static final String SAMPLE_MAPPING_JSON =
+      """
+      {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 0
+        },
+        "mappings": {
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "text",
+              "analyzer": "standard"
+            },
+            "description": {
+              "type": "text"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "created_at": {
+              "type": "date"
+            }
+          }
+        }
+      }
+      """;
+
+  private static final String UPDATED_MAPPING_JSON =
+      """
+      {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "standard"
+          },
+          "description": {
+            "type": "text"
+          },
+          "tags": {
+            "type": "keyword"
+          },
+          "created_at": {
+            "type": "date"
+          },
+          "updated_at": {
+            "type": "date"
+          },
+          "category": {
+            "type": "keyword"
+          }
+        }
+      }
+      """;
+
+  @BeforeEach
+  void setUp() {
+    // Create unique test index prefix to avoid conflicts
+    testIndexPrefix =
+        "test_idx_"
+            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
+
+    // Create OpenSearch client from the test container (using ES container for compatibility)
+    client = createOpenSearchClient();
+
+    // Create IndexManager instance
+    indexManager = new OpenSearchIndexManager(client, TEST_CLUSTER_ALIAS);
+
+    // Create test index mapping
+    testIndexMapping = createTestIndexMapping(testIndexPrefix);
+
+    LOG.info("Test setup completed with index prefix: {}", testIndexPrefix);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Clean up test indices
+    if (indexManager != null && testIndexMapping != null) {
+      try {
+        String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+        if (indexManager.indexExists(indexName)) {
+          indexManager.deleteIndex(testIndexMapping);
+          LOG.info("Cleaned up test index: {}", indexName);
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to clean up test index", e);
+      }
+    }
+  }
+
+  private OpenSearchClient createOpenSearchClient() {
+    try {
+      // For testing, we'll connect to the same Elasticsearch test container
+      // but treat it as OpenSearch (they share the same REST API)
+      es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
+      HttpHost[] hosts =
+          esRestClient.getNodes().stream()
+              .map(
+                  node ->
+                      new HttpHost(
+                          node.getHost().getHostName(),
+                          node.getHost().getPort(),
+                          node.getHost().getSchemeName()))
+              .toArray(HttpHost[]::new);
+
+      // Create OpenSearch RestClient with the same connection details
+      os.org.opensearch.client.RestClient osRestClient =
+          os.org.opensearch.client.RestClient.builder(hosts).build();
+      RestClientTransport transport =
+          new RestClientTransport(osRestClient, new JacksonJsonpMapper());
+      return new OpenSearchClient(transport);
+    } catch (Exception e) {
+      LOG.error("Failed to create OpenSearch client", e);
+      throw new RuntimeException("Failed to create OpenSearch client", e);
+    }
+  }
+
+  @Test
+  void testIndexExists_NonExistentIndex() {
+    String nonExistentIndex = testIndexPrefix + "_nonexistent";
+    boolean exists = indexManager.indexExists(nonExistentIndex);
+    assertFalse(exists, "Non-existent index should return false");
+  }
+
+  @Test
+  void testCreateIndex_WithValidMapping() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Verify index doesn't exist initially
+    assertFalse(indexManager.indexExists(indexName), "Index should not exist initially");
+
+    // Create index
+    assertDoesNotThrow(
+        () -> {
+          indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+        },
+        "Index creation should not throw exception");
+
+    // Verify index exists after creation
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+  }
+
+  @Test
+  void testCreateIndex_WithNullMapping() {
+    IndexMapping nullMappingIndex = createTestIndexMapping(testIndexPrefix + "_null");
+    String indexName = nullMappingIndex.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index with null mapping
+    assertDoesNotThrow(
+        () -> {
+          indexManager.createIndex(nullMappingIndex, null);
+        },
+        "Index creation with null mapping should not throw exception");
+
+    // Verify index exists
+    assertTrue(
+        indexManager.indexExists(indexName), "Index should exist after creation with null mapping");
+
+    // Clean up
+    indexManager.deleteIndex(nullMappingIndex);
+  }
+
+  @Test
+  void testCreateIndex_WithEmptyMapping() {
+    IndexMapping emptyMappingIndex = createTestIndexMapping(testIndexPrefix + "_empty");
+    String indexName = emptyMappingIndex.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index with empty mapping
+    assertDoesNotThrow(
+        () -> {
+          indexManager.createIndex(emptyMappingIndex, "");
+        },
+        "Index creation with empty mapping should not throw exception");
+
+    // Verify index exists
+    assertTrue(
+        indexManager.indexExists(indexName),
+        "Index should exist after creation with empty mapping");
+
+    // Clean up
+    indexManager.deleteIndex(emptyMappingIndex);
+  }
+
+  @Test
+  void testUpdateIndex_ExistingIndex() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Update index mapping
+    assertDoesNotThrow(
+        () -> {
+          indexManager.updateIndex(testIndexMapping, UPDATED_MAPPING_JSON);
+        },
+        "Index update should not throw exception");
+
+    // Index should still exist
+    assertTrue(indexManager.indexExists(indexName), "Index should still exist after update");
+  }
+
+  @Test
+  void testUpdateIndex_NonExistentIndex() {
+    IndexMapping nonExistentMapping = createTestIndexMapping(testIndexPrefix + "_nonexistent");
+
+    // Attempt to update non-existent index (should not throw exception)
+    assertDoesNotThrow(
+        () -> {
+          indexManager.updateIndex(nonExistentMapping, UPDATED_MAPPING_JSON);
+        },
+        "Updating non-existent index should not throw exception");
+  }
+
+  @Test
+  void testUpdateIndex_WithNullMapping() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Update with null mapping
+    assertDoesNotThrow(
+        () -> {
+          indexManager.updateIndex(testIndexMapping, null);
+        },
+        "Index update with null mapping should not throw exception");
+
+    // Index should still exist
+    assertTrue(
+        indexManager.indexExists(indexName),
+        "Index should still exist after update with null mapping");
+  }
+
+  @Test
+  void testDeleteIndex_ExistingIndex() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Delete index
+    assertDoesNotThrow(
+        () -> {
+          indexManager.deleteIndex(testIndexMapping);
+        },
+        "Index deletion should not throw exception");
+
+    // Verify index no longer exists
+    assertFalse(indexManager.indexExists(indexName), "Index should not exist after deletion");
+  }
+
+  @Test
+  void testDeleteIndex_NonExistentIndex() {
+    IndexMapping nonExistentMapping = createTestIndexMapping(testIndexPrefix + "_nonexistent");
+
+    // Attempt to delete non-existent index (should not throw exception)
+    assertDoesNotThrow(
+        () -> {
+          indexManager.deleteIndex(nonExistentMapping);
+        },
+        "Deleting non-existent index should not throw exception");
+  }
+
+  @Test
+  void testCreateAliases_WithParentAliases() throws Exception {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String mainAlias = testIndexMapping.getAlias(TEST_CLUSTER_ALIAS);
+    List<String> parentAliases = testIndexMapping.getParentAliases(TEST_CLUSTER_ALIAS);
+
+    // Create index (this should also create aliases)
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Verify aliases exist
+    GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
+    GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
+
+    assertNotNull(aliasResponse.result(), "Alias response should not be null");
+    assertTrue(aliasResponse.result().containsKey(indexName), "Index should have aliases");
+
+    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    assertTrue(aliases.contains(mainAlias), "Main alias should exist");
+
+    for (String parentAlias : parentAliases) {
+      assertTrue(aliases.contains(parentAlias), "Parent alias should exist: " + parentAlias);
+    }
+  }
+
+  @Test
+  void testCreateAliases_WithNullMainAlias() {
+    IndexMapping nullAliasMapping =
+        IndexMapping.builder()
+            .indexName(testIndexPrefix + "_nullalias_index")
+            .alias(null)
+            .parentAliases(List.of(testIndexPrefix + "_nullalias_parent1"))
+            .indexMappingFile("test_mapping_%s.json")
+            .build();
+
+    String indexName = nullAliasMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index with null main alias (should still create parent aliases)
+    assertDoesNotThrow(
+        () -> {
+          indexManager.createIndex(nullAliasMapping, SAMPLE_MAPPING_JSON);
+        },
+        "Index creation with null alias should not throw exception");
+
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Clean up
+    indexManager.deleteIndex(nullAliasMapping);
+  }
+
+  @Test
+  void testAddIndexAlias_SingleAlias() throws Exception {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String additionalAlias = testIndexPrefix + "_additional_alias";
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Add additional alias
+    assertDoesNotThrow(
+        () -> {
+          indexManager.addIndexAlias(testIndexMapping, additionalAlias);
+        },
+        "Adding alias should not throw exception");
+
+    // Verify additional alias exists
+    GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
+    GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
+
+    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    assertTrue(aliases.contains(additionalAlias), "Additional alias should exist");
+  }
+
+  @Test
+  void testAddIndexAlias_MultipleAliases() throws Exception {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String alias1 = testIndexPrefix + "_alias1";
+    String alias2 = testIndexPrefix + "_alias2";
+    String alias3 = testIndexPrefix + "_alias3";
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Add multiple aliases
+    assertDoesNotThrow(
+        () -> {
+          indexManager.addIndexAlias(testIndexMapping, alias1, alias2, alias3);
+        },
+        "Adding multiple aliases should not throw exception");
+
+    // Verify all aliases exist
+    GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
+    GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
+
+    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    assertTrue(aliases.contains(alias1), "Alias1 should exist");
+    assertTrue(aliases.contains(alias2), "Alias2 should exist");
+    assertTrue(aliases.contains(alias3), "Alias3 should exist");
+  }
+
+  @Test
+  void testIndexLifecycle_CreateUpdateDelete() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // 1. Create index
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // 2. Update index
+    indexManager.updateIndex(testIndexMapping, UPDATED_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after update");
+
+    // 3. Add alias
+    String lifecycleAlias = testIndexPrefix + "_lifecycle_alias";
+    indexManager.addIndexAlias(testIndexMapping, lifecycleAlias);
+
+    // 4. Delete index
+    indexManager.deleteIndex(testIndexMapping);
+    assertFalse(indexManager.indexExists(indexName), "Index should not exist after deletion");
+  }
+
+  @Test
+  void testConcurrentIndexOperations() throws InterruptedException {
+    int threadCount = 3; // Reduced for OpenSearch testing
+    Thread[] threads = new Thread[threadCount];
+    boolean[] results = new boolean[threadCount];
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadIndex = i;
+      final String threadIndexName = testIndexPrefix + "_thread_" + threadIndex;
+      final IndexMapping threadMapping = createTestIndexMapping(threadIndexName);
+
+      threads[i] =
+          new Thread(
+              () -> {
+                try {
+                  // Each thread creates its own index
+                  indexManager.createIndex(threadMapping, SAMPLE_MAPPING_JSON);
+                  boolean exists =
+                      indexManager.indexExists(threadMapping.getIndexName(TEST_CLUSTER_ALIAS));
+
+                  if (exists) {
+                    // Add alias
+                    indexManager.addIndexAlias(threadMapping, threadIndexName + "_alias");
+                    // Update mapping
+                    indexManager.updateIndex(threadMapping, UPDATED_MAPPING_JSON);
+                    // Delete index
+                    indexManager.deleteIndex(threadMapping);
+                  }
+
+                  results[threadIndex] = exists;
+                } catch (Exception e) {
+                  LOG.error("Thread {} failed", threadIndex, e);
+                  results[threadIndex] = false;
+                }
+              });
+    }
+
+    // Start all threads
+    for (Thread thread : threads) {
+      thread.start();
+    }
+
+    // Wait for all threads to complete
+    for (Thread thread : threads) {
+      thread.join(30000); // 30 second timeout
+    }
+
+    // Verify all operations succeeded
+    for (int i = 0; i < threadCount; i++) {
+      assertTrue(results[i], "Thread " + i + " should have completed successfully");
+    }
+  }
+
+  @Test
+  void testComplexMappingOperations() {
+    String complexMappingJson =
+        """
+        {
+          "settings": {
+            "number_of_shards": 2,
+            "number_of_replicas": 1,
+            "analysis": {
+              "analyzer": {
+                "custom_analyzer": {
+                  "type": "custom",
+                  "tokenizer": "standard",
+                  "filter": ["lowercase", "stop"]
+                }
+              }
+            }
+          },
+          "mappings": {
+            "properties": {
+              "nested_field": {
+                "type": "nested",
+                "properties": {
+                  "inner_text": {
+                    "type": "text",
+                    "analyzer": "custom_analyzer"
+                  },
+                  "inner_keyword": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "geo_point": {
+                "type": "geo_point"
+              },
+              "date_range": {
+                "type": "date_range"
+              }
+            }
+          }
+        }
+        """;
+
+    IndexMapping complexMapping = createTestIndexMapping(testIndexPrefix + "_complex");
+    String indexName = complexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index with complex mapping
+    assertDoesNotThrow(
+        () -> {
+          indexManager.createIndex(complexMapping, complexMappingJson);
+        },
+        "Complex index creation should not throw exception");
+
+    assertTrue(indexManager.indexExists(indexName), "Complex index should exist after creation");
+
+    // Clean up
+    indexManager.deleteIndex(complexMapping);
+  }
+
+  /**
+   * Creates test IndexMapping instances for testing purposes
+   */
+  private static IndexMapping createTestIndexMapping(String indexPrefix) {
+    return IndexMapping.builder()
+        .indexName(indexPrefix + "_index")
+        .alias(indexPrefix + "_alias")
+        .parentAliases(List.of(indexPrefix + "_parent1", indexPrefix + "_parent2"))
+        .indexMappingFile("test_mapping_%s.json")
+        .build();
+  }
+}
