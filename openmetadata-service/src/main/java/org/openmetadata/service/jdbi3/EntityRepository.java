@@ -3067,7 +3067,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void inheritFollowers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_FOLLOWERS) && nullOrEmpty(entity.getFollowers()) && parent != null) {
       entity.setFollowers(
-          !nullOrEmpty(parent.getFollowers()) ? parent.getFollowers() : Collections.emptyList());
+          Optional.ofNullable(parent.getFollowers())
+              .filter(list -> !list.isEmpty())
+              .orElse(Collections.emptyList()));
       listOrEmpty(entity.getFollowers()).forEach(follower -> follower.setInherited(true));
     }
   }
