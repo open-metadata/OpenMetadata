@@ -245,12 +245,12 @@ public class LineageUtil {
     }
   }
 
-  public static NodeInformation getNodeInformationWithCleanedEntity(
+  public static NodeInformation getNodeInformation(
       Map<String, Object> sourceMap,
       Integer entityDownstreamCount,
       Integer entityUpstreamCount,
       Integer nodeDepth) {
-    sourceMap.remove("upstreamLineage");
+    // sourceMap.remove("upstreamLineage");
     return new NodeInformation()
         .withEntity(sourceMap)
         .withPaging(

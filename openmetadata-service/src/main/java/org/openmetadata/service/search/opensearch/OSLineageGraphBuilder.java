@@ -13,7 +13,7 @@ import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageList
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
-import static org.openmetadata.service.util.LineageUtil.getNodeInformationWithCleanedEntity;
+import static org.openmetadata.service.util.LineageUtil.getNodeInformation;
 
 import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
@@ -82,9 +82,7 @@ public class OSLineageGraphBuilder {
         .forEach(
             sourceMap -> {
               String fqn = sourceMap.get(FQN_FIELD).toString();
-              result
-                  .getNodes()
-                  .putIfAbsent(fqn, getNodeInformationWithCleanedEntity(sourceMap, null, null, 0));
+              result.getNodes().putIfAbsent(fqn, getNodeInformation(sourceMap, null, null, 0));
 
               List<EsLineageData> upstreamLineageList = getUpstreamLineageListIfExist(sourceMap);
               for (EsLineageData esLineageData : upstreamLineageList) {
@@ -154,9 +152,7 @@ public class OSLineageGraphBuilder {
         result
             .getNodes()
             .putIfAbsent(
-                fqn,
-                getNodeInformationWithCleanedEntity(
-                    esDoc, null, upStreamEntities.size(), -1 * currentDepth));
+                fqn, getNodeInformation(esDoc, null, upStreamEntities.size(), -1 * currentDepth));
 
         List<EsLineageData> paginatedUpstreamEntities =
             paginateList(
@@ -257,9 +253,7 @@ public class OSLineageGraphBuilder {
         if (!result.getNodes().containsKey(fqn)) {
           hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fqn), fqn);
           int currentDepth = calculateCurrentDepth(lineageRequest, remainingDepth);
-          result
-              .getNodes()
-              .put(fqn, getNodeInformationWithCleanedEntity(entityMap, 0, null, currentDepth));
+          result.getNodes().put(fqn, getNodeInformation(entityMap, 0, null, currentDepth));
         }
 
         List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityMap);
@@ -415,8 +409,7 @@ public class OSLineageGraphBuilder {
       int downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
 
       NodeInformation rootNode =
-          getNodeInformationWithCleanedEntity(
-              rootEntityMap, downstreamCount, upstreamEntities.size(), 0);
+          getNodeInformation(rootEntityMap, downstreamCount, upstreamEntities.size(), 0);
 
       result.getNodes().put(rootFqn, rootNode);
     }
@@ -730,6 +723,10 @@ public class OSLineageGraphBuilder {
       Map<Integer, List<String>> entitiesByDepth,
       EntityCountLineageRequest request)
       throws IOException {
+    // Create a set of all collected FQNs for edge filtering
+    Set<String> allCollectedFqns = new HashSet<>(entityFqns);
+    allCollectedFqns.add(request.getFqn()); // Add the root entity FQN as well
+
     for (String entityFqn : entityFqns) {
       Map<String, Object> entityDoc =
           OsUtils.searchEntityByKey(
@@ -746,12 +743,10 @@ public class OSLineageGraphBuilder {
           nodeDepth = -nodeDepth; // Upstream depths are negative
         }
 
-        result
-            .getNodes()
-            .put(entityFqn, getNodeInformationWithCleanedEntity(entityDoc, null, null, nodeDepth));
+        result.getNodes().put(entityFqn, getNodeInformation(entityDoc, null, null, nodeDepth));
 
         // Add lineage edges
-        addLineageEdges(result, entityDoc, request);
+        addLineageEdges(result, entityDoc, request, allCollectedFqns);
       }
     }
   }
@@ -768,24 +763,27 @@ public class OSLineageGraphBuilder {
   private void addLineageEdges(
       SearchLineageResult result,
       Map<String, Object> entityDoc,
-      EntityCountLineageRequest request) {
-    RelationshipRef toEntity = getRelationshipRef(entityDoc);
+      EntityCountLineageRequest request,
+      Set<String> allCollectedFqns) {
+    RelationshipRef currentEntity = getRelationshipRef(entityDoc);
     List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityDoc);
 
     if (request.getDirection() == LineageDirection.UPSTREAM) {
-      // Add upstream edges
+      // Add upstream edges - current entity depends on these upstream entities
       for (EsLineageData data : upstreamEntities) {
-        result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
+        // Only add edge if the upstream entity is in our collected set
+        if (allCollectedFqns.contains(data.getFromEntity().getFullyQualifiedName())) {
+          result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(currentEntity));
+        }
       }
     } else if (request.getDirection() == LineageDirection.DOWNSTREAM) {
-      // Add downstream edges - we need to check if any upstream entities match our target
-      for (EsLineageData esLineageData : upstreamEntities) {
-        String fromFqnHash = esLineageData.getFromEntity().getFqnHash();
-        String targetFqnHash = FullyQualifiedName.buildHash(request.getFqn());
-        if (fromFqnHash.equals(targetFqnHash)) {
+      // Add downstream edges - entities that depend on our root entity
+      for (EsLineageData upstreamData : upstreamEntities) {
+        String rootFqnHash = FullyQualifiedName.buildHash(request.getFqn());
+        if (upstreamData.getFromEntity().getFqnHash().equals(rootFqnHash)) {
           result
               .getDownstreamEdges()
-              .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
+              .putIfAbsent(upstreamData.getDocId(), upstreamData.withToEntity(currentEntity));
         }
       }
     }
@@ -843,12 +841,7 @@ public class OSLineageGraphBuilder {
         Map<String, Object> esDoc = hit.getSourceAsMap();
         if (!esDoc.isEmpty()) {
           String entityFqn = esDoc.get(FQN_FIELD).toString();
-
-          // Add entities from depth 1 up to targetDepth
-          if (depth >= 1 && depth <= targetDepth) {
-            allEntitiesUpToDepth.add(new EntityData(entityFqn, depth, esDoc));
-          }
-
+          allEntitiesUpToDepth.add(new EntityData(entityFqn, depth, esDoc));
           if (request.getDirection().equals(LineageDirection.DOWNSTREAM)) {
             if (depth < targetDepth && !visitedFqns.contains(entityFqn)) {
               nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
@@ -872,6 +865,14 @@ public class OSLineageGraphBuilder {
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepth, request.getFrom(), request.getSize());
 
+    // Create a set of all collected FQNs for edge filtering
+    Set<String> allCollectedFqns = new HashSet<>();
+    for (EntityData entityData : allEntitiesUpToDepth) {
+      allCollectedFqns.add(entityData.fqn);
+    }
+    // Add the root entity FQN as well
+    allCollectedFqns.add(request.getFqn());
+
     // Add paginated entities to result
     for (EntityData entityData : paginatedEntities) {
       int entityDepth = entityData.depth;
@@ -881,11 +882,9 @@ public class OSLineageGraphBuilder {
 
       result
           .getNodes()
-          .put(
-              entityData.fqn,
-              getNodeInformationWithCleanedEntity(entityData.document, null, null, entityDepth));
+          .put(entityData.fqn, getNodeInformation(entityData.document, null, null, entityDepth));
 
-      addLineageEdges(result, entityData.document, request);
+      addLineageEdges(result, entityData.document, request, allCollectedFqns);
     }
   }
 
