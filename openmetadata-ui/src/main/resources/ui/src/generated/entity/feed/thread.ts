@@ -531,6 +531,11 @@ export interface TaskDetails {
     oldValue?: string;
     status?:   ThreadTaskStatus;
     /**
+     * Structured diff object containing field changes in a format suitable for UI rendering.
+     * This complements oldValue/newValue with a more structured representation.
+     */
+    structuredDiff?: StructuredDiff;
+    /**
      * The suggestion object to replace the old value for which the task is created.
      */
     suggestion?: string;
@@ -552,6 +557,65 @@ export interface TaskDetails {
 export enum ThreadTaskStatus {
     Closed = "Closed",
     Open = "Open",
+}
+
+/**
+ * Structured diff object containing field changes in a format suitable for UI rendering.
+ * This complements oldValue/newValue with a more structured representation.
+ */
+export interface StructuredDiff {
+    /**
+     * List of fields that were added
+     */
+    fieldsAdded?: FieldsAdded[];
+    /**
+     * List of fields that were deleted
+     */
+    fieldsDeleted?: FieldsDeleted[];
+    /**
+     * List of fields that were updated
+     */
+    fieldsUpdated?: FieldsUpdated[];
+}
+
+export interface FieldsAdded {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * The new value of the field
+     */
+    newValue?: any;
+    [property: string]: any;
+}
+
+export interface FieldsDeleted {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * The old value of the field
+     */
+    oldValue?: any;
+    [property: string]: any;
+}
+
+export interface FieldsUpdated {
+    /**
+     * Field name
+     */
+    name?: string;
+    /**
+     * The new value of the field
+     */
+    newValue?: any;
+    /**
+     * The old value of the field
+     */
+    oldValue?: any;
+    [property: string]: any;
 }
 
 /**
