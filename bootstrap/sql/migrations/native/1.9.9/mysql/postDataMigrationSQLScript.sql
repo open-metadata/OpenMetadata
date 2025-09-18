@@ -53,7 +53,7 @@ CREATE TEMPORARY TABLE IF NOT EXISTS column_to_table_mapping (
     column_hash VARCHAR(768) PRIMARY KEY,
     table_hash VARCHAR(768),
     INDEX idx_table_hash (table_hash)
-) ENGINE=MEMORY;
+) ENGINE=InnoDB;
 
 -- Populate mapping by extracting table hash (everything before the last dot)
 INSERT INTO column_to_table_mapping (column_hash, table_hash)
