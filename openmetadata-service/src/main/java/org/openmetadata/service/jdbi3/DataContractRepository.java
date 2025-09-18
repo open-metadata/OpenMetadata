@@ -1116,8 +1116,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
-    } else if (taskType == TaskType.ChangeReview) {
-      return new ApprovalTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
@@ -1235,15 +1233,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     EntityLink about = new EntityLink(DATA_CONTRACT, entity.getFullyQualifiedName());
     FeedRepository feedRepository = Entity.getFeedRepository();
     // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-      return;
-    } catch (EntityNotFoundException ex) {
-      // No ChangeReview task found, try RequestApproval
-    }
-
     try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       feedRepository.closeTask(

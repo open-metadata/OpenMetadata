@@ -800,14 +800,6 @@ public class TagRepository extends EntityRepository<Tag> {
 
     // Close User Tasks
     try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-      return;
-    } catch (EntityNotFoundException ex) {
-      // No ChangeReview task found, try RequestApproval
-    }
-    try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       feedRepository.closeTask(
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));

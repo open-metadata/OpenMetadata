@@ -15,7 +15,6 @@
         "RequestTag",
         "UpdateTag",
         "RequestApproval",
-        "ChangeReview",
         "RequestTestCaseFailureResolution",
         "Generic"
       ],
@@ -34,9 +33,6 @@
         },
         {
           "name": "RequestApproval"
-        },
-        {
-          "name": "ChangeReview"
         },
         {
           "name": "RequestTestCaseFailureResolution"

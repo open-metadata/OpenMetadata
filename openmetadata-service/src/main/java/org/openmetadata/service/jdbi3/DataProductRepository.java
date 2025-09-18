@@ -509,9 +509,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
-    } else if (taskType == TaskType.ChangeReview) {
-      // ChangeReview tasks use the approval workflow for data products
-      return new ApprovalTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
@@ -630,15 +627,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     FeedRepository feedRepository = Entity.getFeedRepository();
 
     // Try to close ChangeReview task first (higher priority)
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-      return;
-    } catch (EntityNotFoundException ex) {
-      // No ChangeReview task found, try RequestApproval
-    }
-
     // Try to close RequestApproval task
     try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);

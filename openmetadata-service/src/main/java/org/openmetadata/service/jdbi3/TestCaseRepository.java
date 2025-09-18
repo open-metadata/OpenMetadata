@@ -888,8 +888,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return new TagTaskWorkflow(threadContext);
     }
 
-    // Handle approval tasks (ChangeReview, RequestApproval, etc.)
-    if (EntityUtil.isApprovalTask(taskType) || taskType == TaskType.ChangeReview) {
+    // Handle approval tasks (RequestApproval, etc.)
+    if (EntityUtil.isApprovalTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
 
@@ -1348,14 +1348,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-      return;
-    } catch (EntityNotFoundException ex) {
-      // No ChangeReview task found, try RequestApproval
-    }
     try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       feedRepository.closeTask(

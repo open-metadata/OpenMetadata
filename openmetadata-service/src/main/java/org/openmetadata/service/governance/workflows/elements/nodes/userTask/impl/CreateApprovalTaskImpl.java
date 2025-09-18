@@ -143,16 +143,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
     } catch (EntityNotFoundException ex) {
-      // Also check for legacy ChangeReview tasks if they exist
-      try {
-        Thread changeReviewTask =
-            feedRepository.getTask(about, TaskType.ChangeReview, TaskStatus.Open);
-        WorkflowHandler.getInstance()
-            .terminateTaskProcessInstance(
-                changeReviewTask.getId(), "Superseded by new approval task.");
-      } catch (EntityNotFoundException ignore) {
-        // No conflict, proceed with creating the new task
-      }
+      // No conflict, proceed with creating the new task
 
       // Build the task message and details
       String taskMessage;
