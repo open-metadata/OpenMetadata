@@ -18,7 +18,6 @@ from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReference
 
 # Import SDK plural entity classes
 from metadata.sdk.entities import (
@@ -159,17 +158,19 @@ class TestSDKFluentAPI:
         mock_db2 = MagicMock(spec=Database)
         mock_db2.name = "db2"
 
-        self.mock_ometa.list_entities.return_value = [mock_db1, mock_db2]
+        mock_response = MagicMock()
+        mock_response.entities = [mock_db1, mock_db2]
+        self.mock_ometa.list_entities.return_value = mock_response
 
         # Act
-        result = list(Databases.list())
+        result = Databases.list()
 
         # Assert
-        assert len(result) == 2
-        assert result[0].name == "db1"
-        assert result[1].name == "db2"
+        assert len(result.entities) == 2
+        assert result.entities[0].name == "db1"
+        assert result.entities[1].name == "db2"
         self.mock_ometa.list_entities.assert_called_once_with(
-            entity=Database, fields=None, after=None, limit=100
+            entity=Database, fields=None, after=None, before=None, limit=10
         )
 
     @patch.object(Teams, "_get_client")
@@ -202,7 +203,7 @@ class TestSDKFluentAPI:
 
         # Assert - Delete
         self.mock_ometa.delete.assert_called_once_with(
-            entity=Team, entity_id=str(self.team_id), hard_delete=True, recursive=False
+            entity=Team, entity_id=str(self.team_id), recursive=False, hard_delete=False
         )
 
     @patch.object(Glossaries, "_get_client")
@@ -232,7 +233,7 @@ class TestSDKFluentAPI:
             name="customer",
             displayName="Customer",
             description="A person or organization that buys goods or services",
-            glossary=EntityReference(id=self.glossary_id, type="glossary"),
+            glossary="business_glossary",  # Use FQN string
         )
 
         mock_term = MagicMock(spec=GlossaryTerm)
@@ -271,7 +272,7 @@ class TestSDKFluentAPI:
 
         # Assert
         self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=Table, entity_id=self.table_id
+            entity=Table, entity_id=str(self.table_id)
         )
         # Should have generated and applied a patch
         self.mock_ometa.patch.assert_called_once()

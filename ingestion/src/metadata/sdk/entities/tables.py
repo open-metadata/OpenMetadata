@@ -97,6 +97,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         """
         from metadata.generated.schema.type.tagLabel import (
             LabelType,
+            State,
             TagLabel,
             TagSource,
         )
@@ -145,11 +146,10 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         # Find and update the column
         column_found = False
         for col in modified_table.columns:
-            if (
-                str(col.name.root)
-                if hasattr(col.name, "root")
-                else col.name == column_name
-            ):
+            col_name = (
+                str(col.name.root) if hasattr(col.name, "root") else str(col.name)
+            )
+            if col_name == column_name:
                 col.description = description
                 column_found = True
                 break

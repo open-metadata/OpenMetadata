@@ -217,11 +217,25 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             limit=limit,
         )
 
+        # Handle different response types from ometa.list_entities
+        if hasattr(response, "entities"):
+            # Response is a paginated response object
+            entities = response.entities
+            total = getattr(response, "total", None)
+            after = getattr(response, "after", None)
+            before = getattr(response, "before", None)
+        else:
+            # Response is a direct list of entities
+            entities = response if isinstance(response, list) else [response]
+            total = len(entities)
+            after = None
+            before = None
+
         return ListResponse(
-            entities=response.entities,
-            total=getattr(response, "total", None),
-            after=getattr(response, "after", None),
-            before=getattr(response, "before", None),
+            entities=entities,
+            total=total,
+            after=after,
+            before=before,
         )
 
     @classmethod
@@ -280,9 +294,10 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             List of matching entities
         """
         client = cls._get_client()
-        # This would need to be implemented in the OMeta client
-        # For now, return empty list as placeholder
-        return []
+        # Use elasticsearch search from OMeta client
+        return client.es_search_from_fqn(
+            entity_type=cls.entity_type(), fqn_search_string=query, size=size
+        )
 
     @classmethod
     def export_csv(cls, name: str) -> BaseCsvExporter:
@@ -349,6 +364,104 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
                 )
 
         return EntityCsvImporter(cls._get_client(), name)
+
+    @classmethod
+    def get_versions(cls, entity_id: str) -> Any:
+        """
+        Get version history for an entity.
+
+        Args:
+            entity_id: Entity UUID
+
+        Returns:
+            EntityVersionHistory object with list of versions
+        """
+        client = cls._get_client()
+        result = client.get_list_entity_versions(
+            entity=cls.entity_type(), entity_id=entity_id
+        )
+        # Return the versions list if available
+        if hasattr(result, "versions"):
+            return result.versions
+        return result
+
+    @classmethod
+    def get_specific_version(cls, entity_id: str, version: str) -> TEntity:
+        """
+        Get a specific version of an entity.
+
+        Args:
+            entity_id: Entity UUID
+            version: Version number
+
+        Returns:
+            Entity at specified version
+        """
+        client = cls._get_client()
+        return client.get_entity_version(
+            entity=cls.entity_type(), entity_id=entity_id, version=version
+        )
+
+    @classmethod
+    def restore(cls, entity_id: str) -> TEntity:
+        """
+        Restore a soft-deleted entity.
+
+        Note: This requires the entity to be soft-deleted first.
+        Uses PUT request to /api/v1/<entity>/restore endpoint with RestoreEntity body.
+
+        Args:
+            entity_id: Entity UUID
+
+        Returns:
+            Restored entity
+        """
+        client = cls._get_client()
+        # Use the get_suffix method to get the proper endpoint
+        entity_endpoint = client.get_suffix(cls.entity_type())
+
+        # Make PUT request to restore endpoint with RestoreEntity body
+        restore_body = {"id": entity_id}
+        response = client.client.put(f"{entity_endpoint}/restore", data=restore_body)
+        return cls.entity_type()(**response) if response else None
+
+    @classmethod
+    def add_followers(cls, entity_id: str, follower_ids: List[str]) -> TEntity:
+        """
+        Add followers to an entity.
+
+        Args:
+            entity_id: Entity UUID
+            follower_ids: List of follower user IDs
+
+        Returns:
+            Updated entity
+        """
+        client = cls._get_client()
+        for follower_id in follower_ids:
+            client.put_follow(
+                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            )
+        return client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+
+    @classmethod
+    def remove_followers(cls, entity_id: str, follower_ids: List[str]) -> TEntity:
+        """
+        Remove followers from an entity.
+
+        Args:
+            entity_id: Entity UUID
+            follower_ids: List of follower user IDs to remove
+
+        Returns:
+            Updated entity
+        """
+        client = cls._get_client()
+        for follower_id in follower_ids:
+            client.delete_follow(
+                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            )
+        return client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
 
     @classmethod
     def update_custom_properties(

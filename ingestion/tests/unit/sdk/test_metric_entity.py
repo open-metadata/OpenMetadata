@@ -194,7 +194,6 @@ class TestMetricEntity(unittest.TestCase):
         self.assertEqual(result.entities[0].name, "metric1")
         self.assertEqual(result.entities[1].metricType, MetricType.PERCENTAGE)
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_add_followers(self):
         """Test adding followers to a metric"""
         user_ids = ["user1-uuid", "user2-uuid"]
@@ -203,16 +202,16 @@ class TestMetricEntity(unittest.TestCase):
         updated_metric.id = UUID(self.metric_id)
         updated_metric.followers = user_ids
 
-        self.mock_ometa.add_followers.return_value = updated_metric
+        # Mock the put_follow and get_by_id calls
+        self.mock_ometa.put_follow = MagicMock()
+        self.mock_ometa.get_by_id.return_value = updated_metric
 
         result = Metrics.add_followers(self.metric_id, user_ids)
 
         self.assertEqual(result.followers, user_ids)
-        self.mock_ometa.add_followers.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id, user_ids=user_ids
-        )
+        # Verify put_follow was called for each user
+        assert self.mock_ometa.put_follow.call_count == len(user_ids)
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_get_versions(self):
         """Test getting all versions of a metric"""
         version1 = MagicMock(spec=MetricEntity)
@@ -223,55 +222,74 @@ class TestMetricEntity(unittest.TestCase):
         version2.version = 0.2
         version2.metricExpression = MagicMock()
 
-        self.mock_ometa.get_entity_versions.return_value = [version1, version2]
+        mock_version_history = MagicMock()
+        mock_version_history.versions = [version1, version2]
+        self.mock_ometa.get_list_entity_versions.return_value = mock_version_history
 
         result = Metrics.get_versions(self.metric_id)
 
-        self.assertEqual(len(result.entities), 2)
-        self.assertEqual(result.entities[0].version, 0.1)
-        self.assertIsNotNone(result.entities[1].metricExpression)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].version, 0.1)
+        self.assertIsNotNone(result[1].metricExpression)
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_restore_metric(self):
         """Test restoring a soft-deleted metric"""
         restored_metric = MagicMock(spec=MetricEntity)
         restored_metric.id = UUID(self.metric_id)
         restored_metric.deleted = False
+        restored_metric.name = "revenue_metric"
 
-        self.mock_ometa.restore_entity.return_value = restored_metric
+        # Mock get_suffix to return proper endpoint
+        self.mock_ometa.get_suffix.return_value = "metrics"
+        # Mock the REST client's put method to return a dict
+        self.mock_ometa.client.put.return_value = {
+            "id": self.metric_id,
+            "name": "revenue_metric",
+            "deleted": False,
+        }
 
         result = Metrics.restore(self.metric_id)
 
+        # The result should be a Metric entity
+        self.assertIsNotNone(result)
+        self.assertEqual(str(result.id.root), self.metric_id)
         self.assertFalse(result.deleted)
-        self.mock_ometa.restore_entity.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id
+        self.mock_ometa.client.put.assert_called_once_with(
+            "metrics/restore", data={"id": self.metric_id}
         )
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_add_related_metrics(self):
         """Test adding related metrics"""
-        related_metric_ids = ["metric2-uuid", "metric3-uuid"]
-
-        expected_patch = [
-            {"op": "add", "path": "/relatedMetrics/-", "value": {"id": "metric2-uuid"}},
-            {"op": "add", "path": "/relatedMetrics/-", "value": {"id": "metric3-uuid"}},
+        related_metric_ids = [
+            "350e8400-e29b-41d4-a716-446655440001",
+            "350e8400-e29b-41d4-a716-446655440002",
         ]
 
+        # Mock get_by_id to return current metric without related metrics
+        current_metric = MagicMock(spec=MetricEntity)
+        current_metric.id = UUID(self.metric_id)
+        current_metric.relatedMetrics = None
+        current_metric.model_copy = MagicMock(return_value=current_metric)
+        self.mock_ometa.get_by_id.return_value = current_metric
+
+        # Mock patch to return updated metric
         updated_metric = MagicMock(spec=MetricEntity)
         updated_metric.id = UUID(self.metric_id)
         updated_metric.relatedMetrics = [
-            MagicMock(id="metric2-uuid"),
-            MagicMock(id="metric3-uuid"),
+            MagicMock(id=UUID(related_metric_ids[0])),
+            MagicMock(id=UUID(related_metric_ids[1])),
         ]
-
         self.mock_ometa.patch.return_value = updated_metric
 
         result = Metrics.add_related_metrics(self.metric_id, related_metric_ids)
 
         self.assertEqual(len(result.relatedMetrics), 2)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id, json_patch=expected_patch
+        # Verify get_by_id was called
+        self.mock_ometa.get_by_id.assert_called_once_with(
+            entity=MetricEntity, entity_id=self.metric_id, fields=["relatedMetrics"]
         )
+        # Verify patch was called with source and destination
+        self.mock_ometa.patch.assert_called_once()
 
     def test_update_metric_type(self):
         """Test updating metric type"""

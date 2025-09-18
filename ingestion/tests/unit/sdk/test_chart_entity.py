@@ -205,7 +205,6 @@ class TestChartEntity(unittest.TestCase):
         self.assertEqual(result.entities[1].chartType, ChartType.Bar)
         self.mock_ometa.list_entities.assert_called_once()
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_add_followers(self):
         """Test adding followers to a chart"""
         user_ids = ["user1-uuid", "user2-uuid"]
@@ -214,16 +213,16 @@ class TestChartEntity(unittest.TestCase):
         updated_chart.id = UUID(self.chart_id)
         updated_chart.followers = user_ids
 
-        self.mock_ometa.add_followers.return_value = updated_chart
+        # Mock the put_follow and get_by_id calls
+        self.mock_ometa.put_follow = MagicMock()
+        self.mock_ometa.get_by_id.return_value = updated_chart
 
         result = Charts.add_followers(self.chart_id, user_ids)
 
         self.assertEqual(result.followers, user_ids)
-        self.mock_ometa.add_followers.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, user_ids=user_ids
-        )
+        # Verify put_follow was called for each user
+        assert self.mock_ometa.put_follow.call_count == len(user_ids)
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_remove_followers(self):
         """Test removing followers from a chart"""
         user_ids = ["user1-uuid"]
@@ -232,16 +231,16 @@ class TestChartEntity(unittest.TestCase):
         updated_chart.id = UUID(self.chart_id)
         updated_chart.followers = ["user2-uuid"]
 
-        self.mock_ometa.remove_followers.return_value = updated_chart
+        # Mock the delete_follow and get_by_id calls
+        self.mock_ometa.delete_follow = MagicMock()
+        self.mock_ometa.get_by_id.return_value = updated_chart
 
         result = Charts.remove_followers(self.chart_id, user_ids)
 
         self.assertEqual(result.followers, ["user2-uuid"])
-        self.mock_ometa.remove_followers.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, user_ids=user_ids
-        )
+        # Verify delete_follow was called for each user
+        assert self.mock_ometa.delete_follow.call_count == len(user_ids)
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_get_versions(self):
         """Test getting all versions of a chart"""
         version1 = MagicMock(spec=ChartEntity)
@@ -249,17 +248,18 @@ class TestChartEntity(unittest.TestCase):
         version2 = MagicMock(spec=ChartEntity)
         version2.version = 0.2
 
-        self.mock_ometa.get_entity_versions.return_value = [version1, version2]
+        mock_version_history = MagicMock()
+        mock_version_history.versions = [version1, version2]
+        self.mock_ometa.get_list_entity_versions.return_value = mock_version_history
 
         result = Charts.get_versions(self.chart_id)
 
-        self.assertEqual(len(result.entities), 2)
-        self.assertEqual(result.entities[0].version, 0.1)
-        self.mock_ometa.get_entity_versions.assert_called_once_with(
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].version, 0.1)
+        self.mock_ometa.get_list_entity_versions.assert_called_once_with(
             entity=ChartEntity, entity_id=self.chart_id
         )
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_get_specific_version(self):
         """Test getting a specific version of a chart"""
         versioned_chart = MagicMock(spec=ChartEntity)
@@ -268,27 +268,43 @@ class TestChartEntity(unittest.TestCase):
 
         self.mock_ometa.get_entity_version.return_value = versioned_chart
 
-        result = Charts.get_version(self.chart_id, 0.2)
+        result = Charts.get_specific_version(self.chart_id, "0.2")
 
         self.assertEqual(result.version, 0.2)
         self.mock_ometa.get_entity_version.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, version=0.2
+            entity=ChartEntity, entity_id=self.chart_id, version="0.2"
         )
 
-    @unittest.skip("Method not yet implemented in SDK")
     def test_restore_chart(self):
         """Test restoring a soft-deleted chart"""
         restored_chart = MagicMock(spec=ChartEntity)
         restored_chart.id = UUID(self.chart_id)
         restored_chart.deleted = False
+        restored_chart.name = "chart1"
+        restored_chart.service = "service1"
 
-        self.mock_ometa.restore_entity.return_value = restored_chart
+        # Mock get_suffix to return proper endpoint
+        self.mock_ometa.get_suffix.return_value = "charts"
+        # Mock the REST client's put method to return a dict with proper service reference
+        self.mock_ometa.client.put.return_value = {
+            "id": self.chart_id,
+            "name": "chart1",
+            "service": {
+                "id": "550e8400-e29b-41d4-a716-446655440001",
+                "type": "dashboardService",
+                "name": "service1",
+            },
+            "deleted": False,
+        }
 
         result = Charts.restore(self.chart_id)
 
+        # The result should be a Chart entity
+        self.assertIsNotNone(result)
+        self.assertEqual(str(result.id.root), self.chart_id)
         self.assertFalse(result.deleted)
-        self.mock_ometa.restore_entity.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id
+        self.mock_ometa.client.put.assert_called_once_with(
+            "charts/restore", data={"id": self.chart_id}
         )
 
     def test_export_charts_csv(self):

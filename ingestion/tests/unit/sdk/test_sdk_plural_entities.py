@@ -58,8 +58,8 @@ class TestTablesSDK:
         result = Tables.add_tag(table_id, "PII.Sensitive")
 
         # Assert
-        self.assertIsNotNone(result.tags)
-        self.assertEqual(result.tags[0].tagFQN, "PII.Sensitive")
+        assert result.tags is not None
+        assert result.tags[0].tagFQN == "PII.Sensitive"
         mock_ometa.get_by_id.assert_called_once()
         mock_ometa.patch.assert_called_once()
 
@@ -75,13 +75,21 @@ class TestTablesSDK:
 
         # Mock get_by_id to return a table with columns
         mock_table = MagicMock(spec=Table)
-        mock_column = MagicMock(name=column_name, description="Old description")
+        mock_column = MagicMock()
+        mock_column.name = column_name  # Set the name property explicitly
+        mock_column.description = "Old description"
         mock_table.columns = [mock_column]
+
+        # Mock model_copy to return the same object (simulating a deep copy)
+        mock_table.model_copy.return_value = mock_table
+
         mock_ometa.get_by_id.return_value = mock_table
 
         # Mock patch to return the updated table
         updated_table = MagicMock(spec=Table)
-        updated_column = MagicMock(name=column_name, description=new_description)
+        updated_column = MagicMock()
+        updated_column.name = column_name  # Set the name property explicitly
+        updated_column.description = new_description
         updated_table.columns = [updated_column]
         mock_ometa.patch.return_value = updated_table
 
@@ -91,7 +99,7 @@ class TestTablesSDK:
         )
 
         # Assert
-        self.assertEqual(result.columns[0].description, new_description)
+        assert result.columns[0].description == new_description
         mock_ometa.get_by_id.assert_called_once()
         mock_ometa.patch.assert_called_once()
 
@@ -203,8 +211,8 @@ class TestPipelinesSDK:
 
         results = Pipelines.search("test")
 
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "etl_pipeline")
+        assert len(results) == 1
+        assert results[0].name == "etl_pipeline"
         mock_ometa.es_search_from_fqn.assert_called_once_with(
             entity_type=Pipeline, fqn_search_string="test", size=10
         )
