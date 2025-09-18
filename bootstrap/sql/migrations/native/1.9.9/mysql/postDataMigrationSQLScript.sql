@@ -47,31 +47,39 @@ SET pdts.json = JSON_OBJECT(
 )
 WHERE pdts.extension = 'table.systemProfile';
 
--- Migrate column profiles - optimized approach
--- First, let's update column profiles for tables that exist
+-- Migrate column profiles using the most reliable approach
+-- Step 1: Add a temporary column to store the table hash
+ALTER TABLE profiler_data_time_series ADD COLUMN IF NOT EXISTS temp_table_hash VARCHAR(768);
+
+-- Step 2: Extract and store the table hash for column profiles
+UPDATE profiler_data_time_series
+SET temp_table_hash = SUBSTRING_INDEX(entityFQNHash, '.', 4)
+WHERE extension = 'table.columnProfile'
+  AND temp_table_hash IS NULL;
+
+-- Step 3: Create index on the temporary column for fast joins
+CREATE INDEX idx_temp_table_hash ON profiler_data_time_series(temp_table_hash);
+
+-- Step 4: Now do the update with a simple indexed join (MUCH faster)
 UPDATE profiler_data_time_series pdts
-SET pdts.json = (
-    SELECT JSON_OBJECT(
-        'id', UUID(),
-        'entityReference', JSON_OBJECT(
-            'id', te.json -> '$.id',
-            'type', 'table',
-            'fullyQualifiedName', te.json -> '$.fullyQualifiedName',
-            'name', te.name
-        ),
-        'timestamp', pdts.timestamp,
-        'profileData', pdts.json,
-        'profileType', 'column'
-    )
-    FROM table_entity te
-    WHERE te.fqnHash = SUBSTRING_INDEX(pdts.entityFQNHash, '.', 4)
-    LIMIT 1
+INNER JOIN table_entity te ON pdts.temp_table_hash = te.fqnHash
+SET pdts.json = JSON_OBJECT(
+    'id', UUID(),
+    'entityReference', JSON_OBJECT(
+        'id', te.json -> '$.id',
+        'type', 'table',
+        'fullyQualifiedName', te.json -> '$.fullyQualifiedName',
+        'name', te.name
+    ),
+    'timestamp', pdts.timestamp,
+    'profileData', pdts.json,
+    'profileType', 'column'
 )
-WHERE pdts.extension = 'table.columnProfile'
-  AND EXISTS (
-    SELECT 1 FROM table_entity te2
-    WHERE te2.fqnHash = SUBSTRING_INDEX(pdts.entityFQNHash, '.', 4)
-  );
+WHERE pdts.extension = 'table.columnProfile';
+
+-- Step 5: Clean up
+DROP INDEX idx_temp_table_hash ON profiler_data_time_series;
+ALTER TABLE profiler_data_time_series DROP COLUMN temp_table_hash;
 
 -- Drop temporary indexes after migration
 DROP INDEX idx_pdts_entityFQNHash ON profiler_data_time_series;
