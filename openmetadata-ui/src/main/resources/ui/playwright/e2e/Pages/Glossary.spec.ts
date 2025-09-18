@@ -59,6 +59,7 @@ import {
   filterStatus,
   goToAssetsTab,
   openColumnDropdown,
+  performExpandAll,
   renameGlossaryTerm,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -823,11 +824,7 @@ test.describe('Glossary tests', () => {
           })
         ).not.toBeVisible();
 
-        const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
-        // verify the term is moved under the parent term
-        await page.getByTestId('expand-collapse-all-button').click();
-        await termRes;
+        await performExpandAll(page);
 
         await expect(
           page.getByRole('cell', {
@@ -842,7 +839,7 @@ test.describe('Glossary tests', () => {
           await redirectToHomePage(page);
           await sidebarClick(page, SidebarItem.GLOSSARY);
           await selectActiveGlossary(page, glossary1.data.displayName);
-          await page.getByTestId('expand-collapse-all-button').click();
+          await performExpandAll(page);
 
           await dragAndDropTerm(
             page,
@@ -918,11 +915,7 @@ test.describe('Glossary tests', () => {
           })
         ).not.toBeVisible();
 
-        const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
-        // verify the term is moved under the parent term
-        await page.getByTestId('expand-collapse-all-button').click();
-        await termRes;
+        await performExpandAll(page);
 
         await expect(
           page.getByRole('cell', {
@@ -971,11 +964,7 @@ test.describe('Glossary tests', () => {
         })
       ).not.toBeVisible();
 
-      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-
-      // verify the term is moved under the parent term
-      await page.getByTestId('expand-collapse-all-button').click();
-      await termRes;
+      await performExpandAll(page);
 
       await expect(
         page.getByRole('cell', {
@@ -1029,12 +1018,7 @@ test.describe('Glossary tests', () => {
 
       await selectActiveGlossary(page, glossary2.data.displayName);
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
-      // verify the term is moved to the destination glossary
-      await page.getByTestId('expand-collapse-all-button').click();
-      await termRes;
+      await performExpandAll(page);
 
       await expect(
         page.getByRole('cell', {
@@ -1244,11 +1228,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('terms').click();
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
-      await page.getByTestId('expand-collapse-all-button').click();
-      await termRes;
+      await performExpandAll(page);
 
       await expect(
         page.getByRole('cell', { name: glossaryTerm2.data.displayName })
@@ -1440,11 +1420,7 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const termRes = page.waitForResponse(
-        '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers&limit=1000'
-      );
-      await page.getByTestId('expand-collapse-all-button').click();
-      await termRes;
+      await performExpandAll(page);
 
       await expect(
         page.getByRole('cell', { name: glossaryTerm1.data.displayName })
