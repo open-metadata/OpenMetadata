@@ -11,13 +11,19 @@
 """
 Test SAP Hana source
 """
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
+    DataSourceMapping,
     ParsedLineage,
+    ParentSource,
     ViewType,
+    _parse_cv_data_sources,
+    _traverse_ds_with_columns,
     parse_registry,
 )
 
@@ -166,8 +172,6 @@ def test_parse_cv() -> None:
 
 def test_schema_mapping_in_datasource():
     """Test that DataSource correctly handles schema mapping for DATA_BASE_TABLE type"""
-    from unittest.mock import MagicMock, patch
-
     # Create a mock engine and connection
     mock_engine = MagicMock()
     mock_conn = MagicMock()
@@ -223,7 +227,6 @@ def test_schema_mapping_in_datasource():
 
 def test_parsed_lineage_with_schema_mapping():
     """Test that ParsedLineage.to_request passes engine parameter correctly"""
-    from unittest.mock import MagicMock, patch
 
     # Create a simple parsed lineage
     ds = DataSource(
@@ -435,12 +438,6 @@ def test_analytic_view_formula_column_source_mapping() -> None:
 
 def test_formula_columns_reference_correct_layer():
     """Test that formula columns reference the correct calculation view layer"""
-    import xml.etree.ElementTree as ET
-
-    from metadata.ingestion.source.database.saphana.cdata_parser import (
-        _parse_cv_data_sources,
-    )
-
     # Load the complex star join view XML
     with open(
         RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
@@ -487,12 +484,6 @@ def test_formula_columns_reference_correct_layer():
 
 def test_projection_formula_columns():
     """Test that projection view formula columns reference the correct layer"""
-    import xml.etree.ElementTree as ET
-
-    from metadata.ingestion.source.database.saphana.cdata_parser import (
-        _parse_cv_data_sources,
-    )
-
     with open(
         RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
     ) as file:
@@ -727,3 +718,65 @@ def test_formula_parsing_comprehensive():
     assert (
         complex_calc and complex_calc.formula == '"PRICE" * 1.1 + 10'
     ), "Complex formula not preserved"
+
+
+def test_circular_reference_prevention() -> None:
+    """Test that we handle circular references without infinite recursion
+
+    While SAP HANA doesn't actually create circular references in calculation views,
+    this test ensures our visited tracking works properly. The same mechanism that
+    prevents infinite loops here also prevents exponential processing in complex
+    calculation view hierarchies.
+
+    TODO: Add test for the actual exponential processing scenario
+    """
+    # Create a scenario with circular dependencies
+    datasource_map = {
+        "TestView": DataSource(
+            name="TestView",
+            location=None,
+            source_type=ViewType.LOGICAL,
+            mapping={
+                "ColumnA": DataSourceMapping(
+                    target="ColumnA",
+                    parents=[ParentSource(source="ColumnB", parent="TestView")],
+                    formula='"ColumnB" + 1',
+                ),
+                "ColumnB": DataSourceMapping(
+                    target="ColumnB",
+                    parents=[ParentSource(source="ColumnA", parent="TestView")],
+                    formula='"ColumnA" - 1',
+                ),
+            },
+        ),
+    }
+
+    # Track function calls
+    call_count = 0
+    original_traverse = _traverse_ds_with_columns
+
+    def counting_traverse(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return original_traverse(*args, **kwargs)
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.cdata_parser._traverse_ds_with_columns",
+        side_effect=counting_traverse,
+    ):
+        ds_origin_list = []
+        current_ds = datasource_map["TestView"]
+        _traverse_ds_with_columns(
+            current_column="ColumnA",
+            ds_origin_list=ds_origin_list,
+            current_ds=current_ds,
+            datasource_map=datasource_map,
+        )
+
+        # With circular reference prevention, should visit each node only once
+        # Without prevention, this would recurse infinitely
+        assert (
+            call_count <= 3
+        ), f"Too many function calls: {call_count} (indicates circular recursion)"
+
+
