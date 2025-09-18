@@ -29,4 +29,5 @@ export type DataAssetSummaryPanelProps = {
   isLineageView?: boolean;
   onOwnerUpdate?: (updatedOwners: any[]) => void;
   onDomainUpdate?: (updatedDomains: any[]) => void;
+  onTagsUpdate?: (updatedTags: any[]) => void;
 };

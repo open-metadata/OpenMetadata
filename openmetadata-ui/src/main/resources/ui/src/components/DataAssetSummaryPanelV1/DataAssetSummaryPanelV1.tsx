@@ -64,6 +64,7 @@ export const DataAssetSummaryPanelV1 = ({
   highlights,
   onOwnerUpdate,
   onDomainUpdate,
+  onTagsUpdate,
 }: DataAssetSummaryPanelProps) => {
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
@@ -320,7 +321,17 @@ export const DataAssetSummaryPanelV1 = ({
               }`}
               onDomainUpdate={onDomainUpdate}
             />
-            <TagsSection tags={dataAsset.tags} />
+            <TagsSection
+              entityId={dataAsset.id}
+              hasPermission={
+                entityPermissions?.EditAll || entityPermissions?.EditTags
+              }
+              key={`tags-${dataAsset.id}-${
+                (dataAsset.tags as unknown[])?.length || 0
+              }`}
+              tags={dataAsset.tags}
+              onTagsUpdate={onTagsUpdate}
+            />
           </>
         );
       case EntityType.GLOSSARY_TERM:

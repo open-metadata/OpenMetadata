@@ -12,13 +12,17 @@
  */
 import { FolderOutlined, MinusOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import React, { useState } from 'react';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { patchTableDetails } from '../../../rest/tableAPI';
 import tagClassBase from '../../../utils/TagClassBase';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AsyncSelectList from '../AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../AsyncSelectList/AsyncSelectList.interface';
 import './TagsSection.less';
@@ -26,6 +30,9 @@ interface TagsSectionProps {
   tags?: TagLabel[];
   showEditButton?: boolean;
   maxDisplayCount?: number;
+  hasPermission?: boolean;
+  entityId?: string;
+  onTagsUpdate?: (updatedTags: TagLabel[]) => void;
 }
 
 interface TagItem {
@@ -38,18 +45,22 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   tags = [],
   showEditButton = true,
   maxDisplayCount = 3,
+  hasPermission = false,
+  entityId,
+  onTagsUpdate,
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTags, setEditingTags] = useState<TagItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const displayedTags = isExpanded ? tags : tags.slice(0, maxDisplayCount);
   const remainingCount = tags.length - maxDisplayCount;
   const shouldShowMore = remainingCount > 0 && !isExpanded;
 
   const getTagDisplayName = (tag: TagLabel) => {
-    return tag.tagFQN || tag.displayName || t('label.unknown');
+    return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
 
   const getTagStyle = (_tag: TagLabel, index: number) => {
@@ -86,9 +97,87 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     setIsEditing(true);
   };
 
+  const handleSaveWithTags = useCallback(
+    async (tagsToSave: TagItem[]) => {
+      const idToUse = entityId;
+
+      if (!idToUse) {
+        showErrorToast(t('message.entity-id-required'));
+
+        return;
+      }
+
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          idToUse
+        );
+
+      if (!isUUID) {
+        showErrorToast(t('message.invalid-entity-id'));
+
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+
+        // Convert TagItem[] to TagLabel[] format
+        const updatedTags: TagLabel[] = tagsToSave.map((tag) => ({
+          tagFQN: tag.name,
+          displayName: tag.displayName,
+          name: tag.displayName,
+          source: 'Classification' as any,
+          labelType: 'Manual' as any,
+          state: 'Confirmed' as any,
+        }));
+
+        // Create JSON patch by comparing the tags arrays
+        const currentData = { tags };
+        const updatedData = { tags: updatedTags };
+        const jsonPatch = compare(currentData, updatedData);
+
+        // Only proceed if there are actual changes
+        if (jsonPatch.length === 0) {
+          setIsLoading(false);
+
+          return;
+        }
+
+        // Make the API call
+        await patchTableDetails(idToUse, jsonPatch);
+
+        // Show success message
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.tag-plural'),
+          })
+        );
+
+        // Call the callback to update parent component with the new tags
+        if (onTagsUpdate) {
+          onTagsUpdate(updatedTags);
+        }
+
+        // Keep loading state for a brief moment to ensure smooth transition
+        setTimeout(() => {
+          setIsEditing(false);
+          setIsLoading(false);
+        }, 500);
+      } catch (error) {
+        setIsLoading(false);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.tag-lowercase-plural'),
+          })
+        );
+      }
+    },
+    [entityId, tags, onTagsUpdate, t]
+  );
+
   const handleSave = () => {
-    // TODO: Implement actual save functionality
-    setIsEditing(false);
+    handleSaveWithTags(editingTags);
   };
 
   const handleCancel = () => {
@@ -115,12 +204,12 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           <Typography.Text className="tags-title">
             {t('label.tag-plural')}
           </Typography.Text>
-          {showEditButton && !isEditing && (
+          {showEditButton && hasPermission && !isEditing && !isLoading && (
             <span className="cursor-pointer" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
-          {isEditing && (
+          {isEditing && !isLoading && (
             <div className="edit-actions">
               <span className="cursor-pointer" onClick={handleCancel}>
                 <CloseIcon />
@@ -132,7 +221,13 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           )}
         </div>
         <div className="tags-content">
-          {isEditing ? (
+          {isLoading ? (
+            <div className="tags-loading-container">
+              <div className="tags-loading-spinner">
+                <div className="loading-spinner" />
+              </div>
+            </div>
+          ) : isEditing ? (
             <div className="inline-edit-container">
               <AsyncSelectList
                 newLook
@@ -163,12 +258,12 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         <Typography.Text className="tags-title">
           {t('label.tag-plural')}
         </Typography.Text>
-        {showEditButton && !isEditing && (
+        {showEditButton && hasPermission && !isEditing && !isLoading && (
           <span className="cursor-pointer" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
-        {isEditing && (
+        {isEditing && !isLoading && (
           <div className="edit-actions">
             <span className="cursor-pointer" onClick={handleCancel}>
               <CloseIcon />
@@ -180,7 +275,13 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         )}
       </div>
       <div className="tags-content">
-        {isEditing ? (
+        {isLoading ? (
+          <div className="tags-loading-container">
+            <div className="tags-loading-spinner">
+              <div className="loading-spinner" />
+            </div>
+          </div>
+        ) : isEditing ? (
           <div className="inline-edit-container">
             <AsyncSelectList
               newLook

@@ -343,6 +343,54 @@ export default function EntitySummaryPanel({
     [entityData]
   );
 
+  const handleTagsUpdate = useCallback(
+    (updatedTags: any[]) => {
+      // Update the entityData state with the new tags
+      setEntityData((prevData: any) => {
+        if (!prevData) {
+          return prevData;
+        }
+
+        const updatedData = {
+          ...prevData,
+          tags: updatedTags,
+          entityType: prevData.entityType || entityDetails.details.entityType,
+          fullyQualifiedName:
+            prevData.fullyQualifiedName ||
+            entityDetails.details.fullyQualifiedName,
+          id: prevData.id || entityDetails.details.id,
+          description:
+            prevData.description || entityDetails.details.description,
+          displayName:
+            prevData.displayName || entityDetails.details.displayName,
+          name: prevData.name || entityDetails.details.name,
+          deleted:
+            prevData.deleted !== undefined
+              ? prevData.deleted
+              : entityDetails.details.deleted,
+          serviceType:
+            prevData.serviceType || (entityDetails.details as any).serviceType,
+          service: prevData.service || entityDetails.details.service,
+          owners: prevData.owners || entityDetails.details.owners,
+          domains: prevData.domains || entityDetails.details.domains,
+          tier: prevData.tier || entityDetails.details.tier,
+          columnNames:
+            prevData.columnNames || (entityDetails.details as any).columnNames,
+          database:
+            prevData.database || (entityDetails.details as any).database,
+          databaseSchema:
+            prevData.databaseSchema ||
+            (entityDetails.details as any).databaseSchema,
+          tableType:
+            prevData.tableType || (entityDetails.details as any).tableType,
+        };
+
+        return updatedData;
+      });
+    },
+    [entityData]
+  );
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -439,6 +487,7 @@ export default function EntitySummaryPanel({
         highlights={highlights}
         onDomainUpdate={handleDomainUpdate}
         onOwnerUpdate={handleOwnerUpdate}
+        onTagsUpdate={handleTagsUpdate}
       />
     );
   }, [
@@ -449,6 +498,7 @@ export default function EntitySummaryPanel({
     isPermissionLoading,
     handleOwnerUpdate,
     handleDomainUpdate,
+    handleTagsUpdate,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
