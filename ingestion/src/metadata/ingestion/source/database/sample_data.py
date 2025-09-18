@@ -18,6 +18,7 @@ import string
 import time
 import traceback
 from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -845,82 +846,92 @@ class SampleDataSource(
         yield from self.ingest_glossaries()
 
     def ingest_domains(self):
-        """Ingest domains with pagination test data: 1 parent domain + 60 subdomains."""
-        # Create the main parent domain
-        domain_request = CreateDomainRequest(**self.domain)
-        yield Either(right=domain_request)
+        """Ingest domains with pagination test data using parallel processing."""
+        
+        # Create parent domain first (sequential)
+        yield Either(right=CreateDomainRequest(**self.domain))
+        
+        # Prepare all subdomain data upfront
+        static_fields = {"domainType": "Source-aligned", "parent": "TestDomain", 
+                        "style": {}, "owners": [], "experts": [], "tags": []}
+        
+        def create_subdomain(i):
+            name = f"TestSubdomain{i:03d}"
+            return CreateDomainRequest(
+                **static_fields,
+                name=name,
+                fullyQualifiedName=f"TestDomain.{name}",
+                description=f"<p>Test subdomain {i} for pagination testing. This subdomain is part of the "
+                        "TestDomain hierarchy and contains sample data for validating domain listing, "
+                        "search, and pagination functionality.</p><p>Domain features tested:</p>"
+                        "<ul><li>Hierarchical domain structure</li><li>Large-scale domain listing "
+                        "(60 subdomains)</li><li>Domain search and filtering</li>"
+                        "<li>Pagination performance with domain metadata</li></ul>"
+            )
+        
+        # Process subdomains in parallel (adjust workers based on API rate limits)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(create_subdomain, i): i for i in range(1, 61)}
+            for future in as_completed(futures):
+                try:
+                    yield Either(right=future.result())
+                except Exception as e:
+                    logger.warning(f"Failed to create subdomain {futures[future]}: {e}")
 
-        # Create 60 subdomains for pagination testing
-        for i in range(1, 61):
-            subdomain_name = f"TestSubdomain{i:03d}"
-            subdomain_data = {
-                "domainType": "Source-aligned",
-                "name": subdomain_name,
-                "fullyQualifiedName": f"TestDomain.{subdomain_name}",
-                "parent": "TestDomain",
-                "description": (
-                    f"<p>Test subdomain {i} for pagination testing. This subdomain is part of the "
-                    "TestDomain hierarchy and contains sample data for validating domain listing, "
-                    "search, and pagination functionality.</p><p>Domain features tested:</p>"
-                    "<ul><li>Hierarchical domain structure</li><li>Large-scale domain listing "
-                    "(60 subdomains)</li><li>Domain search and filtering</li>"
-                    "<li>Pagination performance with domain metadata</li></ul>"
-                ),
-                "style": {},
-                "owners": [],
-                "experts": [],
-                "tags": [],
-            }
-            subdomain_request = CreateDomainRequest(**subdomain_data)
-            yield Either(right=subdomain_request)
 
     def ingest_glossaries(self):
-        """Ingest glossary with pagination test data: 1 glossary + 500 parent terms + 2500 child terms."""
-        # Create the main glossary
-        glossary_request = CreateGlossaryRequest(**self.glossary)
-        yield Either(right=glossary_request)
-
-        # Create 500 parent glossary terms for pagination testing
-        for i in range(1, 501):
-            term_name = f"TestTerm{i:03d}"
-            term_data = {
-                "glossary": self.glossary["name"],
-                "name": term_name,
-                "displayName": f"Test Term {i}",
-                "description": (
-                    f"<p>Test glossary term {i} for pagination testing. This term is part of the "
-                    "TestGlossary and contains sample metadata for validating glossary term listing, "
-                    "search, and pagination functionality.</p><p>Term features tested:</p>"
-                    "<ul><li>Large-scale term listing (500 parent terms)</li><li>Term search and filtering</li>"
-                    "<li>Pagination performance with term metadata</li><li>Term hierarchy and relationships</li>"
-                    "<li>Nested child term structure</li></ul>"
-                ),
-                "tags": [],
-                "provider": "user",
-            }
-            term_request = CreateGlossaryTermRequest(**term_data)
-            yield Either(right=term_request)
-
-            # Create 5 child terms for each parent term
+        """Ingest glossary with pagination test data using parallel processing."""
+        
+        glossary_name = self.glossary["name"]
+        base_fields = {"glossary": glossary_name, "tags": [], "provider": "user"}
+        
+        # Create glossary first (sequential)
+        yield Either(right=CreateGlossaryRequest(**self.glossary))
+        
+        def create_terms_batch(parent_idx):
+            """Create parent term and its children as a batch"""
+            terms = []
+            parent_name = f"TestTerm{parent_idx:03d}"
+            
+            # Parent term
+            terms.append(CreateGlossaryTermRequest(
+                **base_fields,
+                name=parent_name,
+                displayName=f"Test Term {parent_idx}",
+                description=f"<p>Test glossary term {parent_idx} for pagination testing. This term is part of the "
+                        "TestGlossary and contains sample metadata for validating glossary term listing, "
+                        "search, and pagination functionality.</p><p>Term features tested:</p>"
+                        "<ul><li>Large-scale term listing (500 parent terms)</li><li>Term search and filtering</li>"
+                        "<li>Pagination performance with term metadata</li><li>Term hierarchy and relationships</li>"
+                        "<li>Nested child term structure</li></ul>"
+            ))
+            
+            # Child terms
+            parent_fqn = f"{glossary_name}.{parent_name}"
             for j in range(1, 6):
-                child_term_name = f"TestTerm{i:03d}_Child{j}"
-                child_term_data = {
-                    "glossary": self.glossary["name"],
-                    "parent": f"TestGlossary.{term_name}",  # FQN of the parent term
-                    "name": child_term_name,
-                    "displayName": f"Test Term {i} - Child {j}",
-                    "description": (
-                        f"<p>Child term {j} of TestTerm{i:03d} for testing hierarchical glossary "
-                        "structure and nested pagination. This child term demonstrates:</p>"
-                        "<ul><li>Parent-child relationships in glossary terms</li>"
-                        "<li>Nested pagination testing</li><li>Hierarchical term organization</li>"
-                        "<li>Multi-level term filtering</li></ul>"
-                    ),
-                    "tags": [],
-                    "provider": "user",
-                }
-                child_term_request = CreateGlossaryTermRequest(**child_term_data)
-                yield Either(right=child_term_request)
+                terms.append(CreateGlossaryTermRequest(
+                    **base_fields,
+                    parent=parent_fqn,
+                    name=f"{parent_name}_Child{j}",
+                    displayName=f"Test Term {parent_idx} - Child {j}",
+                    description=f"<p>Child term {j} of {parent_name} for testing hierarchical glossary "
+                            "structure and nested pagination. This child term demonstrates:</p>"
+                            "<ul><li>Parent-child relationships in glossary terms</li>"
+                            "<li>Nested pagination testing</li><li>Hierarchical term organization</li>"
+                            "<li>Multi-level term filtering</li></ul>"
+                ))
+            return terms
+        
+        # Process in parallel - each worker handles a parent and its children
+        # Limit workers to avoid overwhelming the API
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(create_terms_batch, i): i for i in range(1, 501)}
+            for future in as_completed(futures):
+                try:
+                    for term in future.result():
+                        yield Either(right=term)
+                except Exception as e:
+                    logger.warning(f"Failed to create term batch {futures[future]}: {e}")
 
     def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
         """
