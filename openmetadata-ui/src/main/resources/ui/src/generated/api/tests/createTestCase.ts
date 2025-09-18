@@ -37,6 +37,10 @@ export interface CreateTestCase {
     owners?:          EntityReference[];
     parameterValues?: TestCaseParameterValue[];
     /**
+     * Reviewers of this test
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this test case. This is an inherited field from the parent entity and is not set
      * directly on the test case.
      */

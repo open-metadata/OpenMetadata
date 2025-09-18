@@ -1192,6 +1192,7 @@
     "pipeline-state": "パイプライン状態",
     "pipeline-type": "パイプラインタイプ",
     "platform": "プラットフォーム",
+    "platform-service-client-unavailable": "プラットフォームサービスクライアントが利用できません",
     "platform-type-lineage": "{{platformType}}リネージ",
     "play": "再生",
     "please-enter-value": "{{name}} の値を入力してください",
@@ -1558,6 +1559,7 @@
     "support": "サポート",
     "support-url": "サポート URL",
     "supported-language-plural": "対応言語",
+    "switch-persona": "ペルソナ切り替え",
     "sync-alert-offset": "アラートを同期",
     "synonym-lowercase-plural": "同義語",
     "synonym-plural": "同義語",
@@ -2447,6 +2449,7 @@
     "team-moved-success": "チームの移動に成功しました！",
     "team-no-asset": "あなたのチームにはアセットがありません。",
     "test-case-insight-description": "設定されたテストバリデーションに基づいて、データセットの健全性を集中して確認できます。",
+    "test-case-name-validation": "名前にはダブルコロン(::)、引用符(\")、またはより大きい記号(>)を含めることはできません。",
     "test-case-schedule-description": "データ品質テストは希望の頻度でスケジュール実行できます。タイムゾーンはUTCです。",
     "test-connection-cannot-be-triggered": "接続テストを開始できません。",
     "test-connection-taking-too-long": {

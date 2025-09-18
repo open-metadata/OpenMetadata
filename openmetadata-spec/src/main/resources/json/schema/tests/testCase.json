@@ -159,6 +159,16 @@
         "type": "string"
       },
       "default": []
+    },
+    "entityStatus": {
+      "description": "Current status of the test case.",
+      "$ref": "../type/status.json",
+      "default": "Approved"
+    },
+    "reviewers": {
+      "description": "List of reviewers for this entity.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

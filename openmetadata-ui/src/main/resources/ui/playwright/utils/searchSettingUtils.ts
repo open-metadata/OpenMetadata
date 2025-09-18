@@ -49,11 +49,13 @@ export const mockEntitySearchConfig = {
       name: 'database.displayName.keyword',
       type: 'terms',
       field: 'database.displayName.keyword',
+      script: '',
     },
     {
       name: 'databaseSchema.displayName.keyword',
       type: 'terms',
       field: 'databaseSchema.displayName.keyword',
+      script: '',
     },
   ],
   termBoosts: [],

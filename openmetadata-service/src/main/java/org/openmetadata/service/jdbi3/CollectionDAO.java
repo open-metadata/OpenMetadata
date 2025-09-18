@@ -116,6 +116,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -299,6 +300,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
+
+  @CreateSqlObject
+  NotificationTemplateDAO notificationTemplateDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -2972,6 +2976,23 @@ public interface CollectionDAO {
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
     int countSuccessfulEventsBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId);
+  }
+
+  interface NotificationTemplateDAO extends EntityDAO<NotificationTemplate> {
+    @Override
+    default String getTableName() {
+      return "notification_template_entity";
+    }
+
+    @Override
+    default Class<NotificationTemplate> getEntityClass() {
+      return NotificationTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 
   interface ChartDAO extends EntityDAO<Chart> {

@@ -290,6 +290,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public NotificationTemplateDAO notificationTemplateDAO() {
+    return delegate.notificationTemplateDAO();
+  }
+
+  @Override
   public IngestionPipelineDAO ingestionPipelineDAO() {
     return delegate.ingestionPipelineDAO();
   }
