@@ -3059,8 +3059,4 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
     return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
   }
-
-  private String getIndexName(String indexName) {
-    return clusterAlias != null ? clusterAlias + "_" + indexName : indexName;
-  }
 }

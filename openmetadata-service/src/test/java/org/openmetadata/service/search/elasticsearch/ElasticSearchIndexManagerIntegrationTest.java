@@ -13,12 +13,21 @@
 
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.client.RestClient;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,16 +35,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

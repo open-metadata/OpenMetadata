@@ -13,6 +13,15 @@
 
 package org.openmetadata.service.search.opensearch;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
@@ -26,16 +35,6 @@ import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
 import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

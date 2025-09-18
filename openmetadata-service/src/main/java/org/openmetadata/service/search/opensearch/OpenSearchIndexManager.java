@@ -158,7 +158,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       os.org.opensearch.client.opensearch.indices.DeleteIndexRequest request =
           DeleteIndexRequest.of(b -> b.index(indexName));
       DeleteIndexResponse response = client.indices().delete(request);
-      LOG.debug("{} Deleted: {}", indexName, response.acknowledged());
+      LOG.info("{} Deleted: {}", indexName, response.acknowledged());
     } catch (Exception e) {
       LOG.error(
           "Failed to delete OpenSearch index: {}", indexMapping.getIndexName(clusterAlias), e);

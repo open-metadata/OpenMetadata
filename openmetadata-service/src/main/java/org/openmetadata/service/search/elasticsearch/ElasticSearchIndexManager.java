@@ -102,7 +102,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
     } catch (Exception e) {
-      LOG.warn(
+      LOG.error(
           "Failed to update Elasticsearch index {} due to",
           indexMapping.getIndexName(clusterAlias),
           e);
@@ -118,7 +118,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
           DeleteIndexRequest.of(b -> b.index(indexName));
       DeleteIndexResponse response = client.indices().delete(request);
 
-      LOG.debug("{} Deleted: {}", indexName, response.acknowledged());
+      LOG.info("{} Deleted: {}", indexName, response.acknowledged());
     } catch (Exception e) {
       LOG.error(
           "Failed to delete Elasticsearch index: {}", indexMapping.getIndexName(clusterAlias), e);
