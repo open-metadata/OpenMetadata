@@ -313,8 +313,8 @@ class TestSDKIntegration(unittest.TestCase):
                     self.assertIsNotNone(retrieved_table)
                     self.assertEqual(retrieved_table.name, self.test_table_name)
                     print(f"✓ Table retrievable after restore: {retrieved_table.name}")
-                except requests.exceptions.HTTPError as http_error:
-                    if "400" in str(http_error):
+                except Exception as http_error:
+                    if "400" in str(http_error) or "Bad Request" in str(http_error):
                         print(f"\n⚠️ Restore failed with 400 Bad Request")
                         print(
                             "This typically means the table wasn't properly soft-deleted"
