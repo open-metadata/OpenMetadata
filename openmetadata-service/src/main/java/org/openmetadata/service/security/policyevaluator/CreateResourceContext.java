@@ -77,6 +77,12 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   @Override
   public List<EntityReference> getDomains() {
+    // First check if the entity being created already has domains assigned
+    if (entity != null && !nullOrEmpty(entity.getDomains())) {
+      return entity.getDomains();
+    }
+
+    // If no domains on entity, try to inherit from parent entities
     if (nullOrEmpty(parentEntities)) {
       return null;
     }
