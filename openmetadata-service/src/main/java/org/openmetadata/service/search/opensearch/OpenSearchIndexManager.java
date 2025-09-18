@@ -42,6 +42,9 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public boolean indexExists(String indexName) {
+    if (!isClientAvailable) {
+      return false;
+    }
     try {
       BooleanResponse response = client.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
       return response.value();

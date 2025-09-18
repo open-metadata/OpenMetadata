@@ -37,6 +37,9 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public boolean indexExists(String indexName) {
+    if (!isClientAvailable) {
+      return false;
+    }
     try {
       ElasticsearchIndicesClient indicesClient = client.indices();
       ExistsRequest request = ExistsRequest.of(e -> e.index(indexName));
