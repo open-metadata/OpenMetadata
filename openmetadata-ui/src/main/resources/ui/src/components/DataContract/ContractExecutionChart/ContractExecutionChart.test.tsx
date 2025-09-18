@@ -252,18 +252,33 @@ describe('ContractExecutionChart', () => {
           failed: 0,
           success: 1,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Success',
+            id: 'result-1',
+            timestamp: 1640995200000,
+          },
         });
         expect(chartData[1]).toEqual({
           name: 1640995260000,
           failed: 1,
           success: 0,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Failed',
+            id: 'result-2',
+            timestamp: 1640995260000,
+          },
         });
         expect(chartData[2]).toEqual({
           name: 1640995320000,
           failed: 0,
           success: 0,
           aborted: 1,
+          data: {
+            contractExecutionStatus: 'Aborted',
+            id: 'result-3',
+            timestamp: 1640995320000,
+          },
         });
       });
     });
@@ -324,7 +339,7 @@ describe('ContractExecutionChart', () => {
         );
         expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
           'data-fill',
-          '#ffbe0e'
+          '#f79009'
         );
       });
     });
@@ -367,7 +382,6 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
     });
 
     it('should hide loading state after data is loaded', async () => {

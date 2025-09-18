@@ -85,6 +85,12 @@ jest.mock('../ContractYaml/ContractYaml.component', () => {
   };
 });
 
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>RichTextEditorPreviewerNew</div>;
+  });
+});
+
 jest.mock('../../common/Table/Table', () => {
   return function MockTable({ dataSource, loading }: any) {
     return (
@@ -214,7 +220,9 @@ describe('ContractDetail', () => {
       );
 
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
-      expect(screen.getByText(/Test Description/i)).toBeInTheDocument();
+      expect(screen.getByText('label.description')).toBeInTheDocument();
+
+      expect(screen.getAllByText('RichTextEditorPreviewerNew')).toHaveLength(2);
     });
 
     it('should display contract actions', () => {

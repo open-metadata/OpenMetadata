@@ -437,7 +437,7 @@ const ContractDetail: React.FC<{
           {contract?.semantics && contract?.semantics.length > 0 && (
             <Col
               className="contract-card-items"
-              data-testid="schema-table-card"
+              data-testid="semantics-card"
               span={24}>
               <div className="contract-card-header-container">
                 <Typography.Text className="contract-card-header">
@@ -458,7 +458,7 @@ const ContractDetail: React.FC<{
           {contract?.testSuite?.id && (
             <Col
               className="contract-card-items"
-              data-testid="schema-table-card"
+              data-testid="data-quality-card"
               span={24}>
               <div className="contract-card-header-container">
                 <Typography.Text className="contract-card-header">

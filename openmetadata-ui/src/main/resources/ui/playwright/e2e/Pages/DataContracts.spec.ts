@@ -434,7 +434,10 @@ test.describe('Data Contracts', () => {
         await page.click('[data-testid="create-btn"]');
         await testCaseResponse;
 
-        await page.waitForTimeout(100);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(
           page
@@ -645,11 +648,8 @@ test.describe('Data Contracts', () => {
         page.getByTestId('contract-owner-card').getByTestId('admin')
       ).toBeVisible();
 
-      await expect(
-        page.locator(
-          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
-        )
-      ).toContainText(DATA_CONTRACT_DETAILS.description2);
+      // Description with header
+      await expect(page.getByText('DescriptionModified Data')).toBeVisible();
 
       await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
@@ -723,7 +723,11 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('user-tag')).toBeVisible();
 
         // Fill Contract Schema form
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
+
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
           .check();
@@ -733,7 +737,7 @@ test.describe('Data Contracts', () => {
         ).toBeChecked();
 
         // Fill Contract Semantics form
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        await page.getByRole('tab', { name: 'Semantics' }).click();
 
         await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
@@ -958,10 +962,13 @@ test.describe('Data Contracts', () => {
 
       await test.step('Fill Contract Schema form', async () => {
         const columnResponse = page.waitForResponse(
-          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+          '/api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
 
         await columnResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -979,7 +986,7 @@ test.describe('Data Contracts', () => {
         // Move to 2nd Page and Select columns
 
         const columnResponse2 = page.waitForResponse(
-          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+          '/api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
         await page.getByTestId('next').click();
@@ -1070,7 +1077,10 @@ test.describe('Data Contracts', () => {
           'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
 
         await columnResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -1122,7 +1132,10 @@ test.describe('Data Contracts', () => {
             'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
           );
 
-          await page.getByRole('button', { name: 'Schema' }).click();
+          await page
+            .getByTestId('add-contract-card')
+            .getByRole('tab', { name: 'Schema' })
+            .click();
 
           await columnResponse;
           await page.waitForSelector('[data-testid="loader"]', {
@@ -1382,7 +1395,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
-    await page.getByRole('button', { name: 'Schema' }).click();
+    await page.getByRole('tab', { name: 'Schema' }).click();
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
