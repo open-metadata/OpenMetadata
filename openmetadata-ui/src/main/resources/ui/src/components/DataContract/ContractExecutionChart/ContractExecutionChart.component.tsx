@@ -148,7 +148,6 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
             />
             <Tooltip
               content={<ContractExecutionChartTooltip />}
-              //   offset={tooltipOffset}
               position={{ y: 100 }}
               wrapperStyle={{ pointerEvents: 'auto' }}
             />
@@ -165,6 +164,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
               dataKey="success"
               fill={GREEN_4}
               name={t('label.success')}
+              stackId="single"
               {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
             />
             <Bar
@@ -172,6 +172,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
               dataKey="failed"
               fill={RED_3}
               name={t('label.failed')}
+              stackId="single"
               {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
             />
             <Bar
@@ -179,6 +180,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
               dataKey="aborted"
               fill={YELLOW_3}
               name={t('label.aborted')}
+              stackId="single"
               {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
             />
           </BarChart>
