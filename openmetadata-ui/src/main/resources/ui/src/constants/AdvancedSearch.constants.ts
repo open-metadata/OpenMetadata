@@ -290,10 +290,6 @@ export const LINEAGE_DROPDOWN_ITEMS = [
     label: t('label.column'),
     key: EntityFields.COLUMN,
   },
-  {
-    label: t('label.node-depth'),
-    key: EntityFields.NODE_DEPTH,
-  },
 ];
 
 export const TEXT_FIELD_OPERATORS = [

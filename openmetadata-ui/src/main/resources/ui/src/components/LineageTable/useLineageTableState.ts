@@ -1,0 +1,234 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { useReducer } from 'react';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { SearchSourceAlias } from '../../interface/search.interface';
+import { LineageNode } from '../Lineage/Lineage.interface';
+import { EImpactLevel } from './LineageTable.interface';
+
+interface LineageTableState {
+  currentNodeData: SearchSourceAlias | null;
+  filterNodes: LineageNode[];
+  loading: boolean;
+  filterSelectionActive: boolean;
+  searchValue: string;
+  dialogVisible: boolean;
+  impactLevel: EImpactLevel;
+  upstreamColumnLineageNodes: LineageNode[];
+  downstreamColumnLineageNodes: LineageNode[];
+  lineageDirection: LineageDirection;
+  lineagePagingInfo: LineagePagingInfo | null;
+  nodeDepth?: number;
+}
+
+type LineageTableAction =
+  | { type: 'SET_CURRENT_NODE_DATA'; payload: SearchSourceAlias | null }
+  | { type: 'SET_FILTER_NODES'; payload: LineageNode[] }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_FILTER_SELECTION_ACTIVE'; payload: boolean }
+  | { type: 'SET_SEARCH_VALUE'; payload: string }
+  | { type: 'SET_DIALOG_VISIBLE'; payload: boolean }
+  | { type: 'SET_IMPACT_LEVEL'; payload: EImpactLevel }
+  | { type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
+  | { type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
+  | {
+      type: 'SET_COLUMN_LINEAGE_NODES';
+      payload: { upstream: LineageNode[]; downstream: LineageNode[] };
+    }
+  | { type: 'SET_LINEAGE_DIRECTION'; payload: LineageDirection }
+  | { type: 'RESET_FILTERS' }
+  | { type: 'TOGGLE_FILTER_SELECTION' }
+  | { type: 'SET_LINEAGE_PAGING_INFO'; payload: LineagePagingInfo | null }
+  | { type: 'UPDATE_NODE_DEPTH'; payload: number };
+
+export interface LineagePagingInfo {
+  downstreamDepthInfo: { depth: number; entityCount: number }[];
+  upstreamDepthInfo: { depth: number; entityCount: number }[];
+  maxDownstreamDepth: number;
+  maxUpstreamDepth: number;
+  totalDownstreamEntities: number;
+  totalUpstreamEntities: number;
+}
+
+const initialState: LineageTableState = {
+  currentNodeData: null,
+  filterNodes: [],
+  loading: false,
+  filterSelectionActive: false,
+  searchValue: '',
+  dialogVisible: false,
+  impactLevel: EImpactLevel.TableLevel,
+  upstreamColumnLineageNodes: [],
+  downstreamColumnLineageNodes: [],
+  lineageDirection: LineageDirection.Downstream,
+  lineagePagingInfo: null,
+  nodeDepth: 1,
+};
+
+function lineageTableReducer(
+  state: LineageTableState,
+  action: LineageTableAction
+): LineageTableState {
+  switch (action.type) {
+    case 'SET_CURRENT_NODE_DATA':
+      return { ...state, currentNodeData: action.payload };
+
+    case 'SET_FILTER_NODES':
+      return { ...state, filterNodes: action.payload };
+
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+
+    case 'SET_FILTER_SELECTION_ACTIVE':
+      return { ...state, filterSelectionActive: action.payload };
+
+    case 'SET_SEARCH_VALUE':
+      return { ...state, searchValue: action.payload };
+
+    case 'SET_DIALOG_VISIBLE':
+      return { ...state, dialogVisible: action.payload };
+
+    case 'SET_IMPACT_LEVEL':
+      return { ...state, impactLevel: action.payload };
+
+    case 'SET_UPSTREAM_COLUMN_LINEAGE_NODES':
+      return { ...state, upstreamColumnLineageNodes: action.payload };
+
+    case 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES':
+      return { ...state, downstreamColumnLineageNodes: action.payload };
+
+    case 'SET_COLUMN_LINEAGE_NODES':
+      return {
+        ...state,
+        upstreamColumnLineageNodes: action.payload.upstream,
+        downstreamColumnLineageNodes: action.payload.downstream,
+      };
+
+    case 'SET_LINEAGE_DIRECTION':
+      return { ...state, lineageDirection: action.payload };
+
+    case 'RESET_FILTERS':
+      return {
+        ...state,
+        searchValue: '',
+        filterNodes: [],
+        filterSelectionActive: false,
+      };
+
+    case 'TOGGLE_FILTER_SELECTION':
+      return { ...state, filterSelectionActive: !state.filterSelectionActive };
+
+    case 'SET_LINEAGE_PAGING_INFO':
+      return { ...state, lineagePagingInfo: action.payload };
+
+    case 'UPDATE_NODE_DEPTH':
+      return { ...state, nodeDepth: action.payload };
+
+    default:
+      return state;
+  }
+}
+
+export function useLineageTableState() {
+  const [state, dispatch] = useReducer(lineageTableReducer, initialState);
+
+  // Helper functions for common state updates
+  const setCurrentNodeData = (nodeData: SearchSourceAlias | null) => {
+    dispatch({ type: 'SET_CURRENT_NODE_DATA', payload: nodeData });
+  };
+
+  const setFilterNodes = (nodes: LineageNode[]) => {
+    dispatch({ type: 'SET_FILTER_NODES', payload: nodes });
+  };
+
+  const setLoading = (loading: boolean) => {
+    dispatch({ type: 'SET_LOADING', payload: loading });
+  };
+
+  const setFilterSelectionActive = (active: boolean) => {
+    dispatch({ type: 'SET_FILTER_SELECTION_ACTIVE', payload: active });
+  };
+
+  const toggleFilterSelection = () => {
+    dispatch({ type: 'TOGGLE_FILTER_SELECTION' });
+  };
+
+  const setSearchValue = (value: string) => {
+    dispatch({ type: 'SET_SEARCH_VALUE', payload: value });
+  };
+
+  const setDialogVisible = (visible: boolean) => {
+    dispatch({ type: 'SET_DIALOG_VISIBLE', payload: visible });
+  };
+
+  const setImpactLevel = (level: EImpactLevel) => {
+    dispatch({ type: 'SET_IMPACT_LEVEL', payload: level });
+  };
+
+  const setUpstreamColumnLineageNodes = (nodes: LineageNode[]) => {
+    dispatch({ type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
+  };
+
+  const setDownstreamColumnLineageNodes = (nodes: LineageNode[]) => {
+    dispatch({ type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES', payload: nodes });
+  };
+
+  const setColumnLineageNodes = (
+    upstream: LineageNode[],
+    downstream: LineageNode[]
+  ) => {
+    dispatch({
+      type: 'SET_COLUMN_LINEAGE_NODES',
+      payload: { upstream, downstream },
+    });
+  };
+
+  const setLineageDirection = (direction: LineageDirection) => {
+    dispatch({ type: 'SET_LINEAGE_DIRECTION', payload: direction });
+  };
+
+  const resetFilters = () => {
+    dispatch({ type: 'RESET_FILTERS' });
+  };
+
+  const setLineagePagingInfo = (info: LineagePagingInfo | null) => {
+    dispatch({ type: 'SET_LINEAGE_PAGING_INFO', payload: info });
+  };
+
+  const setNodeDepth = (depth: number) => {
+    dispatch({ type: 'UPDATE_NODE_DEPTH', payload: depth });
+  };
+
+  return {
+    // State values
+    ...state,
+
+    // Action dispatchers
+    setCurrentNodeData,
+    setFilterNodes,
+    setLoading,
+    setFilterSelectionActive,
+    toggleFilterSelection,
+    setSearchValue,
+    setDialogVisible,
+    setImpactLevel,
+    setUpstreamColumnLineageNodes,
+    setDownstreamColumnLineageNodes,
+    setColumnLineageNodes,
+    setLineageDirection,
+    setLineagePagingInfo,
+    setNodeDepth,
+    resetFilters,
+  };
+}

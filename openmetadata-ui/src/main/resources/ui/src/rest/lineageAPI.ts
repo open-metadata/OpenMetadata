@@ -17,6 +17,8 @@ import {
   EntityLineageResponse,
   LineageData,
 } from '../components/Lineage/Lineage.interface';
+import { LineagePagingInfo } from '../components/LineageTable/useLineageTableState';
+import { EntityType } from '../enums/entity.enum';
 
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
@@ -130,6 +132,42 @@ export const getDataQualityLineage = async (
         includeDeleted: false,
         query_filter: queryFilter,
       },
+    }
+  );
+
+  return response.data;
+};
+
+export const getLineageByEntityCount = async (params: {
+  fqn: string;
+  type?: EntityType;
+  direction?: LineageDirection;
+  nodeDepth?: number;
+  from?: number;
+  size?: number;
+  queryFilter?: string;
+}) => {
+  const response = await APIClient.get(`lineage/getLineageByEntityCount`, {
+    params: {
+      from: 0,
+      size: 10,
+      nodeDepth: 1,
+      direction: LineageDirection.Downstream,
+      ...params,
+    },
+  });
+
+  return response.data;
+};
+
+export const getLineagePagingData = async (params: {
+  fqn: string;
+  type?: EntityType;
+}) => {
+  const response = await APIClient.get<LineagePagingInfo>(
+    `lineage/getPaginationInfo`,
+    {
+      params,
     }
   );
 

@@ -64,7 +64,15 @@ export interface QueryFieldInterface {
   term?: Partial<Record<string, EsTermQuery | FieldValue>>;
   terms?: EsTermsQuery;
   exists?: EsExistsQuery;
-  wildcard?: Partial<Record<string, string>>;
+  [key: string]:
+    | QueryFieldInterface
+    | EsBoolQuery
+    | EsTermQuery
+    | FieldValue
+    | EsTermsQuery
+    | EsExistsQuery
+    | EsWildCard
+    | undefined;
 }
 
 export interface QueryFilterInterface {

@@ -791,6 +791,7 @@
     "image": "Image",
     "image-repository": "Image Repository",
     "impact": "Impact",
+    "impact-analysis": "Impact Analysis",
     "impact-on-area": "Impact On: <0>{{area}}</0>",
     "import": "Import",
     "import-entity": "Import {{entity}}",

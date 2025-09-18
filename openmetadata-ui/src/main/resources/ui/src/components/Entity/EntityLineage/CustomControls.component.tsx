@@ -13,10 +13,9 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Menu, MenuItem } from '@mui/material';
+import { Space } from 'antd';
 import classNames from 'classnames';
-import { Type } from 'js-yaml';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -37,11 +36,12 @@ const CustomControls: FC<LineageControlProps> = ({
   const { setSelectedQuickFilters, nodes, selectedQuickFilters } =
     useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+  const [advanceEl, setAdvanceEl] = useState<null | HTMLElement>(null);
 
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
 
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const handleMenuClick = (key: string) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
   };
 
@@ -62,14 +62,6 @@ const CustomControls: FC<LineageControlProps> = ({
       },
     };
   }, [nodes]);
-
-  const filterMenu: ItemType[] = useMemo(() => {
-    return filters.map((filter) => ({
-      key: filter.key,
-      label: filter.label,
-      onClick: handleMenuClick,
-    }));
-  }, [filters]);
 
   useEffect(() => {
     const dropdownItems = getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE);
@@ -99,7 +91,7 @@ const CustomControls: FC<LineageControlProps> = ({
           }
         });
 
-        return data as Type;
+        return data;
       });
     },
     [setSelectedQuickFilters]
@@ -138,17 +130,42 @@ const CustomControls: FC<LineageControlProps> = ({
         <div className="d-flex items-center gap-4">
           <LineageSearchSelect />
           <Space className="m-l-xs" size={16}>
-            <Dropdown
-              menu={{
-                items: filterMenu,
-                selectedKeys: selectedFilter,
-              }}
-              trigger={['click']}>
-              <Button ghost className="expand-btn" type="primary">
-                {t('label.advanced')}
-                <RightOutlined />
-              </Button>
-            </Dropdown>
+            <Button
+              className="expand-btn"
+              variant="outlined"
+              onClick={(e) => setAdvanceEl(e.currentTarget)}>
+              {t('label.advanced')}
+              <RightOutlined />
+            </Button>
+            <Menu
+              anchorEl={advanceEl}
+              open={Boolean(advanceEl)}
+              onClose={() => setAdvanceEl(null)}>
+              {filters.map((item) => (
+                <MenuItem
+                  key={item.key}
+                  selected={selectedFilter.includes(item.key)}
+                  sx={{
+                    '&.Mui-selected': {
+                      color: 'var(--ant-primary-color)',
+                      backgroundColor: 'var(--ant-primary-1)',
+                    },
+                    '&.Mui-selected:hover': {
+                      backgroundColor: 'var(--ant-primary-1)',
+                    },
+                    '&.MuiMenuItem-root': {
+                      margin: '0',
+                      padding: '4px 12px',
+                      borderRadius: '0px',
+                    },
+                  }}
+                  value={item.key}
+                  onClick={() => handleMenuClick(item.key)}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </Menu>
+
             <ExploreQuickFilters
               independent
               aggregations={{}}
@@ -162,13 +179,14 @@ const CustomControls: FC<LineageControlProps> = ({
         </div>
       )}
       <div className="d-flex gap-4 items-center">
-        <Button ghost className="font-semibold" type="primary">
-          Lineage
+        <Button className="font-semibold" variant="contained">
+          {t('label.lineage')}
         </Button>
         <Button
           className="font-semibold"
+          variant="outlined"
           onClick={() => navigate({ search: '?mode=impact_analysis' })}>
-          Impact Analysis
+          {t('label.impact-analysis')}
         </Button>
       </div>
     </div>

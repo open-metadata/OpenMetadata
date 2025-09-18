@@ -11,6 +11,14 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { get, omit, pick } from 'lodash';
+import {
+  ColumnLevelLineageNode,
+  EdgeDetails,
+  LineageData,
+} from '../../components/Lineage/Lineage.interface';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 
 export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
@@ -24,3 +32,91 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
     icon: <ArrowLeftOutlined />,
   },
 ];
+
+export const prepareColumnLevelNodesFromEdges = (
+  edges: EdgeDetails[],
+  nodes: LineageData['nodes'],
+  direction: LineageDirection = LineageDirection.Downstream
+) => {
+  const entityKey =
+    direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
+
+  return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
+    if (node.columns?.length ?? 0 > 0) {
+      node.columns?.forEach((col) => {
+        const entityData = get(
+          nodes[node[entityKey].fullyQualifiedName ?? ''],
+          'entity',
+          {}
+        );
+        const nodeDepth = get(
+          nodes[node[entityKey].fullyQualifiedName ?? ''],
+          'nodeDepth',
+          0
+        );
+
+        acc.push({
+          ...omit(node, 'columns'),
+          column: col,
+          nodeDepth,
+          ...pick(entityData, [
+            'owners',
+            'tier',
+            'tags',
+            'domains',
+            'description',
+          ]),
+        });
+      });
+    }
+
+    return acc;
+  }, []);
+};
+
+export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
+  edges: EdgeDetails[],
+  nodes: LineageData['nodes']
+) => {
+  return prepareColumnLevelNodesFromEdges(
+    edges,
+    nodes,
+    LineageDirection.Downstream
+  );
+};
+
+export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
+  edges: EdgeDetails[],
+  nodes: LineageData['nodes']
+) => {
+  return prepareColumnLevelNodesFromEdges(
+    edges,
+    nodes,
+    LineageDirection.Upstream
+  );
+};
+
+export const getSearchNameEsQuery = (
+  searchText: string
+): QueryFieldInterface => {
+  return {
+    bool: {
+      should: [
+        {
+          wildcard: {
+            'name.keyword': {
+              value: `*${searchText}*`,
+            },
+          },
+        },
+        {
+          wildcard: {
+            'displayName.keyword': {
+              value: `*${searchText}*`,
+            },
+          },
+        },
+      ],
+    },
+  };
+};

@@ -18,7 +18,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
-import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
 type IconButtonPropsInternal = ButtonProps & {
@@ -183,24 +182,6 @@ export const DeleteIconButton = ({
       <Button
         className={classNames('bordered', className)}
         icon={<IconDelete />}
-        size={size}
-        {...props}
-      />
-    </Tooltip>
-  );
-};
-
-export const FilterLinesIconButton = ({
-  title,
-  className,
-  size,
-  ...props
-}: IconButtonPropsInternal) => {
-  return (
-    <Tooltip title={title}>
-      <Icon
-        className={className}
-        component={FilterLinesIcon}
         size={size}
         {...props}
       />
