@@ -88,6 +88,11 @@
     border-color: @primary-6;
   }
 
+  // Hide the clear/close button on select dropdowns for non-configured forms
+  .ant-select-clear {
+    display: none !important;
+  }
+
   .sso-action-buttons {
     display: flex;
     align-items: flex-start;
@@ -198,8 +203,50 @@
     .ant-card-body {
       padding: 0px !important;
     }
+
+    // Apply same styling as non-configured for ALL form controls including array fields
     .rjsf .form-control {
-      padding: @size-xs @size-sm;
+      border-radius: @border-rad-xs;
+      border: 1px solid @grey-300;
+      background-color: @background-color;
+      padding: @padding-sm - 2px @padding-sm + 2px;
+      color: @grey-700;
+      box-shadow: 0px 1px 2px 0px @grey-27;
+
+      &:hover {
+        border-color: @primary-6;
+      }
+
+      &:focus {
+        border-color: @primary-color;
+        box-shadow: @box-shadow-ant-select;
+        outline: none;
+      }
+    }
+
+    // Ensure array field inputs and ALL inputs get proper focus styling
+    .rjsf .field-array input,
+    .rjsf input.form-control,
+    .rjsf input[type='text'],
+    .rjsf input[type='password'],
+    .rjsf input[type='email'],
+    .rjsf input[type='number'] {
+      &:focus,
+      &:focus-visible {
+        border-color: @primary-color !important;
+        box-shadow: @box-shadow-ant-select !important;
+        outline: none !important;
+      }
+    }
+
+    // Ensure textarea gets same focus styling
+    .rjsf textarea.form-control {
+      &:focus,
+      &:focus-visible {
+        border-color: @primary-color !important;
+        box-shadow: @box-shadow-ant-select !important;
+        outline: none !important;
+      }
     }
     .rjsf .form-group.field {
       margin-top: 0;
@@ -296,6 +343,7 @@
       background-color: @background-color;
       height: auto;
       padding: @size-xs @size-sm;
+      box-shadow: @button-box-shadow-disabled;
 
       &:hover {
         border-color: @primary-6;
@@ -310,13 +358,31 @@
       }
     }
 
+    // Hide the clear/close button on select dropdowns
+    .ant-select-clear {
+      display: none !important;
+    }
+
     .ant-select-focused .ant-select-selector {
-      border-color: @primary-color;
-      box-shadow: @box-shadow-ant-select;
+      border-color: @primary-color !important;
+      box-shadow: @box-shadow-ant-select !important;
     }
 
     .ant-select:hover .ant-select-selector {
       border-color: @primary-6;
+    }
+
+    // Ensure ALL form inputs in configured SSO have proper focus state
+    input.form-control:focus,
+    input[type='text']:focus,
+    input[type='password']:focus,
+    input[type='email']:focus,
+    textarea.form-control:focus,
+    .ant-input:focus,
+    .ant-input-focused {
+      border-color: @primary-color !important;
+      box-shadow: @box-shadow-ant-select !important;
+      outline: none !important;
     }
   }
 }
