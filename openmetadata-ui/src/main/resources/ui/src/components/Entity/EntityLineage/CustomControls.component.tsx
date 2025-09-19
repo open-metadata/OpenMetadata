@@ -13,7 +13,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Menu, MenuItem } from '@mui/material';
+import { Button, Menu, MenuItem, useTheme } from '@mui/material';
 import { Space } from 'antd';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,6 +40,7 @@ const CustomControls: FC<LineageControlProps> = ({
 
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const handleMenuClick = (key: string) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -179,7 +180,19 @@ const CustomControls: FC<LineageControlProps> = ({
         </div>
       )}
       <div className="d-flex gap-4 items-center">
-        <Button className="font-semibold" variant="contained">
+        <Button
+          className="font-semibold"
+          sx={{
+            outlineColor: theme.palette.allShades.blue[700],
+            backgroundColor: theme.palette.allShades.blue[50],
+            color: theme.palette.allShades.blue[700],
+            '&:hover': {
+              outlineColor: theme.palette.allShades.blue[100],
+              backgroundColor: theme.palette.allShades.blue[100],
+              color: theme.palette.allShades.blue[700],
+            },
+          }}
+          variant="outlined">
           {t('label.lineage')}
         </Button>
         <Button

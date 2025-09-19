@@ -106,11 +106,10 @@ export interface LineageEntityReference extends EntityReference {
   direction?: LineageDirection;
 }
 
-export interface LineageNode {
-  entity: SearchSourceAlias;
+export type LineageNode = SearchSourceAlias & {
   nodeDepth?: number;
   paging: {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;
   };
-}
+};

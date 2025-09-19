@@ -49,6 +49,7 @@ import {
   useNodesState,
 } from 'reactflow';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
@@ -495,20 +496,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [isPlatformLineage, location.search]
   );
 
-  const exportLineageData = useCallback(
-    async (_: string) => {
-      return exportLineageAsync(
-        entityFqn,
-        entityType,
-        lineageConfig,
-        queryFilter
-      );
-    },
-    [entityType, entityFqn, lineageConfig, queryFilter]
-  );
+  const exportLineageData = useCallback(async () => {
+    return exportLineageAsync(
+      entityFqn,
+      entityType,
+      lineageConfig,
+      queryFilter
+    );
+  }, [entityType, entityFqn, lineageConfig, queryFilter]);
 
   const onExportClick = useCallback(
-    (exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG]) => {
+    (
+      exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG],
+      onExportCallback?: (_: string) => Promise<CSVExportResponse>
+    ) => {
       if (entityFqn || isPlatformLineagePage) {
         showModal({
           ...(isPlatformLineagePage
@@ -525,7 +526,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           viewport: exportTypes?.includes(ExportTypes.PNG)
             ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
             : undefined,
-          onExport: exportLineageData,
+          onExport: onExportCallback ?? exportLineageData,
         });
       }
     },

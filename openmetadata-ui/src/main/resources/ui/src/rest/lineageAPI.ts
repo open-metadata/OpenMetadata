@@ -160,9 +160,35 @@ export const getLineageByEntityCount = async (params: {
   return response.data;
 };
 
+export const exportLineageByEntityCountAsync = async (params: {
+  fqn: string;
+  type?: EntityType;
+  direction?: LineageDirection;
+  nodeDepth?: number;
+  from?: number;
+  size?: number;
+  queryFilter?: string;
+}) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `lineage/exportByEntityCountAsync`,
+    {
+      params: {
+        from: 0,
+        size: 50,
+        nodeDepth: 2,
+        direction: LineageDirection.Upstream,
+        ...params,
+      },
+    }
+  );
+
+  return response.data;
+};
+
 export const getLineagePagingData = async (params: {
   fqn: string;
   type?: EntityType;
+  queryFilter?: string;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,

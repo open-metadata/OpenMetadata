@@ -92,7 +92,10 @@ export interface LineageContextType {
     entityType: string,
     lineageConfig: LineageConfig
   ) => void;
-  onExportClick: (entityTypes?: ExportTypes[]) => void;
+  onExportClick: (
+    entityTypes?: ExportTypes[],
+    callback?: (_: string) => Promise<CSVExportResponse>
+  ) => void;
   onPlatformViewChange: (view: LineagePlatformView) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
