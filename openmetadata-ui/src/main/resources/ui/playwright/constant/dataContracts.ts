@@ -15,6 +15,8 @@ import { uuid } from '../utils/common';
 export const DATA_CONTRACT_DETAILS = {
   name: `data_contract_${uuid()}`,
   description: 'new data contract description',
+  termsOfService:
+    'This is playwright article body here you can add rich text and block, it also support the slash command.',
   displayName: `Data Contract_${uuid()}`,
   description2: 'Modified Data Contract Description',
 };

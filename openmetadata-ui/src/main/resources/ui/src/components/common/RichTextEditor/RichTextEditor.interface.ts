@@ -24,6 +24,7 @@ export interface PreviewerProp {
   isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
   reducePreviewLineClass?: string;
+  maxLineLength?: string;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
