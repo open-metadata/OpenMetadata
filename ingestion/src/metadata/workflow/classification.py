@@ -18,6 +18,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
 )
 from metadata.ingestion.api.steps import Processor
 from metadata.pii.processor import PIIProcessor
+from metadata.pii.tag_processor import TagProcessor
 from metadata.sampler.processor import SamplerProcessor
 from metadata.utils.logger import profiler_logger
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -50,6 +51,8 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
             self.steps = (sampler_processor, sink)
 
     def _get_pii_processor(self) -> Processor:
+        if self.config.processor.type == "tag-pii-processor":
+            return TagProcessor.create(self.config.model_dump(), self.metadata)
         return PIIProcessor.create(self.config.model_dump(), self.metadata)
 
     def _get_sampler_processor(self) -> Processor:

@@ -13,22 +13,37 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Iterable, Type, Union
+from typing import Iterable, Type, TypedDict, Union
 
 import spacy
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
+    Pattern,
     PatternRecognizer,
     predefined_recognizers,
 )
 from presidio_analyzer.nlp_engine import SpacyNlpEngine
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
+from metadata.pii.algorithms.custom_recognizer_factory import CustomRecognizerFactory
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
+
+
+def load_nlp_engine(
+    model_name: str = SPACY_EN_MODEL, supported_language: str = SUPPORTED_LANG
+) -> SpacyNlpEngine:
+    _load_spacy_model(model_name)
+    model = {
+        "lang_code": supported_language,
+        "model_name": model_name,
+    }
+    return SpacyNlpEngine(models=[model])
 
 
 def build_analyzer_engine(
@@ -39,14 +54,9 @@ def build_analyzer_engine(
 
     If the model is not found locally, it will be downloaded.
     """
-    _load_spacy_model(model_name)
-
-    model = {
-        "lang_code": SUPPORTED_LANG,
-        "model_name": model_name,
-    }
-
-    nlp_engine = SpacyNlpEngine(models=[model])
+    nlp_engine = load_nlp_engine(
+        model_name=model_name, supported_language=SUPPORTED_LANG
+    )
     analyzer_engine = AnalyzerEngine(
         nlp_engine=nlp_engine, supported_languages=[SUPPORTED_LANG]
     )
@@ -109,3 +119,36 @@ def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
         elif cls == predefined_recognizers.PhoneRecognizer:
             # Not a pattern recognizer, but pretty much the same
             yield predefined_recognizers.PhoneRecognizer()
+
+
+class TagRecognizers(TypedDict):
+    content_recognizers: list[EntityRecognizer]
+    column_recognizers: list[EntityRecognizer]
+
+
+def get_recognizers_for_tag(tag: Tag) -> TagRecognizers:
+    """Function that builds content and column recognizers for a given tag.
+
+    TODO: once Recognizers make a distinction between content and column recognizers, update this implementation"""
+    content_recognizers = CustomRecognizerFactory.create_recognizers_for_tag(tag)
+    column_recognizers = [
+        PatternRecognizer(
+            supported_entity=pii_tag.value,
+            name=pii_tag.value,
+            patterns=[
+                Pattern(
+                    name=pii_tag.value,
+                    regex=regex.pattern,
+                    score=0.4,
+                )
+                for regex in regexes
+            ],
+            supported_language=SUPPORTED_LANG,
+        )
+        for pii_tag, regexes in get_pii_column_name_patterns().items()
+    ]
+
+    return TagRecognizers(
+        content_recognizers=content_recognizers,
+        column_recognizers=column_recognizers,
+    )
