@@ -128,6 +128,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
 import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
@@ -766,7 +767,6 @@ export const getTableDetailPageBaseTabs = ({
   viewQueriesPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -871,6 +871,22 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.PROFILER + 'old'}
+          name={get(
+            labelMap,
+            EntityTabs.PROFILER,
+            t('label.data-observability')
+          )}
+        />
+      ),
+      key: EntityTabs.PROFILER + 'old',
+      children: (
+        <TableProfiler permissions={tablePermissions} table={tableDetails} />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.PROFILER}
           name={get(
             labelMap,
@@ -881,10 +897,9 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <TableProfiler
+        <DataObservabilityTab
           permissions={tablePermissions}
           table={tableDetails}
-          testCaseSummary={testCaseSummary}
         />
       ),
     },

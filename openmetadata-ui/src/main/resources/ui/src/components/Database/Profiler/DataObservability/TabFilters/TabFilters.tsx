@@ -1,0 +1,164 @@
+import { KeyboardArrowDown } from '@mui/icons-material';
+import { Button, Menu, MenuItem, Stack, Tooltip } from '@mui/material';
+import { isEqual } from 'lodash';
+import { DateRangeObject } from 'Models';
+import QueryString from 'qs';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
+import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
+import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import { useFqn } from '../../../../../hooks/useFqn';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
+import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
+import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
+
+const TabFilters = () => {
+  const { isTourOpen } = useTourProvider();
+  const { formType } = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return {
+      ...searchData,
+      formType:
+        searchData?.activeTab === TableProfilerTab.COLUMN_PROFILE
+          ? TestLevel.COLUMN
+          : TestLevel.TABLE,
+    } as {
+      activeTab: TableProfilerTab;
+      activeColumnFqn: string;
+      formType: TestLevel | ProfilerDashboardType;
+    };
+  }, [location.search, isTourOpen]);
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const {
+    permissions,
+    isTableDeleted = false,
+    onSettingButtonClick,
+    dateRangeObject = DEFAULT_RANGE_DATA,
+    onDateRangeChange,
+    onTestCaseDrawerOpen,
+  } = useTableProfiler();
+
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { fqn: datasetFQN } = useFqn();
+  const editDataProfile =
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+
+  const handleTestCaseClick = () => {
+    onTestCaseDrawerOpen(formType as TestLevel);
+    handleMenuClose();
+  };
+
+  const handleCustomMetricClick = () => {
+    navigate(
+      getAddCustomMetricPath(formType as ProfilerDashboardType, datasetFQN)
+    );
+    handleMenuClose();
+  };
+
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      onDateRangeChange(value);
+    }
+  };
+
+  return (
+    <Stack
+      alignItems="center"
+      direction="row"
+      justifyContent="flex-end"
+      spacing={5}>
+      <DatePickerMenu
+        showSelectedCustomRange
+        defaultDateRange={dateRangeObject}
+        handleDateRangeChange={handleDateRangeChange}
+        size="small"
+      />
+
+      {editDataProfile && !isTableDeleted && (
+        <>
+          <LimitWrapper resource="dataQuality">
+            <>
+              <Button
+                data-testid="profiler-add-table-test-btn"
+                endIcon={<KeyboardArrowDown />}
+                sx={{ height: '32px' }}
+                variant="contained"
+                onClick={handleMenuClick}>
+                {t('label.add')}
+              </Button>
+              <Menu
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                open={open}
+                sx={{
+                  '.MuiPaper-root': {
+                    width: 'max-content',
+                  },
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                onClose={handleMenuClose}>
+                <MenuItem onClick={handleTestCaseClick}>
+                  <TabsLabel id="test-case" name={t('label.test-case')} />
+                </MenuItem>
+                <MenuItem onClick={handleCustomMetricClick}>
+                  <TabsLabel
+                    id="custom-metric"
+                    name={t('label.custom-metric')}
+                  />
+                </MenuItem>
+              </Menu>
+            </>
+          </LimitWrapper>
+          <Tooltip placement="top" title={t('label.setting-plural')}>
+            <Button
+              color="primary"
+              data-testid="profiler-setting-btn"
+              sx={{
+                minWidth: '36px',
+                height: '32px',
+              }}
+              title={t('label.setting-plural')}
+              variant="outlined"
+              onClick={onSettingButtonClick}>
+              <SettingIcon />
+            </Button>
+          </Tooltip>
+        </>
+      )}
+    </Stack>
+  );
+};
+
+export default TabFilters;
